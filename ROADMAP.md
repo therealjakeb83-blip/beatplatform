@@ -1,4 +1,4 @@
-# 🎵 My Producer — Roadmap V1
+# My Producer — Roadmap V1
 
 > Dernière mise à jour : 2026-05-02
 
@@ -11,29 +11,11 @@
 
 ---
 
-## Progression globale : 1 / 17 étapes validées
+## Progression globale : 0 / 17 étapes validées
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
 | 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel | 2-3h | 🔄 En cours |
-
-### Détail étape 1 — Setup & infrastructure
-| Sous-étape | Statut |
-|------------|--------|
-| Installation de Git | ✅ Validé |
-| Configuration de Git (nom + email) | ✅ Validé |
-| Installation de Node.js | ✅ Validé |
-| Création du projet Next.js (`beatplatform`) | ✅ Validé |
-| Initialisation du repo Git local | ✅ Validé |
-| Création du repo GitHub et push du code | ✅ Validé |
-| Créer un compte Supabase | ⬜ À faire |
-| Créer le projet Supabase et récupérer les clés de connexion | ⬜ À faire |
-| Installer Supabase dans le projet Next.js | ⬜ À faire |
-| Configurer les variables d'environnement (fichier `.env.local`) | ⬜ À faire |
-| Créer un compte Vercel | ⬜ À faire |
-| Connecter Vercel au repo GitHub | ⬜ À faire |
-| Premier déploiement en ligne | ⬜ À faire |
-
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ⬜ À faire |
 | 3 | **Authentification** | Inscription / connexion des beatmakers | 3-4h | ⬜ À faire |
 | 4 | **Gestion des beats** | Upload, infos, fichiers, licences, organisation du catalogue | 10-15h | ⬜ À faire |
@@ -54,6 +36,26 @@
 ---
 
 ## Total estimé : 105-155h (~4 à 6 mois à 2-3 sessions/semaine)
+
+---
+
+## Détail étape 1 — Setup & infrastructure
+
+| Sous-étape | Durée estimée | Statut |
+|------------|---------------|--------|
+| Installation de Git | 5 min | ✅ Validé |
+| Configuration de Git (nom + email) | 5 min | ✅ Validé |
+| Installation de Node.js | 10 min | ✅ Validé |
+| Création du projet Next.js (`beatplatform`) | 10 min | ✅ Validé |
+| Initialisation du repo Git local | 5 min | ✅ Validé |
+| Création du repo GitHub et push du code | 10 min | ✅ Validé |
+| Créer un compte Supabase | 10 min | ⬜ À faire |
+| Créer le projet Supabase et récupérer les clés de connexion | 15 min | ⬜ À faire |
+| Installer Supabase dans le projet Next.js | 10 min | ⬜ À faire |
+| Configurer les variables d'environnement (fichier `.env.local`) | 10 min | ⬜ À faire |
+| Créer un compte Vercel | 10 min | ⬜ À faire |
+| Connecter Vercel au repo GitHub | 15 min | ⬜ À faire |
+| Premier déploiement en ligne | 15 min | ⬜ À faire |
 
 ---
 
