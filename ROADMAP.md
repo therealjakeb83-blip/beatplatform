@@ -16,6 +16,24 @@
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
 | 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel | 2-3h | 🔄 En cours |
+
+### Détail étape 1 — Setup & infrastructure
+| Sous-étape | Statut |
+|------------|--------|
+| Installation de Git | ✅ Validé |
+| Configuration de Git (nom + email) | ✅ Validé |
+| Installation de Node.js | ✅ Validé |
+| Création du projet Next.js (`beatplatform`) | ✅ Validé |
+| Initialisation du repo Git local | ✅ Validé |
+| Création du repo GitHub et push du code | ✅ Validé |
+| Créer un compte Supabase | ⬜ À faire |
+| Créer le projet Supabase et récupérer les clés de connexion | ⬜ À faire |
+| Installer Supabase dans le projet Next.js | ⬜ À faire |
+| Configurer les variables d'environnement (fichier `.env.local`) | ⬜ À faire |
+| Créer un compte Vercel | ⬜ À faire |
+| Connecter Vercel au repo GitHub | ⬜ À faire |
+| Premier déploiement en ligne | ⬜ À faire |
+
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ⬜ À faire |
 | 3 | **Authentification** | Inscription / connexion des beatmakers | 3-4h | ⬜ À faire |
 | 4 | **Gestion des beats** | Upload, infos, fichiers, licences, organisation du catalogue | 10-15h | ⬜ À faire |
