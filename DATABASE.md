@@ -68,7 +68,41 @@ Profil de chaque beatmaker inscrit sur la plateforme My Producer.
 ---
 
 ### `beats`
-*À définir*
+Catalogue de beats de chaque beatmaker.
+
+#### Identité
+| Champ | Type | Description |
+|---|---|---|
+| `id` | UUID | Identifiant unique |
+| `beatmaker_id` | UUID | Lien vers le beatmaker propriétaire |
+| `created_at` | timestamp | Date d'upload |
+| `date_sortie` | timestamp | Date de sortie publique (peut être programmée) |
+
+#### Infos musicales
+| Champ | Type | Description |
+|---|---|---|
+| `titre` | text | Nom du beat |
+| `bpm` | integer | Tempo |
+| `cle` | text | Tonalité (ex: "C# minor") |
+| `styles` | text[] | Ex: ["Trap", "RnB"] |
+| `ambiances` | text[] | Ex: ["Mélodique", "Sombre"] |
+| `instruments` | text[] | Ex: ["Piano"] |
+| `type_beat` | text[] | Ex: ["Hamza", "Damso"] |
+
+#### Fichiers (liens Cloudflare R2)
+| Champ | Type | Description |
+|---|---|---|
+| `image_url` | text | Pochette |
+| `mp3_tague_url` | text | MP3 avec tag vocal (preview) |
+| `mp3_propre_url` | text | MP3 sans tag |
+| `wav_url` | text | Fichier WAV |
+| `stems_url` | text | ZIP des pistes séparées |
+
+#### Disponibilité
+| Champ | Type | Description |
+|---|---|---|
+| `statut` | text | `programme` / `public` / `prive` / `masque` / `vendu` |
+| `supprime_le` | timestamp | Null si actif, date si supprimé par le beatmaker |
 
 ### `licences`
 *À définir*

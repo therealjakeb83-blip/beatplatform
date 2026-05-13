@@ -95,4 +95,4 @@
 |------|--------------------|--------|
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
 | 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. Prochaine étape : conception de la base de données. |
-| 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu (tables : beatmakers, beats, licences, clients, commandes, abonnements). Création des tables en cours. |
+| 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu (tables : beatmakers, beats, licences, clients, commandes, abonnements). Tables beatmakers et beats entièrement définies dans DATABASE.md. |
