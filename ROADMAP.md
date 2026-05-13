@@ -73,8 +73,26 @@
 
 ---
 
+## Détail étape 2 — Base de données
+
+| Sous-étape | Durée estimée | Statut |
+|------------|---------------|--------|
+| Concevoir le schéma des tables (quelles tables, quels champs) | 30 min | ✅ Validé |
+| Créer la table `beatmakers` (profil des utilisateurs de la plateforme) | 15 min | ⬜ À faire |
+| Créer la table `beats` (catalogue de beats) | 20 min | ⬜ À faire |
+| Créer la table `licences` (types de licences proposées par beat) | 15 min | ⬜ À faire |
+| Créer la table `clients` (artistes acheteurs) | 15 min | ⬜ À faire |
+| Créer la table `commandes` (historique des achats) | 20 min | ⬜ À faire |
+| Créer la table `abonnements` (plans d'abonnement) | 15 min | ⬜ À faire |
+| Activer Row Level Security (RLS) sur toutes les tables | 20 min | ⬜ À faire |
+| Vérifier les relations entre les tables (clés étrangères) | 15 min | ⬜ À faire |
+| Tester la connexion depuis Next.js (requête de test) | 20 min | ⬜ À faire |
+
+---
+
 ## Journal des sessions
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
 | 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. Prochaine étape : conception de la base de données. |
+| 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu (tables : beatmakers, beats, licences, clients, commandes, abonnements). Création des tables en cours. |
