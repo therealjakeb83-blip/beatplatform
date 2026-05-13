@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-02
+> Dernière mise à jour : 2026-05-13
 
 ## Légende
 | Statut | Signification |
@@ -15,10 +15,10 @@
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
-| 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel | 2-3h | 🔄 En cours |
+| 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | 🔄 En cours |
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ⬜ À faire |
 | 3 | **Authentification** | Inscription / connexion des beatmakers | 3-4h | ⬜ À faire |
-| 4 | **Gestion des beats** | Upload, infos, fichiers, licences, organisation du catalogue | 10-15h | ⬜ À faire |
+| 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ⬜ À faire |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat | 5-8h | ⬜ À faire |
@@ -32,6 +32,19 @@
 | 15 | **Admin** | Dashboard de gestion de la plateforme | 5-8h | ⬜ À faire |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
 | 17 | **Déploiement** | Mise en ligne sur Vercel + nom de domaine | 2-4h | ⬜ À faire |
+
+---
+
+## Stack technique
+| Rôle | Service | Plan |
+|---|---|---|
+| Base de données + Auth | Supabase | Free (→ Pro au lancement prod) |
+| Stockage fichiers audio (WAV/MP3/ZIP) | Cloudflare R2 | Free jusqu'à 10GB, puis $0.015/GB |
+| Hébergement frontend | Vercel | Hobby (→ Pro au lancement prod) |
+| Paiements | Stripe Connect | À la transaction (~1.5% + 0.25€) |
+| Emails transactionnels | Resend ou Brevo | Free tier |
+
+> **Budget estimé au lancement** : ~$50-60/mois (Vercel Pro + Supabase Pro + R2)
 
 ---
 
@@ -49,13 +62,14 @@
 | Création du projet Next.js (`beatplatform`) | 10 min | ✅ Validé |
 | Initialisation du repo Git local | 5 min | ✅ Validé |
 | Création du repo GitHub et push du code | 10 min | ✅ Validé |
-| Créer un compte Supabase | 10 min | ⬜ À faire |
+| Créer un compte Supabase (free tier) | 10 min | ⬜ À faire |
 | Créer le projet Supabase et récupérer les clés de connexion | 15 min | ⬜ À faire |
 | Installer Supabase dans le projet Next.js | 10 min | ⬜ À faire |
 | Configurer les variables d'environnement (fichier `.env.local`) | 10 min | ⬜ À faire |
 | Créer un compte Vercel | 10 min | ⬜ À faire |
 | Connecter Vercel au repo GitHub | 15 min | ⬜ À faire |
 | Premier déploiement en ligne | 15 min | ⬜ À faire |
+| Créer un compte Cloudflare (pour R2 + DNS domaine) | 5 min | ⬜ À faire |
 
 ---
 
@@ -63,3 +77,4 @@
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
+| 2026-05-13 | Étape 1 | Décisions d'architecture : Cloudflare R2 pour le stockage audio, Supabase free tier → Pro au lancement, budget estimé ~$50-60/mois |
