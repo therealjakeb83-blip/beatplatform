@@ -11,12 +11,12 @@
 
 ---
 
-## Progression globale : 0 / 17 étapes validées (étape 1 quasi terminée)
+## Progression globale : 1 / 17 étapes validées
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
-| 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | 🔄 En cours |
-| 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ⬜ À faire |
+| 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | ✅ Validé |
+| 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | 🔄 En cours |
 | 3 | **Authentification** | Inscription / connexion des beatmakers | 3-4h | ⬜ À faire |
 | 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ⬜ À faire |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
@@ -69,7 +69,7 @@
 | Créer un compte Vercel | 10 min | ✅ Validé |
 | Connecter Vercel au repo GitHub | 15 min | ✅ Validé |
 | Premier déploiement en ligne | 15 min | ✅ Validé |
-| Créer un compte Cloudflare (pour R2 + DNS domaine) | 5 min | ⬜ À faire |
+| Créer un compte Cloudflare (pour R2 + DNS domaine) | 5 min | ✅ Validé |
 
 ---
 
@@ -77,4 +77,4 @@
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
-| 2026-05-13 | Étape 1 | Décisions d'architecture : Cloudflare R2 pour le stockage audio, Supabase free tier → Pro au lancement, budget estimé ~$50-60/mois. Supabase configuré, `lib/supabase.ts` créé. Vercel connecté à GitHub, site déployé sur beatplatform.vercel.app. Reste : compte Cloudflare. |
+| 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. Prochaine étape : conception de la base de données. |
