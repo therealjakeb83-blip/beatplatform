@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 0 / 17 étapes validées
+## Progression globale : 0 / 17 étapes validées (étape 1 quasi terminée)
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
@@ -66,9 +66,9 @@
 | Créer le projet Supabase et récupérer les clés de connexion | 15 min | ✅ Validé |
 | Installer Supabase dans le projet Next.js | 10 min | ✅ Validé |
 | Configurer les variables d'environnement (fichier `.env.local`) | 10 min | ✅ Validé |
-| Créer un compte Vercel | 10 min | ⬜ À faire |
-| Connecter Vercel au repo GitHub | 15 min | ⬜ À faire |
-| Premier déploiement en ligne | 15 min | ⬜ À faire |
+| Créer un compte Vercel | 10 min | ✅ Validé |
+| Connecter Vercel au repo GitHub | 15 min | ✅ Validé |
+| Premier déploiement en ligne | 15 min | ✅ Validé |
 | Créer un compte Cloudflare (pour R2 + DNS domaine) | 5 min | ⬜ À faire |
 
 ---
@@ -77,4 +77,4 @@
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
-| 2026-05-13 | Étape 1 | Décisions d'architecture : Cloudflare R2 pour le stockage audio, Supabase free tier → Pro au lancement, budget estimé ~$50-60/mois. Supabase configuré, clés récupérées, `lib/supabase.ts` créé, app tourne sur localhost:3000. Reste : Vercel + Cloudflare. |
+| 2026-05-13 | Étape 1 | Décisions d'architecture : Cloudflare R2 pour le stockage audio, Supabase free tier → Pro au lancement, budget estimé ~$50-60/mois. Supabase configuré, `lib/supabase.ts` créé. Vercel connecté à GitHub, site déployé sur beatplatform.vercel.app. Reste : compte Cloudflare. |
