@@ -101,6 +101,21 @@
 
 ---
 
+## Détail étape 4 — Gestion des beats
+
+| Sous-étape | Durée estimée | Statut |
+|------------|---------------|--------|
+| 4.1 — Configurer Cloudflare R2 (bucket + credentials + variables d'env) | 20 min | ⬜ À faire |
+| 4.2 — Intégrer le SDK S3 compatible R2 dans Next.js (`@aws-sdk/client-s3`) | 10 min | ⬜ À faire |
+| 4.3 — Page "Ajouter un beat" — formulaire infos (titre, BPM, clé, tags style/ambiance) | 45 min | ⬜ À faire |
+| 4.4 — Upload des fichiers audio vers R2 (MP3 preview, WAV, stems ZIP) | 60 min | ⬜ À faire |
+| 4.5 — Sauvegarde du beat en base de données (table `beats`) | 20 min | ⬜ À faire |
+| 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ⬜ À faire |
+| 4.7 — Édition et suppression d'un beat | 30 min | ⬜ À faire |
+| 4.8 — Gestion des licences par beat (activer/désactiver, modifier le prix) | 30 min | ⬜ À faire |
+
+---
+
 ## Journal des sessions
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
@@ -108,4 +123,5 @@
 | 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. Prochaine étape : conception de la base de données. |
 | 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu (tables : beatmakers, beats, licences, clients, commandes, abonnements). Tables beatmakers et beats entièrement définies dans DATABASE.md. |
 | 2026-05-14 | Étape 2 | ✅ Étape 2 complète. 9 tables créées dans Supabase via SQL (schema.sql). RLS activé. Contraintes et index ajoutés après revue croisée avec ChatGPT (schema_fixes_v1.sql). |
-| 2026-05-14 | Étape 3 | En cours. @supabase/ssr installé, Auth configuré, clients Supabase créés, proxy de protection des routes actif, pages inscription/connexion/dashboard fonctionnelles et testées. |
+| 2026-05-14 | Étape 3 | ✅ Étape 3 complète. Resend SMTP configuré (noreply@jakebmusic.com), fix Gmail OTP scanning (verifyOtp + token_hash), trigger beatmakers auto-créé, RLS policies sur 9 tables. Tests bout en bout validés. |
+| 2026-05-14 | Étape 4 | Début étape 4 : sous-étapes détaillées dans ROADMAP. Prochaine action : configurer Cloudflare R2. |
