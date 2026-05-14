@@ -77,12 +77,12 @@
 
 | Sous-étape | Durée estimée | Statut |
 |------------|---------------|--------|
-| 3.1 — Installer `@supabase/ssr` (sessions côté serveur Next.js) | 5 min | ⬜ À faire |
-| 3.2 — Configurer Supabase Auth (URL de redirection, confirmation email) | 10 min | ⬜ À faire |
-| 3.3 — Créer les clients Supabase (helpers browser / serveur / middleware) | 15 min | ⬜ À faire |
-| 3.4 — Middleware de protection des routes (redirection si non connecté) | 15 min | ⬜ À faire |
-| 3.5 — Page d'inscription (email + mot de passe + création profil beatmakers) | 30 min | ⬜ À faire |
-| 3.6 — Page de connexion (email + mot de passe + redirection dashboard) | 20 min | ⬜ À faire |
+| 3.1 — Installer `@supabase/ssr` (sessions côté serveur Next.js) | 5 min | ✅ Validé |
+| 3.2 — Configurer Supabase Auth (URL de redirection, confirmation email) | 10 min | ✅ Validé |
+| 3.3 — Créer les clients Supabase (helpers browser / serveur / middleware) | 15 min | ✅ Validé |
+| 3.4 — Proxy de protection des routes (redirection si non connecté) | 15 min | ✅ Validé |
+| 3.5 — Page d'inscription (email + mot de passe + création profil beatmakers) | 30 min | ✅ Validé |
+| 3.6 — Page de connexion (email + mot de passe + redirection dashboard) | 20 min | ✅ Validé |
 | 3.7 — Déconnexion (bouton + redirection accueil) | 10 min | ⬜ À faire |
 | 3.8 — Mot de passe oublié (page reset + email automatique Supabase) | 20 min | ⬜ À faire |
 | 3.9 — Policies RLS (chaque beatmaker accède uniquement à son propre profil) | 20 min | ⬜ À faire |
@@ -108,3 +108,4 @@
 | 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. Prochaine étape : conception de la base de données. |
 | 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu (tables : beatmakers, beats, licences, clients, commandes, abonnements). Tables beatmakers et beats entièrement définies dans DATABASE.md. |
 | 2026-05-14 | Étape 2 | ✅ Étape 2 complète. 9 tables créées dans Supabase via SQL (schema.sql). RLS activé. Contraintes et index ajoutés après revue croisée avec ChatGPT (schema_fixes_v1.sql). |
+| 2026-05-14 | Étape 3 | En cours. @supabase/ssr installé, Auth configuré, clients Supabase créés, proxy de protection des routes actif, pages inscription/connexion/dashboard fonctionnelles et testées. |
