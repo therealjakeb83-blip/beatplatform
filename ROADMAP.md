@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-13
+> Dernière mise à jour : 2026-05-14
 
 ## Légende
 | Statut | Signification |
@@ -11,12 +11,12 @@
 
 ---
 
-## Progression globale : 1 / 17 étapes validées
+## Progression globale : 2 / 17 étapes validées
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
 | 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | ✅ Validé |
-| 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | 🔄 En cours |
+| 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ✅ Validé |
 | 3 | **Authentification** | Inscription / connexion des beatmakers | 3-4h | ⬜ À faire |
 | 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ⬜ À faire |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
@@ -78,15 +78,9 @@
 | Sous-étape | Durée estimée | Statut |
 |------------|---------------|--------|
 | Concevoir le schéma des tables (quelles tables, quels champs) | 30 min | ✅ Validé |
-| Créer la table `beatmakers` (profil des utilisateurs de la plateforme) | 15 min | ⬜ À faire |
-| Créer la table `beats` (catalogue de beats) | 20 min | ⬜ À faire |
-| Créer la table `licences` (types de licences proposées par beat) | 15 min | ⬜ À faire |
-| Créer la table `clients` (artistes acheteurs) | 15 min | ⬜ À faire |
-| Créer la table `commandes` (historique des achats) | 20 min | ⬜ À faire |
-| Créer la table `abonnements` (plans d'abonnement) | 15 min | ⬜ À faire |
-| Activer Row Level Security (RLS) sur toutes les tables | 20 min | ⬜ À faire |
-| Vérifier les relations entre les tables (clés étrangères) | 15 min | ⬜ À faire |
-| Tester la connexion depuis Next.js (requête de test) | 20 min | ⬜ À faire |
+| Créer les 9 tables via SQL (beatmakers, beats, licences, clients, leads, commandes, doublons_ignores, abonnements_plateforme, abonnements_boutique) | 45 min | ✅ Validé |
+| Activer Row Level Security (RLS) sur toutes les tables | — | ✅ Validé |
+| Ajouter les contraintes et index (unicité, montants, abonnements actifs) | — | ✅ Validé |
 
 ---
 
@@ -96,3 +90,4 @@
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
 | 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. Prochaine étape : conception de la base de données. |
 | 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu (tables : beatmakers, beats, licences, clients, commandes, abonnements). Tables beatmakers et beats entièrement définies dans DATABASE.md. |
+| 2026-05-14 | Étape 2 | ✅ Étape 2 complète. 9 tables créées dans Supabase via SQL (schema.sql). RLS activé. Contraintes et index ajoutés après revue croisée avec ChatGPT (schema_fixes_v1.sql). |
