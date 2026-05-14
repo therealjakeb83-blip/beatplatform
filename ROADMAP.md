@@ -105,7 +105,7 @@
 
 | Sous-étape | Durée estimée | Statut |
 |------------|---------------|--------|
-| 4.1 — Configurer Cloudflare R2 (bucket + credentials + variables d'env) | 20 min | ⬜ À faire |
+| 4.1 — Configurer Cloudflare R2 (bucket + credentials + variables d'env) | 20 min | ✅ Validé |
 | 4.2 — Intégrer le SDK S3 compatible R2 dans Next.js (`@aws-sdk/client-s3`) | 10 min | ⬜ À faire |
 | 4.3 — Page "Ajouter un beat" — formulaire infos (titre, BPM, clé, tags style/ambiance) | 45 min | ⬜ À faire |
 | 4.4 — Upload des fichiers audio vers R2 (MP3 preview, WAV, stems ZIP) | 60 min | ⬜ À faire |
