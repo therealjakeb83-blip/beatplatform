@@ -11,13 +11,13 @@
 
 ---
 
-## Progression globale : 2 / 17 étapes validées
+## Progression globale : 3 / 17 étapes validées
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
 | 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | ✅ Validé |
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ✅ Validé |
-| 3 | **Authentification** | Inscription / connexion des beatmakers et des artistes. Bouton "Se connecter avec My Producer" dans les boutiques — compte global artiste utilisable sur toutes les boutiques. "Propulsé par My Producer" discret en bas de chaque boutique. | 3-4h | 🔄 En cours |
+| 3 | **Authentification** | Inscription / connexion des beatmakers et des artistes. Bouton "Se connecter avec My Producer" dans les boutiques — compte global artiste utilisable sur toutes les boutiques. "Propulsé par My Producer" discret en bas de chaque boutique. | 3-4h | ✅ Validé |
 | 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ⬜ À faire |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
@@ -86,7 +86,7 @@
 | 3.7 — Déconnexion (bouton + redirection accueil) | 10 min | ✅ Validé |
 | 3.8 — Mot de passe oublié (page reset + email via Resend, fix scan Gmail) | 20 min | ✅ Validé |
 | 3.9 — Policies RLS (chaque beatmaker accède uniquement à son propre profil) | 20 min | ✅ Validé |
-| 3.10 — Test de bout en bout (créer un compte, vérifier table, tester routes) | 20 min | ⬜ À faire |
+| 3.10 — Test de bout en bout (créer un compte, vérifier table, tester routes) | 20 min | ✅ Validé |
 
 ---
 
