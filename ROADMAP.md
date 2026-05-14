@@ -17,14 +17,14 @@
 |---|-------|-------------|---------------|--------|
 | 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | ✅ Validé |
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ✅ Validé |
-| 3 | **Authentification** | Inscription / connexion des beatmakers | 3-4h | ⬜ À faire |
+| 3 | **Authentification** | Inscription / connexion des beatmakers et des artistes. Bouton "Se connecter avec My Producer" dans les boutiques — compte global artiste utilisable sur toutes les boutiques. "Propulsé par My Producer" discret en bas de chaque boutique. | 3-4h | 🔄 En cours |
 | 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ⬜ À faire |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat | 5-8h | ⬜ À faire |
 | 8 | **Abonnements** | Création des plans, catalogue privé, gestion depuis l'espace client | 8-12h | ⬜ À faire |
 | 9 | **Split collab** | Stripe Connect pour beatmakers collaborateurs | 5-8h | ⬜ À faire |
-| 10 | **Espace client artiste** | Compte, historique achats, gestion abonnement | 5-8h | ⬜ À faire |
+| 10 | **Espace client artiste** | Compte My Producer global (myproducer.com/mon-compte) : beats achetés toutes boutiques + abonnements actifs + fichiers à télécharger. Dans chaque boutique : section "Mes achats chez ce beatmaker" + lien "Tous mes achats My Producer". Bouton "Mon compte My Producer" accessible depuis n'importe quelle boutique via l'avatar en haut à droite. | 5-8h | ⬜ À faire |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching) : email exact + variantes (nom.prenom/prenom.nom, domaines différents), nom/prénom inversé, téléphone normalisé, adresse postale similaire. Action fusionner (avec annulation possible) ou ignorer par paire. Import CSV BeatStars : fuzzy matching des titres de beats (BeatStars ajoute des tags SEO au titre), confirmation manuelle puis stockage dans `titre_beatstars` pour les imports suivants. | 5-8h | ⬜ À faire |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues | 4-6h | ⬜ À faire |
