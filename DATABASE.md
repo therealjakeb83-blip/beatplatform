@@ -310,9 +310,9 @@ Abonnements des beatmakers à My Producer. Un seul plan en V1, décliné en mens
 | `stripe_customer_id` | text | Référence du client Stripe |
 
 ### `abonnements_boutique`
-Abonnements des artistes aux boutiques des beatmakers. 3 plans fixes (Street, Studio, Pro) que chaque beatmaker peut activer et tarifer.
+Abonnements des artistes aux boutiques des beatmakers. 1 seul plan en V1, que chaque beatmaker tarifie librement.
 
-> **V2 :** Permettre aux beatmakers de créer des plans personnalisés avec leurs propres noms et contenus.
+> **V2 :** Permettre aux beatmakers de proposer plusieurs plans (ex: Street, Studio, Pro) avec des contenus différents.
 
 #### Identité
 | Champ | Type | Description |
@@ -325,7 +325,7 @@ Abonnements des artistes aux boutiques des beatmakers. 3 plans fixes (Street, St
 #### Plan
 | Champ | Type | Description |
 |---|---|---|
-| `plan` | text | `street` / `studio` / `pro` |
+| `plan` | text | `standard` — 1 seul plan en V1 |
 | `periode` | text | `mensuel` / `annuel` |
 | `prix` | integer | Prix en centimes au moment de la souscription (verrouillé — si le beatmaker change ses tarifs, les abonnés existants conservent leur prix) |
 | `devise` | text | `EUR` ou `USD` (hérité de la devise du beatmaker) |
@@ -345,11 +345,14 @@ Abonnements des artistes aux boutiques des beatmakers. 3 plans fixes (Street, St
 | `date_annulation` | timestamp | Date d'annulation — `null` si actif |
 | `motif_annulation` | text | `user_cancel` / `payment_failed` / `admin_cancel` — `null` si actif. Permet de distinguer une annulation volontaire (à relancer) d'un impayé (relance CB automatique) |
 
-#### Stripe
+#### Paiement
 | Champ | Type | Description |
 |---|---|---|
-| `stripe_subscription_id` | text | Référence de l'abonnement Stripe |
-| `stripe_customer_id` | text | Référence du client Stripe sous le compte Stripe Connect du beatmaker |
+| `methode_paiement` | text | `stripe` / `paypal` |
+| `stripe_subscription_id` | text | Référence de l'abonnement Stripe — `null` si PayPal |
+| `stripe_customer_id` | text | Référence du client Stripe sous le compte Stripe Connect du beatmaker — `null` si PayPal |
+| `paypal_subscription_id` | text | Référence de l'abonnement PayPal — `null` si Stripe |
+| `paypal_payer_id` | text | Référence du compte PayPal de l'artiste — `null` si Stripe |
 
 #### Import
 | Champ | Type | Description |
