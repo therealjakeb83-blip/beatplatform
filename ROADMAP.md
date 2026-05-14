@@ -73,6 +73,23 @@
 
 ---
 
+## Détail étape 3 — Authentification
+
+| Sous-étape | Durée estimée | Statut |
+|------------|---------------|--------|
+| 3.1 — Installer `@supabase/ssr` (sessions côté serveur Next.js) | 5 min | ⬜ À faire |
+| 3.2 — Configurer Supabase Auth (URL de redirection, confirmation email) | 10 min | ⬜ À faire |
+| 3.3 — Créer les clients Supabase (helpers browser / serveur / middleware) | 15 min | ⬜ À faire |
+| 3.4 — Middleware de protection des routes (redirection si non connecté) | 15 min | ⬜ À faire |
+| 3.5 — Page d'inscription (email + mot de passe + création profil beatmakers) | 30 min | ⬜ À faire |
+| 3.6 — Page de connexion (email + mot de passe + redirection dashboard) | 20 min | ⬜ À faire |
+| 3.7 — Déconnexion (bouton + redirection accueil) | 10 min | ⬜ À faire |
+| 3.8 — Mot de passe oublié (page reset + email automatique Supabase) | 20 min | ⬜ À faire |
+| 3.9 — Policies RLS (chaque beatmaker accède uniquement à son propre profil) | 20 min | ⬜ À faire |
+| 3.10 — Test de bout en bout (créer un compte, vérifier table, tester routes) | 20 min | ⬜ À faire |
+
+---
+
 ## Détail étape 2 — Base de données
 
 | Sous-étape | Durée estimée | Statut |
