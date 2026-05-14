@@ -169,6 +169,7 @@ Comptes globaux des artistes acheteurs sur la plateforme My Producer. Partagés 
 | `nom_artiste` | text | ⬜ Optionnel | Nom de scène |
 | `avatar_url` | text | ⬜ Optionnel | Photo de profil |
 | `telephone` | text | ⬜ Optionnel | Numéro de téléphone |
+| `langue` | text | ⬜ Auto | Langue détectée à l'inscription (ex: `fr`, `en`) — utilisée pour segmenter les communications |
 | `created_at` | timestamp | ✅ Auto | Date d'inscription |
 | `date_dernier_login` | timestamp | ✅ Auto | Dernière connexion |
 | `fusionne_dans` | UUID | ⬜ Auto | UUID du compte principal en cas de fusion — `null` si compte actif |
@@ -246,6 +247,7 @@ Historique de tous les achats de licences sur la plateforme. Une ligne = un acha
 #### Import externe
 | Champ | Type | Description |
 |---|---|---|
+| `source_marketing` | text | Canal d'acquisition de la vente : `youtube` / `instagram` / `google` / `direct` / `autre` — `null` si non détecté |
 | `plateforme_source` | text | `my_producer` / `beatstars` |
 | `external_order_id` | text | Identifiant original BeatStars (ex: `bs:BSGUEST_05...`) — évite les doublons lors des imports CSV |
 
@@ -261,8 +263,43 @@ Paires de clients que le beatmaker a décidé d'ignorer lors de la détection au
 | `created_at` | timestamp | Date de la décision d'ignorer |
 
 ### `abonnements_plateforme`
-Abonnements des beatmakers à My Producer (ce qu'ils paient à Jake).
-*À définir*
+Abonnements des beatmakers à My Producer. Un seul plan en V1, décliné en mensuel ou annuel. Essai gratuit 14 jours avec CB obligatoire — passage au payant automatique.
+
+#### Identité
+| Champ | Type | Description |
+|---|---|---|
+| `id` | UUID | Identifiant unique |
+| `beatmaker_id` | UUID | Lien vers le beatmaker abonné |
+| `created_at` | timestamp | Date de création de l'abonnement |
+| `source_conversion` | text | Canal d'acquisition : `youtube` / `instagram` / `referral` / `organic` / `autre` |
+
+#### Plan
+| Champ | Type | Description |
+|---|---|---|
+| `plan` | text | Nom du plan (ex: `standard`) |
+| `periode` | text | `mensuel` ou `annuel` |
+| `prix` | integer | Prix en centimes au moment de la souscription |
+| `devise` | text | `EUR` ou `USD` |
+
+#### Essai gratuit
+| Champ | Type | Description |
+|---|---|---|
+| `en_essai` | boolean | `true` pendant les 14 jours d'essai |
+| `essai_fin_le` | timestamp | Date de fin de l'essai gratuit |
+
+#### Statut
+| Champ | Type | Description |
+|---|---|---|
+| `statut` | text | `en_essai` / `actif` / `annule` / `impaye` |
+| `date_debut` | timestamp | Date de début du premier cycle payant |
+| `date_fin` | timestamp | Date de fin du cycle en cours (renouvellement ou expiration) |
+| `date_annulation` | timestamp | Date d'annulation — `null` si actif |
+
+#### Stripe
+| Champ | Type | Description |
+|---|---|---|
+| `stripe_subscription_id` | text | Référence de l'abonnement Stripe |
+| `stripe_customer_id` | text | Référence du client Stripe |
 
 ### `abonnements_boutique`
 Abonnements des artistes aux boutiques des beatmakers (Street, Studio, Pro...).
