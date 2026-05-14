@@ -1,6 +1,6 @@
 # My Producer — Architecture de la base de données
 
-> Dernière mise à jour : 2026-05-13
+> Dernière mise à jour : 2026-05-14
 
 ---
 
@@ -251,6 +251,14 @@ Historique de tous les achats de licences sur la plateforme. Une ligne = un acha
 | `plateforme_source` | text | `my_producer` / `beatstars` |
 | `external_order_id` | text | Identifiant original BeatStars (ex: `bs:BSGUEST_05...`) — évite les doublons lors des imports CSV |
 
+#### Upgrade de licence
+| Champ | Type | Description |
+|---|---|---|
+| `type_transaction` | text | `achat` / `upgrade` — `achat` par défaut |
+| `commande_originale_id` | UUID | Lien vers l'achat d'origine — `null` pour un achat normal, renseigné pour un upgrade |
+
+> **Note upgrade :** Un upgrade génère une nouvelle commande (nouveau paiement, nouveau contrat PDF, nouvelle facture). La licence active d'un artiste sur un beat = la commande la plus récente. L'upgrade peut être proposé à prix réduit via un code promo ou une campagne marketing.
+
 ### `doublons_ignores`
 Paires de clients que le beatmaker a décidé d'ignorer lors de la détection automatique de doublons. Évite de reproposer la même paire à chaque ouverture du CRM.
 
@@ -302,5 +310,56 @@ Abonnements des beatmakers à My Producer. Un seul plan en V1, décliné en mens
 | `stripe_customer_id` | text | Référence du client Stripe |
 
 ### `abonnements_boutique`
-Abonnements des artistes aux boutiques des beatmakers (Street, Studio, Pro...).
-*À définir*
+Abonnements des artistes aux boutiques des beatmakers. 3 plans fixes (Street, Studio, Pro) que chaque beatmaker peut activer et tarifer.
+
+> **V2 :** Permettre aux beatmakers de créer des plans personnalisés avec leurs propres noms et contenus.
+
+#### Identité
+| Champ | Type | Description |
+|---|---|---|
+| `id` | UUID | Identifiant unique |
+| `client_id` | UUID | Lien vers le client abonné |
+| `beatmaker_id` | UUID | Lien vers le beatmaker |
+| `created_at` | timestamp | Date de souscription |
+
+#### Plan
+| Champ | Type | Description |
+|---|---|---|
+| `plan` | text | `street` / `studio` / `pro` |
+| `periode` | text | `mensuel` / `annuel` |
+| `prix` | integer | Prix en centimes au moment de la souscription (verrouillé — si le beatmaker change ses tarifs, les abonnés existants conservent leur prix) |
+| `devise` | text | `EUR` ou `USD` (hérité de la devise du beatmaker) |
+
+#### Fidélité
+| Champ | Type | Description |
+|---|---|---|
+| `mois_consecutifs` | integer | Mois actifs consécutifs depuis la souscription — se remet à 0 en cas d'impayé ou de pause |
+| `credit_licences` | integer | Licences gratuites disponibles — incrémenté de 1 tous les 4 mois consécutifs, décrémenté à l'utilisation |
+
+#### Statut
+| Champ | Type | Description |
+|---|---|---|
+| `statut` | text | `actif` / `annule` / `impaye` |
+| `date_debut` | timestamp | Début du premier cycle payant |
+| `date_fin` | timestamp | Fin du cycle en cours (renouvellement ou expiration) |
+| `date_annulation` | timestamp | Date d'annulation — `null` si actif |
+| `motif_annulation` | text | `user_cancel` / `payment_failed` / `admin_cancel` — `null` si actif. Permet de distinguer une annulation volontaire (à relancer) d'un impayé (relance CB automatique) |
+
+#### Stripe
+| Champ | Type | Description |
+|---|---|---|
+| `stripe_subscription_id` | text | Référence de l'abonnement Stripe |
+| `stripe_customer_id` | text | Référence du client Stripe sous le compte Stripe Connect du beatmaker |
+
+#### Import
+| Champ | Type | Description |
+|---|---|---|
+| `external_subscription_id` | text | ID d'abonnement WooCommerce d'origine (ex: `woo_sub_3359`) — renseigné uniquement pour les abonnés migrés depuis une boutique externe |
+
+> **Note :** Le contenu du plan (accès au catalogue privé, réductions, crédit fidélité) est défini dans la logique applicative — pas dans cette table. Le beatmaker configure le prix de son plan dans un écran dédié (étape 8).
+>
+> **Réductions :** 30% sur toutes les licences **sauf ILLIMITÉ et EXCLUSIVE**.
+>
+> **Crédit fidélité :** 1 crédit tous les 4 mois consécutifs. Le crédit vaut le prix de la licence WAV du beat choisi — l'artiste peut l'utiliser tel quel (WAV gratuit) ou payer la différence pour upgrader en STEMS ou ILLIMITÉ.
+>
+> **V2 :** Permettre aux beatmakers de créer des plans personnalisés avec leurs propres noms et contenus.
