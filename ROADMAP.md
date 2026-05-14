@@ -25,7 +25,7 @@
 | 8 | **Abonnements** | Création des plans, catalogue privé, gestion depuis l'espace client | 8-12h | ⬜ À faire |
 | 9 | **Split collab** | Stripe Connect pour beatmakers collaborateurs | 5-8h | ⬜ À faire |
 | 10 | **Espace client artiste** | Compte, historique achats, gestion abonnement | 5-8h | ⬜ À faire |
-| 11 | **CRM** | Liste clients, fiches, import CSV BeatStars | 5-8h | ⬜ À faire |
+| 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching) : email exact + variantes (nom.prenom/prenom.nom, domaines différents), nom/prénom inversé, téléphone normalisé, adresse postale similaire. Action fusionner (avec annulation possible) ou ignorer par paire. Import CSV BeatStars : fuzzy matching des titres de beats (BeatStars ajoute des tags SEO au titre), confirmation manuelle puis stockage dans `titre_beatstars` pour les imports suivants. | 5-8h | ⬜ À faire |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues | 4-6h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
