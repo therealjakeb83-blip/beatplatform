@@ -14,14 +14,16 @@ export default function NouveauMotDePassePage() {
   const [sessionPrete, setSessionPrete] = useState(false)
 
   useEffect(() => {
-    const code = searchParams.get('code')
-    if (!code) {
+    const tokenHash = searchParams.get('token_hash')
+    const type = searchParams.get('type')
+
+    if (!tokenHash || type !== 'recovery') {
       setErreur('Lien invalide ou expiré.')
       return
     }
 
     const supabase = createClient()
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+    supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error }) => {
       if (error) {
         setErreur('Lien invalide ou expiré. Recommence depuis "Mot de passe oublié".')
       } else {
