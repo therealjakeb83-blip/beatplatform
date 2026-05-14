@@ -83,8 +83,8 @@
 | 3.4 — Proxy de protection des routes (redirection si non connecté) | 15 min | ✅ Validé |
 | 3.5 — Page d'inscription (email + mot de passe + création profil beatmakers) | 30 min | ✅ Validé |
 | 3.6 — Page de connexion (email + mot de passe + redirection dashboard) | 20 min | ✅ Validé |
-| 3.7 — Déconnexion (bouton + redirection accueil) | 10 min | ⬜ À faire |
-| 3.8 — Mot de passe oublié (page reset + email automatique Supabase) | 20 min | ⬜ À faire |
+| 3.7 — Déconnexion (bouton + redirection accueil) | 10 min | ✅ Validé |
+| 3.8 — Mot de passe oublié (page reset + email via Resend, fix scan Gmail) | 20 min | ✅ Validé |
 | 3.9 — Policies RLS (chaque beatmaker accède uniquement à son propre profil) | 20 min | ⬜ À faire |
 | 3.10 — Test de bout en bout (créer un compte, vérifier table, tester routes) | 20 min | ⬜ À faire |
 
