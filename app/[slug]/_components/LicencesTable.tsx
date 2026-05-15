@@ -1,4 +1,5 @@
 import type { LicencePublic } from './BeatCard'
+import AcheterBouton from './AcheterBouton'
 
 const FICHIERS: Record<string, string[]> = {
   mp3:       ['MP3'],
@@ -17,6 +18,8 @@ function formatStreams(n: number | null) {
 
 export default function LicencesTable({
   licences,
+  beatId,
+  slug,
 }: {
   licences: (LicencePublic & {
     streams_limite: number | null
@@ -27,6 +30,8 @@ export default function LicencesTable({
     inclut_wav: boolean
     inclut_stems: boolean
   })[]
+  beatId: string
+  slug: string
 }) {
   const licencesTriees = [...licences].sort((a, b) => a.prix - b.prix)
 
@@ -82,11 +87,19 @@ export default function LicencesTable({
                 </div>
               </div>
 
-              <div className="flex-shrink-0 text-right">
+              <div className="flex-shrink-0 text-right flex flex-col items-end gap-2">
                 {l.sur_demande ? (
                   <span className="text-indigo-400 font-semibold">Sur demande</span>
                 ) : (
-                  <span className="text-2xl font-black text-white">{l.prix}€</span>
+                  <>
+                    <span className="text-2xl font-black text-white">{l.prix}€</span>
+                    <AcheterBouton
+                      beatId={beatId}
+                      licenceId={l.id}
+                      slug={slug}
+                      label="Acheter"
+                    />
+                  </>
                 )}
               </div>
             </div>

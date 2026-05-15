@@ -162,7 +162,7 @@ export default async function BeatDetailPage({
       </div>
 
       {/* Licences */}
-      <LicencesTable licences={licences} />
+      <LicencesTable licences={licences} beatId={beatId} slug={slug} />
     </div>
   )
 }

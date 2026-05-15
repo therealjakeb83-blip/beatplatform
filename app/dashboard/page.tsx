@@ -45,6 +45,24 @@ export default async function DashboardPage() {
           >
             Mon profil
           </Link>
+          <Link
+            href="/dashboard/paiements"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Paiements
+          </Link>
+          <Link
+            href="/dashboard/codes-promo"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Codes promo
+          </Link>
+          <Link
+            href="/dashboard/commandes"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Mes commandes
+          </Link>
           {beatmaker?.slug && (
             <Link
               href={`/${beatmaker.slug}`}
