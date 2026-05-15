@@ -46,6 +46,9 @@ export type BeatFormValues = {
   typeBeat: string[]
   freeDownload: boolean
   collaborateurs: Collaborateur[]
+  licencesActives: string[]
+  exclusifSurDemande: boolean
+  exclusifPrixOverride: string
 }
 
 export type ExistingUrls = {
@@ -54,6 +57,18 @@ export type ExistingUrls = {
   mp3_propre_url?: string | null
   wav_url?: string | null
   stems_url?: string | null
+}
+
+export type LicenceInfo = {
+  id: string
+  nom: string
+  prix: number
+  modele: string
+  inclut_mp3: boolean
+  inclut_wav: boolean
+  inclut_stems: boolean
+  est_exclusive: boolean
+  streams_limite: number | null
 }
 
 function TagSelector({ label, options, selected, onChange }: {
@@ -260,10 +275,19 @@ export async function uploadAudio(file: File, beatId: string, fileType: string):
   return fileUrl
 }
 
+const MODELE_BADGES: Record<string, string[]> = {
+  mp3:      ['MP3'],
+  wav:      ['MP3', 'WAV'],
+  stems:    ['MP3', 'WAV', 'Stems'],
+  illimite: ['MP3', 'WAV', 'Stems', 'Illimité'],
+  exclusive:['MP3', 'WAV', 'Stems', 'Exclusive'],
+}
+
 export default function BeatForm({
   beatId,
   initialValues,
   existingUrls = {},
+  licences = [],
   submitLabel,
   onSubmit,
   onDelete,
@@ -271,6 +295,7 @@ export default function BeatForm({
   beatId: string
   initialValues: BeatFormValues
   existingUrls?: ExistingUrls
+  licences?: LicenceInfo[]
   submitLabel: string
   onSubmit: (values: BeatFormValues, urls: Record<string, string>) => Promise<void>
   onDelete?: () => Promise<void>
@@ -287,6 +312,9 @@ export default function BeatForm({
   const [typeBeat, setTypeBeat] = useState(initialValues.typeBeat)
   const [freeDownload, setFreeDownload] = useState(initialValues.freeDownload)
   const [collaborateurs, setCollaborateurs] = useState(initialValues.collaborateurs)
+  const [licencesActives, setLicencesActives] = useState<string[]>(initialValues.licencesActives)
+  const [exclusifSurDemande, setExclusifSurDemande] = useState(initialValues.exclusifSurDemande)
+  const [exclusifPrixOverride, setExclusifPrixOverride] = useState(initialValues.exclusifPrixOverride)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(existingUrls.image_url ?? null)
   const [useLogo, setUseLogo] = useState(false)
@@ -321,7 +349,7 @@ export default function BeatForm({
       if (mp3PropreFile) urls.mp3_propre_url = await uploadAudio(mp3PropreFile, beatId, 'mp3_propre')
       if (wavFile) urls.wav_url = await uploadAudio(wavFile, beatId, 'wav')
       if (stemsFile) urls.stems_url = await uploadAudio(stemsFile, beatId, 'stems')
-      await onSubmit({ titre, bpm, note, mode, statut, dateSortie, styles, ambiances, instruments, typeBeat, freeDownload, collaborateurs }, urls)
+      await onSubmit({ titre, bpm, note, mode, statut, dateSortie, styles, ambiances, instruments, typeBeat, freeDownload, collaborateurs, licencesActives, exclusifSurDemande, exclusifPrixOverride }, urls)
     } catch (err) {
       setErreur(err instanceof Error ? err.message : 'Erreur inconnue.')
     } finally {
@@ -421,6 +449,70 @@ export default function BeatForm({
           <span className="text-sm text-gray-300">Free download actif</span>
         </label>
       </section>
+
+      {/* Licences */}
+      {licences.length > 0 && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">Licences disponibles</h2>
+          <div className="flex flex-col gap-2">
+            {licences.map(licence => {
+              const isActive = licencesActives.includes(licence.id)
+              const isExclusive = licence.modele === 'exclusive'
+              return (
+                <div key={licence.id} className="bg-gray-800 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <span className="text-sm font-medium text-white">{licence.nom}</span>
+                      {!isExclusive && <span className="text-indigo-400 text-sm ml-2">{licence.prix}€</span>}
+                      <span className="text-gray-500 text-xs ml-2">{MODELE_BADGES[licence.modele]?.join(' + ')}</span>
+                    </div>
+                    <div
+                      onClick={() => setLicencesActives(isActive
+                        ? licencesActives.filter(id => id !== licence.id)
+                        : [...licencesActives, licence.id]
+                      )}
+                      className={`w-11 h-6 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${isActive ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                    >
+                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${isActive ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </div>
+                  </div>
+
+                  {isExclusive && isActive && (
+                    <div className="border-t border-gray-700 px-4 py-3 flex flex-col gap-3">
+                      <div className="flex gap-3">
+                        <button type="button" onClick={() => setExclusifSurDemande(false)}
+                          className={`text-xs px-3 py-1.5 rounded-full transition-colors ${!exclusifSurDemande ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                          Prix fixe
+                        </button>
+                        <button type="button" onClick={() => setExclusifSurDemande(true)}
+                          className={`text-xs px-3 py-1.5 rounded-full transition-colors ${exclusifSurDemande ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
+                          Sur demande
+                        </button>
+                      </div>
+                      {!exclusifSurDemande && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={exclusifPrixOverride}
+                            onChange={e => setExclusifPrixOverride(e.target.value)}
+                            placeholder={`Prix global : ${licence.prix}€`}
+                            min={1}
+                            className="w-40 px-3 py-2 rounded-lg bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                          />
+                          <span className="text-gray-400 text-sm">€ <span className="text-gray-600">(vide = prix global)</span></span>
+                        </div>
+                      )}
+                      {exclusifSurDemande && (
+                        <p className="text-xs text-gray-400">Un bouton &quot;Me contacter&quot; sera affiché à la place du prix sur ta boutique.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Fichiers */}
       <section className="flex flex-col gap-6">

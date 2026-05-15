@@ -11,7 +11,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     titre, bpm, cle, statut, date_sortie,
     styles, ambiances, instruments, type_beat,
     free_download_actif, image_url, mp3_tague_url,
-    mp3_propre_url, wav_url, stems_url, collaborateurs,
+    mp3_propre_url, wav_url, stems_url, collaborateurs, licences_actives,
+    exclusif_sur_demande, exclusif_prix_override,
   } = body
 
   const update: Record<string, unknown> = {
@@ -48,6 +49,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           email_invite: c.email_invite || null,
           pourcentage: c.pourcentage,
           statut: c.beatmaker_id ? 'actif' : 'en_attente',
+        }))
+      )
+    }
+  }
+
+  if (licences_actives) {
+    const { data: licences } = await supabase
+      .from('licences')
+      .select('id, modele')
+      .eq('beatmaker_id', user.id)
+      .eq('actif', true)
+
+    if (licences?.length) {
+      await supabase.from('beat_licences').upsert(
+        licences.map((l: { id: string; modele: string }) => ({
+          beat_id: id,
+          licence_id: l.id,
+          actif: licences_actives.includes(l.id),
+          prix_override: l.modele === 'exclusive' && exclusif_prix_override ? parseInt(exclusif_prix_override) : null,
+          sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
         }))
       )
     }

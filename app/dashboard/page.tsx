@@ -27,6 +27,12 @@ export default async function DashboardPage() {
           >
             + Ajouter un beat
           </Link>
+          <Link
+            href="/dashboard/licences"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Mes licences
+          </Link>
         </div>
         <div>
           <DeconnexionButton />

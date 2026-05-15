@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur } from '../../BeatForm'
+import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, LicenceInfo } from '../../BeatForm'
 
-export default function ModifierBeatClient({ beat, splits }: {
+export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, exclusifPrixOverride }: {
   beat: Record<string, unknown>
   splits: Array<{
     id: string
@@ -14,6 +14,10 @@ export default function ModifierBeatClient({ beat, splits }: {
     statut: string
     beatmakers: { nom_artiste: string } | null
   }>
+  licences: LicenceInfo[]
+  licencesActives: string[]
+  exclusifSurDemande: boolean
+  exclusifPrixOverride: string
 }) {
   const router = useRouter()
 
@@ -39,6 +43,9 @@ export default function ModifierBeatClient({ beat, splits }: {
       email_invite: s.email_invite ?? undefined,
       pourcentage: s.pourcentage,
     } as Collaborateur)),
+    licencesActives,
+    exclusifSurDemande,
+    exclusifPrixOverride,
   }
 
   const existingUrls: ExistingUrls = {
@@ -61,6 +68,9 @@ export default function ModifierBeatClient({ beat, splits }: {
         instruments: values.instruments, type_beat: values.typeBeat,
         free_download_actif: values.freeDownload,
         collaborateurs: values.collaborateurs,
+        licences_actives: values.licencesActives,
+        exclusif_sur_demande: values.exclusifSurDemande,
+        exclusif_prix_override: values.exclusifPrixOverride || null,
         ...urls,
       }),
     })
@@ -87,6 +97,7 @@ export default function ModifierBeatClient({ beat, splits }: {
           beatId={beat.id as string}
           initialValues={initialValues}
           existingUrls={existingUrls}
+          licences={licences}
           submitLabel="Mettre à jour"
           onSubmit={handleSubmit}
           onDelete={handleDelete}

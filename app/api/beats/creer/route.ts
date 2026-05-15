@@ -10,7 +10,8 @@ export async function POST(request: Request) {
     beatId, titre, bpm, cle, statut, date_sortie,
     styles, ambiances, instruments, type_beat,
     free_download_actif, image_url, mp3_tague_url,
-    mp3_propre_url, wav_url, stems_url, collaborateurs,
+    mp3_propre_url, wav_url, stems_url, collaborateurs, licences_actives,
+    exclusif_sur_demande, exclusif_prix_override,
   } = body
 
   const { error: beatError } = await supabase.from('beats').insert({
@@ -46,6 +47,28 @@ export async function POST(request: Request) {
 
     const { error: splitsError } = await supabase.from('beat_splits').insert(splits)
     if (splitsError) return Response.json({ error: splitsError.message }, { status: 500 })
+  }
+
+  if (licences_actives) {
+    const { data: licences } = await supabase
+      .from('licences')
+      .select('id, modele')
+      .eq('beatmaker_id', user.id)
+      .eq('actif', true)
+
+    if (licences?.length) {
+      const exclusifLicence = licences.find((l: { id: string; modele: string }) => l.modele === 'exclusive')
+      await supabase.from('beat_licences').insert(
+        licences.map((l: { id: string; modele: string }) => ({
+          beat_id: beatId,
+          licence_id: l.id,
+          actif: licences_actives.includes(l.id),
+          prix_override: l.modele === 'exclusive' && exclusif_prix_override ? parseInt(exclusif_prix_override) : null,
+          sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
+        }))
+      )
+      void exclusifLicence
+    }
   }
 
   return Response.json({ id: beatId })
