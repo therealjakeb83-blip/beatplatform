@@ -22,6 +22,19 @@
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ✅ Validé |
 | 5b | **Profil beatmaker** *(bonus)* | Slug personnalisable, logo, tagline, réseaux sociaux — page /dashboard/profil | — | ✅ Validé |
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
+
+## Détail étape 6 — Paiements
+
+| Sous-étape | Description | Qui | Statut |
+|------------|-------------|-----|--------|
+| 6.1 | Créer un compte Stripe + activer Stripe Connect | Jake 👤 | ⬜ À faire |
+| 6.2 | Intégrer le SDK Stripe dans Next.js | Claude 🤖 | ⬜ À faire |
+| 6.3 | Onboarding Stripe Connect — le beatmaker lie son compte bancaire depuis le dashboard | Claude 🤖 + Jake 👤 | ⬜ À faire |
+| 6.4 | Page de checkout — l'acheteur choisit sa licence et paie | Claude 🤖 | ⬜ À faire |
+| 6.5 | Webhook Stripe — confirmer le paiement et créer la commande en base | Claude 🤖 | ⬜ À faire |
+| 6.6 | Codes promo — création depuis le dashboard + application au checkout | Claude 🤖 | ⬜ À faire |
+| 6.7 | TVA optionnelle — le beatmaker active/désactive la TVA sur ses ventes | Claude 🤖 | ⬜ À faire |
+| 6.8 | Page "Mes commandes" dans le dashboard beatmaker | Claude 🤖 | ⬜ À faire |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : (1) co-producers listés depuis beat_splits — format d'affichage : "Prénom Nom p/k/a NomArtiste" si nom légal dispo, sinon "NomArtiste" seul, (2) répartition publishing FIXE et indépendante du split des ventes : Compositeurs 50% divisés à PARTS ÉGALES entre tous les producers (ex: 2 producers → 25/25, 3 producers → 16.67 chacun), Auteurs 50% pour le client — mention modification possible sous accord préalable écrit de tous les compositeurs, (3) splits_snapshot stocké dans commandes à la vente (modifiable par le beatmaker en cas d'erreur ex: imposteur). | 5-8h | ⬜ À faire |
 | 8 | **Abonnements** | Création des plans, catalogue privé, gestion depuis l'espace client | 8-12h | ⬜ À faire |
 | 9 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : recherche d'un compte My Producer existant OU invitation par email (split "en attente"). Si vente avec collab non inscrit : fonds retenus chez Stripe (tiers de confiance réglementé), reversés automatiquement à l'inscription + connexion Stripe Connect du collab. Invite flow : prénom + nom obligatoires quand le collab clique le lien d'invitation (pour contrats légaux). En attendant, nom_artiste utilisé sur le contrat. | 7-10h | ⬜ À faire |
