@@ -433,10 +433,27 @@ export default function NouveauBeatPage() {
       if (wavFile) urls.wav_url = await uploadAudio(wavFile, beatId, 'wav')
       if (stemsFile) urls.stems_url = await uploadAudio(stemsFile, beatId, 'stems')
 
-      // Sauvegarde en BDD — étape 4.5
-      console.log('Prêt à sauvegarder', { beatId, titre, urls })
-    } catch {
-      setErreur("Erreur lors de l'upload. Réessaie.")
+      const cle = note && mode ? `${note} ${mode}` : null
+
+      const res = await fetch('/api/beats/creer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          beatId, titre, bpm, cle, statut,
+          date_sortie: dateSortie || null,
+          styles, ambiances, instruments, type_beat: typeBeat,
+          free_download_actif: freeDownload,
+          collaborateurs,
+          ...urls,
+        }),
+      })
+
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error)
+
+      router.push('/dashboard')
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : "Erreur inconnue.")
     } finally {
       setUploading(false)
     }
