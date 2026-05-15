@@ -11,14 +11,14 @@
 
 ---
 
-## Progression globale : 3 / 17 étapes validées (étape 4 en cours)
+## Progression globale : 4 / 17 étapes validées
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
 | 1 | **Setup & infrastructure** | Next.js, Git, GitHub, Supabase, Vercel, Cloudflare | 2-3h | ✅ Validé |
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ✅ Validé |
 | 3 | **Authentification** | Inscription / connexion des beatmakers et des artistes. Bouton "Se connecter avec My Producer" dans les boutiques — compte global artiste utilisable sur toutes les boutiques. "Propulsé par My Producer" discret en bas de chaque boutique. | 3-4h | ✅ Validé |
-| 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | 🔄 En cours |
+| 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ✅ Validé |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : (1) co-producers listés depuis beat_splits — format d'affichage : "Prénom Nom p/k/a NomArtiste" si nom légal dispo, sinon "NomArtiste" seul, (2) répartition publishing FIXE et indépendante du split des ventes : Compositeurs 50% divisés à PARTS ÉGALES entre tous les producers (ex: 2 producers → 25/25, 3 producers → 16.67 chacun), Auteurs 50% pour le client — mention modification possible sous accord préalable écrit de tous les compositeurs, (3) splits_snapshot stocké dans commandes à la vente (modifiable par le beatmaker en cas d'erreur ex: imposteur). | 5-8h | ⬜ À faire |
@@ -114,7 +114,7 @@
 | 4.5 — Sauvegarde du beat en base de données (table `beats` + `beat_splits`) | 20 min | ✅ Validé |
 | 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ✅ Validé |
 | 4.7 — Édition et suppression d'un beat | 30 min | ✅ Validé |
-| 4.8 — Gestion des licences par beat (activer/désactiver, modifier le prix) | 30 min | ⬜ À faire |
+| 4.8 — Gestion des licences par beat (activer/désactiver, modifier le prix) | 30 min | ✅ Validé |
 
 ---
 
