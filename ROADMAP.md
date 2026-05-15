@@ -29,7 +29,7 @@
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues | 4-6h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
-| 15 | **Admin** | Dashboard de gestion de la plateforme | 5-8h | ⬜ À faire |
+| 15 | **Admin** | Dashboard de gestion de la plateforme + outil interne d'import BeatStars (script de scraping : coller l'URL d'un beatmaker → pré-remplit sa table `beats` automatiquement, concierge onboarding) | 7-10h | ⬜ À faire |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
 | 17 | **Déploiement** | Mise en ligne sur Vercel + nom de domaine | 2-4h | ⬜ À faire |
 
@@ -108,7 +108,8 @@
 | 4.1 — Configurer Cloudflare R2 (bucket + credentials + variables d'env) | 20 min | ✅ Validé |
 | 4.2 — Intégrer le SDK S3 compatible R2 dans Next.js (`@aws-sdk/client-s3`) | 10 min | ⬜ À faire |
 | 4.3 — Page "Ajouter un beat" — formulaire infos (titre, BPM, clé, tags style/ambiance) | 45 min | ⬜ À faire |
-| 4.4 — Upload des fichiers audio vers R2 (MP3 preview, WAV, stems ZIP) | 60 min | ⬜ À faire |
+| 4.4 — Upload des fichiers audio vers R2 (MP3 preview, WAV, stems ZIP) — cover convertie en WebP auto | 60 min | ⬜ À faire |
+| 4.4b — (V2) Conversion WAV→MP3 automatique à l'upload (nécessite Vercel Pro) | — | ⬜ V2 |
 | 4.5 — Sauvegarde du beat en base de données (table `beats`) | 20 min | ⬜ À faire |
 | 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ⬜ À faire |
 | 4.7 — Édition et suppression d'un beat | 30 min | ⬜ À faire |

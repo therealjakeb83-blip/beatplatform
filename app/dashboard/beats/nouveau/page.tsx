@@ -145,9 +145,75 @@ function HybridTagSelector({
   )
 }
 
+async function uploadImage(file: File, beatId: string): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('beatId', beatId)
+  const res = await fetch('/api/upload/image', { method: 'POST', body: formData })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error)
+  return data.url
+}
+
+async function uploadAudio(file: File, beatId: string, fileType: string): Promise<string> {
+  const res = await fetch('/api/upload/presigned', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ beatId, fileType }),
+  })
+  const { uploadUrl, fileUrl } = await res.json()
+  await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
+  return fileUrl
+}
+
+function FileInput({
+  label,
+  accept,
+  required,
+  file,
+  onChange,
+  hint,
+}: {
+  label: string
+  accept: string
+  required?: boolean
+  file: File | null
+  onChange: (f: File | null) => void
+  hint?: string
+}) {
+  return (
+    <div>
+      <label className="block text-sm text-gray-300 mb-1">
+        {label} {required && <span className="text-indigo-400">*</span>}
+        {!required && <span className="text-gray-500 text-xs ml-1">(optionnel)</span>}
+      </label>
+      {hint && <p className="text-xs text-gray-500 mb-2">{hint}</p>}
+      <div className="flex items-center gap-3">
+        <label className="cursor-pointer px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors border border-gray-700">
+          Choisir un fichier
+          <input
+            type="file"
+            accept={accept}
+            className="hidden"
+            onChange={e => onChange(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        {file
+          ? <span className="text-sm text-indigo-400 truncate max-w-xs">{file.name}</span>
+          : <span className="text-sm text-gray-600">Aucun fichier</span>
+        }
+        {file && (
+          <button type="button" onClick={() => onChange(null)} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function NouveauBeatPage() {
   const router = useRouter()
 
+  const [beatId] = useState(() => crypto.randomUUID())
   const [titre, setTitre] = useState('')
   const [bpm, setBpm] = useState('')
   const [note, setNote] = useState('')
@@ -159,10 +225,54 @@ export default function NouveauBeatPage() {
   const [instruments, setInstruments] = useState<string[]>([])
   const [typeBeat, setTypeBeat] = useState<string[]>([])
   const [freeDownload, setFreeDownload] = useState(false)
+  const [useLogo, setUseLogo] = useState(false)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [mp3TagueFile, setMp3TagueFile] = useState<File | null>(null)
+  const [mp3PropreFile, setMp3PropreFile] = useState<File | null>(null)
+  const [wavFile, setWavFile] = useState<File | null>(null)
+  const [stemsFile, setStemsFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  function handleCoverChange(file: File | null) {
+    setCoverFile(file)
+    if (file) {
+      setCoverPreview(URL.createObjectURL(file))
+      setUseLogo(false)
+    } else {
+      setCoverPreview(null)
+    }
+  }
+
+  const peutEtrePublic = mp3TagueFile !== null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    // Sauvegarde en BDD — étape 4.5
+    setErreur('')
+
+    if ((statut === 'public' || statut === 'programme') && !mp3TagueFile) {
+      setErreur('Le MP3 taguée est requis pour publier ce beat.')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const urls: Record<string, string> = {}
+
+      if (coverFile) urls.image_url = await uploadImage(coverFile, beatId)
+      if (mp3TagueFile) urls.mp3_tague_url = await uploadAudio(mp3TagueFile, beatId, 'mp3_tague')
+      if (mp3PropreFile) urls.mp3_propre_url = await uploadAudio(mp3PropreFile, beatId, 'mp3_propre')
+      if (wavFile) urls.wav_url = await uploadAudio(wavFile, beatId, 'wav')
+      if (stemsFile) urls.stems_url = await uploadAudio(stemsFile, beatId, 'stems')
+
+      // Sauvegarde en BDD — étape 4.5
+      console.log('Prêt à sauvegarder', { beatId, titre, urls })
+    } catch {
+      setErreur("Erreur lors de l'upload. Réessaie.")
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -207,8 +317,8 @@ export default function NouveauBeatPage() {
                   className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="prive">Réservé aux membres</option>
-                  <option value="public">Public</option>
-                  <option value="programme">Programmé</option>
+                  <option value="public" disabled={!peutEtrePublic}>Public{!peutEtrePublic ? ' (MP3 taguée requise)' : ''}</option>
+                  <option value="programme" disabled={!peutEtrePublic}>Programmé{!peutEtrePublic ? ' (MP3 taguée requise)' : ''}</option>
                   <option value="masque">Masqué</option>
                 </select>
               </div>
@@ -322,20 +432,81 @@ export default function NouveauBeatPage() {
             </label>
           </section>
 
-          {/* Fichiers — étape 4.4 */}
-          <section className="flex flex-col gap-4">
+          {/* Fichiers */}
+          <section className="flex flex-col gap-6">
             <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">
               Fichiers
             </h2>
-            <p className="text-sm text-gray-500 italic">Upload des fichiers audio — disponible à l&apos;étape suivante.</p>
+
+            {/* Cover */}
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">
+                Cover <span className="text-indigo-400">*</span>
+              </label>
+              <div className="flex items-start gap-4">
+                {coverPreview && (
+                  <img src={coverPreview} alt="preview" className="w-20 h-20 rounded-lg object-cover" />
+                )}
+                <div className="flex flex-col gap-2 flex-1">
+                  {!useLogo && (
+                    <FileInput
+                      label=""
+                      accept="image/jpeg,image/png,image/webp"
+                      file={coverFile}
+                      onChange={handleCoverChange}
+                      hint="JPG, PNG ou WebP — sera converti en WebP automatiquement"
+                    />
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useLogo}
+                      onChange={e => { setUseLogo(e.target.checked); if (e.target.checked) handleCoverChange(null) }}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-gray-400">Utiliser mon logo comme cover</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <FileInput
+              label="MP3 Taguée"
+              accept="audio/mpeg"
+              required
+              file={mp3TagueFile}
+              onChange={setMp3TagueFile}
+              hint="Requis pour publier le beat"
+            />
+            <FileInput
+              label="MP3 Propre"
+              accept="audio/mpeg"
+              file={mp3PropreFile}
+              onChange={setMp3PropreFile}
+            />
+            <FileInput
+              label="WAV"
+              accept="audio/wav,audio/x-wav"
+              file={wavFile}
+              onChange={setWavFile}
+            />
+            <FileInput
+              label="Stems ZIP"
+              accept=".zip,application/zip"
+              file={stemsFile}
+              onChange={setStemsFile}
+            />
           </section>
+
+          {erreur && <p className="text-red-400 text-sm">{erreur}</p>}
 
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              className="flex-1 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+              disabled={uploading}
+              className="flex-1 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50"
             >
-              Enregistrer le beat
+              {uploading ? 'Upload en cours...' : 'Enregistrer le beat'}
             </button>
             <Link
               href="/dashboard"
