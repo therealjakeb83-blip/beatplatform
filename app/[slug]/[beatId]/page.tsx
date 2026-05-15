@@ -64,7 +64,7 @@ export default async function BeatDetailPage({
     } | null
   }
 
-  const licences = ((beat.beat_licences ?? []) as RawBeatLicence[])
+  const licences = ((beat.beat_licences ?? []) as unknown as RawBeatLicence[])
     .filter(bl => bl.actif && bl.licences?.actif)
     .map(bl => ({
       ...(bl.licences!),
