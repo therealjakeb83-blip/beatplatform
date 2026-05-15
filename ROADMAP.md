@@ -111,7 +111,7 @@
 | 4.4 — Upload des fichiers audio vers R2 (MP3 taguée, MP3 propre, WAV, stems ZIP) — cover convertie en WebP auto | 60 min | ✅ Validé |
 | 4.4b — Collaborateurs : split revenus par beat (recherche compte My Producer + invitation email, table beat_splits, Stripe escrow) | 30 min | ✅ Validé |
 | 4.4c — (V2) Conversion WAV→MP3 automatique à l'upload (nécessite Vercel Pro) | — | ⬜ V2 |
-| 4.5 — Sauvegarde du beat en base de données (table `beats` + `beat_splits`) | 20 min | ⬜ À faire |
+| 4.5 — Sauvegarde du beat en base de données (table `beats` + `beat_splits`) | 20 min | ✅ Validé |
 | 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ⬜ À faire |
 | 4.7 — Édition et suppression d'un beat | 30 min | ⬜ À faire |
 | 4.8 — Gestion des licences par beat (activer/désactiver, modifier le prix) | 30 min | ⬜ À faire |
