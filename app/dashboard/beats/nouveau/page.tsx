@@ -145,6 +145,172 @@ function HybridTagSelector({
   )
 }
 
+type Collaborateur = {
+  id: string
+  type: 'compte' | 'email'
+  beatmaker_id?: string
+  nom_artiste?: string
+  email_invite?: string
+  pourcentage: number
+}
+
+function CollaborateursSection({
+  collaborateurs,
+  onChange,
+}: {
+  collaborateurs: Collaborateur[]
+  onChange: (v: Collaborateur[]) => void
+}) {
+  const [recherche, setRecherche] = useState('')
+  const [resultats, setResultats] = useState<{ id: string; nom_artiste: string }[]>([])
+  const [emailInvite, setEmailInvite] = useState('')
+  const [pourcentage, setPourcentage] = useState('50')
+  const [mode, setMode] = useState<'recherche' | 'email'>('recherche')
+
+  const totalSplits = collaborateurs.reduce((sum, c) => sum + c.pourcentage, 0)
+  const restant = 100 - totalSplits
+
+  async function rechercherBeatmaker(q: string) {
+    setRecherche(q)
+    if (q.length < 2) { setResultats([]); return }
+    const res = await fetch(`/api/beatmakers/recherche?q=${encodeURIComponent(q)}`)
+    setResultats(await res.json())
+  }
+
+  function ajouterCompte(beatmaker: { id: string; nom_artiste: string }) {
+    const pct = parseInt(pourcentage)
+    if (!pct || pct <= 0 || pct >= restant) return
+    if (collaborateurs.find(c => c.beatmaker_id === beatmaker.id)) return
+    onChange([...collaborateurs, {
+      id: crypto.randomUUID(),
+      type: 'compte',
+      beatmaker_id: beatmaker.id,
+      nom_artiste: beatmaker.nom_artiste,
+      pourcentage: pct,
+    }])
+    setRecherche('')
+    setResultats([])
+  }
+
+  function ajouterEmail() {
+    const pct = parseInt(pourcentage)
+    if (!emailInvite || !pct || pct <= 0 || pct >= restant) return
+    if (collaborateurs.find(c => c.email_invite === emailInvite)) return
+    onChange([...collaborateurs, {
+      id: crypto.randomUUID(),
+      type: 'email',
+      email_invite: emailInvite,
+      pourcentage: pct,
+    }])
+    setEmailInvite('')
+  }
+
+  function retirer(id: string) {
+    onChange(collaborateurs.filter(c => c.id !== id))
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <label className="block text-sm text-gray-300">Collaborateurs</label>
+        <span className={`text-xs font-medium ${restant < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+          Ton share : {restant}%
+        </span>
+      </div>
+
+      {collaborateurs.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {collaborateurs.map(c => (
+            <div key={c.id} className="flex items-center justify-between bg-gray-800 px-4 py-2 rounded-lg">
+              <div>
+                <span className="text-sm text-white font-medium">
+                  {c.type === 'compte' ? c.nom_artiste : c.email_invite}
+                </span>
+                {c.type === 'email' && (
+                  <span className="ml-2 text-xs text-yellow-400">invitation en attente</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-indigo-400 text-sm font-semibold">{c.pourcentage}%</span>
+                <button type="button" onClick={() => retirer(c.id)} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2 mb-1">
+        <button
+          type="button"
+          onClick={() => setMode('recherche')}
+          className={`text-xs px-3 py-1 rounded-full transition-colors ${mode === 'recherche' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+        >
+          Compte My Producer
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('email')}
+          className={`text-xs px-3 py-1 rounded-full transition-colors ${mode === 'email' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+        >
+          Inviter par email
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        {mode === 'recherche' ? (
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={recherche}
+              onChange={e => rechercherBeatmaker(e.target.value)}
+              placeholder="Rechercher un beatmaker..."
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+            {resultats.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden z-10">
+                {resultats.map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => ajouterCompte(r)}
+                    className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+                  >
+                    {r.nom_artiste}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <input
+            type="email"
+            value={emailInvite}
+            onChange={e => setEmailInvite(e.target.value)}
+            placeholder="email@exemple.com"
+            className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+          />
+        )}
+        <input
+          type="number"
+          value={pourcentage}
+          onChange={e => setPourcentage(e.target.value)}
+          min={1}
+          max={restant}
+          className="w-20 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm text-center"
+          placeholder="%"
+        />
+        <button
+          type="button"
+          onClick={mode === 'recherche' ? () => resultats.length === 1 && ajouterCompte(resultats[0]) : ajouterEmail}
+          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors"
+        >
+          Ajouter
+        </button>
+      </div>
+    </div>
+  )
+}
+
 async function uploadImage(file: File, beatId: string): Promise<string> {
   const formData = new FormData()
   formData.append('file', file)
@@ -232,6 +398,7 @@ export default function NouveauBeatPage() {
   const [mp3PropreFile, setMp3PropreFile] = useState<File | null>(null)
   const [wavFile, setWavFile] = useState<File | null>(null)
   const [stemsFile, setStemsFile] = useState<File | null>(null)
+  const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([])
   const [uploading, setUploading] = useState(false)
   const [erreur, setErreur] = useState('')
 
@@ -413,6 +580,17 @@ export default function NouveauBeatPage() {
               selected={typeBeat}
               onChange={setTypeBeat}
               placeholder="Ajouter un artiste..."
+            />
+          </section>
+
+          {/* Collaborateurs */}
+          <section className="flex flex-col gap-4">
+            <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">
+              Collaborateurs
+            </h2>
+            <CollaborateursSection
+              collaborateurs={collaborateurs}
+              onChange={setCollaborateurs}
             />
           </section>
 
