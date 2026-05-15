@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 4 / 17 étapes validées
+## Progression globale : 5 / 17 étapes validées
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
@@ -19,7 +19,7 @@
 | 2 | **Base de données** | Concevoir et créer toutes les tables (beats, clients, licences, abonnements...) | 3-5h | ✅ Validé |
 | 3 | **Authentification** | Inscription / connexion des beatmakers et des artistes. Bouton "Se connecter avec My Producer" dans les boutiques — compte global artiste utilisable sur toutes les boutiques. "Propulsé par My Producer" discret en bas de chaque boutique. | 3-4h | ✅ Validé |
 | 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ✅ Validé |
-| 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ⬜ À faire |
+| 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ✅ Validé |
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : (1) co-producers listés depuis beat_splits — format d'affichage : "Prénom Nom p/k/a NomArtiste" si nom légal dispo, sinon "NomArtiste" seul, (2) répartition publishing FIXE et indépendante du split des ventes : Compositeurs 50% divisés à PARTS ÉGALES entre tous les producers (ex: 2 producers → 25/25, 3 producers → 16.67 chacun), Auteurs 50% pour le client — mention modification possible sous accord préalable écrit de tous les compositeurs, (3) splits_snapshot stocké dans commandes à la vente (modifiable par le beatmaker en cas d'erreur ex: imposteur). | 5-8h | ⬜ À faire |
 | 8 | **Abonnements** | Création des plans, catalogue privé, gestion depuis l'espace client | 8-12h | ⬜ À faire |
@@ -118,6 +118,20 @@
 
 ---
 
+## Détail étape 5 — Boutique publique
+
+| Sous-étape | Durée estimée | Statut |
+|------------|---------------|--------|
+| 5.1 — RLS Supabase : lecture publique beats/licences/beatmakers pour visiteurs non connectés | 10 min | ✅ Validé |
+| 5.2 — Player audio global (PlayerContext + PlayerBar sticky) : play/pause/next/prev/seek/autoplay en fin de beat | 60 min | ✅ Validé |
+| 5.3 — Page boutique principale `/[slug]` : header beatmaker (logo, nom, tagline, réseaux) + catalogue grille | 45 min | ✅ Validé |
+| 5.4 — Filtres catalogue : recherche par titre, filtre style, filtre type beat | 20 min | ✅ Validé |
+| 5.5 — Carte beat : cover avec bouton play overlay, titre, BPM/clé, tags, prix des licences | 30 min | ✅ Validé |
+| 5.6 — Page beat individuelle `/[slug]/[beatId]` : cover, infos complètes, bouton play, tableau licences | 45 min | ✅ Validé |
+| 5.7 — Lien "Ma boutique ↗" dans le dashboard | 5 min | ✅ Validé |
+
+---
+
 ## Journal des sessions
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
@@ -128,3 +142,4 @@
 | 2026-05-14 | Étape 3 | ✅ Étape 3 complète. Resend SMTP configuré (noreply@jakebmusic.com), fix Gmail OTP scanning (verifyOtp + token_hash), trigger beatmakers auto-créé, RLS policies sur 9 tables. Tests bout en bout validés. |
 | 2026-05-14 | Étape 4 | Début étape 4 : sous-étapes détaillées dans ROADMAP. Prochaine action : configurer Cloudflare R2. |
 | 2026-05-15 | Étape 4 | 4.1→4.7 validés. R2 configuré, SDK S3, formulaire beats, upload fichiers (presigned URL + WebP), collaborateurs/splits, sauvegarde BDD, catalogue dashboard, édition et suppression. Prochaine étape : 4.8 licences par beat. |
+| 2026-05-15 | Étape 5 | ✅ Étape 5 complète. Boutique publique /[slug] avec player audio global, filtres, page beat individuelle avec licences. RLS Supabase configuré pour lecture anon. |
