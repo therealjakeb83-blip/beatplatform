@@ -14,12 +14,20 @@ export default async function DashboardPage() {
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Bienvenue sur My Producer</h1>
         <p className="text-gray-400 mb-8">Connecté en tant que {user.email}</p>
-        <Link
-          href="/dashboard/beats/nouveau"
-          className="inline-block mb-4 px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
-        >
-          + Ajouter un beat
-        </Link>
+        <div className="flex gap-3 justify-center mb-4">
+          <Link
+            href="/dashboard/beats"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Mes beats
+          </Link>
+          <Link
+            href="/dashboard/beats/nouveau"
+            className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+          >
+            + Ajouter un beat
+          </Link>
+        </div>
         <div>
           <DeconnexionButton />
         </div>
