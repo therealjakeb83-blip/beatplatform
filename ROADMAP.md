@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 3 / 17 étapes validées
+## Progression globale : 3 / 17 étapes validées (étape 4 en cours)
 
 | # | Étape | Description | Durée estimée | Statut |
 |---|-------|-------------|---------------|--------|
@@ -106,11 +106,12 @@
 | Sous-étape | Durée estimée | Statut |
 |------------|---------------|--------|
 | 4.1 — Configurer Cloudflare R2 (bucket + credentials + variables d'env) | 20 min | ✅ Validé |
-| 4.2 — Intégrer le SDK S3 compatible R2 dans Next.js (`@aws-sdk/client-s3`) | 10 min | ⬜ À faire |
-| 4.3 — Page "Ajouter un beat" — formulaire infos (titre, BPM, clé, tags style/ambiance) | 45 min | ⬜ À faire |
-| 4.4 — Upload des fichiers audio vers R2 (MP3 preview, WAV, stems ZIP) — cover convertie en WebP auto | 60 min | ⬜ À faire |
-| 4.4b — (V2) Conversion WAV→MP3 automatique à l'upload (nécessite Vercel Pro) | — | ⬜ V2 |
-| 4.5 — Sauvegarde du beat en base de données (table `beats`) | 20 min | ⬜ À faire |
+| 4.2 — Intégrer le SDK S3 compatible R2 dans Next.js (`@aws-sdk/client-s3`) | 10 min | ✅ Validé |
+| 4.3 — Page "Ajouter un beat" — formulaire infos (titre, BPM, clé, tags style/ambiance/instruments/type beat + ajout custom) | 45 min | ✅ Validé |
+| 4.4 — Upload des fichiers audio vers R2 (MP3 taguée, MP3 propre, WAV, stems ZIP) — cover convertie en WebP auto | 60 min | ✅ Validé |
+| 4.4b — Collaborateurs : split revenus par beat (recherche compte My Producer + invitation email, table beat_splits, Stripe escrow) | 30 min | ✅ Validé |
+| 4.4c — (V2) Conversion WAV→MP3 automatique à l'upload (nécessite Vercel Pro) | — | ⬜ V2 |
+| 4.5 — Sauvegarde du beat en base de données (table `beats` + `beat_splits`) | 20 min | ⬜ À faire |
 | 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ⬜ À faire |
 | 4.7 — Édition et suppression d'un beat | 30 min | ⬜ À faire |
 | 4.8 — Gestion des licences par beat (activer/désactiver, modifier le prix) | 30 min | ⬜ À faire |
