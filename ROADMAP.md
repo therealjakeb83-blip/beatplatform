@@ -112,8 +112,8 @@
 | 4.4b — Collaborateurs : split revenus par beat (recherche compte My Producer + invitation email, table beat_splits, Stripe escrow) | 30 min | ✅ Validé |
 | 4.4c — (V2) Conversion WAV→MP3 automatique à l'upload (nécessite Vercel Pro) | — | ⬜ V2 |
 | 4.5 — Sauvegarde du beat en base de données (table `beats` + `beat_splits`) | 20 min | ✅ Validé |
-| 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ⬜ À faire |
-| 4.7 — Édition et suppression d'un beat | 30 min | ⬜ À faire |
+| 4.6 — Page catalogue dashboard — liste des beats, filtres, statut | 45 min | ✅ Validé |
+| 4.7 — Édition et suppression d'un beat | 30 min | ✅ Validé |
 | 4.8 — Gestion des licences par beat (activer/désactiver, modifier le prix) | 30 min | ⬜ À faire |
 
 ---
@@ -127,3 +127,4 @@
 | 2026-05-14 | Étape 2 | ✅ Étape 2 complète. 9 tables créées dans Supabase via SQL (schema.sql). RLS activé. Contraintes et index ajoutés après revue croisée avec ChatGPT (schema_fixes_v1.sql). |
 | 2026-05-14 | Étape 3 | ✅ Étape 3 complète. Resend SMTP configuré (noreply@jakebmusic.com), fix Gmail OTP scanning (verifyOtp + token_hash), trigger beatmakers auto-créé, RLS policies sur 9 tables. Tests bout en bout validés. |
 | 2026-05-14 | Étape 4 | Début étape 4 : sous-étapes détaillées dans ROADMAP. Prochaine action : configurer Cloudflare R2. |
+| 2026-05-15 | Étape 4 | 4.1→4.7 validés. R2 configuré, SDK S3, formulaire beats, upload fichiers (presigned URL + WebP), collaborateurs/splits, sauvegarde BDD, catalogue dashboard, édition et suppression. Prochaine étape : 4.8 licences par beat. |
