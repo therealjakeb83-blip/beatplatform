@@ -63,7 +63,7 @@ export default async function BoutiquePage({
     }[] | null
   }
 
-  const beats: BeatPublic[] = (rawBeats as RawBeat[] ?? []).map(beat => ({
+  const beats: BeatPublic[] = (rawBeats as unknown as RawBeat[] ?? []).map(beat => ({
     id: beat.id,
     titre: beat.titre,
     bpm: beat.bpm,
