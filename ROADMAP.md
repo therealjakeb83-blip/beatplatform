@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 5 / 17 étapes validées (+ 1 bonus)
+## Progression globale : 5 / 17 étapes validées (+ 1 bonus) — étape 6 en cours
 
 | # | Étape | Description | Durée est. | Statut |
 |---|-------|-------------|-----------|--------|
@@ -137,9 +137,9 @@
 
 | Sous-étape | Description | Qui | Statut |
 |-----------|-------------|-----|--------|
-| 6.1 | Créer un compte Stripe + activer Stripe Connect | Jake 👤 | ⬜ |
-| 6.2 | Intégrer le SDK Stripe dans Next.js | Claude 🤖 | ⬜ |
-| 6.3 | Onboarding Stripe Connect — le beatmaker lie son compte bancaire depuis le dashboard | Claude 🤖 + Jake 👤 | ⬜ |
+| 6.1 | Créer un compte Stripe + activer Stripe Connect | Jake 👤 | ✅ |
+| 6.2 | Intégrer le SDK Stripe dans Next.js | Claude 🤖 | ✅ |
+| 6.3 | Onboarding Stripe Connect — le beatmaker lie son compte bancaire depuis le dashboard | Claude 🤖 + Jake 👤 | 🔄 |
 | 6.4 | Page de checkout — l'acheteur choisit sa licence et paie | Claude 🤖 | ⬜ |
 | 6.5 | Webhook Stripe — confirmer le paiement et créer la commande en base | Claude 🤖 | ⬜ |
 | 6.6 | Codes promo — création depuis le dashboard + application au checkout | Claude 🤖 | ⬜ |
@@ -161,3 +161,4 @@
 | 2026-05-15 | Étape 4 | 4.1→4.7 validés. R2 configuré, SDK S3, formulaire beats, upload fichiers, collaborateurs/splits, catalogue dashboard, édition et suppression. |
 | 2026-05-15 | Étape 5 | ✅ Étape 5 complète. Boutique publique /[slug] avec player audio global, filtres, page beat individuelle. Fix R2 public URL. |
 | 2026-05-15 | Étape 5b | ✅ Profil beatmaker : slug personnalisable, logo R2, tagline, réseaux sociaux. Déploiement Vercel fonctionnel. |
+| 2026-05-15 | Étape 6 | 6.1 ✅ Compte Stripe My Producer créé (distinct de Jakebmusic), Connect activé, modèle Plateforme + Express accounts. 6.2 ✅ SDK Stripe installé (lib/stripe.ts + lib/stripe-client.ts). Décisions TVA documentées. |
