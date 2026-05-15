@@ -28,6 +28,6 @@ export async function POST(request: Request) {
     ContentType: 'image/webp',
   }))
 
-  const url = `${process.env.R2_ENDPOINT}/${R2_BUCKET}/${key}`
+  const url = `${process.env.R2_PUBLIC_URL}/${key}`
   return Response.json({ url })
 }

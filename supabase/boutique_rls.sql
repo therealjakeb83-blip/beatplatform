@@ -26,3 +26,11 @@ grant select on table public.licences to anon;
 
 -- beat_licences : lecture publique (policy déjà créée, on ajoute juste le grant)
 grant select on table public.beat_licences to anon;
+
+-- ============================================================
+-- GRANTS manquants pour les beatmakers authentifiés
+-- ============================================================
+
+-- beatmakers : lecture et modification du propre profil depuis le dashboard
+grant select on table public.beatmakers to authenticated;
+grant update on table public.beatmakers to authenticated;

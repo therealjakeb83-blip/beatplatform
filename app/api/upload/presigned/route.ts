@@ -40,6 +40,6 @@ export async function POST(request: Request) {
     { expiresIn: 3600 }
   )
 
-  const fileUrl = `${process.env.R2_ENDPOINT}/${R2_BUCKET}/${key}`
+  const fileUrl = `${process.env.R2_PUBLIC_URL}/${key}`
   return Response.json({ uploadUrl: url, fileUrl })
 }

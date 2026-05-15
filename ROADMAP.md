@@ -142,4 +142,4 @@
 | 2026-05-14 | Étape 3 | ✅ Étape 3 complète. Resend SMTP configuré (noreply@jakebmusic.com), fix Gmail OTP scanning (verifyOtp + token_hash), trigger beatmakers auto-créé, RLS policies sur 9 tables. Tests bout en bout validés. |
 | 2026-05-14 | Étape 4 | Début étape 4 : sous-étapes détaillées dans ROADMAP. Prochaine action : configurer Cloudflare R2. |
 | 2026-05-15 | Étape 4 | 4.1→4.7 validés. R2 configuré, SDK S3, formulaire beats, upload fichiers (presigned URL + WebP), collaborateurs/splits, sauvegarde BDD, catalogue dashboard, édition et suppression. Prochaine étape : 4.8 licences par beat. |
-| 2026-05-15 | Étape 5 | ✅ Étape 5 complète. Boutique publique /[slug] avec player audio global, filtres, page beat individuelle avec licences. RLS Supabase configuré pour lecture anon. |
+| 2026-05-15 | Étape 5 | ✅ Étape 5 complète. Boutique publique /[slug] avec player audio global, filtres, page beat individuelle avec licences. RLS Supabase configuré pour lecture anon. Fix R2 : activation Public Development URL + variable R2_PUBLIC_URL pour accès public aux fichiers audio. |
