@@ -11,7 +11,7 @@ begin
     (new.id, 5, 'Exclusive',   500, 'exclusive',true,  true,  true,  true,  null,   null,   null, null);
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer SET search_path = public;
 
 create trigger trigger_creer_licences_defaut
   after insert on beatmakers
