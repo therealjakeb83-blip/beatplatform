@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -320,6 +320,7 @@ export default function BeatForm({
   const [useLogo, setUseLogo] = useState(false)
   const [mp3TagueFile, setMp3TagueFile] = useState<File | null>(null)
   const [mp3PropreFile, setMp3PropreFile] = useState<File | null>(null)
+
   const [wavFile, setWavFile] = useState<File | null>(null)
   const [stemsFile, setStemsFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -327,6 +328,43 @@ export default function BeatForm({
   const [erreur, setErreur] = useState('')
 
   const peutEtrePublic = !!mp3TagueFile || !!existingUrls.mp3_tague_url
+
+  const hasMp3Propre = !!mp3PropreFile || !!existingUrls.mp3_propre_url
+  const hasWav       = !!wavFile       || !!existingUrls.wav_url
+  const hasStems     = !!stemsFile     || !!existingUrls.stems_url
+
+  function licenceDisponible(modele: string): boolean {
+    switch (modele) {
+      case 'mp3':      return hasMp3Propre
+      case 'wav':      return hasMp3Propre && hasWav
+      case 'stems':
+      case 'illimite':
+      case 'exclusive': return hasMp3Propre && hasWav && hasStems
+      default:          return true
+    }
+  }
+
+  function fichierManquant(modele: string): string {
+    if (modele === 'mp3' && !hasMp3Propre) return 'MP3 propre requis'
+    if ((modele === 'wav') && !hasMp3Propre) return 'MP3 propre requis'
+    if ((modele === 'wav') && !hasWav) return 'WAV requis'
+    if (['stems', 'illimite', 'exclusive'].includes(modele)) {
+      if (!hasMp3Propre) return 'MP3 propre requis'
+      if (!hasWav) return 'WAV requis'
+      if (!hasStems) return 'Stems requis'
+    }
+    return ''
+  }
+
+  useEffect(() => {
+    setLicencesActives(prev =>
+      prev.filter(id => {
+        const l = licences.find(x => x.id === id)
+        return l ? licenceDisponible(l.modele) : false
+      })
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMp3Propre, hasWav, hasStems])
 
   function handleCoverChange(file: File | null) {
     setCoverFile(file)
@@ -458,22 +496,28 @@ export default function BeatForm({
             {licences.map(licence => {
               const isActive = licencesActives.includes(licence.id)
               const isExclusive = licence.modele === 'exclusive'
+              const disponible = licenceDisponible(licence.modele)
+              const manquant = fichierManquant(licence.modele)
               return (
-                <div key={licence.id} className="bg-gray-800 rounded-lg overflow-hidden">
+                <div key={licence.id} className={`bg-gray-800 rounded-lg overflow-hidden ${!disponible ? 'opacity-50' : ''}`}>
                   <div className="flex items-center justify-between px-4 py-3">
                     <div>
                       <span className="text-sm font-medium text-white">{licence.nom}</span>
                       {!isExclusive && <span className="text-indigo-400 text-sm ml-2">{licence.prix}€</span>}
                       <span className="text-gray-500 text-xs ml-2">{MODELE_BADGES[licence.modele]?.join(' + ')}</span>
+                      {!disponible && <span className="text-xs text-yellow-500 ml-2">⚠ {manquant}</span>}
                     </div>
                     <div
-                      onClick={() => setLicencesActives(isActive
-                        ? licencesActives.filter(id => id !== licence.id)
-                        : [...licencesActives, licence.id]
-                      )}
-                      className={`w-11 h-6 rounded-full transition-colors cursor-pointer relative flex-shrink-0 ${isActive ? 'bg-indigo-600' : 'bg-gray-700'}`}
+                      onClick={() => {
+                        if (!disponible) return
+                        setLicencesActives(isActive
+                          ? licencesActives.filter(id => id !== licence.id)
+                          : [...licencesActives, licence.id]
+                        )
+                      }}
+                      className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${disponible ? 'cursor-pointer' : 'cursor-not-allowed'} ${isActive && disponible ? 'bg-indigo-600' : 'bg-gray-700'}`}
                     >
-                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${isActive ? 'translate-x-6' : 'translate-x-1'}`} />
+                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${isActive && disponible ? 'translate-x-6' : 'translate-x-1'}`} />
                     </div>
                   </div>
 
