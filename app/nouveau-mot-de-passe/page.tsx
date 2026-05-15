@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function NouveauMotDePassePage() {
+function NouveauMotDePasseForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [password, setPassword] = useState('')
@@ -102,5 +102,13 @@ export default function NouveauMotDePassePage() {
         </form>
       </div>
     </main>
+  )
+}
+
+export default function NouveauMotDePassePage() {
+  return (
+    <Suspense>
+      <NouveauMotDePasseForm />
+    </Suspense>
   )
 }
