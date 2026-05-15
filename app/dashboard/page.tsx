@@ -39,6 +39,12 @@ export default async function DashboardPage() {
           >
             Mes licences
           </Link>
+          <Link
+            href="/dashboard/profil"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Mon profil
+          </Link>
           {beatmaker?.slug && (
             <Link
               href={`/${beatmaker.slug}`}
