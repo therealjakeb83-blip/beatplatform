@@ -56,17 +56,14 @@ export default async function BoutiquePage({
     .or(`date_sortie.is.null,date_sortie.lte.${now}`)
     .order('created_at', { ascending: false })
 
-  // mp3_tague_url volontairement exclu pour les beats privés (pas de streaming sans abonnement)
+  // mp3_tague_url inclus uniquement pour les abonnés (sinon le player est bloqué côté client)
+  const selectPrives = estAbonne
+    ? `id, titre, bpm, cle, image_url, mp3_tague_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+    : `id, titre, bpm, cle, image_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+
   const { data: rawBeatsPrives } = await supabase
     .from('beats')
-    .select(`
-      id, titre, bpm, cle, image_url,
-      styles, ambiances, instruments, type_beat,
-      beat_licences (
-        actif, prix_override, sur_demande,
-        licences (id, nom, modele, prix, actif)
-      )
-    `)
+    .select(selectPrives)
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'prive')
     .is('supprime_le', null)
