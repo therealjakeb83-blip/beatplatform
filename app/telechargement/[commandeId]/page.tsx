@@ -16,22 +16,20 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select(`
-      id, acheteur_email, acheteur_nom, contrat_pdf_url, splits_snapshot,
-      beats!beat_id (titre, bpm, cle, mp3_propre_url, wav_url, stems_url, beatmaker_id),
-      licences!licence_id (nom, modele)
-    `)
+    .select('id, acheteur_email, acheteur_nom, contrat_pdf_url, splits_snapshot, beat_id, licence_id')
     .eq('id', commandeId)
     .single()
 
-  if (commandeError) console.error('[telechargement] Erreur query:', JSON.stringify(commandeError))
+  if (commandeError) console.error('[telechargement] Erreur query commande:', JSON.stringify(commandeError))
   if (!commande) notFound()
 
-  type BeatRow = { titre: string; bpm: number | null; cle: string | null; mp3_propre_url: string | null; wav_url: string | null; stems_url: string | null; beatmaker_id: string }
-  type LicenceRow = { nom: string; modele: string }
+  const [{ data: beat, error: beatError }, { data: licence, error: licenceError }] = await Promise.all([
+    supabase.from('beats').select('titre, bpm, cle, mp3_propre_url, wav_url, stems_url, beatmaker_id').eq('id', commande.beat_id).single(),
+    supabase.from('licences').select('nom, modele').eq('id', commande.licence_id).single(),
+  ])
 
-  const beat = commande.beats as unknown as BeatRow
-  const licence = commande.licences as unknown as LicenceRow
+  if (beatError) console.error('[telechargement] Erreur query beat:', JSON.stringify(beatError))
+  if (licenceError) console.error('[telechargement] Erreur query licence:', JSON.stringify(licenceError))
 
   // Générer le PDF si pas encore fait
   let contratUrl = commande.contrat_pdf_url
