@@ -14,16 +14,17 @@ export default async function TelechargerPage({
   const { commandeId } = await params
   const supabase = createAdminClient()
 
-  const { data: commande } = await supabase
+  const { data: commande, error: commandeError } = await supabase
     .from('commandes')
     .select(`
       id, acheteur_email, acheteur_nom, contrat_pdf_url, splits_snapshot,
-      beats (titre, bpm, cle, mp3_propre_url, wav_url, stems_url, beatmaker_id),
-      licences (nom, modele)
+      beats!beat_id (titre, bpm, cle, mp3_propre_url, wav_url, stems_url, beatmaker_id),
+      licences!licence_id (nom, modele)
     `)
     .eq('id', commandeId)
     .single()
 
+  if (commandeError) console.error('[telechargement] Erreur query:', JSON.stringify(commandeError))
   if (!commande) notFound()
 
   type BeatRow = { titre: string; bpm: number | null; cle: string | null; mp3_propre_url: string | null; wav_url: string | null; stems_url: string | null; beatmaker_id: string }
