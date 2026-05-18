@@ -89,10 +89,10 @@ export default async function TelechargerPage({
           )}
         </div>
 
-        {/* Avertissement expiration */}
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-6 text-center">
-          <p className="text-yellow-400 text-xs">
-            Ces liens expirent dans <strong>1 heure</strong>. Télécharge tes fichiers maintenant.
+        {/* Lien permanent */}
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 mb-6 text-center">
+          <p className="text-gray-400 text-xs">
+            Tu peux revenir sur cette page à tout moment pour télécharger tes fichiers.
           </p>
         </div>
 
