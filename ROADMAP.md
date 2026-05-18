@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 5 / 17 étapes validées (+ 1 bonus) — étape 6 en cours
+## Progression globale : 6 / 17 étapes validées (+ 1 bonus) — étape 7 à venir
 
 | # | Étape | Description | Durée est. | Statut |
 |---|-------|-------------|-----------|--------|
@@ -21,7 +21,7 @@
 | 4 | **Gestion des beats** | Upload, infos, fichiers (WAV/MP3/ZIP via Cloudflare R2), licences, organisation du catalogue | 10-15h | ✅ Validé |
 | 5 | **Boutique** | Page publique du beatmaker, catalogue, player audio, pages beats | 15-20h | ✅ Validé |
 | 5b | **Profil beatmaker** *(bonus)* | Slug personnalisable, logo, tagline, réseaux sociaux — page /dashboard/profil | — | ✅ Validé |
-| 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ⬜ À faire |
+| 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ✅ Validé |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : co-producers listés depuis beat_splits, répartition publishing, splits_snapshot stocké dans commandes. | 5-8h | ⬜ À faire |
 | 8 | **Abonnements** | Création des plans, catalogue privé, gestion depuis l'espace client | 8-12h | ⬜ À faire |
 | 9 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ⬜ À faire |
@@ -139,12 +139,12 @@
 |-----------|-------------|-----|--------|
 | 6.1 | Créer un compte Stripe + activer Stripe Connect | Jake 👤 | ✅ |
 | 6.2 | Intégrer le SDK Stripe dans Next.js | Claude 🤖 | ✅ |
-| 6.3 | Onboarding Stripe Connect — le beatmaker lie son compte bancaire depuis le dashboard | Claude 🤖 + Jake 👤 | 🔄 |
-| 6.4 | Page de checkout — l'acheteur choisit sa licence et paie | Claude 🤖 | ⬜ |
-| 6.5 | Webhook Stripe — confirmer le paiement et créer la commande en base | Claude 🤖 | ⬜ |
-| 6.6 | Codes promo — création depuis le dashboard + application au checkout | Claude 🤖 | ⬜ |
-| 6.7 | TVA optionnelle — le beatmaker active/désactive la TVA sur ses ventes | Claude 🤖 | ⬜ |
-| 6.8 | Page "Mes commandes" dans le dashboard beatmaker | Claude 🤖 | ⬜ |
+| 6.3 | Onboarding Stripe Connect — le beatmaker lie son compte bancaire depuis le dashboard | Claude 🤖 + Jake 👤 | ✅ |
+| 6.4 | Page de checkout — l'acheteur choisit sa licence et paie | Claude 🤖 | ✅ |
+| 6.5 | Webhook Stripe — confirmer le paiement et créer la commande en base | Claude 🤖 | ✅ |
+| 6.6 | Codes promo — création depuis le dashboard + application au checkout | Claude 🤖 | ✅ |
+| 6.7 | TVA optionnelle — le beatmaker active/désactive la TVA sur ses ventes | Claude 🤖 | ✅ |
+| 6.8 | Page "Mes commandes" dans le dashboard beatmaker | Claude 🤖 | ✅ |
 
 ---
 
@@ -162,3 +162,4 @@
 | 2026-05-15 | Étape 5 | ✅ Étape 5 complète. Boutique publique /[slug] avec player audio global, filtres, page beat individuelle. Fix R2 public URL. |
 | 2026-05-15 | Étape 5b | ✅ Profil beatmaker : slug personnalisable, logo R2, tagline, réseaux sociaux. Déploiement Vercel fonctionnel. |
 | 2026-05-15 | Étape 6 | 6.1 ✅ Compte Stripe My Producer créé (distinct de Jakebmusic), Connect activé, modèle Plateforme + Express accounts. 6.2 ✅ SDK Stripe installé (lib/stripe.ts + lib/stripe-client.ts). Décisions TVA documentées. |
+| 2026-05-18 | Étape 6 | ✅ Étape 6 complète. Webhook configuré, SUPABASE_SERVICE_ROLE_KEY ajouté, GRANT commandes service_role, test paiement bout en bout validé (45€ WAV, commande créée en BDD). |
