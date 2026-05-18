@@ -52,7 +52,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   const supabase = createAdminClient()
 
-  await supabase.from('commandes').insert({
+  const { error } = await supabase.from('commandes').insert({
     beatmaker_id: meta.beatmaker_id,
     beat_id: meta.beat_id,
     licence_id: meta.licence_id,
@@ -68,4 +68,10 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     fichiers_livres: false,
     plateforme_source: 'my_producer',
   })
+
+  if (error) {
+    console.error('[webhook] Erreur insert commande:', JSON.stringify(error))
+  } else {
+    console.log('[webhook] Commande créée pour beat', meta.beat_id)
+  }
 }
