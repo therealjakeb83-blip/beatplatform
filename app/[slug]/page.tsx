@@ -56,12 +56,11 @@ export default async function BoutiquePage({
     .or(`date_sortie.is.null,date_sortie.lte.${now}`)
     .order('created_at', { ascending: false })
 
-  // Admin client pour bypasser le RLS sur les beats privés (visibles par tous, juste verrouillés)
-  const adminForPrives = createAdminClient()
-  const { data: rawBeatsPrives } = await adminForPrives
+  // mp3_tague_url volontairement exclu pour les beats privés (pas de streaming sans abonnement)
+  const { data: rawBeatsPrives } = await supabase
     .from('beats')
     .select(`
-      id, titre, bpm, cle, image_url, mp3_tague_url,
+      id, titre, bpm, cle, image_url,
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
