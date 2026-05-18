@@ -63,6 +63,12 @@ export default async function DashboardPage() {
           >
             Mes commandes
           </Link>
+          <Link
+            href="/dashboard/abonnements"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Abonnements membres
+          </Link>
           {beatmaker?.slug && (
             <Link
               href={`/${beatmaker.slug}`}

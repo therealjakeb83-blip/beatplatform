@@ -19,21 +19,25 @@ export type BeatPublic = BeatMin & {
   ambiances: string[] | null
   instruments: string[] | null
   licences: LicencePublic[]
+  prive?: boolean
 }
 
 export default function BeatCard({
   beat,
   slug,
   queue,
+  estAbonne = false,
 }: {
   beat: BeatPublic
   slug: string
   queue: BeatMin[]
+  estAbonne?: boolean
 }) {
   const { play, currentBeat, isPlaying } = usePlayer()
 
   const isActive = currentBeat?.id === beat.id
   const hasAudio = !!beat.mp3_tague_url
+  const estVerrouille = beat.prive && !estAbonne
 
   function handlePlay(e: React.MouseEvent) {
     e.preventDefault()
@@ -45,7 +49,7 @@ export default function BeatCard({
 
   return (
     <Link
-      href={`/${slug}/${beat.id}`}
+      href={estVerrouille ? `/${slug}/membres` : `/${slug}/${beat.id}`}
       className="group bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-2xl overflow-hidden transition-all block"
     >
       {/* Cover + bouton play */}
@@ -84,6 +88,13 @@ export default function BeatCard({
             ▶ En lecture
           </div>
         )}
+
+        {/* Badge cadenas membres */}
+        {estVerrouille && (
+          <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center text-sm">
+            🔒
+          </div>
+        )}
       </div>
 
       {/* Infos */}
@@ -113,7 +124,9 @@ export default function BeatCard({
         ) : null}
 
         {/* Prix licences */}
-        {licencesTriees.length > 0 ? (
+        {estVerrouille ? (
+          <p className="text-xs text-indigo-400 mt-3 font-medium">Réservé aux membres</p>
+        ) : licencesTriees.length > 0 ? (
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             {licencesTriees.map(l => (
               <span key={l.id} className="text-xs font-semibold text-white">

@@ -1,5 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
@@ -14,7 +16,7 @@ export async function POST(request: Request) {
 
   const { data: beat } = await supabase
     .from('beats')
-    .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux)')
+    .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct)')
     .eq('id', beat_id)
     .eq('statut', 'public')
     .is('supprime_le', null)
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
 
   const { data: beatLicence } = await supabase
     .from('beat_licences')
-    .select('actif, prix_override, sur_demande, licences(id, nom, prix, actif)')
+    .select('actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
     .eq('beat_id', beat_id)
     .eq('licence_id', licence_id)
     .single()
@@ -33,16 +35,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Licence indisponible' }, { status: 400 })
   }
 
-  type LicenceRow = { id: string; nom: string; prix: number; actif: boolean }
+  type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
   const licence = beatLicence.licences as unknown as LicenceRow
   if (!licence?.actif) return NextResponse.json({ erreur: 'Licence inactive' }, { status: 400 })
 
-  type BeatmakerRow = { stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null }
+  type BeatmakerRow = { stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
   const beatmaker = (beat as unknown as { beatmakers: BeatmakerRow }).beatmakers
 
-  const prixHT = (beatLicence.prix_override ?? licence.prix) * 100
+  const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
+
+  // Appliquer la remise membre si abonné (sauf licence Illimité)
+  const cookieStore = await cookies()
+  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  let remisePct = 0
+  const estIllimite = licence.modele?.toLowerCase().includes('illimit')
+  if (emailCookie && beatmaker.abo_actif && !estIllimite) {
+    const admin = createAdminClient()
+    const { data: abo } = await admin
+      .from('abonnements_boutique')
+      .select('id')
+      .eq('beatmaker_id', String(beat.beatmaker_id))
+      .eq('acheteur_email', emailCookie)
+      .eq('statut', 'actif')
+      .single()
+    if (abo && beatmaker.abo_remise_pct) remisePct = beatmaker.abo_remise_pct
+  }
+
+  const prixApresRemise = remisePct > 0 ? Math.round(prixBaseHT * (1 - remisePct / 100)) : prixBaseHT
   const tvaMultiplier = beatmaker.tva_active && beatmaker.tva_taux ? beatmaker.tva_taux / 100 : 0
-  const prixTotal = Math.round(prixHT * (1 + tvaMultiplier))
+  const prixTotal = Math.round(prixApresRemise * (1 + tvaMultiplier))
 
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
@@ -69,7 +90,8 @@ export async function POST(request: Request) {
       licence_id,
       beatmaker_id: String(beat.beatmaker_id),
       slug,
-      prix_ht: String(prixHT),
+      prix_ht: String(prixBaseHT),
+      remise_pct: String(remisePct),
     },
   }
 

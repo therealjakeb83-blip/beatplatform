@@ -6,10 +6,14 @@ import type { BeatMin } from './PlayerContext'
 
 export default function BeatCatalogue({
   beats,
+  beatsPrives = [],
   slug,
+  estAbonne = false,
 }: {
   beats: BeatPublic[]
+  beatsPrives?: BeatPublic[]
   slug: string
+  estAbonne?: boolean
 }) {
   const [recherche, setRecherche] = useState('')
   const [stylesActifs, setStylesActifs] = useState<string[]>([])
@@ -115,7 +119,7 @@ export default function BeatCatalogue({
         {aFiltres ? ` sur ${beats.length}` : ''}
       </p>
 
-      {/* Grille */}
+      {/* Grille beats publics */}
       {beatsFiltres.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-gray-500">Aucun beat ne correspond à ta recherche.</p>
@@ -131,8 +135,30 @@ export default function BeatCatalogue({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {beatsFiltres.map(beat => (
-            <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} />
+            <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} />
           ))}
+        </div>
+      )}
+
+      {/* Section beats privés */}
+      {beatsPrives.length > 0 && (
+        <div className="mt-14">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-white">
+              Réservés aux membres <span className="text-gray-500 font-normal text-base">({beatsPrives.length})</span>
+            </h2>
+            <a
+              href={`/${slug}/membres`}
+              className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              Tout voir →
+            </a>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {beatsPrives.slice(0, 4).map(beat => (
+              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
+            ))}
+          </div>
         </div>
       )}
     </div>

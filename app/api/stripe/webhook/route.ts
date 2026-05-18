@@ -32,7 +32,42 @@ export async function POST(request: Request) {
     await traiterPaiement(event.data.object as Stripe.Checkout.Session)
   }
 
+  if (event.type === 'customer.subscription.updated') {
+    await traiterMajAbonnement(event.data.object as Stripe.Subscription)
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    await traiterAnnulationAbonnement(event.data.object as Stripe.Subscription)
+  }
+
   return NextResponse.json({ ok: true })
+}
+
+async function traiterMajAbonnement(subscription: Stripe.Subscription) {
+  const supabase = createAdminClient()
+  const status = subscription.status
+  // actif = active ou trialing
+  const statut = (status === 'active' || status === 'trialing') ? 'actif' : 'annule'
+  const enEssai = status === 'trialing'
+
+  const { error } = await supabase
+    .from('abonnements_boutique')
+    .update({ statut, en_essai: enEssai })
+    .eq('stripe_subscription_id', subscription.id)
+
+  if (error) console.error('[webhook] Erreur maj abonnement:', JSON.stringify(error))
+  else console.log('[webhook] Abonnement mis à jour:', subscription.id, statut)
+}
+
+async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('abonnements_boutique')
+    .update({ statut: 'annule', en_essai: false })
+    .eq('stripe_subscription_id', subscription.id)
+
+  if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
+  else console.log('[webhook] Abonnement annulé:', subscription.id)
 }
 
 async function traiterPaiement(session: Stripe.Checkout.Session) {
