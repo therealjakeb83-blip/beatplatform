@@ -1,5 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { genererContratPdf } from '@/lib/contrat'
+import { uploadPdfContrat } from '@/lib/livraison'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -52,7 +54,40 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   const supabase = createAdminClient()
 
-  const { error } = await supabase.from('commandes').insert({
+  // Récupérer les splits du beat pour le snapshot
+  const { data: splits } = await supabase
+    .from('beat_splits')
+    .select('pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email)')
+    .eq('beat_id', meta.beat_id)
+
+  type SplitRow = {
+    pourcentage: number
+    beatmaker_id: string | null
+    email_invite: string | null
+    beatmakers: { nom_artiste: string; email: string } | null
+  }
+
+  // Si pas de splits définis, le beatmaker principal = 100%
+  const { data: beatmaker } = await supabase
+    .from('beatmakers')
+    .select('nom_artiste, email')
+    .eq('id', meta.beatmaker_id)
+    .single()
+
+  let splitsSnapshot: { nom_artiste: string; pourcentage: number; email?: string }[]
+
+  if (!splits || splits.length === 0) {
+    splitsSnapshot = [{ nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100, email: beatmaker?.email }]
+  } else {
+    splitsSnapshot = (splits as unknown as SplitRow[]).map(s => ({
+      nom_artiste: s.beatmakers?.nom_artiste ?? s.email_invite ?? 'Collab',
+      pourcentage: s.pourcentage,
+      email: s.beatmakers?.email ?? s.email_invite ?? undefined,
+    }))
+  }
+
+  // Créer la commande
+  const { data: commande, error } = await supabase.from('commandes').insert({
     beatmaker_id: meta.beatmaker_id,
     beat_id: meta.beat_id,
     licence_id: meta.licence_id,
@@ -62,16 +97,56 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     devise: 'EUR',
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,
+    stripe_session_id: session.id,
     statut: 'payee',
     code_promo: promoCode,
     reduction_montant: reduction,
     fichiers_livres: false,
     plateforme_source: 'my_producer',
-  })
+    splits_snapshot: splitsSnapshot,
+  }).select('id').single()
 
   if (error) {
     console.error('[webhook] Erreur insert commande:', JSON.stringify(error))
-  } else {
-    console.log('[webhook] Commande créée pour beat', meta.beat_id)
+    return
+  }
+
+  console.log('[webhook] Commande créée:', commande?.id)
+
+  // Générer le contrat PDF
+  try {
+    const { data: beat } = await supabase
+      .from('beats')
+      .select('titre, bpm, cle')
+      .eq('id', meta.beat_id)
+      .single()
+
+    const { data: licence } = await supabase
+      .from('licences')
+      .select('nom')
+      .eq('id', meta.licence_id)
+      .single()
+
+    if (beat && licence && commande) {
+      const pdfBytes = await genererContratPdf({
+        beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
+        beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
+        acheteur: { nom: acheteurNom, email: acheteurEmail },
+        licence: { nom: licence.nom },
+        splits: splitsSnapshot,
+        dateVente: new Date(),
+      })
+
+      const pdfUrl = await uploadPdfContrat(commande.id, pdfBytes)
+
+      await supabase
+        .from('commandes')
+        .update({ contrat_pdf_url: pdfUrl, fichiers_livres: true })
+        .eq('id', commande.id)
+
+      console.log('[webhook] Contrat PDF généré:', pdfUrl)
+    }
+  } catch (err) {
+    console.error('[webhook] Erreur génération PDF:', err)
   }
 }

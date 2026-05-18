@@ -1,8 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import LicencesTable from '../_components/LicencesTable'
 import BeatDetailPlayButton from '../_components/BeatDetailPlayButton'
+import SuccessBanner from '../_components/SuccessBanner'
 import type { LicencePublic } from '../_components/BeatCard'
 
 export default async function BeatDetailPage({
@@ -96,6 +98,11 @@ export default async function BeatDetailPage({
       >
         ← Boutique de {beatmaker.nom_artiste}
       </Link>
+
+      {/* Banner succès paiement */}
+      <Suspense>
+        <SuccessBanner />
+      </Suspense>
 
       <div className="flex flex-col sm:flex-row gap-8">
         {/* Cover */}
