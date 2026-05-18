@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     .from('beats')
     .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct)')
     .eq('id', beat_id)
-    .eq('statut', 'public')
+    .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
     .single()
 

@@ -1,5 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { notFound } from 'next/navigation'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { cookies } from 'next/headers'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import LicencesTable from '../_components/LicencesTable'
@@ -26,7 +28,7 @@ export default async function BeatDetailPage({
   const { data: beat } = await supabase
     .from('beats')
     .select(`
-      id, titre, bpm, cle, image_url, mp3_tague_url,
+      id, titre, bpm, cle, image_url, mp3_tague_url, statut,
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
@@ -39,11 +41,27 @@ export default async function BeatDetailPage({
     `)
     .eq('id', beatId)
     .eq('beatmaker_id', beatmaker.id)
-    .eq('statut', 'public')
+    .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
     .single()
 
   if (!beat) notFound()
+
+  // Beat privé → vérifier que le visiteur est abonné
+  if (beat.statut === 'prive') {
+    const cookieStore = await cookies()
+    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    if (!emailCookie) redirect(`/${slug}/membres`)
+    const admin = createAdminClient()
+    const { data: abo } = await admin
+      .from('abonnements_boutique')
+      .select('id')
+      .eq('beatmaker_id', beatmaker.id)
+      .eq('acheteur_email', emailCookie)
+      .eq('statut', 'actif')
+      .single()
+    if (!abo) redirect(`/${slug}/membres`)
+  }
 
   type RawBeatLicence = {
     actif: boolean
