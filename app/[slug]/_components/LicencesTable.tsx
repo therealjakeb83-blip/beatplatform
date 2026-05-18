@@ -20,6 +20,8 @@ export default function LicencesTable({
   licences,
   beatId,
   slug,
+  estAbonne = false,
+  remisePct = 0,
 }: {
   licences: (LicencePublic & {
     streams_limite: number | null
@@ -32,6 +34,8 @@ export default function LicencesTable({
   })[]
   beatId: string
   slug: string
+  estAbonne?: boolean
+  remisePct?: number
 }) {
   const licencesTriees = [...licences].sort((a, b) => a.prix - b.prix)
 
@@ -90,17 +94,29 @@ export default function LicencesTable({
               <div className="flex-shrink-0 text-right flex flex-col items-end gap-2">
                 {l.sur_demande ? (
                   <span className="text-indigo-400 font-semibold">Sur demande</span>
-                ) : (
-                  <>
-                    <span className="text-2xl font-black text-white">{l.prix}€</span>
-                    <AcheterBouton
-                      beatId={beatId}
-                      licenceId={l.id}
-                      slug={slug}
-                      label="Acheter"
-                    />
-                  </>
-                )}
+                ) : (() => {
+                  const aRemise = estAbonne && remisePct > 0 && l.modele !== 'illimite'
+                  const prixRemise = aRemise ? Math.round(l.prix * (1 - remisePct / 100)) : null
+                  return (
+                    <>
+                      {aRemise ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm text-gray-500 line-through">{l.prix}€</span>
+                          <span className="text-2xl font-black text-indigo-300">{prixRemise}€</span>
+                          <span className="text-xs text-indigo-400 font-medium">-{remisePct}% membre</span>
+                        </div>
+                      ) : (
+                        <span className="text-2xl font-black text-white">{l.prix}€</span>
+                      )}
+                      <AcheterBouton
+                        beatId={beatId}
+                        licenceId={l.id}
+                        slug={slug}
+                        label="Acheter"
+                      />
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </div>

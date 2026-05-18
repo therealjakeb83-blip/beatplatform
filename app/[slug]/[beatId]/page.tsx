@@ -19,7 +19,7 @@ export default async function BeatDetailPage({
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('id, nom_artiste, slug')
+    .select('id, nom_artiste, slug, abo_actif, abo_remise_pct')
     .eq('slug', slug)
     .single()
 
@@ -47,11 +47,11 @@ export default async function BeatDetailPage({
 
   if (!beat) notFound()
 
-  // Beat privé → vérifier que le visiteur est abonné
-  if (beat.statut === 'prive') {
-    const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
-    if (!emailCookie) redirect(`/${slug}/membres`)
+  // Vérifier abonnement (pour accès privé + remise)
+  const cookieStore = await cookies()
+  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  let estAbonne = false
+  if (emailCookie && beatmaker.abo_actif) {
     const admin = createAdminClient()
     const { data: abo } = await admin
       .from('abonnements_boutique')
@@ -60,8 +60,10 @@ export default async function BeatDetailPage({
       .eq('acheteur_email', emailCookie)
       .eq('statut', 'actif')
       .single()
-    if (!abo) redirect(`/${slug}/membres`)
+    estAbonne = !!abo
   }
+
+  if (beat.statut === 'prive' && !estAbonne) redirect(`/${slug}/membres`)
 
   type RawBeatLicence = {
     actif: boolean
@@ -187,7 +189,13 @@ export default async function BeatDetailPage({
       </div>
 
       {/* Licences */}
-      <LicencesTable licences={licences} beatId={beatId} slug={slug} />
+      <LicencesTable
+        licences={licences}
+        beatId={beatId}
+        slug={slug}
+        estAbonne={estAbonne}
+        remisePct={beatmaker.abo_remise_pct ?? 0}
+      />
     </div>
   )
 }
