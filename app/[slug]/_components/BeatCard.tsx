@@ -41,7 +41,7 @@ export default function BeatCard({
 
   function handlePlay(e: React.MouseEvent) {
     e.preventDefault()
-    if (!hasAudio) return
+    if (!hasAudio || estVerrouille) return
     play(beat, queue)
   }
 
@@ -67,20 +67,22 @@ export default function BeatCard({
         )}
 
         {/* Overlay play */}
-        <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-          <div className="absolute inset-0 bg-black/40" />
-          <button
-            onClick={handlePlay}
-            className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-xl transition-transform hover:scale-110 ${
-              hasAudio
-                ? 'bg-indigo-600 hover:bg-indigo-500'
-                : 'bg-gray-700 cursor-not-allowed'
-            }`}
-            aria-label={isActive && isPlaying ? 'Pause' : 'Écouter'}
-          >
-            {isActive && isPlaying ? '⏸' : '▶'}
-          </button>
-        </div>
+        {!estVerrouille && (
+          <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+            <div className="absolute inset-0 bg-black/40" />
+            <button
+              onClick={handlePlay}
+              className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-xl transition-transform hover:scale-110 ${
+                hasAudio
+                  ? 'bg-indigo-600 hover:bg-indigo-500'
+                  : 'bg-gray-700 cursor-not-allowed'
+              }`}
+              aria-label={isActive && isPlaying ? 'Pause' : 'Écouter'}
+            >
+              {isActive && isPlaying ? '⏸' : '▶'}
+            </button>
+          </div>
+        )}
 
         {/* Badge "En lecture" */}
         {isActive && isPlaying && (
