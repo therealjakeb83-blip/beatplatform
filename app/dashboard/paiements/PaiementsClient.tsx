@@ -59,10 +59,19 @@ export default function PaiementsClient({
           </p>
 
           {stripeAccountId ? (
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-green-400 font-medium">Compte connecté</span>
-              <span className="text-gray-600 text-xs">{stripeAccountId}</span>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-green-400 font-medium">Compte connecté</span>
+                <span className="text-gray-600 text-xs">{stripeAccountId}</span>
+              </div>
+              <button
+                onClick={connecterStripe}
+                disabled={chargementConnect}
+                className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium disabled:opacity-50 transition-colors w-fit"
+              >
+                {chargementConnect ? 'Redirection...' : 'Compléter / mettre à jour la configuration Stripe'}
+              </button>
             </div>
           ) : (
             <button
