@@ -28,8 +28,10 @@ export default async function TelechargerPage({
     supabase.from('licences').select('nom, modele').eq('id', commande.licence_id).single(),
   ])
 
-  if (beatError) console.error('[telechargement] Erreur query beat:', JSON.stringify(beatError))
-  if (licenceError) console.error('[telechargement] Erreur query licence:', JSON.stringify(licenceError))
+  console.log('[telechargement] beat_id:', commande.beat_id, 'licence_id:', commande.licence_id)
+  console.log('[telechargement] beat:', beat ? beat.titre : 'NULL', 'beatError:', JSON.stringify(beatError))
+  console.log('[telechargement] licence:', licence ? licence.nom : 'NULL', 'licenceError:', JSON.stringify(licenceError))
+  if (beat) console.log('[telechargement] urls:', beat.mp3_propre_url, beat.wav_url, beat.stems_url)
 
   // Générer le PDF si pas encore fait
   let contratUrl = commande.contrat_pdf_url
