@@ -95,7 +95,7 @@ export default function LicencesTable({
                 {l.sur_demande ? (
                   <span className="text-indigo-400 font-semibold">Sur demande</span>
                 ) : (() => {
-                  const aRemise = estAbonne && remisePct > 0 && l.modele !== 'illimite'
+                  const aRemise = estAbonne && remisePct > 0 && l.modele !== 'illimite' && l.modele !== 'exclusive'
                   const prixRemise = aRemise ? Math.round(l.prix * (1 - remisePct / 100)) : null
                   return (
                     <>

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   const cookieStore = await cookies()
   const emailCookie = cookieStore.get(`abo_${slug}`)?.value
   let remisePct = 0
-  const estIllimite = licence.modele?.toLowerCase().includes('illimit')
+  const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
   if (emailCookie && beatmaker.abo_actif && !estIllimite) {
     const admin = createAdminClient()
     const { data: abo } = await admin
