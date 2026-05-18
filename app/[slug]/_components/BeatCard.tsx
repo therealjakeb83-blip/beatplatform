@@ -66,10 +66,14 @@ export default function BeatCard({
           </div>
         )}
 
-        {/* Overlay play */}
-        {!estVerrouille && (
-          <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            <div className="absolute inset-0 bg-black/40" />
+        {/* Overlay play ou cadenas */}
+        <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          <div className="absolute inset-0 bg-black/40" />
+          {estVerrouille ? (
+            <div className="relative z-10 w-14 h-14 rounded-full bg-black/60 flex items-center justify-center text-2xl">
+              🔒
+            </div>
+          ) : (
             <button
               onClick={handlePlay}
               className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-xl transition-transform hover:scale-110 ${
@@ -81,20 +85,13 @@ export default function BeatCard({
             >
               {isActive && isPlaying ? '⏸' : '▶'}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Badge "En lecture" */}
         {isActive && isPlaying && (
           <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
             ▶ En lecture
-          </div>
-        )}
-
-        {/* Badge cadenas membres */}
-        {estVerrouille && (
-          <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center text-sm">
-            🔒
           </div>
         )}
       </div>
