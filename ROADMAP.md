@@ -148,6 +148,22 @@
 
 ---
 
+## Détail étape 7 — Licences & livraison
+
+| # | Sous-étape | Qui | Durée est. | Statut |
+|---|-----------|-----|-----------|--------|
+| 7.1 | Ajouter colonne `splits_snapshot` dans la table `commandes` (SQL Supabase) | Jake 👤 | 5 min | ⬜ |
+| 7.2 | Stocker le `splits_snapshot` dans le webhook au moment de l'achat | Claude 🤖 | 20 min | ⬜ |
+| 7.3 | Générer les URLs signées R2 pour les fichiers de la licence achetée (MP3 / WAV / Stems selon la licence) | Claude 🤖 | 45 min | ⬜ |
+| 7.4 | Générer le contrat PDF automatiquement (beat, beatmaker, acheteur, licence, répartition publishing) | Claude 🤖 | 90 min | ⬜ |
+| 7.5 | Stocker le PDF contrat dans R2 + URL dans la commande | Claude 🤖 | 20 min | ⬜ |
+| 7.6 | Page de téléchargement sécurisée `/telechargement/[commandeId]` | Claude 🤖 | 45 min | ⬜ |
+| 7.7 | Afficher bouton "Télécharger ma licence" sur la page beat après paiement réussi | Claude 🤖 | 20 min | ⬜ |
+
+> **Note :** L'email de livraison avec le lien de téléchargement est prévu à l'étape 12 (emails automatiques).
+
+---
+
 ## Journal des sessions
 
 | Date | Étapes travaillées | Résumé |
