@@ -67,7 +67,8 @@ export default async function TelechargerPage({
   const fichiersSignes = beat ? await genererUrlsSignees(beat, licence?.modele ?? 'mp3') : []
 
   // URL signée pour le PDF
-  const pdfSigneUrl = contratUrl ? await genererUrlSigneePdf(contratUrl).catch(() => null) : null
+  const pdfFilename = beat ? `Contrat - ${beat.titre} (${licence?.nom ?? 'Licence'}).pdf` : 'contrat.pdf'
+  const pdfSigneUrl = contratUrl ? await genererUrlSigneePdf(contratUrl, pdfFilename).catch(() => null) : null
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4 py-12">
