@@ -29,7 +29,7 @@ export default function BoutiqueHeader({
       <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-end">
         {clientUser ? (
           <Link
-            href="/mon-compte"
+            href={`/${slug}/mon-compte`}
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
             <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
