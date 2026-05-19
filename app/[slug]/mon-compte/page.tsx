@@ -75,8 +75,9 @@ export default async function MonCompteBoutiquePage({
     abo = data
   }
 
-  // Achats sur cette boutique
+  // Achats sur cette boutique — preview 4 max
   let commandes: CmdRow[] = []
+  let totalCommandes = 0
   if (clientId) {
     const { data } = await admin
       .from('commandes')
@@ -84,7 +85,9 @@ export default async function MonCompteBoutiquePage({
       .eq('beatmaker_id', beatmaker.id)
       .or(`client_id.eq.${clientId},acheteur_email.eq.${emailIdentifie}`)
       .order('created_at', { ascending: false })
-    commandes = (data as unknown as CmdRow[]) ?? []
+    const all = (data as unknown as CmdRow[]) ?? []
+    totalCommandes = all.length
+    commandes = all.slice(0, 4)
   } else {
     const { data } = await admin
       .from('commandes')
@@ -92,7 +95,9 @@ export default async function MonCompteBoutiquePage({
       .eq('beatmaker_id', beatmaker.id)
       .eq('acheteur_email', emailIdentifie)
       .order('created_at', { ascending: false })
-    commandes = (data as unknown as CmdRow[]) ?? []
+    const all = (data as unknown as CmdRow[]) ?? []
+    totalCommandes = all.length
+    commandes = all.slice(0, 4)
   }
 
   // Profil client (si connecté)
@@ -228,9 +233,14 @@ export default async function MonCompteBoutiquePage({
 
         {/* Achats */}
         <section className="mb-8">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-            Mes achats ({commandes.length})
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Mes achats ({totalCommandes})
+            </h2>
+            <Link href={`/${slug}/mon-compte/achats`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+              Voir tout →
+            </Link>
+          </div>
           {commandes.length === 0 ? (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
               <p className="text-gray-500 text-sm">Aucun achat sur cette boutique.</p>
