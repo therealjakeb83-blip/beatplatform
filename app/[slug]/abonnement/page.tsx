@@ -22,19 +22,35 @@ export default async function AbonnementPage({
 
   if (!beatmaker || !beatmaker.abo_actif) notFound()
 
-  // Vérifier si déjà abonné
-  const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  // Vérifier si déjà abonné — session en priorité, cookie en fallback
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   let estAbonne = false
-  if (emailCookie) {
+
+  if (user) {
     const { data: abo } = await admin
       .from('abonnements_boutique')
       .select('id')
       .eq('beatmaker_id', beatmaker.id)
-      .eq('acheteur_email', emailCookie)
+      .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .eq('statut', 'actif')
-      .single()
+      .maybeSingle()
     estAbonne = !!abo
+  }
+
+  if (!estAbonne) {
+    const cookieStore = await cookies()
+    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    if (emailCookie) {
+      const { data: abo } = await admin
+        .from('abonnements_boutique')
+        .select('id')
+        .eq('beatmaker_id', beatmaker.id)
+        .eq('acheteur_email', emailCookie)
+        .eq('statut', 'actif')
+        .maybeSingle()
+      estAbonne = !!abo
+    }
   }
 
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
