@@ -57,21 +57,41 @@ export async function POST(request: Request) {
 
   const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
 
-  // Appliquer la remise membre si abonné (sauf licence Illimité)
-  const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  // Appliquer la remise membre si abonné (sauf licence Illimité/Exclusive)
   let remisePct = 0
   const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
-  if (emailCookie && beatmaker.abo_actif && !estIllimite) {
-    const admin = createAdminClient()
-    const { data: abo } = await admin
+  if (beatmaker.abo_actif && !estIllimite) {
+    const adminAbo = createAdminClient()
+    let aboQuery = adminAbo
       .from('abonnements_boutique')
       .select('id')
       .eq('beatmaker_id', String(beat.beatmaker_id))
-      .eq('acheteur_email', emailCookie)
       .eq('statut', 'actif')
-      .single()
-    if (abo && beatmaker.abo_remise_pct) remisePct = beatmaker.abo_remise_pct
+
+    // Session Supabase en priorité
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: abo } = await aboQuery
+        .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
+        .maybeSingle()
+      if (abo && beatmaker.abo_remise_pct) remisePct = beatmaker.abo_remise_pct
+    }
+
+    // Fallback cookie
+    if (remisePct === 0) {
+      const cookieStore = await cookies()
+      const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+      if (emailCookie) {
+        const { data: abo } = await adminAbo
+          .from('abonnements_boutique')
+          .select('id')
+          .eq('beatmaker_id', String(beat.beatmaker_id))
+          .eq('acheteur_email', emailCookie)
+          .eq('statut', 'actif')
+          .maybeSingle()
+        if (abo && beatmaker.abo_remise_pct) remisePct = beatmaker.abo_remise_pct
+      }
+    }
   }
 
   const prixApresRemise = remisePct > 0 ? Math.round(prixBaseHT * (1 - remisePct / 100)) : prixBaseHT
