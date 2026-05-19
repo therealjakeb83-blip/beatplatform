@@ -191,11 +191,9 @@ export default async function MonCompteBoutiquePage({
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Mes favoris ({totalFavoris})
               </h2>
-              {totalFavoris > 4 && (
-                <Link href={`/${slug}/mon-compte/favoris`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Voir tout →
-                </Link>
-              )}
+              <Link href={`/${slug}/mon-compte/favoris`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                Voir tout →
+              </Link>
             </div>
             {favoris.length === 0 ? (
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
