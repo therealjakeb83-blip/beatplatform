@@ -13,8 +13,9 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: beat } = await supabase
+  const { data: beat } = await admin
     .from('beats')
     .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct)')
     .eq('id', beat_id)
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   if (!beat) return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
 
-  const { data: beatLicence } = await supabase
+  const { data: beatLicence } = await admin
     .from('beat_licences')
     .select('actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
     .eq('beat_id', beat_id)
@@ -50,7 +51,6 @@ export async function POST(request: Request) {
   let remisePct = 0
   const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
   if (emailCookie && beatmaker.abo_actif && !estIllimite) {
-    const admin = createAdminClient()
     const { data: abo } = await admin
       .from('abonnements_boutique')
       .select('id')
