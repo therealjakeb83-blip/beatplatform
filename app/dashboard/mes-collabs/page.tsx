@@ -27,21 +27,29 @@ export default async function MesCollabsPage() {
 
   const admin = createAdminClient()
 
-  // Splits où ce beatmaker est collaborateur (pas propriétaire)
-  const { data: raw } = await admin
-    .from('beat_splits')
-    .select(`
-      id, pourcentage, statut,
-      beats(
-        id, titre, image_url, statut,
-        beatmakers(nom_artiste)
-      ),
-      split_payments(montant, statut)
-    `)
-    .eq('beatmaker_id', user.id)
-    .order('created_at', { ascending: false })
+  // Splits où ce beatmaker est collaborateur (par beatmaker_id ou par email_invite)
+  const { data: { user: fullUser } } = await admin.auth.admin.getUserById(user.id)
+  const userEmail = fullUser?.email ?? null
 
-  const splits = (raw ?? []) as unknown as BeatSplitRow[]
+  const selectQuery = `
+    id, pourcentage, statut,
+    beats(
+      id, titre, image_url, statut,
+      beatmakers(nom_artiste)
+    ),
+    split_payments(montant, statut)
+  `
+
+  const [{ data: rawById }, { data: rawByEmail }] = await Promise.all([
+    admin.from('beat_splits').select(selectQuery).eq('beatmaker_id', user.id).order('created_at', { ascending: false }),
+    userEmail
+      ? admin.from('beat_splits').select(selectQuery).eq('email_invite', userEmail).is('beatmaker_id', null).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const seen = new Set<string>()
+  const splits = ([...(rawById ?? []), ...(rawByEmail ?? [])] as unknown as BeatSplitRow[])
+    .filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true })
 
   const totalRecu = splits.reduce((s, sp) =>
     s + sp.split_payments
