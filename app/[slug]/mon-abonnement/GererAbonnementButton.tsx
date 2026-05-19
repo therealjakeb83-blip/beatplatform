@@ -11,6 +11,7 @@ export default function GererAbonnementButton({
 }) {
   const [loading, setLoading] = useState(false)
   const [confirmer, setConfirmer] = useState(false)
+  const [annule, setAnnule] = useState(false)
 
   async function annuler() {
     setLoading(true)
@@ -22,7 +23,8 @@ export default function GererAbonnementButton({
       })
       const data = await res.json()
       if (data.ok) {
-        window.location.reload()
+        setAnnule(true)
+        setLoading(false)
       } else {
         alert(data.erreur ?? 'Erreur lors de l\'annulation.')
         setLoading(false)
@@ -31,6 +33,15 @@ export default function GererAbonnementButton({
       alert('Impossible de joindre le serveur.')
       setLoading(false)
     }
+  }
+
+  if (annule) {
+    return (
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
+        <p className="text-green-400 text-sm font-semibold mb-1">Annulation planifiée</p>
+        <p className="text-gray-400 text-xs">Tu garderas l&apos;accès jusqu&apos;à la fin de la période en cours.</p>
+      </div>
+    )
   }
 
   if (confirmer) {
