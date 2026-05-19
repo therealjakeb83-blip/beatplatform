@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-19 — Correctifs navigation boutique + espace compte client enrichi
+> Dernière mise à jour : 2026-05-19 — Étape 10 Split collab (code complet, tests en cours)
 
 ## Légende
 | Statut | Signification |
@@ -25,7 +25,7 @@
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : co-producers listés depuis beat_splits, répartition publishing, splits_snapshot stocké dans commandes. | 5-8h | ✅ Validé |
 | 8 | **Abonnements** | Plans d'abonnement par beatmaker, catalogue privé (beats visibles + cadenas), remise % automatique (sauf Illimité/Exclusive), essai gratuit configurable, gestion depuis le dashboard et depuis la boutique | 8-12h | ✅ Validé |
 | 9 | **Espace client artiste** | Compte My Producer global : inscription/connexion artiste, "Se connecter avec My Producer" dans les boutiques, beats achetés, abonnements actifs multi-appareils, fichiers à télécharger. Favoris : bouton cœur sur les cartes beat, page "Mes favoris". | 5-8h | ✅ Validé |
-| 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ⬜ À faire |
+| 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | 🔄 En cours |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ⬜ À faire |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues. Compteur d'écoutes sur les cartes beat et page détail. | 4-6h | ⬜ À faire |
@@ -212,15 +212,54 @@
 
 | # | Sous-étape | Qui | Durée est. | Statut |
 |---|-----------|-----|-----------|--------|
-| 10.1 | Migration SQL : ajouter `stripe_transfer_group text` dans `commandes` + créer table `split_payments` (`id`, `commande_id`, `beat_split_id`, `beatmaker_id`, `email_invite`, `montant`, `stripe_transfer_id`, `statut`) avec RLS + GRANT service_role | Jake 👤 | 15 min | ⬜ |
-| 10.2 | Modifier le checkout pour les beats avec splits : si le beat a des collabs dans `beat_splits`, générer un `transfer_group` UUID, le passer dans les metadata Stripe, retirer `on_behalf_of` / `transfer_data` — beats sans splits : comportement actuel inchangé | Claude 🤖 | 30 min | ⬜ |
-| 10.3 | Email 1 — Invitation collab : quand un beat avec collabs non inscrits passe en statut `public`, envoyer un email à chaque collab non inscrit : *"JakeB vous invite à collaborer sur [titre]. Votre part : X%. Créez votre compte My Producer."* | Claude 🤖 | 30 min | ⬜ |
-| 10.4 | Webhook `checkout.session.completed` : distribuer les revenus — calculer la part de chaque partie (collabs + beatmaker principal pour le reste), créer les `stripe.transfers` immédiats pour les comptes Stripe connectés, insérer des rows `split_payments` (`en_attente`) pour les collabs sans compte + envoyer Email 2 : *"[titre] vient d'être vendu. Vous avez X€ qui vous attendent — configurez votre compte Stripe pour les recevoir."* | Claude 🤖 | 60 min | ⬜ |
-| 10.5 | Dashboard beatmaker propriétaire — `/dashboard/splits` : liste des beats avec collabs, état par collaborateur (transféré ✅ / en attente ⏳), montants distribués et retenus | Claude 🤖 | 45 min | ⬜ |
-| 10.6 | Dashboard beatmaker collab — `/dashboard/mes-collabs` : liste informative des beats où ce beatmaker est en split (titre, propriétaire, son %, montant reçu). Lecture seule, aucune action. Analytics collabs notées pour l'étape 13. | Claude 🤖 | 30 min | ⬜ |
-| 10.7 | Webhook `account.updated` (compte Stripe activé) : quand un beatmaker connecte son compte Stripe (`payouts_enabled = true`), lier ses `beat_splits` par email + déclencher les transferts `split_payments en_attente` — Jake ajoute `account.updated` dans les événements du webhook Stripe | Claude 🤖 + Jake 👤 | 45 min | ⬜ |
-| 10.8 | Cron job quotidien (`/api/cron/splits-expiration`) : chercher les `split_payments en_attente` depuis plus de 60 jours, envoyer un email de rappel à J+30 et J+50, reverser automatiquement au beatmaker A à J+60 via Stripe Transfer + email de clôture à ZeroMorris | Claude 🤖 | 45 min | ⬜ |
-| 10.9 | Tests bout en bout : (1) beat 50/50 deux beatmakers connectés → 2 transferts Stripe créés, (2) collab non inscrit → email invitation → vente → email fonds en attente → inscription + Stripe → transfer déclenché, (3) pages /dashboard/splits et /dashboard/mes-collabs correctes | Jake 👤 | 30 min | ⬜ |
+| 10.1 | Migration SQL : ajouter `stripe_transfer_group text` dans `commandes` + créer table `split_payments` avec RLS + GRANT service_role | Jake 👤 | 15 min | ✅ |
+| 10.2 | Checkout adapté : beats avec splits → `transfer_group` UUID (pas de `on_behalf_of`). Beats sans splits : comportement inchangé. | Claude 🤖 | 30 min | ✅ |
+| 10.3 | Email 1 — Invitation collab : envoyé automatiquement quand un beat passe en `public` avec un collab non inscrit (via Resend) | Claude 🤖 | 30 min | ✅ |
+| 10.4 | Webhook `checkout.session.completed` : création `split_payments`, Stripe Transfers immédiats pour comptes connectés, Email 2 "fonds en attente" pour collabs non inscrits | Claude 🤖 | 60 min | ✅ |
+| 10.5 | `/dashboard/splits` : vue propriétaire — liste des ventes avec collabs, statut par collaborateur (✅ transféré / ⏳ en attente), montants | Claude 🤖 | 45 min | ✅ |
+| 10.6 | `/dashboard/mes-collabs` : vue collab lecture seule — beats en split, propriétaire, %, montants reçus / en attente | Claude 🤖 | 30 min | ✅ |
+| 10.7 | Webhook `account.updated` : déblocage automatique des splits en attente quand un beatmaker connecte son Stripe. Jake a ajouté l'événement dans le dashboard Stripe. | Claude 🤖 + Jake 👤 | 45 min | ✅ |
+| 10.8 | Cron quotidien `/api/cron/splits-expiration` : rappels email J+30 / J+50, reversal automatique vers beatmaker A à J+60 | Claude 🤖 | 45 min | ✅ |
+| 10.9 | **Tests bout en bout** — voir checklist complète ci-dessous | Jake 👤 | 30 min | ⬜ |
+
+### Checklist tests 10.9
+
+#### T1 — Email d'invitation collab
+- [ ] Créer ou modifier un beat, ajouter un collaborateur par **email** (pas encore inscrit sur My Producer)
+- [ ] Passer le beat en statut `public` → sauvegarder
+- [ ] Vérifier que l'email d'invitation arrive dans la boîte du collab
+
+#### T2 — Checkout beat avec splits (collab non inscrit)
+- [ ] Acheter ce beat depuis la boutique avec la carte test `4242 4242 4242 4242`
+- [ ] Vérifier dans Supabase → table `split_payments` : une ligne avec `statut = en_attente` et `email_invite` rempli
+- [ ] Vérifier dans Supabase → table `commandes` : colonne `stripe_transfer_group` remplie
+- [ ] Vérifier que l'email "fonds en attente" (Email 2) est arrivé sur l'adresse du collab
+
+#### T3 — Dashboard propriétaire `/dashboard/splits`
+- [ ] Connecté en tant que Jake → aller sur `/dashboard/splits`
+- [ ] La vente apparaît avec le badge ⏳ "Fonds en attente" pour le collab non inscrit
+- [ ] Les montants distribués / en attente sont corrects
+
+#### T4 — Inscription collab + déblocage automatique
+- [ ] Le collab crée son compte sur `/inscription` avec la même adresse email
+- [ ] Le collab connecte son compte Stripe via `/dashboard/paiements`
+- [ ] Vérifier dans Stripe Dashboard → Transfers qu'un nouveau transfer a été créé automatiquement
+- [ ] Vérifier dans Supabase → `split_payments` que le statut est passé à `transfere`
+- [ ] Retourner sur `/dashboard/splits` → statut passé à ✅ Transféré
+
+#### T5 — Dashboard collab `/dashboard/mes-collabs`
+- [ ] Connecté en tant que beatmaker B (collab) → aller sur `/dashboard/mes-collabs`
+- [ ] Le beat apparaît avec le % et le montant reçu
+
+#### T6 — Non-régression beat sans collab
+- [ ] Acheter un beat qui n'a **aucun** collab
+- [ ] Vérifier que le comportement est inchangé : aucune ligne dans `split_payments`, transfer direct vers Jake dans Stripe
+
+#### T7 — Beat avec collab déjà inscrit (compte Stripe connecté)
+- [ ] Créer un beat avec un collab qui **a déjà** un compte My Producer + Stripe connecté
+- [ ] Acheter ce beat
+- [ ] Vérifier dans Stripe → **2 transfers** créés immédiatement (Jake + collab)
+- [ ] Vérifier dans `split_payments` → 2 lignes avec `statut = transfere`
 
 > **Politique de rétention des fonds :** Split en attente = fonds détenus par Stripe (pas My Producer). Rappel email à J+30 et J+50. Reversal automatique vers beatmaker A à J+60. À documenter dans les CGU.
 
@@ -248,3 +287,4 @@
 | 2026-05-19 | Étape 9 | ✅ Étape 9 validée. 10 tests passés : inscription/connexion/déconnexion artiste, header boutique connecté, checkout invité+connecté, favoris (like/unlike/persistance/page), beats privés via session, /mon-abonnement via session, liaison auto achats existants. Bugs RLS corrigés : GRANT authenticated sur favoris/beats/beat_licences, fallback admin beatmakers, client_id enregistré à l'abonnement, remise checkout via session, annulation abonnement via session + UX confirmation. |
 | 2026-05-19 | Correctifs post-étape 9 | ✅ Espace compte client par boutique : nouvelle page `/{slug}/mon-compte` (abonnement + favoris preview + achats preview + déco). Pages dédiées `/{slug}/mon-compte/favoris` (playlist avec player prev/next) et `/{slug}/mon-compte/achats`. Déconnexion redirige vers la boutique. Lien "Mon compte" dans le header pointe vers `/{slug}/mon-compte`. Prochaine étape : 10 (Split collab). |
 | 2026-05-19 | Planification étape 10 | Détail des 9 sous-étapes Split collab finalisé. Décisions clés : transit Stripe (My Producer pas deemed supplier, custodian = Stripe), email invitation publication + email fonds en attente à la vente, rappels J+30/J+50 + reversal automatique J+60 vers beatmaker A, /dashboard/mes-collabs lecture seule, analytics collabs en étape 13. |
+| 2026-05-19 | Étape 10 (code) | ✅ 10.1→10.8 complétés. Checkout transfer_group, webhook splits + transfers Stripe, emails Resend (invitation/fonds/rappel/expiration), /dashboard/splits, /dashboard/mes-collabs, webhook account.updated, cron quotidien J+30/J+50/J+60. Vercel env vars configurées (RESEND_API_KEY, NEXT_PUBLIC_APP_URL, CRON_SECRET). account.updated ajouté dans Stripe webhook. Tests 10.9 en attente de validation Jake. |
