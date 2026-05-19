@@ -67,7 +67,7 @@ export default async function BoutiquePage({
 
   const now = new Date().toISOString()
 
-  const { data: rawBeats } = await admin
+  const { data: rawBeats } = await supabase
     .from('beats')
     .select(`
       id, titre, bpm, cle, image_url, mp3_tague_url,
@@ -88,7 +88,7 @@ export default async function BoutiquePage({
     ? `id, titre, bpm, cle, image_url, mp3_tague_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
     : `id, titre, bpm, cle, image_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
 
-  const { data: rawBeatsPrives } = await admin
+  const { data: rawBeatsPrives } = await supabase
     .from('beats')
     .select(selectPrives)
     .eq('beatmaker_id', beatmaker.id)
