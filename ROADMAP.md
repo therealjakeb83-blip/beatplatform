@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-19 — Étape 9 validée (tous les tests passés)
+> Dernière mise à jour : 2026-05-19 — Correctifs navigation boutique + espace compte client enrichi
 
 ## Légende
 | Statut | Signification |
@@ -221,4 +221,5 @@
 | 2026-05-18 | Étape 6 | ✅ Étape 6 complète. Webhook configuré, SUPABASE_SERVICE_ROLE_KEY ajouté, GRANT commandes service_role, test paiement bout en bout validé (45€ WAV, commande créée en BDD). |
 | 2026-05-18 | Étape 7 | ✅ Étape 7 validée bout en bout. Fix : GRANT SELECT service_role sur beats/licences/beatmakers/beat_splits. Téléchargement direct (Content-Disposition). Page /telechargement permanente (liens régénérés à chaque visite). |
 | 2026-05-18 | Étape 8 | ✅ Étape 8 validée bout en bout. Dashboard config plan (nom, prix, remise, essai). Checkout Stripe subscription mode + trial. Cookie session membre. Catalogue privé avec cadenas. Pages /abonnement, /membres, /mon-abonnement. Remise affichée sur fiche beat (prix barré). Illimité + Exclusive exclus de la remise. Webhook customer.subscription.updated/.deleted. |
-| 2026-05-19 | Étape 9 | ✅ Étape 9 validée. 10 tests passés : inscription/connexion/déconnexion artiste, header boutique connecté, checkout invité+connecté, favoris (like/unlike/persistance/page), beats privés via session, /mon-abonnement via session, liaison auto achats existants. Bugs RLS corrigés : GRANT authenticated sur favoris/beats/beat_licences, fallback admin beatmakers, client_id enregistré à l'abonnement, remise checkout via session, annulation abonnement via session + UX confirmation. Prochaine étape : 10 (Split collab). |
+| 2026-05-19 | Étape 9 | ✅ Étape 9 validée. 10 tests passés : inscription/connexion/déconnexion artiste, header boutique connecté, checkout invité+connecté, favoris (like/unlike/persistance/page), beats privés via session, /mon-abonnement via session, liaison auto achats existants. Bugs RLS corrigés : GRANT authenticated sur favoris/beats/beat_licences, fallback admin beatmakers, client_id enregistré à l'abonnement, remise checkout via session, annulation abonnement via session + UX confirmation. |
+| 2026-05-19 | Correctifs post-étape 9 | ✅ Espace compte client par boutique : nouvelle page `/{slug}/mon-compte` (abonnement + favoris preview + achats preview + déco). Pages dédiées `/{slug}/mon-compte/favoris` (playlist avec player prev/next) et `/{slug}/mon-compte/achats`. Déconnexion redirige vers la boutique. Lien "Mon compte" dans le header pointe vers `/{slug}/mon-compte`. Prochaine étape : 10 (Split collab). |
