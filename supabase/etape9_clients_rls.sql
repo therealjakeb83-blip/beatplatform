@@ -6,15 +6,12 @@
 -- RLS sur la table clients
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
--- Suppression des policies existantes pour éviter les conflits
+-- Suppression des policies clients/abonnements/commandes existantes
 DROP POLICY IF EXISTS "clients_select_own" ON clients;
 DROP POLICY IF EXISTS "clients_update_own" ON clients;
 DROP POLICY IF EXISTS "clients_insert_own" ON clients;
 DROP POLICY IF EXISTS "abonnements_boutique_select_client" ON abonnements_boutique;
 DROP POLICY IF EXISTS "commandes_select_client" ON commandes;
-DROP POLICY IF EXISTS "favoris_select_own" ON favoris;
-DROP POLICY IF EXISTS "favoris_insert_own" ON favoris;
-DROP POLICY IF EXISTS "favoris_delete_own" ON favoris;
 
 -- Les clients peuvent lire leur propre profil
 CREATE POLICY "clients_select_own" ON clients
@@ -55,6 +52,11 @@ CREATE TABLE IF NOT EXISTS favoris (
 
 ALTER TABLE favoris ENABLE ROW LEVEL SECURITY;
 
+-- Suppression des policies favoris si la table existait déjà
+DROP POLICY IF EXISTS "favoris_select_own" ON favoris;
+DROP POLICY IF EXISTS "favoris_insert_own" ON favoris;
+DROP POLICY IF EXISTS "favoris_delete_own" ON favoris;
+
 CREATE POLICY "favoris_select_own" ON favoris
   FOR SELECT TO authenticated
   USING (client_id = auth.uid());
@@ -67,6 +69,6 @@ CREATE POLICY "favoris_delete_own" ON favoris
   FOR DELETE TO authenticated
   USING (client_id = auth.uid());
 
--- Accès service_role pour les opérations admin (webhooks, etc.)
+-- Accès service_role pour les opérations admin
 GRANT SELECT, INSERT, UPDATE, DELETE ON favoris TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON clients TO service_role;
