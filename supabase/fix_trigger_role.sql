@@ -31,11 +31,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ============================================================
 -- Nettoyage : supprimer les lignes beatmakers créées par erreur
--- pour les utilisateurs qui sont en réalité des artistes (clients)
+-- pour les artistes qui n'ont ni beats ni commandes en tant que beatmaker
 -- ============================================================
 DELETE FROM public.beatmakers
 WHERE id IN (
   SELECT b.id
   FROM public.beatmakers b
   INNER JOIN public.clients c ON c.id = b.id
+  WHERE NOT EXISTS (SELECT 1 FROM public.beats WHERE beatmaker_id = b.id)
+    AND NOT EXISTS (SELECT 1 FROM public.commandes WHERE beatmaker_id = b.id)
+    AND NOT EXISTS (SELECT 1 FROM public.licences WHERE beatmaker_id = b.id)
 );
