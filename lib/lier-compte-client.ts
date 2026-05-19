@@ -28,6 +28,11 @@ export async function lierCompteClient(
       console.error('[lierCompteClient] Erreur insert clients:', JSON.stringify(error))
       return
     }
+  } else if (nom || prenom) {
+    await admin.from('clients').update({
+      ...(prenom ? { prenom } : {}),
+      ...(nom ? { nom } : {}),
+    }).eq('id', userId)
   }
 
   // Lier les abonnements boutique non encore associés à ce client

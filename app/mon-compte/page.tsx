@@ -62,7 +62,7 @@ export default async function MonComptePage() {
     .eq('id', user.id)
     .single()
 
-  const prenomAffiche = client?.nom_artiste ?? client?.prenom ?? email.split('@')[0]
+  const prenomAffiche = client?.nom_artiste || client?.prenom || email.split('@')[0]
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-16">

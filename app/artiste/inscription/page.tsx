@@ -21,7 +21,10 @@ export default function InscriptionArtistePage() {
     setChargement(true)
 
     const supabase = createClient()
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { prenom, nom } },
+    })
 
     if (error || !data.user) {
       setErreur(error?.message ?? 'Erreur lors de la création du compte.')

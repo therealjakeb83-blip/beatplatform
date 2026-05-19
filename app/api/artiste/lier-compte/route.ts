@@ -13,7 +13,11 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const { nom, prenom } = body as { nom?: string; prenom?: string }
 
-  await lierCompteClient(user.id, user.email, nom, prenom)
+  const meta = user.user_metadata as { prenom?: string; nom?: string } | undefined
+  const finalNom = nom || meta?.nom
+  const finalPrenom = prenom || meta?.prenom
+
+  await lierCompteClient(user.id, user.email, finalNom, finalPrenom)
 
   return NextResponse.json({ ok: true })
 }
