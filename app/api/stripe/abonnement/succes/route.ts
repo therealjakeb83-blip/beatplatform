@@ -21,6 +21,7 @@ export async function GET(request: Request) {
 
     const email = session.customer_details?.email
     const nom = session.customer_details?.name ?? null
+    const clientId = session.metadata?.client_id || null
 
     if (email && session.metadata?.beatmaker_id) {
       const sub = session.subscription as import('stripe').Stripe.Subscription | null
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
 
       await supabase.from('abonnements_boutique').insert({
         beatmaker_id: session.metadata.beatmaker_id,
+        client_id: clientId || null,
         acheteur_email: email,
         acheteur_nom: nom,
         plan: 'standard',
