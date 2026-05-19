@@ -1,4 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { envoyerInvitationCollab } from '@/lib/emails'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -68,6 +70,28 @@ export async function POST(request: Request) {
         }))
       )
       void exclusifLicence
+    }
+  }
+
+  // Email d'invitation aux collabs non inscrits si le beat est publié directement
+  if (statut === 'public' && collaborateurs?.length) {
+    const emailInvites = (collaborateurs as Array<{ beatmaker_id?: string; email_invite?: string; pourcentage: number }>)
+      .filter(c => c.email_invite)
+    if (emailInvites.length) {
+      const adminBm = createAdminClient()
+      const { data: bm } = await adminBm.from('beatmakers').select('nom_artiste').eq('id', user.id).single()
+      if (bm?.nom_artiste) {
+        await Promise.all(
+          emailInvites.map(c =>
+            envoyerInvitationCollab({
+              to: c.email_invite!,
+              nomProprietaire: bm.nom_artiste,
+              titreBeat: titre,
+              pourcentage: c.pourcentage,
+            }).catch(() => {})
+          )
+        )
+      }
     }
   }
 

@@ -1,4 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { envoyerInvitationCollab } from '@/lib/emails'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
@@ -14,6 +16,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     mp3_propre_url, wav_url, stems_url, collaborateurs, licences_actives,
     exclusif_sur_demande, exclusif_prix_override,
   } = body
+
+  // Données nécessaires pour détecter les transitions de statut et nouveaux collabs
+  let wasPublic = false
+  let previousEmailInvites: string[] = []
+
+  if (statut === 'public') {
+    const { data: currentBeat } = await supabase.from('beats')
+      .select('statut')
+      .eq('id', id)
+      .eq('beatmaker_id', user.id)
+      .single()
+    wasPublic = currentBeat?.statut === 'public'
+
+    if (wasPublic && collaborateurs) {
+      const { data: existingInvites } = await supabase.from('beat_splits')
+        .select('email_invite')
+        .eq('beat_id', id)
+        .not('email_invite', 'is', null)
+      previousEmailInvites = (existingInvites ?? []).map(s => s.email_invite!)
+    }
+  }
 
   const update: Record<string, unknown> = {
     titre, statut, free_download_actif,
@@ -71,6 +94,50 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
         }))
       )
+    }
+  }
+
+  // Email d'invitation aux collabs non inscrits
+  if (statut === 'public') {
+    type CollabInput = { beatmaker_id?: string; email_invite?: string; pourcentage: number }
+    let invitesANotifier: Array<{ email: string; pourcentage: number }> = []
+
+    if (!wasPublic) {
+      // Beat vient de passer public → notifier tous les email_invite
+      if (collaborateurs) {
+        invitesANotifier = (collaborateurs as CollabInput[])
+          .filter(c => c.email_invite)
+          .map(c => ({ email: c.email_invite!, pourcentage: c.pourcentage }))
+      } else {
+        // Statut change mais pas les collabs → query les splits existants
+        const { data: splits } = await supabase.from('beat_splits')
+          .select('email_invite, pourcentage')
+          .eq('beat_id', id)
+          .not('email_invite', 'is', null)
+        invitesANotifier = (splits ?? []).map(s => ({ email: s.email_invite!, pourcentage: s.pourcentage }))
+      }
+    } else if (collaborateurs) {
+      // Beat déjà public → notifier seulement les nouveaux email_invite
+      invitesANotifier = (collaborateurs as CollabInput[])
+        .filter(c => c.email_invite && !previousEmailInvites.includes(c.email_invite))
+        .map(c => ({ email: c.email_invite!, pourcentage: c.pourcentage }))
+    }
+
+    if (invitesANotifier.length) {
+      const adminBm = createAdminClient()
+      const { data: bm } = await adminBm.from('beatmakers').select('nom_artiste').eq('id', user.id).single()
+      if (bm?.nom_artiste) {
+        await Promise.all(
+          invitesANotifier.map(inv =>
+            envoyerInvitationCollab({
+              to: inv.email,
+              nomProprietaire: bm.nom_artiste,
+              titreBeat: titre,
+              pourcentage: inv.pourcentage,
+            }).catch(() => {})
+          )
+        )
+      }
     }
   }
 

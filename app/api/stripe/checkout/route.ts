@@ -128,7 +128,29 @@ export async function POST(request: Request) {
     },
   }
 
-  if (beatmaker.stripe_account_id) {
+  // Vérifier si le beat a des splits (requiert admin — buyers ne peuvent pas lire beat_splits via RLS)
+  const adminForSplits = createAdminClient()
+  const { data: beatSplits } = await adminForSplits
+    .from('beat_splits')
+    .select('id')
+    .eq('beat_id', beat_id)
+
+  const hasSplits = beatSplits && beatSplits.length > 0
+
+  if (hasSplits) {
+    // Beat avec splits : transit via la plateforme My Producer
+    // Les Stripe Transfers individuels sont créés dans le webhook après paiement
+    const transferGroup = crypto.randomUUID()
+    sessionParams.payment_intent_data = {
+      transfer_group: transferGroup,
+    }
+    sessionParams.metadata = {
+      ...sessionParams.metadata,
+      transfer_group: transferGroup,
+      has_splits: 'true',
+    }
+  } else if (beatmaker.stripe_account_id) {
+    // Beat sans splits : comportement standard — paiement direct vers le compte beatmaker
     sessionParams.payment_intent_data = {
       application_fee_amount: 0,
       on_behalf_of: beatmaker.stripe_account_id,
