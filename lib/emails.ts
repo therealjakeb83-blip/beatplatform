@@ -1,4 +1,4 @@
-import { resend } from './resend'
+import { getResend } from './resend'
 
 const FROM = 'My Producer <noreply@jakebmusic.com>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
@@ -14,7 +14,7 @@ export async function envoyerInvitationCollab({
   titreBeat: string
   pourcentage: number
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `${nomProprietaire} vous invite à collaborer sur "${titreBeat}"`,
@@ -41,7 +41,7 @@ export async function envoyerFondsEnAttente({
   titreBeat: string
   montantEuros: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `${montantEuros}€ vous attendent sur My Producer`,
@@ -72,7 +72,7 @@ export async function envoyerRappelFonds({
   joursRestants: number
 }) {
   const urgence = joursRestants <= 10
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: urgence
@@ -102,7 +102,7 @@ export async function envoyerConfirmationExpiration({
   titreBeat: string
   montantEuros: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `Votre part sur "${titreBeat}" a expiré`,
