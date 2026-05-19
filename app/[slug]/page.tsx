@@ -14,15 +14,15 @@ export default async function BoutiquePage({
   const { slug } = await params
   const supabase = await createClient()
 
-  const { data: beatmaker } = await supabase
+  const admin = createAdminClient()
+
+  const { data: beatmaker } = await admin
     .from('beatmakers')
     .select('id, nom_artiste, slug, tagline, logo_url, instagram_url, youtube_url, tiktok_url')
     .eq('slug', slug)
     .single()
 
   if (!beatmaker) notFound()
-
-  const admin = createAdminClient()
 
   // Vérifier si le visiteur est abonné — session Supabase en priorité, cookie en fallback
   const { data: { user } } = await supabase.auth.getUser()
@@ -67,7 +67,7 @@ export default async function BoutiquePage({
 
   const now = new Date().toISOString()
 
-  const { data: rawBeats } = await supabase
+  const { data: rawBeats } = await admin
     .from('beats')
     .select(`
       id, titre, bpm, cle, image_url, mp3_tague_url,
@@ -88,7 +88,7 @@ export default async function BoutiquePage({
     ? `id, titre, bpm, cle, image_url, mp3_tague_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
     : `id, titre, bpm, cle, image_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
 
-  const { data: rawBeatsPrives } = await supabase
+  const { data: rawBeatsPrives } = await admin
     .from('beats')
     .select(selectPrives)
     .eq('beatmaker_id', beatmaker.id)
