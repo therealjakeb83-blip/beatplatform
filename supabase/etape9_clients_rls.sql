@@ -6,6 +6,16 @@
 -- RLS sur la table clients
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
+-- Suppression des policies existantes pour éviter les conflits
+DROP POLICY IF EXISTS "clients_select_own" ON clients;
+DROP POLICY IF EXISTS "clients_update_own" ON clients;
+DROP POLICY IF EXISTS "clients_insert_own" ON clients;
+DROP POLICY IF EXISTS "abonnements_boutique_select_client" ON abonnements_boutique;
+DROP POLICY IF EXISTS "commandes_select_client" ON commandes;
+DROP POLICY IF EXISTS "favoris_select_own" ON favoris;
+DROP POLICY IF EXISTS "favoris_insert_own" ON favoris;
+DROP POLICY IF EXISTS "favoris_delete_own" ON favoris;
+
 -- Les clients peuvent lire leur propre profil
 CREATE POLICY "clients_select_own" ON clients
   FOR SELECT TO authenticated
