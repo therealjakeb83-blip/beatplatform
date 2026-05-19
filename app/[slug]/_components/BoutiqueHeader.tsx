@@ -33,7 +33,7 @@ export default function BoutiqueHeader({
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
             <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
-              {clientUser.prenom.slice(0, 1).toUpperCase()}
+              {(clientUser.prenom || clientUser.nom || '?').slice(0, 1).toUpperCase()}
             </div>
             <span>Mon compte</span>
           </Link>

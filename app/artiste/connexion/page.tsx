@@ -36,8 +36,7 @@ function ConnexionArtisteForm() {
       body: JSON.stringify({}),
     })
 
-    router.refresh()
-    router.push(redirect)
+    window.location.href = redirect
   }
 
   return (
