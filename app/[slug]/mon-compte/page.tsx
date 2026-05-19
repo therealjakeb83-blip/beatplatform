@@ -13,6 +13,11 @@ type CmdRow = {
   licences: { nom: string } | null
 }
 
+type FavoriRow = {
+  beat_id: string
+  beats: { id: string; titre: string; image_url: string | null } | null
+}
+
 export default async function MonCompteBoutiquePage({
   params,
 }: {
@@ -101,6 +106,17 @@ export default async function MonCompteBoutiquePage({
     prenomAffiche = client?.nom_artiste || client?.prenom || prenomAffiche
   }
 
+  // Favoris sur cette boutique (seulement si connecté)
+  let favoris: FavoriRow[] = []
+  if (clientId) {
+    const { data } = await admin
+      .from('favoris')
+      .select('beat_id, beats!inner(id, titre, image_url, beatmaker_id)')
+      .eq('client_id', clientId)
+      .eq('beats.beatmaker_id', beatmaker.id)
+    favoris = (data as unknown as FavoriRow[]) ?? []
+  }
+
   const estActif = abo?.statut === 'actif'
   const enEssai = abo?.en_essai ?? false
   const dateDebut = abo?.date_debut ? new Date(abo.date_debut).toLocaleDateString('fr-FR') : null
@@ -160,6 +176,43 @@ export default async function MonCompteBoutiquePage({
                 <Link href={`/${slug}/abonnement`} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
                   S&apos;abonner →
                 </Link>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Favoris */}
+        {clientId && (
+          <section className="mb-8">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+              Mes favoris ({favoris.length})
+            </h2>
+            {favoris.length === 0 ? (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+                <p className="text-gray-500 text-sm">Aucun beat liké sur cette boutique.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {favoris.map(fav => {
+                  const beat = fav.beats
+                  return (
+                    <Link
+                      key={fav.beat_id}
+                      href={`/${slug}/${fav.beat_id}`}
+                      className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-3 hover:border-gray-700 transition-colors"
+                    >
+                      {beat?.image_url ? (
+                        <img src={beat.image_url} alt={beat.titre ?? ''} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-600 text-xs font-bold">
+                          {beat?.titre?.slice(0, 2).toUpperCase() ?? '??'}
+                        </div>
+                      )}
+                      <p className="text-white text-sm font-medium truncate">{beat?.titre ?? 'Beat'}</p>
+                      <span className="ml-auto text-red-400 text-base flex-shrink-0">♥</span>
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </section>
