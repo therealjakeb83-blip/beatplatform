@@ -13,11 +13,10 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient()
-  const admin = createAdminClient()
 
-  const { data: beat } = await admin
+  const { data: beat } = await supabase
     .from('beats')
-    .select('id, titre, image_url, beatmaker_id')
+    .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct)')
     .eq('id', beat_id)
     .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
@@ -25,17 +24,9 @@ export async function POST(request: Request) {
 
   if (!beat) return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
 
-  const { data: beatmaker } = await admin
-    .from('beatmakers')
-    .select('stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
-    .eq('id', beat.beatmaker_id)
-    .single()
-
-  if (!beatmaker) return NextResponse.json({ erreur: 'Beatmaker introuvable' }, { status: 404 })
-
-  const { data: beatLicence } = await admin
+  const { data: beatLicence } = await supabase
     .from('beat_licences')
-    .select('actif, prix_override, sur_demande')
+    .select('actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
     .eq('beat_id', beat_id)
     .eq('licence_id', licence_id)
     .single()
@@ -44,13 +35,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Licence indisponible' }, { status: 400 })
   }
 
-  const { data: licence } = await admin
-    .from('licences')
-    .select('id, nom, modele, prix, actif')
-    .eq('id', licence_id)
-    .single()
-
+  type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
+  const licence = beatLicence.licences as unknown as LicenceRow
   if (!licence?.actif) return NextResponse.json({ erreur: 'Licence inactive' }, { status: 400 })
+
+  type BeatmakerRow = { stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
+  let beatmaker = (beat as unknown as { beatmakers: BeatmakerRow }).beatmakers
+
+  // Fallback admin si l'artiste connecté ne peut pas lire le JOIN beatmakers via RLS
+  if (!beatmaker) {
+    const admin = createAdminClient()
+    const { data: bm } = await admin
+      .from('beatmakers')
+      .select('stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+      .eq('id', beat.beatmaker_id)
+      .single()
+    beatmaker = bm as unknown as BeatmakerRow
+  }
+
+  if (!beatmaker) return NextResponse.json({ erreur: 'Beatmaker introuvable' }, { status: 404 })
 
   const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
 
@@ -60,6 +63,7 @@ export async function POST(request: Request) {
   let remisePct = 0
   const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
   if (emailCookie && beatmaker.abo_actif && !estIllimite) {
+    const admin = createAdminClient()
     const { data: abo } = await admin
       .from('abonnements_boutique')
       .select('id')
