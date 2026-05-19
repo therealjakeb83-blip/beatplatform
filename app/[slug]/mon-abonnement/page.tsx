@@ -12,16 +12,15 @@ export default async function MonAbonnementPage({
 }) {
   const { slug } = await params
   const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: beatmaker } = await supabase
+  const { data: beatmaker } = await admin
     .from('beatmakers')
     .select('id, nom_artiste, abo_nom, abo_prix, abo_essai_jours')
     .eq('slug', slug)
     .single()
 
   if (!beatmaker) notFound()
-
-  const admin = createAdminClient()
 
   // Vérifier l'abonnement — session Supabase en priorité, cookie en fallback
   const { data: { user } } = await supabase.auth.getUser()

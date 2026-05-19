@@ -13,8 +13,9 @@ export default async function MembresPage({
 }) {
   const { slug } = await params
   const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: beatmaker } = await supabase
+  const { data: beatmaker } = await admin
     .from('beatmakers')
     .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours')
     .eq('slug', slug)
@@ -27,7 +28,6 @@ export default async function MembresPage({
   const emailCookie = cookieStore.get(`abo_${slug}`)?.value
   let estAbonne = false
   if (emailCookie) {
-    const admin = createAdminClient()
     const { data: abo } = await admin
       .from('abonnements_boutique')
       .select('id')
