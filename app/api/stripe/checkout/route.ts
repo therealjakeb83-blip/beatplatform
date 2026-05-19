@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
   const { data: beatLicence } = await admin
     .from('beat_licences')
-    .select('actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
+    .select('actif, prix_override, sur_demande')
     .eq('beat_id', beat_id)
     .eq('licence_id', licence_id)
     .single()
@@ -44,8 +44,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Licence indisponible' }, { status: 400 })
   }
 
-  type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
-  const licence = beatLicence.licences as unknown as LicenceRow
+  const { data: licence } = await admin
+    .from('licences')
+    .select('id, nom, modele, prix, actif')
+    .eq('id', licence_id)
+    .single()
+
   if (!licence?.actif) return NextResponse.json({ erreur: 'Licence inactive' }, { status: 400 })
 
   const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
