@@ -36,6 +36,13 @@ export async function POST(request: Request) {
       .eq('id', user.id)
   }
 
+  // Lier les beat_splits en attente par email_invite dès la connexion Stripe
+  await supabase
+    .from('beat_splits')
+    .update({ beatmaker_id: user.id, statut: 'actif', email_invite: null })
+    .eq('email_invite', beatmaker.email)
+    .is('beatmaker_id', null)
+
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
   const accountLink = await stripe.accountLinks.create({
