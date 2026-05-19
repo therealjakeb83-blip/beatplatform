@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function PaiementsClient({
   stripeAccountId,
@@ -15,7 +15,16 @@ export default function PaiementsClient({
   tvaNumero: string
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [chargementConnect, setChargementConnect] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('connected') === 'true' && stripeAccountId) {
+      fetch('/api/stripe/splits/debloquer', { method: 'POST' })
+        .then(() => router.refresh())
+        .catch(() => {})
+    }
+  }, [])
   const [tvaActif, setTvaActif] = useState(tvaActive)
   const [taux, setTaux] = useState(String(tvaTaux || 20))
   const [numero, setNumero] = useState(tvaNumero || '')
