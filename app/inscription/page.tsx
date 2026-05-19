@@ -24,7 +24,7 @@ export default function InscriptionPage() {
       email,
       password,
       options: {
-        data: { nom_artiste: nomArtiste },
+        data: { nom_artiste: nomArtiste, role: 'beatmaker' },
       },
     })
 
