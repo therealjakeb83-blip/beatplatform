@@ -23,8 +23,8 @@ export default async function AbonnementPage({
   if (!beatmaker || !beatmaker.abo_actif) notFound()
 
   // Vérifier si déjà abonné — session en priorité, cookie en fallback
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabaseClient = await createClient()
+  const { data: { user } } = await supabaseClient.auth.getUser()
   let estAbonne = false
 
   if (user) {
