@@ -204,6 +204,23 @@
 
 ---
 
+## Détail étape 10 — Split collab
+
+> **Contexte :** La table `beat_splits` et le formulaire d'ajout de collabs existent déjà depuis l'étape 4. Ce qui manque : router réellement l'argent vers plusieurs comptes Stripe après chaque vente, et gérer les fonds retenus quand un collab n'est pas encore inscrit.
+
+| # | Sous-étape | Qui | Durée est. | Statut |
+|---|-----------|-----|-----------|--------|
+| 10.1 | Migration SQL : ajouter `stripe_transfer_group text` dans `commandes` + créer table `split_payments` (`id`, `commande_id`, `beat_split_id`, `beatmaker_id`, `montant`, `stripe_transfer_id`, `statut`) avec RLS + GRANT service_role | Jake 👤 | 15 min | ⬜ |
+| 10.2 | Modifier le checkout pour les beats avec splits : si le beat a des collabs dans `beat_splits`, générer un `transfer_group` UUID, le passer dans les metadata Stripe, et retirer `on_behalf_of` / `transfer_data` (les fonds restent chez My Producer jusqu'aux transferts explicites) — beats sans splits : comportement actuel inchangé | Claude 🤖 | 30 min | ⬜ |
+| 10.3 | Webhook `checkout.session.completed` : distribuer les revenus — calculer la part de chaque partie (collabs + beatmaker principal pour le reste), créer les `stripe.transfers` immédiats pour les comptes Stripe connectés, insérer des rows `split_payments` (statut `en_attente`) pour les collabs sans compte Stripe | Claude 🤖 | 45 min | ⬜ |
+| 10.4 | Dashboard `/dashboard/splits` : liste des beats avec collabs, état par collaborateur (transféré ✅ / en attente d'inscription ⏳), montants distribués et retenus | Claude 🤖 | 45 min | ⬜ |
+| 10.5 | Webhook `account.updated` (compte Stripe activé) : quand un beatmaker connecte son compte Stripe et que `payouts_enabled = true`, chercher ses `split_payments en_attente`, déclencher les transferts Stripe et mettre à jour le statut — Jake ajoute `account.updated` dans les événements du webhook Stripe | Claude 🤖 + Jake 👤 | 45 min | ⬜ |
+| 10.6 | Tests bout en bout : (1) vente d'un beat 50/50 entre deux beatmakers connectés → deux transferts Stripe créés, (2) vente avec collab non inscrit → montant retenu → collab s'inscrit + connecte Stripe → transfer déclenché, (3) page `/dashboard/splits` affiche les bons montants | Jake 👤 | 30 min | ⬜ |
+
+> **Note :** L'email d'invitation envoyé au collab non inscrit (pour l'informer que des fonds l'attendent) est prévu à l'étape 12 (emails automatiques).
+
+---
+
 ## Journal des sessions
 
 | Date | Étapes travaillées | Résumé |
@@ -223,3 +240,4 @@
 | 2026-05-18 | Étape 8 | ✅ Étape 8 validée bout en bout. Dashboard config plan (nom, prix, remise, essai). Checkout Stripe subscription mode + trial. Cookie session membre. Catalogue privé avec cadenas. Pages /abonnement, /membres, /mon-abonnement. Remise affichée sur fiche beat (prix barré). Illimité + Exclusive exclus de la remise. Webhook customer.subscription.updated/.deleted. |
 | 2026-05-19 | Étape 9 | ✅ Étape 9 validée. 10 tests passés : inscription/connexion/déconnexion artiste, header boutique connecté, checkout invité+connecté, favoris (like/unlike/persistance/page), beats privés via session, /mon-abonnement via session, liaison auto achats existants. Bugs RLS corrigés : GRANT authenticated sur favoris/beats/beat_licences, fallback admin beatmakers, client_id enregistré à l'abonnement, remise checkout via session, annulation abonnement via session + UX confirmation. |
 | 2026-05-19 | Correctifs post-étape 9 | ✅ Espace compte client par boutique : nouvelle page `/{slug}/mon-compte` (abonnement + favoris preview + achats preview + déco). Pages dédiées `/{slug}/mon-compte/favoris` (playlist avec player prev/next) et `/{slug}/mon-compte/achats`. Déconnexion redirige vers la boutique. Lien "Mon compte" dans le header pointe vers `/{slug}/mon-compte`. Prochaine étape : 10 (Split collab). |
+| 2026-05-19 | Planification étape 10 | Détail des 6 sous-étapes Split collab inséré dans la roadmap. 10.1 (SQL) par Jake, 10.2-10.5 par Claude, 10.6 (tests) par Jake. |
