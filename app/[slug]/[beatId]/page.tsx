@@ -17,7 +17,9 @@ export default async function BeatDetailPage({
   const { slug, beatId } = await params
   const supabase = await createClient()
 
-  const { data: beatmaker } = await supabase
+  const admin = createAdminClient()
+
+  const { data: beatmaker } = await admin
     .from('beatmakers')
     .select('id, nom_artiste, slug, abo_actif, abo_remise_pct')
     .eq('slug', slug)
@@ -47,20 +49,34 @@ export default async function BeatDetailPage({
 
   if (!beat) notFound()
 
-  // Vérifier abonnement (pour accès privé + remise)
-  const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  // Vérifier abonnement — session Supabase en priorité, cookie en fallback
+  const { data: { user } } = await supabase.auth.getUser()
   let estAbonne = false
-  if (emailCookie && beatmaker.abo_actif) {
-    const admin = createAdminClient()
+
+  if (user && beatmaker.abo_actif) {
     const { data: abo } = await admin
       .from('abonnements_boutique')
       .select('id')
       .eq('beatmaker_id', beatmaker.id)
-      .eq('acheteur_email', emailCookie)
+      .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .eq('statut', 'actif')
-      .single()
+      .maybeSingle()
     estAbonne = !!abo
+  }
+
+  if (!estAbonne) {
+    const cookieStore = await cookies()
+    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    if (emailCookie && beatmaker.abo_actif) {
+      const { data: abo } = await admin
+        .from('abonnements_boutique')
+        .select('id')
+        .eq('beatmaker_id', beatmaker.id)
+        .eq('acheteur_email', emailCookie)
+        .eq('statut', 'actif')
+        .maybeSingle()
+      estAbonne = !!abo
+    }
   }
 
   if (beat.statut === 'prive' && !estAbonne) redirect(`/${slug}/membres`)
