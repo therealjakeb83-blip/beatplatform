@@ -21,11 +21,45 @@ export default async function MonAbonnementPage({
 
   if (!beatmaker) notFound()
 
-  // Vérifier l'abonnement via cookie
-  const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  const admin = createAdminClient()
 
-  if (!emailCookie) {
+  // Vérifier l'abonnement — session Supabase en priorité, cookie en fallback
+  const { data: { user } } = await supabase.auth.getUser()
+  let emailAbonne: string | null = null
+  let aboQuery = null
+
+  if (user) {
+    emailAbonne = user.email ?? null
+    const { data } = await admin
+      .from('abonnements_boutique')
+      .select('id, statut, en_essai, essai_fin_le, date_debut, stripe_subscription_id')
+      .eq('beatmaker_id', beatmaker.id)
+      .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
+      .order('date_debut', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    aboQuery = data
+  }
+
+  // Fallback cookie
+  if (!aboQuery) {
+    const cookieStore = await cookies()
+    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    if (emailCookie) {
+      emailAbonne = emailCookie
+      const { data } = await admin
+        .from('abonnements_boutique')
+        .select('id, statut, en_essai, essai_fin_le, date_debut, stripe_subscription_id')
+        .eq('beatmaker_id', beatmaker.id)
+        .eq('acheteur_email', emailCookie)
+        .order('date_debut', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      aboQuery = data
+    }
+  }
+
+  if (!emailAbonne) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center px-6">
         <div className="text-center">
@@ -39,15 +73,7 @@ export default async function MonAbonnementPage({
     )
   }
 
-  const admin = createAdminClient()
-  const { data: abo } = await admin
-    .from('abonnements_boutique')
-    .select('id, statut, en_essai, essai_fin_le, date_debut, stripe_subscription_id')
-    .eq('beatmaker_id', beatmaker.id)
-    .eq('acheteur_email', emailCookie)
-    .order('date_debut', { ascending: false })
-    .limit(1)
-    .single()
+  const abo = aboQuery
 
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
 
@@ -83,7 +109,7 @@ export default async function MonAbonnementPage({
           </div>
 
           <div className="space-y-2 text-sm text-gray-400 border-t border-gray-800 pt-4">
-            <p>Email : <span className="text-gray-200">{emailCookie}</span></p>
+            <p>Email : <span className="text-gray-200">{emailAbonne}</span></p>
             {dateDebut && <p>Membre depuis le : <span className="text-gray-200">{dateDebut}</span></p>}
             {enEssai && essaiFin && (
               <p>Essai gratuit jusqu&apos;au : <span className="text-green-400">{essaiFin}</span></p>

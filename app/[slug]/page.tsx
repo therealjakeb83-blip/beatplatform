@@ -22,20 +22,47 @@ export default async function BoutiquePage({
 
   if (!beatmaker) notFound()
 
-  // Vérifier si le visiteur est abonné (cookie)
-  const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  const admin = createAdminClient()
+
+  // Vérifier si le visiteur est abonné — session Supabase en priorité, cookie en fallback
+  const { data: { user } } = await supabase.auth.getUser()
   let estAbonne = false
-  if (emailCookie) {
-    const admin = createAdminClient()
+  let clientUser: { prenom: string; nom: string } | null = null
+
+  if (user) {
+    // Récupérer les infos du client pour le header
+    const { data: client } = await admin
+      .from('clients')
+      .select('prenom, nom')
+      .eq('id', user.id)
+      .single()
+    clientUser = client
+
+    // Vérifier l'abonnement par client_id OU par email (rétrocompatibilité)
     const { data: abo } = await admin
       .from('abonnements_boutique')
       .select('id')
       .eq('beatmaker_id', beatmaker.id)
-      .eq('acheteur_email', emailCookie)
+      .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .eq('statut', 'actif')
-      .single()
+      .maybeSingle()
     estAbonne = !!abo
+  }
+
+  // Fallback cookie — pour les abonnés qui n'ont pas encore créé de compte
+  if (!estAbonne) {
+    const cookieStore = await cookies()
+    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    if (emailCookie) {
+      const { data: abo } = await admin
+        .from('abonnements_boutique')
+        .select('id')
+        .eq('beatmaker_id', beatmaker.id)
+        .eq('acheteur_email', emailCookie)
+        .eq('statut', 'actif')
+        .maybeSingle()
+      estAbonne = !!abo
+    }
   }
 
   const now = new Date().toISOString()
@@ -132,8 +159,16 @@ export default async function BoutiquePage({
         youtubeUrl={beatmaker.youtube_url}
         tiktokUrl={beatmaker.tiktok_url}
         nbBeats={beats.length}
+        slug={slug}
+        clientUser={clientUser}
       />
-      <BeatCatalogue beats={beats} beatsPrives={beatsPrives} slug={slug} estAbonne={estAbonne} />
+      <BeatCatalogue
+        beats={beats}
+        beatsPrives={beatsPrives}
+        slug={slug}
+        estAbonne={estAbonne}
+        clientId={user?.id ?? null}
+      />
     </>
   )
 }

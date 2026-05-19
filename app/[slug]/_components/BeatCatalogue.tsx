@@ -9,11 +9,13 @@ export default function BeatCatalogue({
   beatsPrives = [],
   slug,
   estAbonne = false,
+  clientId = null,
 }: {
   beats: BeatPublic[]
   beatsPrives?: BeatPublic[]
   slug: string
   estAbonne?: boolean
+  clientId?: string | null
 }) {
   const [recherche, setRecherche] = useState('')
   const [stylesActifs, setStylesActifs] = useState<string[]>([])
@@ -135,7 +137,7 @@ export default function BeatCatalogue({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {beatsFiltres.map(beat => (
-            <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} />
+            <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} clientId={clientId} />
           ))}
         </div>
       )}
@@ -156,7 +158,7 @@ export default function BeatCatalogue({
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {beatsPrives.slice(0, 4).map(beat => (
-              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
+              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} clientId={clientId} />
             ))}
           </div>
         </div>

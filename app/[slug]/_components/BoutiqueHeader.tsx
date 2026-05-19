@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 type BoutiqueHeaderProps = {
   nomArtiste: string
   tagline: string | null
@@ -6,6 +8,8 @@ type BoutiqueHeaderProps = {
   youtubeUrl: string | null
   tiktokUrl: string | null
   nbBeats: number
+  slug: string
+  clientUser: { prenom: string; nom: string } | null
 }
 
 export default function BoutiqueHeader({
@@ -16,10 +20,34 @@ export default function BoutiqueHeader({
   youtubeUrl,
   tiktokUrl,
   nbBeats,
+  slug,
+  clientUser,
 }: BoutiqueHeaderProps) {
   return (
     <header className="border-b border-gray-800 bg-gray-950">
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      {/* Barre de nav artiste */}
+      <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-end">
+        {clientUser ? (
+          <Link
+            href="/mon-compte"
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+              {clientUser.prenom.slice(0, 1).toUpperCase()}
+            </div>
+            <span>Mon compte</span>
+          </Link>
+        ) : (
+          <Link
+            href={`/artiste/connexion?redirect=/${slug}`}
+            className="text-sm text-gray-500 hover:text-indigo-400 transition-colors"
+          >
+            Se connecter
+          </Link>
+        )}
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
           {/* Logo / initiales */}
           <div className="w-20 h-20 rounded-2xl bg-gray-800 flex-shrink-0 overflow-hidden">

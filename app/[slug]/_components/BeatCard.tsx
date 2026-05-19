@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from './PlayerContext'
+import FavoriButton from './FavoriButton'
 
 export type LicencePublic = {
   id: string
@@ -27,11 +28,13 @@ export default function BeatCard({
   slug,
   queue,
   estAbonne = false,
+  clientId = null,
 }: {
   beat: BeatPublic
   slug: string
   queue: BeatMin[]
   estAbonne?: boolean
+  clientId?: string | null
 }) {
   const { play, currentBeat, isPlaying } = usePlayer()
 
@@ -64,6 +67,11 @@ export default function BeatCard({
           <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-500 text-3xl font-black">
             {beat.titre.slice(0, 2).toUpperCase()}
           </div>
+        )}
+
+        {/* Bouton favori */}
+        {!estVerrouille && (
+          <FavoriButton beatId={beat.id} clientId={clientId} slug={slug} />
         )}
 
         {/* Overlay play ou cadenas */}
