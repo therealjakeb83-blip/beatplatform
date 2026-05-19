@@ -17,13 +17,21 @@ export async function POST(request: Request) {
 
   const { data: beat } = await admin
     .from('beats')
-    .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct)')
+    .select('id, titre, image_url, beatmaker_id')
     .eq('id', beat_id)
     .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
     .single()
 
   if (!beat) return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
+
+  const { data: beatmaker } = await admin
+    .from('beatmakers')
+    .select('stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+    .eq('id', beat.beatmaker_id)
+    .single()
+
+  if (!beatmaker) return NextResponse.json({ erreur: 'Beatmaker introuvable' }, { status: 404 })
 
   const { data: beatLicence } = await admin
     .from('beat_licences')
@@ -39,9 +47,6 @@ export async function POST(request: Request) {
   type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
   const licence = beatLicence.licences as unknown as LicenceRow
   if (!licence?.actif) return NextResponse.json({ erreur: 'Licence inactive' }, { status: 400 })
-
-  type BeatmakerRow = { stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
-  const beatmaker = (beat as unknown as { beatmakers: BeatmakerRow }).beatmakers
 
   const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
 
