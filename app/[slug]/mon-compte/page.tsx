@@ -106,15 +106,18 @@ export default async function MonCompteBoutiquePage({
     prenomAffiche = client?.nom_artiste || client?.prenom || prenomAffiche
   }
 
-  // Favoris sur cette boutique (seulement si connecté)
+  // Favoris sur cette boutique — preview 4 max (seulement si connecté)
   let favoris: FavoriRow[] = []
+  let totalFavoris = 0
   if (clientId) {
     const { data } = await admin
       .from('favoris')
       .select('beat_id, beats!inner(id, titre, image_url, beatmaker_id)')
       .eq('client_id', clientId)
       .eq('beats.beatmaker_id', beatmaker.id)
-    favoris = (data as unknown as FavoriRow[]) ?? []
+    const all = (data as unknown as FavoriRow[]) ?? []
+    totalFavoris = all.length
+    favoris = all.slice(0, 4)
   }
 
   const estActif = abo?.statut === 'actif'
@@ -184,9 +187,16 @@ export default async function MonCompteBoutiquePage({
         {/* Favoris */}
         {clientId && (
           <section className="mb-8">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-              Mes favoris ({favoris.length})
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                Mes favoris ({totalFavoris})
+              </h2>
+              {totalFavoris > 4 && (
+                <Link href={`/${slug}/mon-compte/favoris`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                  Voir tout →
+                </Link>
+              )}
+            </div>
             {favoris.length === 0 ? (
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
                 <p className="text-gray-500 text-sm">Aucun beat liké sur cette boutique.</p>
