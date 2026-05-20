@@ -267,6 +267,44 @@
 
 ---
 
+## Détail étape 11 — CRM
+
+| # | Sous-étape | Qui | Statut |
+|---|-----------|-----|--------|
+| 11.1 | Migration SQL : RLS + GRANT sur `doublons_ignores` | Jake 👤 | ✅ |
+| 11.2 | Page `/dashboard/crm` : liste clients avec stats (CA, achats, abonnés) + recherche + filtres | Claude 🤖 | ✅ |
+| 11.3 | Page `/dashboard/crm/[clientId]` : fiche client avec historique achats + statut abonnement | Claude 🤖 | ✅ |
+| 11.4 | Page `/dashboard/crm/doublons` : détection noms similaires + bouton Ignorer | Claude 🤖 | ✅ |
+| 11.5 | Import CSV BeatStars | — | ⬜ À faire après analyse du vrai CSV |
+| 11.6 | **Tests bout en bout** | Jake 👤 | 🔄 En cours |
+
+### Checklist tests 11.6
+
+#### T1 — Liste clients ⬜
+- [ ] Aller sur `/dashboard/crm`
+- [ ] Les stats s'affichent en haut (nb clients, acheteurs, abonnés, CA total)
+- [ ] Les clients apparaissent dans la liste avec nom, email, achats, CA
+
+#### T2 — Recherche + filtres ⬜
+- [ ] Taper un nom ou email dans la barre → les résultats se filtrent
+- [ ] Cliquer sur "Acheteurs" → seuls les clients avec au moins 1 achat
+- [ ] Cliquer sur "Abonnés" → seuls les abonnés actifs
+- [ ] Cliquer sur "Leads" → clients sans achat ni abonnement
+
+#### T3 — Fiche client ⬜
+- [ ] Cliquer sur la flèche `→` d'un client avec compte My Producer
+- [ ] La fiche affiche ses infos (nom, email, pays, date inscription)
+- [ ] L'historique des achats est correct (beats, licences, montants)
+- [ ] Le statut abonnement est affiché si applicable
+
+#### T4 — Doublons ⬜
+- [ ] Aller sur `/dashboard/crm/doublons`
+- [ ] La page charge sans erreur
+- [ ] Si des noms similaires existent → paires affichées avec bouton "Ignorer"
+- [ ] Cliquer "Ignorer" → la paire disparaît et ne revient plus
+
+---
+
 ## Journal des sessions
 
 | Date | Étapes travaillées | Résumé |
