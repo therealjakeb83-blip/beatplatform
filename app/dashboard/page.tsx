@@ -15,10 +15,7 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  // Si pas de profil beatmaker → c'est un artiste, on le renvoie vers son espace
-  if (!beatmaker) redirect('/mon-compte')
-
-  return (
+return (
     <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Bienvenue sur My Producer</h1>

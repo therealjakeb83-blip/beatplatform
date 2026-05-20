@@ -28,14 +28,29 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Routes protégées — redirige vers /connexion si non connecté
-  if (pathname.startsWith('/dashboard') && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/connexion'
-    return NextResponse.redirect(url)
+  // Routes dashboard — réservées aux beatmakers uniquement
+  if (pathname.startsWith('/dashboard')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/connexion'
+      return NextResponse.redirect(url)
+    }
+
+    // Vérifier que l'utilisateur est bien un beatmaker
+    const { data: beatmaker } = await supabase
+      .from('beatmakers')
+      .select('id')
+      .eq('id', user.id)
+      .single()
+
+    if (!beatmaker) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/mon-compte'
+      return NextResponse.redirect(url)
+    }
   }
 
-  // Pages auth — redirige vers /dashboard si déjà connecté
+  // Pages auth beatmaker — redirige vers /dashboard si déjà connecté en tant que beatmaker
   if ((pathname === '/connexion' || pathname === '/inscription') && user) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
