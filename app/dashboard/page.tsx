@@ -70,6 +70,12 @@ export default async function DashboardPage() {
             Abonnements membres
           </Link>
           <Link
+            href="/dashboard/crm"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Mon CRM
+          </Link>
+          <Link
             href="/dashboard/splits"
             className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
           >
