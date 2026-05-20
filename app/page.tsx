@@ -77,7 +77,7 @@ export default function Home() {
         {/* Demo link */}
         <p className="mt-12 text-sm text-zinc-600">
           Curieux de voir à quoi ressemble une boutique ?{" "}
-          <Link href="/jakeb" className="text-zinc-400 hover:text-white underline transition-colors">
+          <Link href="/jakeb-test" className="text-zinc-400 hover:text-white underline transition-colors">
             Voir la boutique démo →
           </Link>
         </p>
