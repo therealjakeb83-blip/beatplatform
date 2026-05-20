@@ -97,6 +97,30 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   const supabase = createAdminClient()
 
+  // Résolution client par email — crée un compte invité si inconnu
+  let clientId: string | null = null
+  if (acheteurEmail) {
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('email', acheteurEmail)
+      .maybeSingle()
+
+    if (existingClient) {
+      clientId = existingClient.id
+    } else {
+      const parts = (acheteurNom ?? '').trim().split(' ')
+      const prenom = parts[0] || null
+      const nom = parts.slice(1).join(' ') || parts[0] || acheteurEmail.split('@')[0]
+      const { data: newClient } = await supabase
+        .from('clients')
+        .insert({ email: acheteurEmail, nom, prenom })
+        .select('id')
+        .single()
+      clientId = newClient?.id ?? null
+    }
+  }
+
   // Récupérer les infos du beat (titre nécessaire pour les emails de fonds en attente)
   const { data: beat } = await supabase
     .from('beats')
@@ -138,6 +162,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   // Créer la commande
   const { data: commande, error } = await supabase.from('commandes').insert({
+    client_id: clientId,
     beatmaker_id: meta.beatmaker_id,
     beat_id: meta.beat_id,
     licence_id: meta.licence_id,

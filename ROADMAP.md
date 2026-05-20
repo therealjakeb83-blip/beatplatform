@@ -27,6 +27,7 @@
 | 9 | **Espace client artiste** | Compte My Producer global : inscription/connexion artiste, "Se connecter avec My Producer" dans les boutiques, beats achetés, abonnements actifs multi-appareils, fichiers à télécharger. Favoris : bouton cœur sur les cartes beat, page "Mes favoris". | 5-8h | ✅ Validé |
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
+| 11b | **Résolution client** *(bonus)* | Chaque acheteur (invité ou connecté) reçoit un client_id unique. Résolution par email au checkout, fusion au compte à l'inscription. | — | ✅ Validé |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues. Compteur d'écoutes sur les cartes beat et page détail. | 4-6h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
