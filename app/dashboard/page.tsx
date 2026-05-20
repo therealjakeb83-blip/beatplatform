@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     .single()
 
   // Si pas de profil beatmaker → c'est un artiste, on le renvoie vers son espace
-  if (!beatmaker) redirect('/artiste/connexion')
+  if (!beatmaker) redirect('/mon-compte')
 
   return (
     <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
