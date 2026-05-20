@@ -117,7 +117,7 @@ export default async function FicheClientPage({
                 <p className="text-xs text-gray-500">
                   Depuis le {new Date(abonnement.date_debut).toLocaleDateString('fr-FR')}
                   {abonnement.en_essai && ' · Essai gratuit'}
-                  {abonnement.prix && ` · ${Math.round(abonnement.prix / 100)} €/mois`}
+                  {abonnement.prix > 0 && ` · ${(abonnement.prix / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €/mois`}
                 </p>
               </div>
               <span className={`text-xs px-3 py-1 rounded-full font-medium ${
