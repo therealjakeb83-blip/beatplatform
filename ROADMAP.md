@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-19 — Étape 10 Split collab ✅ validée
+> Dernière mise à jour : 2026-05-20 — Étape 11 CRM ✅ validée
 
 ## Légende
 | Statut | Signification |
@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 10 / 17 étapes validées (+ 1 bonus)
+## Progression globale : 11 / 17 étapes validées (+ 1 bonus)
 
 | # | Étape | Description | Durée est. | Statut |
 |---|-------|-------------|-----------|--------|
@@ -26,7 +26,7 @@
 | 8 | **Abonnements** | Plans d'abonnement par beatmaker, catalogue privé (beats visibles + cadenas), remise % automatique (sauf Illimité/Exclusive), essai gratuit configurable, gestion depuis le dashboard et depuis la boutique | 8-12h | ✅ Validé |
 | 9 | **Espace client artiste** | Compte My Producer global : inscription/connexion artiste, "Se connecter avec My Producer" dans les boutiques, beats achetés, abonnements actifs multi-appareils, fichiers à télécharger. Favoris : bouton cœur sur les cartes beat, page "Mes favoris". | 5-8h | ✅ Validé |
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
-| 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ⬜ À faire |
+| 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues. Compteur d'écoutes sur les cartes beat et page détail. | 4-6h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
@@ -276,32 +276,32 @@
 | 11.3 | Page `/dashboard/crm/[clientId]` : fiche client avec historique achats + statut abonnement | Claude 🤖 | ✅ |
 | 11.4 | Page `/dashboard/crm/doublons` : détection noms similaires + bouton Ignorer | Claude 🤖 | ✅ |
 | 11.5 | Import CSV BeatStars | — | ⬜ À faire après analyse du vrai CSV |
-| 11.6 | **Tests bout en bout** | Jake 👤 | 🔄 En cours |
+| 11.6 | **Tests bout en bout** | Jake 👤 | ✅ |
 
 ### Checklist tests 11.6
 
-#### T1 — Liste clients ⬜
-- [ ] Aller sur `/dashboard/crm`
-- [ ] Les stats s'affichent en haut (nb clients, acheteurs, abonnés, CA total)
-- [ ] Les clients apparaissent dans la liste avec nom, email, achats, CA
+#### T1 — Liste clients ✅
+- [x] Aller sur `/dashboard/crm`
+- [x] Les stats s'affichent en haut (nb clients, acheteurs, abonnés, CA total)
+- [x] Les clients apparaissent dans la liste avec nom, email, achats, CA
 
-#### T2 — Recherche + filtres ⬜
-- [ ] Taper un nom ou email dans la barre → les résultats se filtrent
-- [ ] Cliquer sur "Acheteurs" → seuls les clients avec au moins 1 achat
-- [ ] Cliquer sur "Abonnés" → seuls les abonnés actifs
-- [ ] Cliquer sur "Leads" → clients sans achat ni abonnement
+#### T2 — Recherche + filtres ✅
+- [x] Taper un nom ou email dans la barre → les résultats se filtrent
+- [x] Cliquer sur "Acheteurs" → seuls les clients avec au moins 1 achat
+- [x] Cliquer sur "Abonnés" → seuls les abonnés actifs
+- [x] Cliquer sur "Leads" → clients sans achat ni abonnement
 
-#### T3 — Fiche client ⬜
-- [ ] Cliquer sur la flèche `→` d'un client avec compte My Producer
-- [ ] La fiche affiche ses infos (nom, email, pays, date inscription)
-- [ ] L'historique des achats est correct (beats, licences, montants)
-- [ ] Le statut abonnement est affiché si applicable
+#### T3 — Fiche client ✅
+- [x] Cliquer sur la flèche `→` d'un client avec compte My Producer
+- [x] La fiche affiche ses infos (nom, email, pays, date inscription)
+- [x] L'historique des achats est correct (beats, licences, montants)
+- [x] Le statut abonnement est affiché si applicable
 
-#### T4 — Doublons ⬜
-- [ ] Aller sur `/dashboard/crm/doublons`
-- [ ] La page charge sans erreur
-- [ ] Si des noms similaires existent → paires affichées avec bouton "Ignorer"
-- [ ] Cliquer "Ignorer" → la paire disparaît et ne revient plus
+#### T4 — Doublons ✅
+- [x] Aller sur `/dashboard/crm/doublons`
+- [x] La page charge sans erreur
+- [x] Si des noms similaires existent → paires affichées avec bouton "Ignorer"
+- [x] Cliquer "Ignorer" → la paire disparaît et ne revient plus
 
 ---
 
@@ -327,4 +327,5 @@
 | 2026-05-19 | Planification étape 10 | Détail des 9 sous-étapes Split collab finalisé. Décisions clés : transit Stripe (My Producer pas deemed supplier, custodian = Stripe), email invitation publication + email fonds en attente à la vente, rappels J+30/J+50 + reversal automatique J+60 vers beatmaker A, /dashboard/mes-collabs lecture seule, analytics collabs en étape 13. |
 | 2026-05-19 | Étape 10 (code) | ✅ 10.1→10.8 complétés. Checkout transfer_group, webhook splits + transfers Stripe, emails Resend (invitation/fonds/rappel/expiration), /dashboard/splits, /dashboard/mes-collabs, webhook account.updated, cron quotidien J+30/J+50/J+60. Vercel env vars configurées (RESEND_API_KEY, NEXT_PUBLIC_APP_URL, CRON_SECRET). account.updated ajouté dans Stripe webhook. Tests 10.9 en attente de validation Jake. |
 | 2026-05-19 | Étape 10 (tests) | ✅ Étape 10 validée. 7 tests T1→T7 passés. 4 bugs corrigés en cours de test : (1) lazy-init Resend évite plantage build si RESEND_API_KEY absente ; (2) cookie abo_* supprimé à la déconnexion artiste ; (3) /dashboard/mes-collabs query par beatmaker_id ET email_invite (déduplication) ; (4) beat_splits liés au beatmaker dès connexion Stripe Connect + endpoint /api/stripe/splits/debloquer pour retry splits en_attente. Limitation test mode Stripe documentée : transfers nécessitent solde disponible (carte 4000000000000077 plutôt que 4242). En production les vrais paiements alimentent le solde plateforme en continu. |
-| 2026-05-20 | Homepage + Étape 11 (code) | ✅ Page d'accueil My Producer créée (deux entrées : beatmaker / artiste, lien boutique démo jakeb-test). Étape 11 CRM codée : liste clients agrégée (commandes + abonnements + clients), fiche client avec historique, détection doublons fuzzy matching + bouton Ignorer. Import BeatStars retiré (sera fait après analyse du vrai CSV). Fix middleware : toutes les pages /dashboard/* bloquées pour les artistes (redirection /mon-compte). Migration SQL étape 11 exécutée. Tests T1→T4 en cours. |
+| 2026-05-20 | Homepage + Étape 11 (code) | ✅ Page d'accueil My Producer créée (deux entrées : beatmaker / artiste, lien boutique démo jakeb-test). Étape 11 CRM codée : liste clients agrégée (commandes + abonnements + clients), fiche client avec historique, détection doublons fuzzy matching + bouton Ignorer. Import BeatStars retiré (sera fait après analyse du vrai CSV). Fix middleware : toutes les pages /dashboard/* bloquées pour les artistes (redirection /mon-compte). Migration SQL étape 11 exécutée. |
+| 2026-05-20 | Étape 11 (tests) | ✅ Étape 11 validée. 4 tests T1→T4 passés : liste CRM (stats + filtres Acheteurs/Abonnés/Leads), fiche client (historique + abonnement Plan Standard), doublons (page charge, message correct avec 1 seul client ayant un compte). |
