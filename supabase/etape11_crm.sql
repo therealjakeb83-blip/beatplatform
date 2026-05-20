@@ -1,10 +1,6 @@
 -- Étape 11 — CRM
--- Rendre beat_id et licence_id nullable dans commandes
--- Nécessaire pour stocker les imports BeatStars sans beat correspondant
-ALTER TABLE commandes ALTER COLUMN beat_id DROP NOT NULL;
-ALTER TABLE commandes ALTER COLUMN licence_id DROP NOT NULL;
+-- RLS et permissions pour la table doublons_ignores
 
--- RLS : permettre aux beatmakers de lire/écrire leurs propres doublons_ignores
 ALTER TABLE doublons_ignores ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "doublons_ignores_beatmaker"
