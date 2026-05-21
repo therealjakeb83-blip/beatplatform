@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-21 — Optimisation CRM (11c) : architecture complète validée, Sprint 1 en cours de développement
+> Dernière mise à jour : 2026-05-21 — Optimisation CRM (11c) : Sprint 1 ✅ + Sprint 2 ✅ validés
 
 ## Légende
 | Statut | Signification |
@@ -347,50 +347,46 @@ Un client peut télécharger d'autres beats gratuitement → afficher dans sa fi
 
 ---
 
-### Sprint 1 — UI enrichissement (0 nouvelle colonne BDD) 🔄 En cours
+### Sprint 1 — UI enrichissement (0 nouvelle colonne BDD) ✅ Validé
 
 | # | Sous-étape | Statut |
 |---|-----------|--------|
-| S1.1 | Liste : requête `beats(styles, type_beat)` sur commandes + `pays` sur clients | ⬜ |
-| S1.2 | Liste : tracker `derniere_commande`, `a_deja_eu_abo`, `style_prefere`, `type_beat_prefere` par client | ⬜ |
-| S1.3 | Liste : badge Statut 3 états (ABONNÉ vert / ANCIEN ABONNÉ orange / JAMAIS ABONNÉ gris) | ⬜ |
-| S1.4 | Liste : nouveaux filtres (Tous / ABONNÉ / ANCIEN ABONNÉ / JAMAIS ABONNÉ) | ⬜ |
-| S1.5 | Liste : colonne Langue FR/US | ⬜ |
-| S1.6 | Liste : colonne Dernière commande (format "il y a 15 jours") | ⬜ |
-| S1.7 | Liste : colonne Style · Type beat (top 1 chacun) | ⬜ |
-| S1.8 | Liste : renommage "CA total" → "LTV" | ⬜ |
-| S1.9 | Fiche : requête favoris → beats(styles, type_beat, ambiances, instruments) | ⬜ |
-| S1.10 | Fiche : calcul préférences (achats poids 2 + favoris poids 1) | ⬜ |
-| S1.11 | Fiche : badge Statut client dans l'en-tête | ⬜ |
-| S1.12 | Fiche : mois réglés dans section abonnement (depuis date_debut, approximatif) | ⬜ |
-| S1.13 | Fiche : section "Préférences musicales" (top style, type beat, ambiance, instruments + tous les tags) | ⬜ |
-| S1.14 | Fiche : renommage "CA total" → "LTV" | ⬜ |
+| S1.1 | Liste : requête `beats(styles, type_beat)` sur commandes + `pays` sur clients | ✅ |
+| S1.2 | Liste : tracker `derniere_commande`, `a_deja_eu_abo`, `style_prefere`, `type_beat_prefere` par client | ✅ |
+| S1.3 | Liste : badge Statut 3 états (ABONNÉ vert / ANCIEN ABONNÉ orange / JAMAIS ABONNÉ gris) | ✅ |
+| S1.4 | Liste : nouveaux filtres (Tous / Abonnés / Anciens abonnés / Jamais abonnés / Leads) | ✅ |
+| S1.5 | Liste : colonne Langue FR/US | ✅ |
+| S1.6 | Liste : colonne Dernière commande (format relatif) | ✅ |
+| S1.7 | Liste : colonne Style · Type beat (top 1 chacun) | ✅ |
+| S1.8 | Liste : renommage "CA total" → "LTV" | ✅ |
+| S1.9 | Fiche : requête favoris → beats(styles, type_beat, ambiances, instruments) via admin | ✅ |
+| S1.10 | Fiche : calcul préférences (achats poids 2 + favoris poids 1) | ✅ |
+| S1.11 | Fiche : badge Statut client + langue dans l'en-tête | ✅ |
+| S1.12 | Fiche : mois réglés dans section abonnement | ✅ |
+| S1.13 | Fiche : section "Préférences musicales" (style, type beat, ambiances, instruments) | ✅ |
+| S1.14 | Fiche : renommage "CA total" → "LTV" | ✅ |
 
 ---
 
-### Sprint 2 — BDD + LTV réelle + Leads + données enrichies ⬜ À faire
+### Sprint 2 — BDD + LTV réelle + données enrichies ✅ Validé
 
-Modifications BDD nécessaires :
+BDD (migration `supabase/sprint2_crm.sql` exécutée) :
+- `type_commande` sur `commandes` (LICENCE / CREATION_ABONNEMENT / RENOUVELLEMENT)
+- `beat_id` + `licence_id` rendus nullables (commandes d'abonnement sans beat)
 - `mensualites_payees integer DEFAULT 0` sur `abonnements_boutique`
-- `type_commande text` sur `commandes` (LICENCE / CREATION_ABONNEMENT / RENOUVELLEMENT)
-- `statut_paiement text` pour gérer les remboursements
 - `instagram text` nullable sur `clients`
-- `newsletter_consent boolean` nullable sur `clients`
-- Adresse complète (`ville`, `code_postal`, `adresse`) sur `clients`
-- Table `free_downloads` (ou colonne sur `leads`) : `beat_id` + `client_id` + `created_at`
+- `newsletter_consent boolean DEFAULT false` sur `clients`
 
-Fonctionnalités :
-- Webhook `invoice.payment_succeeded` → incrémenter `mensualites_payees`
-- LTV complète = beats + (mensualites_payees × abo_prix)
-- Remboursements exclus de la LTV
-- Instagram éditable dans la fiche dashboard (beatmaker uniquement, pas client-facing)
-- Newsletter consent : checkbox inscription + mon-compte + badge CRM + export CSV
-- Adresse récupérée depuis le webhook Stripe (déjà collectée, pas encore stockée)
-- Filtres de segmentation : par style / ambiance / type beat / statut / langue
-- **Leads dans le CRM** : bloc "X leads à convertir" + filtre LEAD + fiche lead (source, score chaleur, préférences depuis favoris, beats téléchargés)
-- **Free download tracking** : enregistrer quel beat a été téléchargé gratuitement + par qui
-- **Formulaire capture newsletter** sur boutique publique `/[slug]`
-- **Badge statut achat** (CLIENT / LEAD) dans la liste CRM
+Fonctionnalités livrées :
+- Webhook `invoice.payment_succeeded` → commande CREATION_ABONNEMENT ou RENOUVELLEMENT + incrémente `mensualites_payees` (idempotent via invoice.id)
+- Tag `type_commande = LICENCE` sur tous les nouveaux achats beats
+- LTV complète (beats + paiements abo) — RENOUVELLEMENT exclu du nb_achats et dernière commande
+- Mois réglés exact depuis `mensualites_payees` (avec fallback approx. si 0)
+- Instagram éditable dans la fiche CRM (beatmaker uniquement)
+- Badge Newsletter dans la fiche client
+- Checkbox newsletter_consent à l'inscription artiste
+- Toggle newsletter dans /[slug]/mon-compte
+- Export CSV subscribers `/api/dashboard/crm/export-newsletter`
 
 ---
 
@@ -463,4 +459,5 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 | 2026-05-20 | Étape 11 (tests) | ✅ Étape 11 validée. 4 tests T1→T4 passés : liste CRM (stats + filtres Acheteurs/Abonnés/Leads), fiche client (historique + abonnement Plan Standard), doublons (page charge, message correct avec 1 seul client ayant un compte). |
 | 2026-05-20 | Étape 11b — Résolution client (bonus) | ✅ FK clients→auth.users supprimé. Webhook Stripe crée/résout le client par email à chaque achat. lierCompteClient fusionne le compte invité dans le compte auth à l'inscription. 15 clients fictifs + 45 commandes + 5 abonnements insérés en BDD pour tests réalistes. Fix affichage prix abonnement (centimes → décimales : 6,99€/mois). |
 | 2026-05-20 | Optimisation CRM (11c) — décisions initiales | Analyse du CRM Airtable de Jake. Décisions prises pour 3 sprints : badge Statut client, LTV, Langue, Instagram, newsletter. À coder en session suivante. |
-| 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints. Décisions clés : 2 dimensions de statut indépendantes (abonnement + achat), LTV inclut tout, mois réglés = compteur réel, préférences musicales depuis achats+favoris. Leads : définition, sources, score chaleur, affichage CRM. Email marketing Resend : templates brandés, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro (pas de webmail). Sprint 1 entièrement planifié (14 sous-étapes, 0 BDD). **PROCHAINE SESSION : coder Sprint 1 — lire d'abord le schéma beats (styles/type_beat/ambiances/instruments) pour confirmer le format des colonnes array, puis attaquer `app/dashboard/crm/page.tsx` et `app/dashboard/crm/[clientId]/page.tsx`.** |
+| 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints. Décisions clés : 2 dimensions de statut indépendantes (abonnement + achat), LTV inclut tout, mois réglés = compteur réel, préférences musicales depuis achats+favoris. Leads : définition, sources, score chaleur, affichage CRM. Email marketing Resend : templates brandés, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro (pas de webmail). Sprint 1 entièrement planifié (14 sous-étapes, 0 BDD). |
+| 2026-05-21 | Optimisation CRM (11c) — Sprint 1 + Sprint 2 ✅ | Sprint 1 : badge statut abo 3 états, filtres, LTV, langue, dernière commande, style/type beat, préférences musicales (achats×2 + favoris×1). Sprint 2 : type_commande, mensualites_payees, LTV réelle (webhook invoice.payment_succeeded), instagram éditable, newsletter_consent + checkbox inscription + toggle mon-compte + export CSV. Migration SQL : supabase/sprint2_crm.sql exécutée. **PROCHAINE SESSION : Sprint 3 (Score RFM + Dashboard KPIs + Vues métier).** |
