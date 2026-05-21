@@ -15,6 +15,7 @@ type Commande = {
   created_at: string
   prix_paye: number
   statut: string
+  type_commande: string | null
   plateforme_source: string | null
   beats: {
     titre: string
@@ -53,6 +54,88 @@ function accumPrefs(
   for (const i of beat.instruments ?? []) counts.instruments.set(i, (counts.instruments.get(i) ?? 0) + weight)
 }
 
+// --- RFM ---
+
+type Segment = 'champion' | 'fidele' | 'potentiel' | 'a_risque' | 'dormant' | 'a_reactiver' | 'nouveau' | 'lead'
+
+const SEGMENT_CONFIG: Record<Segment, { label: string; color: string; desc: string }> = {
+  champion:    { label: 'Champion',    color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', desc: 'Client très actif, acheteur régulier et haute valeur' },
+  fidele:      { label: 'Fidèle',      color: 'bg-green-500/20 text-green-400 border-green-500/30',   desc: 'Achète régulièrement, bon niveau d\'engagement' },
+  potentiel:   { label: 'Potentiel',   color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',      desc: 'Nouvel acheteur à fort potentiel, à fidéliser' },
+  a_risque:    { label: 'À risque',    color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', desc: 'Bon client qui n\'achète plus depuis un moment' },
+  dormant:     { label: 'Dormant',     color: 'bg-gray-600/30 text-gray-500 border-gray-600/30',      desc: 'Inactif depuis plusieurs mois' },
+  a_reactiver: { label: 'À réactiver', color: 'bg-red-500/20 text-red-400 border-red-500/30',         desc: 'Ancien abonné ayant résilié — à reconquérir' },
+  nouveau:     { label: 'Nouveau',     color: 'bg-teal-500/20 text-teal-400 border-teal-500/30',      desc: 'Premier achat récent — à convertir en régulier' },
+  lead:        { label: 'Lead',        color: 'bg-gray-700/40 text-gray-400 border-gray-600/30',      desc: 'Contact sans achat ni abonnement' },
+}
+
+function scoreR(derniere_commande: string | null): number {
+  if (!derniere_commande) return 0
+  const jours = (Date.now() - new Date(derniere_commande).getTime()) / 86400000
+  if (jours < 7) return 5
+  if (jours < 30) return 4
+  if (jours < 90) return 3
+  if (jours < 180) return 2
+  if (jours < 365) return 1
+  return 0
+}
+
+function scoreF(nb: number): number {
+  if (nb >= 10) return 5
+  if (nb >= 5) return 4
+  if (nb >= 3) return 3
+  if (nb >= 2) return 2
+  if (nb >= 1) return 1
+  return 0
+}
+
+function scoreM(ltv: number): number {
+  if (ltv >= 500) return 5
+  if (ltv >= 200) return 4
+  if (ltv >= 100) return 3
+  if (ltv >= 50) return 2
+  if (ltv >= 1) return 1
+  return 0
+}
+
+function getSegment(
+  nb_achats: number,
+  ltv: number,
+  derniere_commande: string | null,
+  statut_abo: 'abonne' | 'ancien' | 'jamais'
+): { r: number; f: number; m: number; rfm: number; segment: Segment } {
+  const r = scoreR(derniere_commande)
+  const f = scoreF(nb_achats)
+  const m = scoreM(ltv)
+  const rfm = Math.round((r + f + m) / 15 * 100)
+
+  let segment: Segment
+
+  if (nb_achats === 0 && statut_abo === 'jamais') {
+    segment = 'lead'
+  } else if (statut_abo === 'ancien') {
+    segment = 'a_reactiver'
+  } else if (r >= 4 && f >= 4 && m >= 3) {
+    segment = 'champion'
+  } else if (f >= 3 && m >= 2 && r >= 2) {
+    segment = 'fidele'
+  } else if ((f >= 2 || m >= 3) && r <= 2) {
+    segment = 'a_risque'
+  } else if (r <= 1) {
+    segment = 'dormant'
+  } else if (nb_achats <= 2 && r >= 3 && m >= 2) {
+    segment = 'potentiel'
+  } else if (nb_achats >= 1 && r >= 3) {
+    segment = 'nouveau'
+  } else {
+    segment = 'dormant'
+  }
+
+  return { r, f, m, rfm, segment }
+}
+
+const SCORE_LABELS: Record<number, string> = { 0: 'Nul', 1: 'Faible', 2: 'Moyen', 3: 'Correct', 4: 'Bon', 5: 'Excellent' }
+
 export default async function FicheClientPage({
   params,
 }: {
@@ -76,7 +159,7 @@ export default async function FicheClientPage({
     supabase
       .from('commandes')
       .select(`
-        id, created_at, prix_paye, statut, plateforme_source,
+        id, created_at, prix_paye, statut, plateforme_source, type_commande,
         beats(titre, image_url, styles, type_beat, ambiances, instruments),
         licences(nom)
       `)
@@ -101,8 +184,13 @@ export default async function FicheClientPage({
   const favoris = (favorisRaw ?? []) as unknown as Array<{ beat_id: string; beats: BeatPrefs }>
 
   const payees = commandes.filter(c => c.statut === 'payee')
-  const nbAchats = payees.length
+  const nbAchats = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT').length
   const ltv = payees.reduce((s, c) => s + c.prix_paye, 0)
+  const derniereCmd = payees
+    .filter(c => c.type_commande !== 'RENOUVELLEMENT')
+    .map(c => c.created_at)
+    .sort()
+    .at(-1) ?? null
 
   const statut_abo: 'abonne' | 'ancien' | 'jamais' = !abonnement
     ? 'jamais'
@@ -110,13 +198,15 @@ export default async function FicheClientPage({
     ? 'abonne'
     : 'ancien'
 
-  // Mois réglés — mensualites_payees exact si disponible, sinon approx depuis date_debut
   const moisRegles = abonnement?.en_essai ? 0
     : (abonnement?.mensualites_payees ?? 0) > 0
     ? (abonnement?.mensualites_payees ?? 0)
     : (abonnement?.date_debut
       ? Math.max(1, Math.round((Date.now() - new Date(abonnement.date_debut).getTime()) / (30.44 * 86400000)))
       : 0)
+
+  const rfmScores = getSegment(nbAchats, ltv, derniereCmd, statut_abo)
+  const segConfig = SEGMENT_CONFIG[rfmScores.segment]
 
   // Préférences musicales : achats poids×2, favoris poids×1
   const prefCounts = {
@@ -236,6 +326,37 @@ export default async function FicheClientPage({
           </div>
         </div>
 
+        {/* Score RFM */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-white">Score RFM</h2>
+            <span className={`text-xs px-3 py-1 rounded-full font-medium border ${segConfig.color}`}>
+              {segConfig.label}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">{segConfig.desc}</p>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            {[
+              { label: 'Récence', score: rfmScores.r, hint: 'Dernier achat' },
+              { label: 'Fréquence', score: rfmScores.f, hint: 'Nb achats' },
+              { label: 'Valeur', score: rfmScores.m, hint: 'LTV' },
+            ].map(({ label, score, hint }) => (
+              <div key={label} className="text-center">
+                <p className="text-2xl font-black text-white">
+                  {score}<span className="text-gray-600 text-sm font-normal">/5</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+                <p className="text-xs text-gray-700 mt-0.5">{SCORE_LABELS[score]}</p>
+              </div>
+            ))}
+          </div>
+          <div className="pt-3 border-t border-gray-800 text-center">
+            <span className="text-xs text-gray-600">Score global : </span>
+            <span className="text-sm font-bold text-white">{rfmScores.rfm}</span>
+            <span className="text-xs text-gray-600">/100</span>
+          </div>
+        </div>
+
         {/* Abonnement */}
         {abonnement && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
@@ -344,16 +465,25 @@ export default async function FicheClientPage({
           ) : (
             <div className="flex flex-col gap-1">
               {commandes.map(c => {
+                const isAbo = c.type_commande === 'CREATION_ABONNEMENT'
+                const isRnvt = c.type_commande === 'RENOUVELLEMENT'
                 const isBs = c.plateforme_source === 'beatstars'
-                const titre = c.beats?.titre ?? (isBs ? 'Import BeatStars' : 'Beat supprimé')
-                const licence = c.licences?.nom ?? (isBs ? '—' : 'Licence inconnue')
+                const titre = isAbo ? 'Création abonnement'
+                  : isRnvt ? 'Renouvellement abonnement'
+                  : c.beats?.titre ?? (isBs ? 'Import BeatStars' : 'Beat supprimé')
+                const licence = isAbo || isRnvt ? '—'
+                  : c.licences?.nom ?? (isBs ? '—' : 'Licence inconnue')
+                const avatarLabel = isAbo ? 'ABO' : isRnvt ? 'RNV' : isBs ? 'BS' : '?'
+
                 return (
                   <div key={c.id} className="flex items-center gap-3 py-3 border-b border-gray-800 last:border-0">
                     {c.beats?.image_url ? (
                       <img src={c.beats.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-600 text-xs font-bold">
-                        {isBs ? 'BS' : '?'}
+                      <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold ${
+                        isAbo || isRnvt ? 'bg-indigo-900/40 text-indigo-400' : 'bg-gray-800 text-gray-600'
+                      }`}>
+                        {avatarLabel}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">

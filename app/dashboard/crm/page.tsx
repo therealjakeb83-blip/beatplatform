@@ -25,6 +25,88 @@ function topValue(counts: Map<string, number>): string | null {
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0]
 }
 
+// --- RFM ---
+
+type Segment = 'champion' | 'fidele' | 'potentiel' | 'a_risque' | 'dormant' | 'a_reactiver' | 'nouveau' | 'lead'
+
+const SEGMENT_CONFIG: Record<Segment, { label: string; color: string }> = {
+  champion:    { label: 'Champion',    color: 'bg-yellow-500/20 text-yellow-400' },
+  fidele:      { label: 'Fidèle',      color: 'bg-green-500/20 text-green-400' },
+  potentiel:   { label: 'Potentiel',   color: 'bg-blue-500/20 text-blue-400' },
+  a_risque:    { label: 'À risque',    color: 'bg-orange-500/20 text-orange-400' },
+  dormant:     { label: 'Dormant',     color: 'bg-gray-600/30 text-gray-500' },
+  a_reactiver: { label: 'À réactiver', color: 'bg-red-500/20 text-red-400' },
+  nouveau:     { label: 'Nouveau',     color: 'bg-teal-500/20 text-teal-400' },
+  lead:        { label: 'Lead',        color: 'bg-gray-700/40 text-gray-500' },
+}
+
+function scoreR(derniere_commande: string | null): number {
+  if (!derniere_commande) return 0
+  const jours = (Date.now() - new Date(derniere_commande).getTime()) / 86400000
+  if (jours < 7) return 5
+  if (jours < 30) return 4
+  if (jours < 90) return 3
+  if (jours < 180) return 2
+  if (jours < 365) return 1
+  return 0
+}
+
+function scoreF(nb: number): number {
+  if (nb >= 10) return 5
+  if (nb >= 5) return 4
+  if (nb >= 3) return 3
+  if (nb >= 2) return 2
+  if (nb >= 1) return 1
+  return 0
+}
+
+function scoreM(ltv: number): number {
+  if (ltv >= 500) return 5
+  if (ltv >= 200) return 4
+  if (ltv >= 100) return 3
+  if (ltv >= 50) return 2
+  if (ltv >= 1) return 1
+  return 0
+}
+
+function getSegment(
+  nb_achats: number,
+  ltv: number,
+  derniere_commande: string | null,
+  statut_abo: 'abonne' | 'ancien' | 'jamais'
+): { r: number; f: number; m: number; rfm: number; segment: Segment } {
+  const r = scoreR(derniere_commande)
+  const f = scoreF(nb_achats)
+  const m = scoreM(ltv)
+  const rfm = Math.round((r + f + m) / 15 * 100)
+
+  let segment: Segment
+
+  if (nb_achats === 0 && statut_abo === 'jamais') {
+    segment = 'lead'
+  } else if (statut_abo === 'ancien') {
+    segment = 'a_reactiver'
+  } else if (r >= 4 && f >= 4 && m >= 3) {
+    segment = 'champion'
+  } else if (f >= 3 && m >= 2 && r >= 2) {
+    segment = 'fidele'
+  } else if ((f >= 2 || m >= 3) && r <= 2) {
+    segment = 'a_risque'
+  } else if (r <= 1) {
+    segment = 'dormant'
+  } else if (nb_achats <= 2 && r >= 3 && m >= 2) {
+    segment = 'potentiel'
+  } else if (nb_achats >= 1 && r >= 3) {
+    segment = 'nouveau'
+  } else {
+    segment = 'dormant'
+  }
+
+  return { r, f, m, rfm, segment }
+}
+
+// --- Types ---
+
 type ClientCRM = {
   id: string | null
   email: string
@@ -37,6 +119,11 @@ type ClientCRM = {
   style_prefere: string | null
   type_beat_prefere: string | null
   date_premier_contact: string
+  r: number
+  f: number
+  m: number
+  rfm: number
+  segment: Segment
 }
 
 function initiales(nom: string) {
@@ -97,7 +184,8 @@ export default async function CRMPage({
     return null
   }
 
-  const crmMap = new Map<string, ClientCRM>()
+  type CRMEntry = Omit<ClientCRM, 'r' | 'f' | 'm' | 'rfm' | 'segment'>
+  const crmMap = new Map<string, CRMEntry>()
   const stylesCount = new Map<string, Map<string, number>>()
   const typeBeatCount = new Map<string, Map<string, number>>()
 
@@ -176,14 +264,25 @@ export default async function CRMPage({
     if (tc) entry.type_beat_prefere = topValue(tc)
   }
 
-  const tous = Array.from(crmMap.values())
+  const tous: ClientCRM[] = Array.from(crmMap.values())
     .sort((a, b) => new Date(b.date_premier_contact).getTime() - new Date(a.date_premier_contact).getTime())
+    .map(c => {
+      const { r, f, m, rfm, segment } = getSegment(c.nb_achats, c.ltv, c.derniere_commande, c.statut_abo)
+      return { ...c, r, f, m, rfm, segment }
+    })
+
+  const pretAboCount = tous.filter(c => c.nb_achats >= 3 && c.statut_abo === 'jamais').length
 
   const stats = {
     total: tous.length,
     abonnes: tous.filter(c => c.statut_abo === 'abonne').length,
     anciens: tous.filter(c => c.statut_abo === 'ancien').length,
     ltv: tous.reduce((s, c) => s + c.ltv, 0),
+    ltvMoyenne: tous.length > 0 ? Math.round(tous.reduce((s, c) => s + c.ltv, 0) / tous.length) : 0,
+    champions: tous.filter(c => c.segment === 'champion').length,
+    fideles: tous.filter(c => c.segment === 'fidele').length,
+    a_risque: tous.filter(c => c.segment === 'a_risque').length,
+    dormants: tous.filter(c => c.segment === 'dormant').length,
   }
 
   let clients = tous
@@ -192,14 +291,37 @@ export default async function CRMPage({
   if (filtre === 'ancien') clients = clients.filter(c => c.statut_abo === 'ancien')
   if (filtre === 'jamais') clients = clients.filter(c => c.statut_abo === 'jamais')
   if (filtre === 'leads') clients = clients.filter(c => c.nb_achats === 0 && c.statut_abo === 'jamais')
+  if (filtre === 'champion') clients = clients.filter(c => c.segment === 'champion')
+  if (filtre === 'fidele') clients = clients.filter(c => c.segment === 'fidele')
+  if (filtre === 'potentiel') clients = clients.filter(c => c.segment === 'potentiel')
+  if (filtre === 'a_risque') clients = clients.filter(c => c.segment === 'a_risque')
+  if (filtre === 'dormant') clients = clients.filter(c => c.segment === 'dormant')
+  if (filtre === 'a_reactiver') clients = clients.filter(c => c.segment === 'a_reactiver')
+  if (filtre === 'pret_abo') clients = clients.filter(c => c.nb_achats >= 3 && c.statut_abo === 'jamais')
 
-  const FILTRES = [
+  const FILTRES_STATUT = [
     { key: 'tous', label: 'Tous' },
     { key: 'abonne', label: 'Abonnés' },
     { key: 'ancien', label: 'Anciens abonnés' },
     { key: 'jamais', label: 'Jamais abonnés' },
     { key: 'leads', label: 'Leads' },
   ]
+
+  const FILTRES_SEGMENT = [
+    { key: 'champion', label: 'Champions' },
+    { key: 'fidele', label: 'Fidèles' },
+    { key: 'potentiel', label: 'Potentiels' },
+    { key: 'a_risque', label: 'À risque' },
+    { key: 'dormant', label: 'Dormants' },
+    { key: 'a_reactiver', label: 'À réactiver' },
+  ]
+
+  const filtreActif = (key: string) => filtre === key
+    ? 'bg-indigo-600 text-white'
+    : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'
+
+  const filtreUrl = (key: string) =>
+    `/dashboard/crm?filtre=${key}${recherche ? `&recherche=${encodeURIComponent(recherche)}` : ''}`
 
   return (
     <main className="min-h-screen bg-gray-950 text-white px-4 py-10">
@@ -227,13 +349,13 @@ export default async function CRMPage({
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Stats Row 1 — contacts & revenus */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
             { label: 'Contacts', value: stats.total },
             { label: 'Abonnés actifs', value: stats.abonnes },
-            { label: 'Anciens abonnés', value: stats.anciens },
             { label: 'LTV totale', value: `${stats.ltv.toLocaleString('fr-FR')} €` },
+            { label: 'LTV moyenne', value: `${stats.ltvMoyenne.toLocaleString('fr-FR')} €` },
           ].map(s => (
             <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <p className="text-gray-500 text-xs mb-1">{s.label}</p>
@@ -242,8 +364,74 @@ export default async function CRMPage({
           ))}
         </div>
 
-        {/* Search + filtres */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        {/* Stats Row 2 — segments cliquables */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {([
+            { label: 'Champions',  value: stats.champions, color: 'text-yellow-400', key: 'champion' },
+            { label: 'Fidèles',    value: stats.fideles,   color: 'text-green-400',  key: 'fidele'   },
+            { label: 'À risque',   value: stats.a_risque,  color: 'text-orange-400', key: 'a_risque' },
+            { label: 'Dormants',   value: stats.dormants,  color: 'text-gray-500',   key: 'dormant'  },
+          ] as const).map(s => (
+            <Link
+              key={s.label}
+              href={filtreUrl(s.key)}
+              className={`bg-gray-900 border rounded-xl p-4 hover:border-gray-700 transition-colors ${
+                filtre === s.key ? 'border-indigo-600' : 'border-gray-800'
+              }`}
+            >
+              <p className="text-gray-500 text-xs mb-1">{s.label}</p>
+              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+            </Link>
+          ))}
+        </div>
+
+        {/* Vues métier */}
+        {(stats.dormants > 0 || stats.a_risque > 0 || pretAboCount > 0) && (
+          <div className="mb-8">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Actions recommandées</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {stats.dormants > 0 && (
+                <Link
+                  href={filtreUrl('dormant')}
+                  className="flex items-center justify-between p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">Clients à relancer</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{stats.dormants} inactif{stats.dormants > 1 ? 's' : ''} depuis 3+ mois</p>
+                  </div>
+                  <span className="text-gray-600 ml-4">→</span>
+                </Link>
+              )}
+              {stats.a_risque > 0 && (
+                <Link
+                  href={filtreUrl('a_risque')}
+                  className="flex items-center justify-between p-4 bg-gray-900 border border-orange-900/40 rounded-xl hover:border-orange-800/60 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">Risque de partir</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{stats.a_risque} bon{stats.a_risque > 1 ? 's' : ''} client{stats.a_risque > 1 ? 's' : ''} qui se désengagent</p>
+                  </div>
+                  <span className="text-orange-700 ml-4">→</span>
+                </Link>
+              )}
+              {pretAboCount > 0 && (
+                <Link
+                  href={filtreUrl('pret_abo')}
+                  className="flex items-center justify-between p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">Prêts à s&apos;abonner</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{pretAboCount} client{pretAboCount > 1 ? 's' : ''} avec 3+ achats, pas encore abonné{pretAboCount > 1 ? 's' : ''}</p>
+                  </div>
+                  <span className="text-gray-600 ml-4">→</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Recherche + filtres statut */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-3">
           <form className="flex-1">
             {filtre !== 'tous' && <input type="hidden" name="filtre" value={filtre} />}
             <input
@@ -255,20 +443,33 @@ export default async function CRMPage({
             />
           </form>
           <div className="flex gap-2 flex-wrap">
-            {FILTRES.map(f => (
+            {FILTRES_STATUT.map(f => (
               <Link
                 key={f.key}
-                href={`/dashboard/crm?filtre=${f.key}${recherche ? `&recherche=${encodeURIComponent(recherche)}` : ''}`}
-                className={`px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap ${
-                  filtre === f.key
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'
-                }`}
+                href={filtreUrl(f.key)}
+                className={`px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap ${filtreActif(f.key)}`}
               >
                 {f.label}
               </Link>
             ))}
           </div>
+        </div>
+
+        {/* Filtres segments */}
+        <div className="flex gap-2 flex-wrap mb-6">
+          {FILTRES_SEGMENT.map(f => (
+            <Link
+              key={f.key}
+              href={filtreUrl(f.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap ${
+                filtre === f.key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-900 text-gray-500 hover:text-white border border-gray-800'
+              }`}
+            >
+              {f.label}
+            </Link>
+          ))}
         </div>
 
         {/* Liste */}
@@ -285,84 +486,94 @@ export default async function CRMPage({
           </div>
         ) : (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            {clients.map((c, i) => (
-              <div
-                key={c.email}
-                className={`flex items-center gap-4 px-5 py-4 ${
-                  i < clients.length - 1 ? 'border-b border-gray-800' : ''
-                } ${c.id ? 'hover:bg-gray-800/40 transition-colors' : ''}`}
-              >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-indigo-900/60 flex items-center justify-center text-indigo-300 font-bold text-sm flex-shrink-0">
-                  {initiales(c.nom)}
-                </div>
+            {clients.map((c, i) => {
+              const seg = SEGMENT_CONFIG[c.segment]
+              return (
+                <div
+                  key={c.email}
+                  className={`flex items-center gap-4 px-5 py-4 ${
+                    i < clients.length - 1 ? 'border-b border-gray-800' : ''
+                  } ${c.id ? 'hover:bg-gray-800/40 transition-colors' : ''}`}
+                >
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-indigo-900/60 flex items-center justify-center text-indigo-300 font-bold text-sm flex-shrink-0">
+                    {initiales(c.nom)}
+                  </div>
 
-                {/* Nom + email + badge */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="font-semibold text-white truncate">{c.nom !== c.email ? c.nom : '—'}</p>
-                    {c.statut_abo === 'abonne' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium whitespace-nowrap">Abonné</span>
+                  {/* Nom + email + badges abo */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-white truncate">{c.nom !== c.email ? c.nom : '—'}</p>
+                      {c.statut_abo === 'abonne' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium whitespace-nowrap">Abonné</span>
+                      )}
+                      {c.statut_abo === 'ancien' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium whitespace-nowrap">Ancien abonné</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 truncate">{c.email}</p>
+                  </div>
+
+                  {/* Segment RFM */}
+                  <div className="hidden md:block flex-shrink-0">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${seg.color}`}>
+                      {seg.label}
+                    </span>
+                  </div>
+
+                  {/* Langue */}
+                  <div className="text-center w-8 hidden lg:block">
+                    <span className="text-xs text-gray-500">{getLangue(c.pays)}</span>
+                  </div>
+
+                  {/* Achats */}
+                  <div className="text-right w-14 hidden sm:block">
+                    <p className="font-semibold text-white">{c.nb_achats}</p>
+                    <p className="text-xs text-gray-600">achat{c.nb_achats > 1 ? 's' : ''}</p>
+                  </div>
+
+                  {/* LTV */}
+                  <div className="text-right w-20 hidden sm:block">
+                    <p className="font-semibold text-white">{c.ltv.toLocaleString('fr-FR')} €</p>
+                    <p className="text-xs text-gray-600">LTV</p>
+                  </div>
+
+                  {/* Dernière commande */}
+                  <div className="text-right w-20 hidden md:block">
+                    {c.derniere_commande ? (
+                      <p className="text-xs text-gray-400">{dateRelative(c.derniere_commande)}</p>
+                    ) : (
+                      <p className="text-xs text-gray-700">—</p>
                     )}
-                    {c.statut_abo === 'ancien' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium whitespace-nowrap">Ancien abonné</span>
+                    <p className="text-xs text-gray-600">dernière cmd</p>
+                  </div>
+
+                  {/* Style · Type beat */}
+                  <div className="text-right w-32 hidden xl:block">
+                    {c.style_prefere || c.type_beat_prefere ? (
+                      <p className="text-xs text-gray-400 truncate">
+                        {[c.style_prefere, c.type_beat_prefere].filter(Boolean).join(' · ')}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-700">—</p>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{c.email}</p>
-                </div>
 
-                {/* Langue */}
-                <div className="text-center w-8 hidden lg:block">
-                  <span className="text-xs text-gray-500">{getLangue(c.pays)}</span>
-                </div>
-
-                {/* Achats */}
-                <div className="text-right w-14 hidden sm:block">
-                  <p className="font-semibold text-white">{c.nb_achats}</p>
-                  <p className="text-xs text-gray-600">achat{c.nb_achats > 1 ? 's' : ''}</p>
-                </div>
-
-                {/* LTV */}
-                <div className="text-right w-20 hidden sm:block">
-                  <p className="font-semibold text-white">{c.ltv.toLocaleString('fr-FR')} €</p>
-                  <p className="text-xs text-gray-600">LTV</p>
-                </div>
-
-                {/* Dernière commande */}
-                <div className="text-right w-20 hidden md:block">
-                  {c.derniere_commande ? (
-                    <p className="text-xs text-gray-400">{dateRelative(c.derniere_commande)}</p>
+                  {/* Lien fiche */}
+                  {c.id ? (
+                    <Link
+                      href={`/dashboard/crm/${c.id}`}
+                      className="text-gray-600 hover:text-indigo-400 transition-colors text-lg flex-shrink-0"
+                      title="Voir la fiche"
+                    >
+                      →
+                    </Link>
                   ) : (
-                    <p className="text-xs text-gray-700">—</p>
-                  )}
-                  <p className="text-xs text-gray-600">dernière cmd</p>
-                </div>
-
-                {/* Style · Type beat */}
-                <div className="text-right w-32 hidden xl:block">
-                  {c.style_prefere || c.type_beat_prefere ? (
-                    <p className="text-xs text-gray-400 truncate">
-                      {[c.style_prefere, c.type_beat_prefere].filter(Boolean).join(' · ')}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-gray-700">—</p>
+                    <div className="w-5 flex-shrink-0" />
                   )}
                 </div>
-
-                {/* Lien fiche */}
-                {c.id ? (
-                  <Link
-                    href={`/dashboard/crm/${c.id}`}
-                    className="text-gray-600 hover:text-indigo-400 transition-colors text-lg flex-shrink-0"
-                    title="Voir la fiche"
-                  >
-                    →
-                  </Link>
-                ) : (
-                  <div className="w-5 flex-shrink-0" />
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
