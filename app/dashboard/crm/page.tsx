@@ -3,13 +3,39 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
+const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
+
+function getLangue(pays: string | null | undefined): 'FR' | 'US' {
+  return pays && PAYS_FR.has(pays.toUpperCase()) ? 'FR' : 'US'
+}
+
+function dateRelative(dateStr: string): string {
+  const jours = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
+  if (jours === 0) return "Auj."
+  if (jours === 1) return 'Hier'
+  if (jours < 7) return `${jours}j`
+  if (jours < 30) return `${Math.floor(jours / 7)} sem`
+  if (jours < 365) return `${Math.floor(jours / 30)} mois`
+  const ans = Math.floor(jours / 365)
+  return `${ans} an${ans > 1 ? 's' : ''}`
+}
+
+function topValue(counts: Map<string, number>): string | null {
+  if (counts.size === 0) return null
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+}
+
 type ClientCRM = {
   id: string | null
   email: string
   nom: string
+  pays: string | null
   nb_achats: number
-  ca_total: number
-  abonnement_actif: boolean
+  ltv: number
+  statut_abo: 'abonne' | 'ancien' | 'jamais'
+  derniere_commande: string | null
+  style_prefere: string | null
+  type_beat_prefere: string | null
   date_premier_contact: string
 }
 
@@ -34,7 +60,7 @@ export default async function CRMPage({
   const [{ data: commandes }, { data: abonnements }] = await Promise.all([
     supabase
       .from('commandes')
-      .select('client_id, acheteur_email, acheteur_nom, prix_paye, statut, created_at')
+      .select('client_id, acheteur_email, acheteur_nom, prix_paye, statut, created_at, beats(styles, type_beat)')
       .eq('beatmaker_id', user.id),
     supabase
       .from('abonnements_boutique')
@@ -48,7 +74,7 @@ export default async function CRMPage({
   ])]
 
   const { data: clientsData } = clientIds.length > 0
-    ? await admin.from('clients').select('id, email, nom, prenom').in('id', clientIds)
+    ? await admin.from('clients').select('id, email, nom, prenom, pays').in('id', clientIds)
     : { data: [] }
 
   const clientsById = new Map((clientsData ?? []).map(c => [c.id, c]))
@@ -66,16 +92,31 @@ export default async function CRMPage({
     return fallback ?? ''
   }
 
-  const crmMap = new Map<string, ClientCRM>()
+  function getPays(clientId: string | null): string | null {
+    if (clientId) return clientsById.get(clientId)?.pays ?? null
+    return null
+  }
 
-  function upsert(email: string, id: string | null, nom: string, date: string) {
+  const crmMap = new Map<string, ClientCRM>()
+  const stylesCount = new Map<string, Map<string, number>>()
+  const typeBeatCount = new Map<string, Map<string, number>>()
+
+  function upsert(email: string, id: string | null, nom: string, pays: string | null, date: string) {
     if (!email) return
     if (!crmMap.has(email)) {
-      crmMap.set(email, { id, email, nom: nom || email, nb_achats: 0, ca_total: 0, abonnement_actif: false, date_premier_contact: date })
+      crmMap.set(email, {
+        id, email, nom: nom || email, pays,
+        nb_achats: 0, ltv: 0,
+        statut_abo: 'jamais',
+        derniere_commande: null,
+        style_prefere: null, type_beat_prefere: null,
+        date_premier_contact: date,
+      })
     } else {
       const entry = crmMap.get(email)!
       if (!entry.id && id) entry.id = id
       if ((!entry.nom || entry.nom === email) && nom) entry.nom = nom
+      if (!entry.pays && pays) entry.pays = pays
       if (date < entry.date_premier_contact) entry.date_premier_contact = date
     }
   }
@@ -83,21 +124,53 @@ export default async function CRMPage({
   for (const cmd of commandes ?? []) {
     const email = getEmail(cmd.client_id, cmd.acheteur_email)
     const nom = getNom(cmd.client_id, cmd.acheteur_nom)
+    const pays = getPays(cmd.client_id)
     if (!email) continue
-    upsert(email, cmd.client_id, nom, cmd.created_at)
+    upsert(email, cmd.client_id, nom, pays, cmd.created_at)
     const entry = crmMap.get(email)!
     if (cmd.statut === 'payee') {
       entry.nb_achats++
-      entry.ca_total += cmd.prix_paye
+      entry.ltv += cmd.prix_paye
+      if (!entry.derniere_commande || cmd.created_at > entry.derniere_commande) {
+        entry.derniere_commande = cmd.created_at
+      }
+      const beat = (cmd as any).beats
+      if (beat?.styles?.length) {
+        if (!stylesCount.has(email)) stylesCount.set(email, new Map())
+        for (const s of beat.styles as string[]) {
+          const m = stylesCount.get(email)!
+          m.set(s, (m.get(s) ?? 0) + 1)
+        }
+      }
+      if (beat?.type_beat?.length) {
+        if (!typeBeatCount.has(email)) typeBeatCount.set(email, new Map())
+        for (const t of beat.type_beat as string[]) {
+          const m = typeBeatCount.get(email)!
+          m.set(t, (m.get(t) ?? 0) + 1)
+        }
+      }
     }
   }
 
   for (const abo of abonnements ?? []) {
     const email = getEmail(abo.client_id, abo.acheteur_email)
     const nom = getNom(abo.client_id, abo.acheteur_nom)
+    const pays = getPays(abo.client_id)
     if (!email) continue
-    upsert(email, abo.client_id, nom, abo.created_at)
-    if (abo.statut === 'actif') crmMap.get(email)!.abonnement_actif = true
+    upsert(email, abo.client_id, nom, pays, abo.created_at)
+    const entry = crmMap.get(email)!
+    if (abo.statut === 'actif') {
+      entry.statut_abo = 'abonne'
+    } else if (entry.statut_abo !== 'abonne') {
+      entry.statut_abo = 'ancien'
+    }
+  }
+
+  for (const [email, entry] of crmMap) {
+    const sc = stylesCount.get(email)
+    if (sc) entry.style_prefere = topValue(sc)
+    const tc = typeBeatCount.get(email)
+    if (tc) entry.type_beat_prefere = topValue(tc)
   }
 
   const tous = Array.from(crmMap.values())
@@ -105,21 +178,23 @@ export default async function CRMPage({
 
   const stats = {
     total: tous.length,
-    acheteurs: tous.filter(c => c.nb_achats > 0).length,
-    abonnes: tous.filter(c => c.abonnement_actif).length,
-    ca: tous.reduce((s, c) => s + c.ca_total, 0),
+    abonnes: tous.filter(c => c.statut_abo === 'abonne').length,
+    anciens: tous.filter(c => c.statut_abo === 'ancien').length,
+    ltv: tous.reduce((s, c) => s + c.ltv, 0),
   }
 
   let clients = tous
   if (recherche) clients = clients.filter(c => c.nom.toLowerCase().includes(recherche) || c.email.toLowerCase().includes(recherche))
-  if (filtre === 'acheteurs') clients = clients.filter(c => c.nb_achats > 0)
-  if (filtre === 'abonnes') clients = clients.filter(c => c.abonnement_actif)
-  if (filtre === 'leads') clients = clients.filter(c => c.nb_achats === 0 && !c.abonnement_actif)
+  if (filtre === 'abonne') clients = clients.filter(c => c.statut_abo === 'abonne')
+  if (filtre === 'ancien') clients = clients.filter(c => c.statut_abo === 'ancien')
+  if (filtre === 'jamais') clients = clients.filter(c => c.statut_abo === 'jamais')
+  if (filtre === 'leads') clients = clients.filter(c => c.nb_achats === 0 && c.statut_abo === 'jamais')
 
   const FILTRES = [
     { key: 'tous', label: 'Tous' },
-    { key: 'acheteurs', label: 'Acheteurs' },
-    { key: 'abonnes', label: 'Abonnés' },
+    { key: 'abonne', label: 'Abonnés' },
+    { key: 'ancien', label: 'Anciens abonnés' },
+    { key: 'jamais', label: 'Jamais abonnés' },
     { key: 'leads', label: 'Leads' },
   ]
 
@@ -144,10 +219,10 @@ export default async function CRMPage({
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Clients', value: stats.total },
-            { label: 'Acheteurs', value: stats.acheteurs },
+            { label: 'Contacts', value: stats.total },
             { label: 'Abonnés actifs', value: stats.abonnes },
-            { label: 'CA total', value: `${stats.ca} €` },
+            { label: 'Anciens abonnés', value: stats.anciens },
+            { label: 'LTV totale', value: `${stats.ltv.toLocaleString('fr-FR')} €` },
           ].map(s => (
             <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <p className="text-gray-500 text-xs mb-1">{s.label}</p>
@@ -168,7 +243,7 @@ export default async function CRMPage({
               className="w-full px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
             />
           </form>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {FILTRES.map(f => (
               <Link
                 key={f.key}
@@ -211,40 +286,56 @@ export default async function CRMPage({
                   {initiales(c.nom)}
                 </div>
 
-                {/* Nom + email */}
+                {/* Nom + email + badge */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white truncate">{c.nom !== c.email ? c.nom : '—'}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold text-white truncate">{c.nom !== c.email ? c.nom : '—'}</p>
+                    {c.statut_abo === 'abonne' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium whitespace-nowrap">Abonné</span>
+                    )}
+                    {c.statut_abo === 'ancien' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium whitespace-nowrap">Ancien abonné</span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 truncate">{c.email}</p>
                 </div>
 
+                {/* Langue */}
+                <div className="text-center w-8 hidden lg:block">
+                  <span className="text-xs text-gray-500">{getLangue(c.pays)}</span>
+                </div>
+
                 {/* Achats */}
-                <div className="text-right w-16 hidden sm:block">
+                <div className="text-right w-14 hidden sm:block">
                   <p className="font-semibold text-white">{c.nb_achats}</p>
                   <p className="text-xs text-gray-600">achat{c.nb_achats > 1 ? 's' : ''}</p>
                 </div>
 
-                {/* CA */}
+                {/* LTV */}
                 <div className="text-right w-20 hidden sm:block">
-                  <p className="font-semibold text-white">{c.ca_total} €</p>
-                  <p className="text-xs text-gray-600">CA</p>
+                  <p className="font-semibold text-white">{c.ltv.toLocaleString('fr-FR')} €</p>
+                  <p className="text-xs text-gray-600">LTV</p>
                 </div>
 
-                {/* Badge abonné */}
-                <div className="w-20 flex justify-center">
-                  {c.abonnement_actif && (
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/20 text-green-400 font-medium whitespace-nowrap">
-                      Abonné
-                    </span>
+                {/* Dernière commande */}
+                <div className="text-right w-20 hidden md:block">
+                  {c.derniere_commande ? (
+                    <p className="text-xs text-gray-400">{dateRelative(c.derniere_commande)}</p>
+                  ) : (
+                    <p className="text-xs text-gray-700">—</p>
                   )}
+                  <p className="text-xs text-gray-600">dernière cmd</p>
                 </div>
 
-                {/* Date */}
-                <div className="text-right w-24 hidden md:block">
-                  <p className="text-xs text-gray-500">
-                    {new Date(c.date_premier_contact).toLocaleDateString('fr-FR', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
-                  </p>
+                {/* Style · Type beat */}
+                <div className="text-right w-32 hidden xl:block">
+                  {c.style_prefere || c.type_beat_prefere ? (
+                    <p className="text-xs text-gray-400 truncate">
+                      {[c.style_prefere, c.type_beat_prefere].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-700">—</p>
+                  )}
                 </div>
 
                 {/* Lien fiche */}
