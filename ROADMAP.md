@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-21 — Optimisation CRM (11c) : Sprint 1 ✅ + Sprint 2 ✅ validés
+> Dernière mise à jour : 2026-05-21 — Optimisation CRM (11c) : Sprint 1 ✅ + Sprint 2 ✅ + Sprint 3 ✅ validés
 
 ## Légende
 | Statut | Signification |
@@ -390,17 +390,19 @@ Fonctionnalités livrées :
 
 ---
 
-### Sprint 3 — Score RFM + Dashboard + Vues métier ⬜ À faire
+### Sprint 3 — Score RFM + Dashboard + Vues métier ✅ Validé
 
-- Score RFM calculé (R + F + M individuels)
-- Segments automatiques : Champion / Fidèle / Potentiel / À risque / Dormant / À réactiver
-- Dashboard CRM : KPIs (total clients, abonnés actifs, churns ce mois, LTV totale)
-- Vues métier pré-construites :
-  - "Qui contacter aujourd'hui ?" (dormants 3+ mois)
-  - "Qui risque de partir ?" (on-hold, inactifs)
-  - "Qui est prêt à s'abonner ?" (3+ achats, jamais abonné)
-- `source_acquisition` sur `clients` + UTM tracking au checkout
-- Téléphone sur `clients`
+Fonctionnalités livrées (0 nouvelle colonne BDD) :
+- Score RFM absolu : R/F/M chacun sur 5 → score global /100
+- 8 segments automatiques : Champion / Fidèle / Potentiel / À risque / Dormant / À réactiver / Nouveau / Lead
+- KPIs ligne 2 (Champions / Fidèles / À risque / Dormants) cliquables → filtre direct
+- LTV moyenne ajoutée aux stats
+- Section "Actions recommandées" : 3 vues métier contextuelles (clients à relancer / risque de partir / prêts à s'abonner)
+- 6 filtres segments dans la liste (+ filtre pret_abo)
+- Badge segment coloré dans chaque ligne
+- Fiche client : bloc Score RFM avec R/F/M individuels + label (Nul→Excellent) + description du segment
+- Fix fiche client : nbAchats exclut désormais les RENOUVELLEMENT (cohérence liste)
+- Fix historique : labels corrects pour CREATION_ABONNEMENT et RENOUVELLEMENT
 
 ---
 
@@ -460,4 +462,5 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 | 2026-05-20 | Étape 11b — Résolution client (bonus) | ✅ FK clients→auth.users supprimé. Webhook Stripe crée/résout le client par email à chaque achat. lierCompteClient fusionne le compte invité dans le compte auth à l'inscription. 15 clients fictifs + 45 commandes + 5 abonnements insérés en BDD pour tests réalistes. Fix affichage prix abonnement (centimes → décimales : 6,99€/mois). |
 | 2026-05-20 | Optimisation CRM (11c) — décisions initiales | Analyse du CRM Airtable de Jake. Décisions prises pour 3 sprints : badge Statut client, LTV, Langue, Instagram, newsletter. À coder en session suivante. |
 | 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints. Décisions clés : 2 dimensions de statut indépendantes (abonnement + achat), LTV inclut tout, mois réglés = compteur réel, préférences musicales depuis achats+favoris. Leads : définition, sources, score chaleur, affichage CRM. Email marketing Resend : templates brandés, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro (pas de webmail). Sprint 1 entièrement planifié (14 sous-étapes, 0 BDD). |
-| 2026-05-21 | Optimisation CRM (11c) — Sprint 1 + Sprint 2 ✅ | Sprint 1 : badge statut abo 3 états, filtres, LTV, langue, dernière commande, style/type beat, préférences musicales (achats×2 + favoris×1). Sprint 2 : type_commande, mensualites_payees, LTV réelle (webhook invoice.payment_succeeded), instagram éditable, newsletter_consent + checkbox inscription + toggle mon-compte + export CSV. Migration SQL : supabase/sprint2_crm.sql exécutée. **PROCHAINE SESSION : Sprint 3 (Score RFM + Dashboard KPIs + Vues métier).** |
+| 2026-05-21 | Optimisation CRM (11c) — Sprint 1 + Sprint 2 ✅ | Sprint 1 : badge statut abo 3 états, filtres, LTV, langue, dernière commande, style/type beat, préférences musicales (achats×2 + favoris×1). Sprint 2 : type_commande, mensualites_payees, LTV réelle (webhook invoice.payment_succeeded), instagram éditable, newsletter_consent + checkbox inscription + toggle mon-compte + export CSV. Migration SQL : supabase/sprint2_crm.sql exécutée. |
+| 2026-05-21 | Optimisation CRM (11c) — Sprint 3 ✅ | Score RFM (R/F/M /5 → score /100). 8 segments auto (Champion/Fidèle/Potentiel/À risque/Dormant/À réactiver/Nouveau/Lead). KPIs ligne 2 cliquables. LTV moyenne. Section "Actions recommandées" (3 vues métier). 6 filtres segments. Badge segment dans chaque ligne. Fiche : bloc RFM complet avec description. Fix nbAchats + historique labels. **PROCHAINE SESSION : Sprint 4 (Email marketing Resend) ou étape 12.** |
