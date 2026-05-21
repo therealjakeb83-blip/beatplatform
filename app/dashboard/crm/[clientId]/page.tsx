@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
@@ -65,7 +66,7 @@ export default async function FicheClientPage({
 
   const { data: client } = await admin
     .from('clients')
-    .select('id, email, nom, prenom, created_at, pays')
+    .select('id, email, nom, prenom, created_at, pays, instagram, newsletter_consent')
     .eq('id', clientId)
     .single()
 
@@ -84,7 +85,7 @@ export default async function FicheClientPage({
       .order('created_at', { ascending: false }),
     supabase
       .from('abonnements_boutique')
-      .select('statut, date_debut, date_fin, en_essai, plan, prix, mois_consecutifs')
+      .select('statut, date_debut, date_fin, en_essai, plan, prix, mois_consecutifs, mensualites_payees')
       .eq('beatmaker_id', user.id)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
@@ -109,10 +110,13 @@ export default async function FicheClientPage({
     ? 'abonne'
     : 'ancien'
 
-  // Mois réglés depuis date_debut (approximatif — Sprint 2 ajoutera mensualites_payees)
-  const moisRegles = (abonnement && !abonnement.en_essai && abonnement.date_debut)
-    ? Math.max(1, Math.round((Date.now() - new Date(abonnement.date_debut).getTime()) / (30.44 * 86400000)))
-    : 0
+  // Mois réglés — mensualites_payees exact si disponible, sinon approx depuis date_debut
+  const moisRegles = abonnement?.en_essai ? 0
+    : (abonnement?.mensualites_payees ?? 0) > 0
+    ? (abonnement?.mensualites_payees ?? 0)
+    : (abonnement?.date_debut
+      ? Math.max(1, Math.round((Date.now() - new Date(abonnement.date_debut).getTime()) / (30.44 * 86400000)))
+      : 0)
 
   // Préférences musicales : achats poids×2, favoris poids×1
   const prefCounts = {
@@ -132,6 +136,14 @@ export default async function FicheClientPage({
     topInstruments: topN(prefCounts.instruments, 5),
   }
   const hasPrefs = prefs.topStyles.length > 0 || prefs.topAmbiances.length > 0 || prefs.topInstruments.length > 0
+
+  async function sauvegarderInstagram(formData: FormData) {
+    'use server'
+    const admin2 = createAdminClient()
+    const ig = (formData.get('instagram') as string ?? '').trim()
+    await admin2.from('clients').update({ instagram: ig || null }).eq('id', clientId)
+    revalidatePath(`/dashboard/crm/${clientId}`)
+  }
 
   const nomComplet = `${client.prenom ?? ''} ${client.nom ?? ''}`.trim()
   const initiales = [client.prenom?.[0], client.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'
@@ -166,6 +178,19 @@ export default async function FicheClientPage({
                 {statut_abo === 'jamais' && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-500 font-medium">Jamais abonné</span>
                 )}
+                {client.newsletter_consent && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">Newsletter</span>
+                )}
+                {client.instagram && (
+                  <a
+                    href={`https://instagram.com/${client.instagram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-gray-500 hover:text-pink-400 transition-colors"
+                  >
+                    @{client.instagram.replace('@', '')}
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -189,11 +214,26 @@ export default async function FicheClientPage({
             </div>
           </div>
 
-          <p className="text-gray-600 text-xs mt-4">
-            Client depuis le {new Date(client.created_at).toLocaleDateString('fr-FR', {
-              day: '2-digit', month: 'long', year: 'numeric',
-            })}
-          </p>
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-gray-600 text-xs">
+              Client depuis le {new Date(client.created_at).toLocaleDateString('fr-FR', {
+                day: '2-digit', month: 'long', year: 'numeric',
+              })}
+            </p>
+            <form action={sauvegarderInstagram} className="flex items-center gap-1">
+              <span className="text-gray-600 text-xs">@</span>
+              <input
+                name="instagram"
+                type="text"
+                defaultValue={client.instagram ?? ''}
+                placeholder="instagram"
+                className="w-28 text-xs bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+              />
+              <button type="submit" className="text-xs px-2 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">
+                OK
+              </button>
+            </form>
+          </div>
         </div>
 
         {/* Abonnement */}
@@ -223,7 +263,9 @@ export default async function FicheClientPage({
               <div className="pt-3 border-t border-gray-800">
                 <p className="text-xs text-gray-500">
                   <span className="text-white font-medium">{moisRegles} mois</span> réglés
-                  <span className="text-gray-700 ml-1">(approx.)</span>
+                  {!(abonnement?.mensualites_payees) && (
+                    <span className="text-gray-700 ml-1">(approx.)</span>
+                  )}
                 </p>
               </div>
             )}

@@ -11,13 +11,13 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const { nom, prenom } = body as { nom?: string; prenom?: string }
+  const { nom, prenom, newsletter_consent } = body as { nom?: string; prenom?: string; newsletter_consent?: boolean }
 
   const meta = user.user_metadata as { prenom?: string; nom?: string } | undefined
   const finalNom = nom || meta?.nom
   const finalPrenom = prenom || meta?.prenom
 
-  await lierCompteClient(user.id, user.email, finalNom, finalPrenom)
+  await lierCompteClient(user.id, user.email, finalNom, finalPrenom, newsletter_consent)
 
   return NextResponse.json({ ok: true })
 }

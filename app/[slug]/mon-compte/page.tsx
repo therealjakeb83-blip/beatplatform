@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 
 type CmdRow = {
@@ -102,13 +103,24 @@ export default async function MonCompteBoutiquePage({
 
   // Profil client (si connecté)
   let prenomAffiche = emailIdentifie?.split('@')[0] ?? 'Toi'
+  let newsletterConsent = false
   if (clientId) {
     const { data: client } = await admin
       .from('clients')
-      .select('prenom, nom, nom_artiste')
+      .select('prenom, nom, nom_artiste, newsletter_consent')
       .eq('id', clientId)
       .maybeSingle()
     prenomAffiche = client?.nom_artiste || client?.prenom || prenomAffiche
+    newsletterConsent = client?.newsletter_consent ?? false
+  }
+
+  async function toggleNewsletter(formData: FormData) {
+    'use server'
+    if (!clientId) return
+    const valeur = formData.get('newsletter_consent') === 'true'
+    const admin2 = createAdminClient()
+    await admin2.from('clients').update({ newsletter_consent: valeur }).eq('id', clientId)
+    revalidatePath(`/${slug}/mon-compte`)
   }
 
   // Favoris sur cette boutique — preview 4 max (seulement si connecté)
@@ -277,6 +289,34 @@ export default async function MonCompteBoutiquePage({
             </div>
           )}
         </section>
+
+        {/* Préférences newsletter */}
+        {clientId && (
+          <section className="mb-8">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Préférences</h2>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white text-sm font-medium">Emails marketing</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Nouvelles sorties, offres et actualités des beatmakers</p>
+                </div>
+                <form action={toggleNewsletter}>
+                  <input type="hidden" name="newsletter_consent" value={newsletterConsent ? 'false' : 'true'} />
+                  <button
+                    type="submit"
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      newsletterConsent ? 'bg-indigo-600' : 'bg-gray-700'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                      newsletterConsent ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Lien compte global */}
         {clientId && (

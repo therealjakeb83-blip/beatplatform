@@ -33,6 +33,10 @@ export async function POST(request: Request) {
     await traiterPaiement(event.data.object as Stripe.Checkout.Session)
   }
 
+  if (event.type === 'invoice.payment_succeeded') {
+    await traiterPaiementAbonnement(event.data.object as Stripe.Invoice)
+  }
+
   if (event.type === 'customer.subscription.updated') {
     await traiterMajAbonnement(event.data.object as Stripe.Subscription)
   }
@@ -178,6 +182,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     reduction_montant: reduction,
     fichiers_livres: false,
     plateforme_source: 'my_producer',
+    type_commande: 'LICENCE',
     splits_snapshot: splitsSnapshot,
     stripe_transfer_group: hasSplits ? transferGroup : null,
   }).select('id').single()
@@ -345,6 +350,80 @@ async function distribuerSplits({
     if (error) console.error('[webhook] Erreur insert split_payments:', JSON.stringify(error))
     else console.log('[webhook] split_payments insérés:', splitPayments.length)
   }
+}
+
+async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
+  // Uniquement les paiements de création ou de renouvellement d'abonnement
+  const billing = invoice.billing_reason
+  if (billing !== 'subscription_create' && billing !== 'subscription_cycle') return
+
+  // Stripe v22 : l'abonnement est dans invoice.parent.subscription_details.subscription
+  const subRaw = invoice.parent?.subscription_details?.subscription
+  const subscriptionId = typeof subRaw === 'string' ? subRaw : subRaw?.id ?? null
+  if (!subscriptionId) return
+
+  const supabase = createAdminClient()
+
+  const { data: abo } = await supabase
+    .from('abonnements_boutique')
+    .select('id, client_id, beatmaker_id, prix')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+
+  if (!abo) {
+    console.log('[webhook] invoice.payment_succeeded — abonnement boutique non trouvé:', subscriptionId)
+    return
+  }
+
+  const typeCommande = billing === 'subscription_create' ? 'CREATION_ABONNEMENT' : 'RENOUVELLEMENT'
+  const montantCents = invoice.amount_paid ?? 0
+  const prixPaye = Math.round(montantCents / 100)
+  const invoiceId = invoice.id
+
+  // Éviter les doublons si le webhook est rejoué (clé d'idempotence = invoice.id)
+  const { data: existing } = await supabase
+    .from('commandes')
+    .select('id')
+    .eq('plateforme_source', 'my_producer')
+    .eq('external_order_id', invoiceId)
+    .maybeSingle()
+  if (existing) {
+    console.log('[webhook] Paiement abo déjà enregistré:', invoiceId)
+    return
+  }
+
+  const { error } = await supabase.from('commandes').insert({
+    client_id: abo.client_id,
+    beatmaker_id: abo.beatmaker_id,
+    beat_id: null,
+    licence_id: null,
+    prix_paye: prixPaye,
+    devise: 'EUR',
+    methode_paiement: 'stripe',
+    statut: 'payee',
+    plateforme_source: 'my_producer',
+    external_order_id: invoiceId,
+    type_commande: typeCommande,
+    fichiers_livres: true,
+  })
+
+  if (error) {
+    console.error('[webhook] Erreur insert commande abo:', JSON.stringify(error))
+    return
+  }
+
+  // Incrémenter mensualites_payees
+  const { data: aboActuel } = await supabase
+    .from('abonnements_boutique')
+    .select('mensualites_payees')
+    .eq('id', abo.id)
+    .single()
+  await supabase
+    .from('abonnements_boutique')
+    .update({ mensualites_payees: (aboActuel?.mensualites_payees ?? 0) + 1 })
+    .eq('id', abo.id)
+
+  console.log('[webhook]', typeCommande, '— commande créée, mensualites_payees incrémenté pour abo', abo.id)
 }
 
 async function traiterCompteConnecte(account: Stripe.Account) {

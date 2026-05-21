@@ -8,6 +8,7 @@ export async function lierCompteClient(
   email: string,
   nom?: string | null,
   prenom?: string | null,
+  newsletter_consent?: boolean,
 ) {
   const admin = createAdminClient()
 
@@ -37,6 +38,7 @@ export async function lierCompteClient(
       email,
       nom: nom ?? guestClient.id,
       prenom: prenom ?? null,
+      ...(newsletter_consent !== undefined ? { newsletter_consent } : {}),
     })
     if (error) console.error('[lierCompteClient] Erreur insert post-fusion:', JSON.stringify(error))
 
@@ -47,16 +49,18 @@ export async function lierCompteClient(
       email,
       nom: nom ?? email.split('@')[0],
       prenom: prenom ?? null,
+      ...(newsletter_consent !== undefined ? { newsletter_consent } : {}),
     })
     if (error) console.error('[lierCompteClient] Erreur insert clients:', JSON.stringify(error))
 
   } else {
     // Compte auth déjà existant — mettre à jour si besoin
-    if (nom || prenom) {
-      await admin.from('clients').update({
-        ...(prenom ? { prenom } : {}),
-        ...(nom ? { nom } : {}),
-      }).eq('id', userId)
+    const updates: Record<string, unknown> = {}
+    if (prenom) updates.prenom = prenom
+    if (nom) updates.nom = nom
+    if (newsletter_consent !== undefined) updates.newsletter_consent = newsletter_consent
+    if (Object.keys(updates).length > 0) {
+      await admin.from('clients').update(updates).eq('id', userId)
     }
   }
 

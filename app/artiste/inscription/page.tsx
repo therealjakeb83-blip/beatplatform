@@ -12,6 +12,7 @@ export default function InscriptionArtistePage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [erreur, setErreur] = useState('')
+  const [newsletter, setNewsletter] = useState(false)
   const [chargement, setChargement] = useState(false)
   const [succes, setSucces] = useState(false)
 
@@ -36,7 +37,7 @@ export default function InscriptionArtistePage() {
     const res = await fetch('/api/artiste/lier-compte', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom, prenom }),
+      body: JSON.stringify({ nom, prenom, newsletter_consent: newsletter }),
     })
 
     if (!res.ok) {
@@ -126,6 +127,18 @@ export default function InscriptionArtistePage() {
               className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
             />
           </div>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newsletter}
+              onChange={e => setNewsletter(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500 flex-shrink-0"
+            />
+            <span className="text-sm text-gray-400 leading-snug">
+              Je souhaite recevoir les nouvelles sorties et offres des beatmakers que je suis
+            </span>
+          </label>
 
           {erreur && <p className="text-red-400 text-sm">{erreur}</p>}
 

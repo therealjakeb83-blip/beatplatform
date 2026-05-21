@@ -60,7 +60,7 @@ export default async function CRMPage({
   const [{ data: commandes }, { data: abonnements }] = await Promise.all([
     supabase
       .from('commandes')
-      .select('client_id, acheteur_email, acheteur_nom, prix_paye, statut, created_at, beats(styles, type_beat)')
+      .select('client_id, acheteur_email, acheteur_nom, prix_paye, statut, created_at, type_commande, beats(styles, type_beat)')
       .eq('beatmaker_id', user.id),
     supabase
       .from('abonnements_boutique')
@@ -129,10 +129,13 @@ export default async function CRMPage({
     upsert(email, cmd.client_id, nom, pays, cmd.created_at)
     const entry = crmMap.get(email)!
     if (cmd.statut === 'payee') {
-      entry.nb_achats++
+      const estRnvt = (cmd as any).type_commande === 'RENOUVELLEMENT'
       entry.ltv += cmd.prix_paye
-      if (!entry.derniere_commande || cmd.created_at > entry.derniere_commande) {
-        entry.derniere_commande = cmd.created_at
+      if (!estRnvt) {
+        entry.nb_achats++
+        if (!entry.derniere_commande || cmd.created_at > entry.derniere_commande) {
+          entry.derniere_commande = cmd.created_at
+        }
       }
       const beat = (cmd as any).beats
       if (beat?.styles?.length) {
@@ -208,12 +211,20 @@ export default async function CRMPage({
             <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-300 mb-2 block">← Dashboard</Link>
             <h1 className="text-2xl font-bold">Mon CRM</h1>
           </div>
-          <Link
-            href="/dashboard/crm/doublons"
-            className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
-          >
-            Doublons
-          </Link>
+          <div className="flex gap-2">
+            <a
+              href="/api/dashboard/crm/export-newsletter"
+              className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+            >
+              Exporter newsletter
+            </a>
+            <Link
+              href="/dashboard/crm/doublons"
+              className="text-sm px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+            >
+              Doublons
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
