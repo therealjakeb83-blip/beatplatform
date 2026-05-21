@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-20 — Étape 11b résolution client ✅ validée — Optimisation CRM (11c) : décisions prises, code à venir
+> Dernière mise à jour : 2026-05-21 — Optimisation CRM (11c) : architecture complète validée, Sprint 1 en cours de développement
 
 ## Légende
 | Statut | Signification |
@@ -28,7 +28,7 @@
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
 | 11b | **Résolution client** *(bonus)* | Chaque acheteur (invité ou connecté) reçoit un client_id unique. Résolution par email au checkout, fusion au compte à l'inscription. | — | ✅ Validé |
-| 11c | **Optimisation CRM** *(bonus)* | Sprint 1 : badge Statut client, Langue, LTV, Mois réglés (0 BDD). Sprint 2 : champ Instagram dashboard. Sprint 3 : consentement newsletter + export CSV. | — | 🔄 En cours |
+| 11c | **Optimisation CRM** *(bonus)* | 5 sprints : enrichissement liste/fiche (S1), BDD+LTV réelle (S2), RFM+Dashboard (S3), Email marketing intégré Resend (S4), Écoutes (S5 après étape 13) | — | 🔄 En cours |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues. Compteur d'écoutes sur les cartes beat et page détail. | 4-6h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
@@ -307,6 +307,111 @@
 
 ---
 
+## Détail étape 11c — Optimisation CRM
+
+> **Contexte :** Architecture décidée le 2026-05-21 après revue complète du CRM Airtable de Jake (2 300 clients, 4 415 commandes, 434 abonnements). Toutes les données validées une par une (liste vs fiche). 5 sprints planifiés.
+
+### Données dans la liste CRM
+Nom · Langue (FR/US) · Statut client · Nb achats · LTV · Dernière commande (date relative, hors rnvt) · Style préféré · Type beat préféré · Segment RFM
+
+### Données dans la fiche client (tout ce qui est en liste + )
+Email · Pays · Instagram · Adresse complète · Téléphone · Abonnement (statut brut, mois réglés, abonné depuis) · Panier moyen · Type de licence préféré · Codes promo utilisés · Préférences musicales complètes (styles, type beats, ambiances, instruments) · Historique achats détaillé (titre beat + licence + date + montant) · Source d'acquisition · Newsletter consent · Score RFM détaillé
+
+### Règles métier importantes
+- **LTV** = beats + créations abo + renouvellements. Exclut les remboursements.
+- **Statut client** : ABONNÉ (abo actif) / ANCIEN ABONNÉ (abo annulé/expiré/on-hold) / JAMAIS ABONNÉ
+- **Dernière commande** = hors renouvellements automatiques (passifs)
+- **Mois réglés** = compteur de paiements réels (pas calculé depuis date_debut)
+- **Préférences musicales** = achats (poids fort) + favoris (poids moyen) + écoutes (poids faible, étape 13)
+- **Score RFM** = Recency + Frequency + Monetary → segments : Champion / Fidèle / À risque / Dormant / À réactiver
+
+---
+
+### Sprint 1 — UI enrichissement (0 nouvelle colonne BDD) 🔄 En cours
+
+| # | Sous-étape | Statut |
+|---|-----------|--------|
+| S1.1 | Liste : requête `beats(styles, type_beat)` sur commandes + `pays` sur clients | ⬜ |
+| S1.2 | Liste : tracker `derniere_commande`, `a_deja_eu_abo`, `style_prefere`, `type_beat_prefere` par client | ⬜ |
+| S1.3 | Liste : badge Statut 3 états (ABONNÉ vert / ANCIEN ABONNÉ orange / JAMAIS ABONNÉ gris) | ⬜ |
+| S1.4 | Liste : nouveaux filtres (Tous / ABONNÉ / ANCIEN ABONNÉ / JAMAIS ABONNÉ) | ⬜ |
+| S1.5 | Liste : colonne Langue FR/US | ⬜ |
+| S1.6 | Liste : colonne Dernière commande (format "il y a 15 jours") | ⬜ |
+| S1.7 | Liste : colonne Style · Type beat (top 1 chacun) | ⬜ |
+| S1.8 | Liste : renommage "CA total" → "LTV" | ⬜ |
+| S1.9 | Fiche : requête favoris → beats(styles, type_beat, ambiances, instruments) | ⬜ |
+| S1.10 | Fiche : calcul préférences (achats poids 2 + favoris poids 1) | ⬜ |
+| S1.11 | Fiche : badge Statut client dans l'en-tête | ⬜ |
+| S1.12 | Fiche : mois réglés dans section abonnement (depuis date_debut, approximatif) | ⬜ |
+| S1.13 | Fiche : section "Préférences musicales" (top style, type beat, ambiance, instruments + tous les tags) | ⬜ |
+| S1.14 | Fiche : renommage "CA total" → "LTV" | ⬜ |
+
+---
+
+### Sprint 2 — BDD + LTV réelle + données enrichies ⬜ À faire
+
+Modifications BDD nécessaires :
+- `mensualites_payees integer DEFAULT 0` sur `abonnements_boutique`
+- `type_commande text` sur `commandes` (LICENCE / CREATION_ABONNEMENT / RENOUVELLEMENT)
+- `statut_paiement text` pour gérer les remboursements
+- `instagram text` nullable sur `clients`
+- `newsletter_consent boolean` nullable sur `clients`
+- Adresse complète (`ville`, `code_postal`, `adresse`) sur `clients`
+
+Fonctionnalités :
+- Webhook `invoice.payment_succeeded` → incrémenter `mensualites_payees`
+- LTV complète = beats + (mensualites_payees × abo_prix)
+- Remboursements exclus de la LTV
+- Instagram éditable dans la fiche dashboard (beatmaker uniquement, pas client-facing)
+- Newsletter consent : checkbox inscription + mon-compte + badge CRM + export CSV
+- Adresse récupérée depuis le webhook Stripe (déjà collectée, pas encore stockée)
+- Filtres de segmentation : par style / ambiance / type beat / statut / langue
+
+---
+
+### Sprint 3 — Score RFM + Dashboard + Vues métier ⬜ À faire
+
+- Score RFM calculé (R + F + M individuels)
+- Segments automatiques : Champion / Fidèle / Potentiel / À risque / Dormant / À réactiver
+- Dashboard CRM : KPIs (total clients, abonnés actifs, churns ce mois, LTV totale)
+- Vues métier pré-construites :
+  - "Qui contacter aujourd'hui ?" (dormants 3+ mois)
+  - "Qui risque de partir ?" (on-hold, inactifs)
+  - "Qui est prêt à s'abonner ?" (3+ achats, jamais abonné)
+- `source_acquisition` sur `clients` + UTM tracking au checkout
+- Téléphone sur `clients`
+
+---
+
+### Sprint 4 — Email marketing intégré ⬜ À faire
+
+Envoi de campagnes directement depuis My Producer via Resend, sans export/import manuel.
+
+**Workflow beatmaker :**
+1. Crée un segment dans le CRM
+2. Choisit un template (nouvelle sortie / relance dormants / offre abonnement...)
+3. Personnalise (tokens : `{{prénom}}`, `{{style_préféré}}`, `{{type_beat_préféré}}`...)
+4. Envoie → Resend gère la délivrabilité
+
+**Templates** : branding automatique de la boutique (logo, nom, lien boutique)
+
+**Domaine d'envoi :**
+- Par défaut : `[slug]@mail.myproducer.com` (zéro action)
+- Option avancée : domaine propre du beatmaker
+  - ✅ Domaines professionnels uniquement
+  - ❌ Messageries publiques bloquées (Gmail, Hotmail, Yahoo, Outlook, iCloud, Orange, Free...)
+  - Vérification DNS obligatoire
+
+**RGPD :** envoi uniquement aux `newsletter_consent = true`, lien désinscription obligatoire, mise à jour auto en BDD via webhook Resend.
+
+---
+
+### Sprint 5 — Écoutes intégrées ⬜ À faire (après étape 13)
+
+Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimentent automatiquement les préférences musicales comme 3ème signal (poids faible).
+
+---
+
 ## Journal des sessions
 
 | Date | Étapes travaillées | Résumé |
@@ -332,4 +437,5 @@
 | 2026-05-20 | Homepage + Étape 11 (code) | ✅ Page d'accueil My Producer créée (deux entrées : beatmaker / artiste, lien boutique démo jakeb-test). Étape 11 CRM codée : liste clients agrégée (commandes + abonnements + clients), fiche client avec historique, détection doublons fuzzy matching + bouton Ignorer. Import BeatStars retiré (sera fait après analyse du vrai CSV). Fix middleware : toutes les pages /dashboard/* bloquées pour les artistes (redirection /mon-compte). Migration SQL étape 11 exécutée. |
 | 2026-05-20 | Étape 11 (tests) | ✅ Étape 11 validée. 4 tests T1→T4 passés : liste CRM (stats + filtres Acheteurs/Abonnés/Leads), fiche client (historique + abonnement Plan Standard), doublons (page charge, message correct avec 1 seul client ayant un compte). |
 | 2026-05-20 | Étape 11b — Résolution client (bonus) | ✅ FK clients→auth.users supprimé. Webhook Stripe crée/résout le client par email à chaque achat. lierCompteClient fusionne le compte invité dans le compte auth à l'inscription. 15 clients fictifs + 45 commandes + 5 abonnements insérés en BDD pour tests réalistes. Fix affichage prix abonnement (centimes → décimales : 6,99€/mois). |
-| 2026-05-20 | Optimisation CRM (11c) — décisions | Analyse du CRM Airtable de Jake (données trackées : statut client, LTV, Instagram, newsletter, langue, mois réglés). Décisions prises pour 3 sprints — Sprint 1 : badge Statut client (ABONNÉ/ANCIEN ABONNÉ/JAMAIS ABONNÉ), Langue déduite du pays (formule FR/US), Dernière commande, renommage LTV, Mois réglés dans fiche — 0 nouveau champ BDD. Sprint 2 : champ Instagram côté dashboard uniquement (beatmaker-side), 1 colonne nullable sur clients, future campagne email pour récolter côté client. Sprint 3 : newsletter_consent sur clients + checkbox inscription/mon-compte + badge CRM + export CSV — tool-agnostic (pas hardcodé Brevo, chaque beatmaker utilise son propre outil). À CODER en prochaine session. |
+| 2026-05-20 | Optimisation CRM (11c) — décisions initiales | Analyse du CRM Airtable de Jake. Décisions prises pour 3 sprints : badge Statut client, LTV, Langue, Instagram, newsletter. À coder en session suivante. |
+| 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints incluant : préférences musicales (achats+favoris→beats), score RFM, segments automatiques (Champion/Fidèle/À risque/Dormant), dashboard KPIs, email marketing intégré via Resend (templates branding boutique, tokens personnalisation, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro option), gestion RGPD consentement + désabonnement. Sprint 1 planifié en détail, code en cours. |
