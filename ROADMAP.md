@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-20 — Étape 11 CRM ✅ validée
+> Dernière mise à jour : 2026-05-20 — Étape 11b résolution client ✅ validée — Optimisation CRM (11c) : décisions prises, code à venir
 
 ## Légende
 | Statut | Signification |
@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 11 / 17 étapes validées (+ 1 bonus)
+## Progression globale : 11 / 17 étapes validées (+ 2 bonus)
 
 | # | Étape | Description | Durée est. | Statut |
 |---|-------|-------------|-----------|--------|
@@ -28,6 +28,7 @@
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
 | 11b | **Résolution client** *(bonus)* | Chaque acheteur (invité ou connecté) reçoit un client_id unique. Résolution par email au checkout, fusion au compte à l'inscription. | — | ✅ Validé |
+| 11c | **Optimisation CRM** *(bonus)* | Sprint 1 : badge Statut client, Langue, LTV, Mois réglés (0 BDD). Sprint 2 : champ Instagram dashboard. Sprint 3 : consentement newsletter + export CSV. | — | 🔄 En cours |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | CA, classements beats, licences vendues. Compteur d'écoutes sur les cartes beat et page détail. | 4-6h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
@@ -331,3 +332,4 @@
 | 2026-05-20 | Homepage + Étape 11 (code) | ✅ Page d'accueil My Producer créée (deux entrées : beatmaker / artiste, lien boutique démo jakeb-test). Étape 11 CRM codée : liste clients agrégée (commandes + abonnements + clients), fiche client avec historique, détection doublons fuzzy matching + bouton Ignorer. Import BeatStars retiré (sera fait après analyse du vrai CSV). Fix middleware : toutes les pages /dashboard/* bloquées pour les artistes (redirection /mon-compte). Migration SQL étape 11 exécutée. |
 | 2026-05-20 | Étape 11 (tests) | ✅ Étape 11 validée. 4 tests T1→T4 passés : liste CRM (stats + filtres Acheteurs/Abonnés/Leads), fiche client (historique + abonnement Plan Standard), doublons (page charge, message correct avec 1 seul client ayant un compte). |
 | 2026-05-20 | Étape 11b — Résolution client (bonus) | ✅ FK clients→auth.users supprimé. Webhook Stripe crée/résout le client par email à chaque achat. lierCompteClient fusionne le compte invité dans le compte auth à l'inscription. 15 clients fictifs + 45 commandes + 5 abonnements insérés en BDD pour tests réalistes. Fix affichage prix abonnement (centimes → décimales : 6,99€/mois). |
+| 2026-05-20 | Optimisation CRM (11c) — décisions | Analyse du CRM Airtable de Jake (données trackées : statut client, LTV, Instagram, newsletter, langue, mois réglés). Décisions prises pour 3 sprints — Sprint 1 : badge Statut client (ABONNÉ/ANCIEN ABONNÉ/JAMAIS ABONNÉ), Langue déduite du pays (formule FR/US), Dernière commande, renommage LTV, Mois réglés dans fiche — 0 nouveau champ BDD. Sprint 2 : champ Instagram côté dashboard uniquement (beatmaker-side), 1 colonne nullable sur clients, future campagne email pour récolter côté client. Sprint 3 : newsletter_consent sur clients + checkbox inscription/mon-compte + badge CRM + export CSV — tool-agnostic (pas hardcodé Brevo, chaque beatmaker utilise son propre outil). À CODER en prochaine session. |
