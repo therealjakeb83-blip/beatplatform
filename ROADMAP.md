@@ -312,16 +312,36 @@
 > **Contexte :** Architecture décidée le 2026-05-21 après revue complète du CRM Airtable de Jake (2 300 clients, 4 415 commandes, 434 abonnements). Toutes les données validées une par une (liste vs fiche). 5 sprints planifiés.
 
 ### Données dans la liste CRM
-Nom · Langue (FR/US) · Statut client · Nb achats · LTV · Dernière commande (date relative, hors rnvt) · Style préféré · Type beat préféré · Segment RFM
+Nom · **Statut abonnement** (ABONNÉ/ANCIEN ABONNÉ/JAMAIS ABONNÉ) · **Statut achat** (CLIENT/LEAD) · Langue (FR/US) · Nb achats · LTV · Dernière commande (date relative, hors rnvt) · Style préféré · Type beat préféré · Segment RFM
 
 ### Données dans la fiche client (tout ce qui est en liste + )
-Email · Pays · Instagram · Adresse complète · Téléphone · Abonnement (statut brut, mois réglés, abonné depuis) · Panier moyen · Type de licence préféré · Codes promo utilisés · Préférences musicales complètes (styles, type beats, ambiances, instruments) · Historique achats détaillé (titre beat + licence + date + montant) · Source d'acquisition · Newsletter consent · Score RFM détaillé
+Email · Pays · Instagram · Adresse complète · Téléphone · Abonnement (statut brut, mois réglés, abonné depuis) · Panier moyen · Type de licence préféré · Codes promo utilisés · Préférences musicales complètes (styles, type beats, ambiances, instruments) · Historique achats détaillé · Beats téléchargés gratuitement non achetés (upsell) · Source d'acquisition · Newsletter consent · Score RFM détaillé
 
-### Règles métier importantes
+### Deux dimensions de statut indépendantes
+**Dimension 1 — Statut abonnement :**
+- ABONNÉ = abo actif (payant OU essai gratuit en cours — engagement formel même à 0€)
+- ANCIEN ABONNÉ = a eu un abo, plus actif (annulé/expiré/on-hold/essai échoué)
+- JAMAIS ABONNÉ = aucun abonnement jamais
+- ⚠️ on-hold → ANCIEN ABONNÉ (pas de 4ème statut)
+
+**Dimension 2 — Statut achat :**
+- CLIENT = au moins une commande (même à 0€ via promo 100%)
+- LEAD = aucune commande, aucun abonnement — dans le funnel uniquement
+- La LTV visible permet de trier les clients à 0€ sans badge séparé
+
+### Définition lead
+Lead = contact qui a interagi mais n'a jamais acheté ni souscrit.
+Sources : `free_download` (signal très fort — travaille avec le beat, veut potentiellement acheter) / `newsletter` (moyen) / `visite` (faible)
+Affichage : bloc "X leads à convertir" en haut du CRM + filtre LEAD dans la liste
+Transition : lead → client automatique au premier achat (source d'acquisition conservée en fiche)
+
+### Upsell clients existants
+Un client peut télécharger d'autres beats gratuitement → afficher dans sa fiche : "A téléchargé gratuitement (non achetés) : Beat X, Beat Y" → opportunité upsell directe
+
+### Autres règles métier
 - **LTV** = beats + créations abo + renouvellements. Exclut les remboursements.
-- **Statut client** : ABONNÉ (abo actif) / ANCIEN ABONNÉ (abo annulé/expiré/on-hold) / JAMAIS ABONNÉ
 - **Dernière commande** = hors renouvellements automatiques (passifs)
-- **Mois réglés** = compteur de paiements réels (pas calculé depuis date_debut)
+- **Mois réglés** = compteur de paiements réels (pas calculé depuis date_debut — faussé par on-hold)
 - **Préférences musicales** = achats (poids fort) + favoris (poids moyen) + écoutes (poids faible, étape 13)
 - **Score RFM** = Recency + Frequency + Monetary → segments : Champion / Fidèle / À risque / Dormant / À réactiver
 
@@ -348,7 +368,7 @@ Email · Pays · Instagram · Adresse complète · Téléphone · Abonnement (st
 
 ---
 
-### Sprint 2 — BDD + LTV réelle + données enrichies ⬜ À faire
+### Sprint 2 — BDD + LTV réelle + Leads + données enrichies ⬜ À faire
 
 Modifications BDD nécessaires :
 - `mensualites_payees integer DEFAULT 0` sur `abonnements_boutique`
@@ -357,6 +377,7 @@ Modifications BDD nécessaires :
 - `instagram text` nullable sur `clients`
 - `newsletter_consent boolean` nullable sur `clients`
 - Adresse complète (`ville`, `code_postal`, `adresse`) sur `clients`
+- Table `free_downloads` (ou colonne sur `leads`) : `beat_id` + `client_id` + `created_at`
 
 Fonctionnalités :
 - Webhook `invoice.payment_succeeded` → incrémenter `mensualites_payees`
@@ -366,6 +387,10 @@ Fonctionnalités :
 - Newsletter consent : checkbox inscription + mon-compte + badge CRM + export CSV
 - Adresse récupérée depuis le webhook Stripe (déjà collectée, pas encore stockée)
 - Filtres de segmentation : par style / ambiance / type beat / statut / langue
+- **Leads dans le CRM** : bloc "X leads à convertir" + filtre LEAD + fiche lead (source, score chaleur, préférences depuis favoris, beats téléchargés)
+- **Free download tracking** : enregistrer quel beat a été téléchargé gratuitement + par qui
+- **Formulaire capture newsletter** sur boutique publique `/[slug]`
+- **Badge statut achat** (CLIENT / LEAD) dans la liste CRM
 
 ---
 
@@ -438,4 +463,4 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 | 2026-05-20 | Étape 11 (tests) | ✅ Étape 11 validée. 4 tests T1→T4 passés : liste CRM (stats + filtres Acheteurs/Abonnés/Leads), fiche client (historique + abonnement Plan Standard), doublons (page charge, message correct avec 1 seul client ayant un compte). |
 | 2026-05-20 | Étape 11b — Résolution client (bonus) | ✅ FK clients→auth.users supprimé. Webhook Stripe crée/résout le client par email à chaque achat. lierCompteClient fusionne le compte invité dans le compte auth à l'inscription. 15 clients fictifs + 45 commandes + 5 abonnements insérés en BDD pour tests réalistes. Fix affichage prix abonnement (centimes → décimales : 6,99€/mois). |
 | 2026-05-20 | Optimisation CRM (11c) — décisions initiales | Analyse du CRM Airtable de Jake. Décisions prises pour 3 sprints : badge Statut client, LTV, Langue, Instagram, newsletter. À coder en session suivante. |
-| 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints incluant : préférences musicales (achats+favoris→beats), score RFM, segments automatiques (Champion/Fidèle/À risque/Dormant), dashboard KPIs, email marketing intégré via Resend (templates branding boutique, tokens personnalisation, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro option), gestion RGPD consentement + désabonnement. Sprint 1 planifié en détail, code en cours. |
+| 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints. Décisions clés : 2 dimensions de statut indépendantes (abonnement + achat), LTV inclut tout, mois réglés = compteur réel, préférences musicales depuis achats+favoris. Leads : définition, sources, score chaleur, affichage CRM. Email marketing Resend : templates brandés, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro (pas de webmail). Sprint 1 entièrement planifié (14 sous-étapes, 0 BDD). **PROCHAINE SESSION : coder Sprint 1 — lire d'abord le schéma beats (styles/type_beat/ambiances/instruments) pour confirmer le format des colonnes array, puis attaquer `app/dashboard/crm/page.tsx` et `app/dashboard/crm/[clientId]/page.tsx`.** |
