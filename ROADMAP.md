@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-05-21 — Optimisation CRM (11c) : Sprint 1 ✅ + Sprint 2 ✅ + Sprint 3 ✅ validés
+> Dernière mise à jour : 2026-06-12 — Outil Business (11d) : plan de migration crm-proto → /dashboard/business validé
 
 ## Légende
 | Statut | Signification |
@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 11 / 17 étapes validées (+ 2 bonus)
+## Progression globale : 11 / 17 étapes validées (+ 3 bonus)
 
 | # | Étape | Description | Durée est. | Statut |
 |---|-------|-------------|-----------|--------|
@@ -29,8 +29,9 @@
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
 | 11b | **Résolution client** *(bonus)* | Chaque acheteur (invité ou connecté) reçoit un client_id unique. Résolution par email au checkout, fusion au compte à l'inscription. | — | ✅ Validé |
 | 11c | **Optimisation CRM** *(bonus)* | 5 sprints : enrichissement liste/fiche (S1), BDD+LTV réelle (S2), RFM+Dashboard (S3), Email marketing intégré Resend (S4), Écoutes (S5 après étape 13) | — | 🔄 En cours |
-| 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation | 4-6h | ⬜ À faire |
-| 13 | **Analytics** | CA, classements beats, licences vendues. Compteur d'écoutes sur les cartes beat et page détail. | 4-6h | ⬜ À faire |
+| 11d | **Outil Business** *(bonus)* | Migration crm-proto → /dashboard/business. Back-office complet : CRM, Commerce, Analytics, Marketing (sprint dédié). Remplace et absorbe les étapes 12 (emails) et 13 (analytics). | — | 🔄 En cours |
+| 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation *(partiellement couvert par 11d Marketing)* | 4-6h | ⬜ À faire |
+| 13 | **Analytics** | Compteur d'écoutes sur les cartes beat et page détail *(analytics back-office couvert par 11d)* | 2-3h | ⬜ À faire |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
 | 15 | **Admin** | Dashboard de gestion de la plateforme + outil interne d'import BeatStars (script scraping concierge) | 7-10h | ⬜ À faire |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
@@ -435,6 +436,82 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 
 ---
 
+## Détail étape 11d — Outil Business (migration crm-proto)
+
+> **Contexte :** Migration de `c:\Users\nicoj\crm-proto` vers `beatplatform`. L'outil back-office complet s'intègre sous `/dashboard/business/` avec son propre layout et sidebar. Il remplace et absorbe partiellement les étapes 12 (emails) et 13 (analytics back-office). Plan validé le 2026-06-12 après session grill-me.
+
+> **Décisions d'architecture complètes :** voir `memory/project_business_migration_decisions.md`
+
+### Décisions clés
+
+- **Route :** `/dashboard/business/` avec `layout.tsx` dédié + sidebar propre
+- **Remplacement :** suppression des anciennes routes après migration (pas de redirections)
+- **Codes promo :** table Supabase `codes_promo` + coupon Stripe créé à la volée (pas Stripe seul)
+- **Splits :** `/dashboard/splits/` supprimée (sans utilité). Collabs = `/dashboard/business/collabs/` remplace `/dashboard/mes-collabs/`
+- **Marketing :** sidebar avec cadenas 🔒, tables DB créées upfront, UI = sprint dédié post-migration
+- **Analytics :** réécriture complète en SQL réel — onglet par onglet (Ventes en premier, Vue d'ensemble en dernier)
+- **Paiements/Profil :** restent hors business (`/dashboard/paiements/`, `/dashboard/profil/`)
+
+### Phase 0 — Foundation ⬜ À faire
+
+| # | Sous-étape | Statut |
+|---|-----------|--------|
+| 0.1 | Migration SQL `supabase/business_migration.sql` : 6 nouvelles tables + 5 colonnes + RLS | ⬜ |
+| 0.2 | Layout `app/dashboard/business/layout.tsx` + Sidebar avec auth réelle | ⬜ |
+| 0.3 | Utilitaires `app/dashboard/business/_lib/utils.ts` : initiales, joursDepuis, formatMontant, compareSigne | ⬜ |
+
+**Tables à créer :** `codes_promo` · `listes_contacts` · `liste_membres` · `campagnes` · `free_downloads` · `morceaux_clients`
+
+**Colonnes à ajouter :** `clients` (spotify, youtube, tiktok, notes, tags) · `beats` (couleur) · `commandes` (notes) · `abonnements_boutique` (fin_essai, annulation_en_cours)
+
+### Phase 1 — CRM ⬜ À faire
+
+| # | Page | Route cible | Remplace | Statut |
+|---|------|-------------|----------|--------|
+| 1.1 | Contacts (liste) | `/dashboard/business/contacts/` | `/dashboard/crm/` | ⬜ |
+| 1.2 | Fiche client | `/dashboard/business/contacts/[id]/` | `/dashboard/crm/[clientId]/` | ⬜ |
+| 1.3 | Doublons | `/dashboard/business/doublons/` | `/dashboard/crm/doublons/` | ⬜ |
+| 1.4 | Segments | `/dashboard/business/segments/` | *(nouveau)* | ⬜ |
+| 1.5 | Listes | `/dashboard/business/listes/` | *(nouveau)* | ⬜ |
+
+**Suppressions après Phase 1 :** `/dashboard/crm/` (liste, fiche, doublons, email/[encodedEmail])
+
+### Phase 2 — Commerce ⬜ À faire
+
+| # | Page | Route cible | Remplace | Statut |
+|---|------|-------------|----------|--------|
+| 2.1 | Commandes + fiche | `/dashboard/business/commandes/` + `/[id]/` | `/dashboard/commandes/` | ⬜ |
+| 2.2 | Abonnements | `/dashboard/business/abonnements/` | liste de `/dashboard/abonnements/` | ⬜ |
+| 2.3 | Plans | `/dashboard/business/plans/` | config de `/dashboard/abonnements/` | ⬜ |
+| 2.4 | Beats (CRUD) | `/dashboard/business/beats/` | `/dashboard/beats/` (+ sous-routes) | ⬜ |
+| 2.5 | Licences | `/dashboard/business/licences/` | `/dashboard/licences/` | ⬜ |
+| 2.6 | Codes promo + fiche | `/dashboard/business/codes-promo/` + `/[id]/` | `/dashboard/codes-promo/` | ⬜ |
+| 2.7 | Collabs | `/dashboard/business/collabs/` | `/dashboard/mes-collabs/` | ⬜ |
+
+**Suppressions après Phase 2 :** `/dashboard/commandes/` · `/dashboard/abonnements/` · `/dashboard/beats/` · `/dashboard/licences/` · `/dashboard/codes-promo/` · `/dashboard/mes-collabs/` · `/dashboard/splits/`
+
+### Phase 3 — Analytics ⬜ À faire
+
+Composants communs d'abord : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx`
+
+| # | Onglet | Source SQL | Statut |
+|---|--------|------------|--------|
+| 3.1 | Ventes | `commandes` | ⬜ |
+| 3.2 | MRR/ARR | `abonnements_boutique` | ⬜ |
+| 3.3 | Revenus | `commandes` + `abonnements_boutique` | ⬜ |
+| 3.4 | Préférences | `commandes → beats.styles[]` | ⬜ |
+| 3.5 | Codes promo | `codes_promo` + `commandes` | ⬜ |
+| 3.6 | Beats | `commandes` + `beats` (sans écoutes — étape 13) | ⬜ |
+| 3.7 | Vue d'ensemble | Agrégation de tout — en dernier | ⬜ |
+
+### Phase 4 — Dashboard business ⬜ À faire
+
+| # | Sous-étape | Statut |
+|---|-----------|--------|
+| 4.1 | Page `/dashboard/business/` : KPIs du mois, nouveaux clients, abonnés actifs, alertes, liens rapides | ⬜ |
+
+---
+
 ## Journal des sessions
 
 | Date | Étapes travaillées | Résumé |
@@ -463,4 +540,5 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 | 2026-05-20 | Optimisation CRM (11c) — décisions initiales | Analyse du CRM Airtable de Jake. Décisions prises pour 3 sprints : badge Statut client, LTV, Langue, Instagram, newsletter. À coder en session suivante. |
 | 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints. Décisions clés : 2 dimensions de statut indépendantes (abonnement + achat), LTV inclut tout, mois réglés = compteur réel, préférences musicales depuis achats+favoris. Leads : définition, sources, score chaleur, affichage CRM. Email marketing Resend : templates brandés, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro (pas de webmail). Sprint 1 entièrement planifié (14 sous-étapes, 0 BDD). |
 | 2026-05-21 | Optimisation CRM (11c) — Sprint 1 + Sprint 2 ✅ | Sprint 1 : badge statut abo 3 états, filtres, LTV, langue, dernière commande, style/type beat, préférences musicales (achats×2 + favoris×1). Sprint 2 : type_commande, mensualites_payees, LTV réelle (webhook invoice.payment_succeeded), instagram éditable, newsletter_consent + checkbox inscription + toggle mon-compte + export CSV. Migration SQL : supabase/sprint2_crm.sql exécutée. |
-| 2026-05-21 | Optimisation CRM (11c) — Sprint 3 ✅ | Score RFM (R/F/M /5 → score /100). 8 segments auto (Champion/Fidèle/Potentiel/À risque/Dormant/À réactiver/Nouveau/Lead). KPIs ligne 2 cliquables. LTV moyenne. Section "Actions recommandées" (3 vues métier). 6 filtres segments. Badge segment dans chaque ligne. Fiche : bloc RFM complet avec description. Fix nbAchats + historique labels. **PROCHAINE SESSION : Sprint 4 (Email marketing Resend) ou étape 12.** |
+| 2026-05-21 | Optimisation CRM (11c) — Sprint 3 ✅ | Score RFM (R/F/M /5 → score /100). 8 segments auto (Champion/Fidèle/Potentiel/À risque/Dormant/À réactiver/Nouveau/Lead). KPIs ligne 2 cliquables. LTV moyenne. Section "Actions recommandées" (3 vues métier). 6 filtres segments. Badge segment dans chaque ligne. Fiche : bloc RFM complet avec description. Fix nbAchats + historique labels. |
+| 2026-06-12 | Outil Business (11d) — Plan validé | Session grill-me : 14 décisions d'architecture prises. Plan de migration crm-proto → /dashboard/business en 4 phases (Foundation → CRM → Commerce → Analytics → Dashboard). Décisions clés : layout dédié, suppression anciennes routes, codes promo table Supabase, splits supprimés, Marketing en placeholder 🔒, analytics onglet par onglet. Roadmap mise à jour. **PROCHAINE SESSION : Phase 0 — Foundation (SQL + layout + utils).** |
