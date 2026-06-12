@@ -224,7 +224,7 @@ export default function ClientsView({
           <div className="grid grid-cols-3 gap-6 pt-5 border-t border-gray-800">
             {[
               { label: 'LTV moyenne',    value: fmt(Math.round(ltvMoy)),    sub: 'par client'   },
-              { label: 'Commandes moy.', value: commandesMoy.toFixed(1),    sub: 'par client'   },
+              { label: 'Licences moy.',  value: commandesMoy.toFixed(1),    sub: 'par client'   },
               { label: 'Panier moyen',   value: fmt(Math.round(panierMoy)), sub: 'par commande' },
             ].map(({ label, value, sub }) => (
               <div key={label}>
@@ -383,11 +383,11 @@ export default function ClientsView({
                   </div>
                 </th>
 
-                {/* Commandes */}
+                {/* Licences */}
                 <th className="text-right px-3 py-3">
                   <div ref={refCommandes} className="relative inline-flex justify-end">
                     <button onClick={() => setOpenPopover(p => p === 'commandes' ? null : 'commandes')} className={hBtn(hasFilterCommandes)}>
-                      Commandes {hasFilterCommandes && dot} {chevron}
+                      Licences {hasFilterCommandes && dot} {chevron}
                     </button>
                     {openPopover === 'commandes' && (
                       <div className={`${popoverBase} right-0`}>

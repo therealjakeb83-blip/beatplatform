@@ -34,7 +34,7 @@ export default async function ContactsPage({
   const [commandesRes, aboRes, leadsRes, listesRes] = await Promise.all([
     supabase
       .from('commandes')
-      .select('client_id, created_at, prix_paye, type_commande, beat_id, licence_id')
+      .select('client_id, created_at, prix_paye, statut, type_commande, beat_id, licence_id')
       .eq('beatmaker_id', user.id)
       .not('client_id', 'is', null),
     supabase
@@ -178,8 +178,8 @@ export default async function ContactsPage({
       }
     }
 
-    // Clients view extras — LICENCE commandes uniquement
-    const ltv = licenceCmds.reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
+    // Clients view extras — LTV = toutes commandes payées (licences + renouvellements)
+    const ltv = cmds.filter(cmd => cmd.statut === 'payee').reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
     const dernier_achat_iso = licenceCmds.length
       ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
       : null
