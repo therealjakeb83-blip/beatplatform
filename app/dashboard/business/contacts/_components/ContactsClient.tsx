@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import { joursDepuis } from '../../_lib/utils'
+import ClientsView from './ClientsView'
 
 export type ContactRow = {
   id: string
@@ -26,6 +27,13 @@ export type ContactRow = {
   dernierContactISO: string
   type1ereAction: string
   typeDerniereAction: string
+  // Clients view extras
+  ltv: number              // en centimes
+  dernier_achat_iso: string | null
+  panier_moyen: number | null  // en centimes
+  pref_style: string | null
+  pref_type_beat: string | null
+  pref_licence: string | null
 }
 
 function dateRel(iso: string): string {
@@ -604,28 +612,45 @@ export default function ContactsClient({
     { key: 'newsletter', label: 'Newsletter' },
   ]
 
-  const currentList = vue === 'clients' ? clients : vue === 'leads' ? leads : vue === 'newsletter' ? newsletter : contacts
+  const currentList = vue === 'leads' ? leads : vue === 'newsletter' ? newsletter : contacts
+
+  const tabNav = (
+    <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
+      {tabs.map(t => (
+        <a
+          key={t.key}
+          href={t.key ? `?vue=${t.key}` : '?'}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${vue === t.key || (!vue && t.key === '') ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          {t.label}
+        </a>
+      ))}
+    </div>
+  )
+
+  if (vue === 'clients') {
+    return (
+      <div className="max-w-6xl mx-auto px-8 py-8">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">Contacts</h1>
+            <ContactsHeader />
+          </div>
+          {tabNav}
+        </div>
+        <ClientsView clients={clients} listes={listes} />
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-8 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">{vue === 'abonnes' ? 'Abonnés' : 'Contacts'}</h1>
-          {vue !== 'abonnes' && <ContactsHeader />}
+          <h1 className="text-2xl font-bold">Contacts</h1>
+          <ContactsHeader />
         </div>
-        {vue !== 'abonnes' && (
-          <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
-            {tabs.map(t => (
-              <a
-                key={t.key}
-                href={t.key ? `?vue=${t.key}` : '?'}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${vue === t.key || (!vue && t.key === '') ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                {t.label}
-              </a>
-            ))}
-          </div>
-        )}
+        {tabNav}
       </div>
 
       <ContactsTable contacts={currentList} listes={listes} />

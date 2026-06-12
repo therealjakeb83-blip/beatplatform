@@ -3,6 +3,13 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import ContactsClient, { ContactRow } from './_components/ContactsClient'
 
+function topPreference(vals: string[]): string | null {
+  if (vals.length === 0) return null
+  const counts: Record<string, number> = {}
+  for (const v of vals) counts[v] = (counts[v] ?? 0) + 1
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+}
+
 export default async function ContactsPage({
   searchParams,
 }: {
@@ -25,10 +32,9 @@ export default async function ContactsPage({
 
   // Fetch via RLS (beatmaker_id = auth.uid())
   const [commandesRes, aboRes, leadsRes, listesRes] = await Promise.all([
-    // Toutes les commandes (pas de filtre type) pour ne manquer aucun client_id
     supabase
       .from('commandes')
-      .select('client_id, created_at, prix_paye, type_commande')
+      .select('client_id, created_at, prix_paye, type_commande, beat_id, licence_id')
       .eq('beatmaker_id', user.id)
       .not('client_id', 'is', null),
     supabase
@@ -51,7 +57,7 @@ export default async function ContactsPage({
   const leads     = leadsRes.data    ?? []
   const listesRaw = listesRes.data   ?? []
 
-  // Union de tous les client_ids
+  // Client IDs
   const clientIds = [...new Set([
     ...commandes.map(c => c.client_id as string),
     ...abos.map(a => a.client_id as string),
@@ -62,13 +68,28 @@ export default async function ContactsPage({
     return <ContactsClient contacts={[]} listes={[]} vue={vue} />
   }
 
-  // Clients via admin (RLS = auth.uid() = id, pas de lecture beatmaker→client possible)
-  const { data: clientsData } = await admin
-    .from('clients')
-    .select('id, prenom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
-    .in('id', clientIds)
+  // Beat IDs & Licence IDs from LICENCE commandes
+  const licenceCmdsAll = commandes.filter(c => c.type_commande === 'LICENCE')
+  const beatIds    = [...new Set(licenceCmdsAll.map(c => c.beat_id).filter(Boolean) as string[])]
+  const licenceIds = [...new Set(licenceCmdsAll.map(c => c.licence_id).filter(Boolean) as string[])]
 
-  const clientsRaw = clientsData ?? []
+  // Fetch in parallel: clients (admin), beats (own RLS), licences (own RLS)
+  const [clientsRes, beatsRes, licencesRes] = await Promise.all([
+    admin
+      .from('clients')
+      .select('id, prenom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
+      .in('id', clientIds),
+    beatIds.length > 0
+      ? supabase.from('beats').select('id, styles, type_beat').in('id', beatIds)
+      : Promise.resolve({ data: [] as { id: string; styles: string[] | null; type_beat: string[] | null }[] }),
+    licenceIds.length > 0
+      ? supabase.from('licences').select('id, modele').in('id', licenceIds)
+      : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
+  ])
+
+  const clientsRaw = clientsRes.data ?? []
+  const beatMap    = new Map((beatsRes.data ?? []).map(b => [b.id, b]))
+  const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
 
   // Maps pour accès rapide
   const commandesParClient = new Map<string, typeof commandes>()
@@ -95,8 +116,10 @@ export default async function ContactsPage({
     const cmds     = commandesParClient.get(c.id) ?? []
     const abo      = aboParClient.get(c.id)
     const lead     = leadParClient.get(c.id)
-    // nb_achats = licences uniquement
-    const nbAchats = cmds.filter(cmd => cmd.type_commande === 'LICENCE').length
+
+    // Séparer licences et abonnements
+    const licenceCmds = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
+    const nbAchats    = licenceCmds.length
 
     // Statut
     let statut: ContactRow['statut']
@@ -115,9 +138,9 @@ export default async function ContactsPage({
 
     // 1ère action avec ce beatmaker
     const candidatsPrem: Date[] = []
-    if (lead)               candidatsPrem.push(new Date(lead.created_at))
-    if (abo)                candidatsPrem.push(new Date(abo.created_at))
-    for (const cmd of cmds) candidatsPrem.push(new Date(cmd.created_at))
+    if (lead)                  candidatsPrem.push(new Date(lead.created_at))
+    if (abo)                   candidatsPrem.push(new Date(abo.created_at))
+    for (const cmd of cmds)    candidatsPrem.push(new Date(cmd.created_at))
     const premierContactISO = candidatsPrem.length
       ? new Date(Math.min(...candidatsPrem.map(d => d.getTime()))).toISOString()
       : c.created_at
@@ -125,8 +148,7 @@ export default async function ContactsPage({
     let type1ereAction = 'Inscription'
     if (abo && nbAchats > 0) {
       const aboDate  = new Date(abo.created_at)
-      const licences = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
-      const firstCmd = new Date(Math.min(...licences.map(cmd => new Date(cmd.created_at).getTime())))
+      const firstCmd = new Date(Math.min(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime())))
       type1ereAction = firstCmd < aboDate ? 'Achat' : 'Abonnement'
     } else if (abo) {
       type1ereAction = 'Abonnement'
@@ -145,8 +167,8 @@ export default async function ContactsPage({
 
     let typeDerniereAction = 'Inscription'
     if (candidatsDern.length > 0) {
-      const aboDate  = abo ? new Date(abo.created_at) : null
-      const lastCmd  = cmds.length
+      const aboDate = abo ? new Date(abo.created_at) : null
+      const lastCmd = cmds.length
         ? new Date(Math.max(...cmds.map(cmd => new Date(cmd.created_at).getTime())))
         : null
       if (lastCmd && (!aboDate || lastCmd >= aboDate)) {
@@ -154,6 +176,25 @@ export default async function ContactsPage({
       } else if (aboDate) {
         typeDerniereAction = 'Abonnement'
       }
+    }
+
+    // Clients view extras — LICENCE commandes uniquement
+    const ltv = licenceCmds.reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
+    const dernier_achat_iso = licenceCmds.length
+      ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
+      : null
+    const panier_moyen = nbAchats > 0 ? Math.round(ltv / nbAchats) : null
+
+    // Préférences — styles/type_beat/licence depuis les beats achetés
+    const stylesArr: string[] = []
+    const typeBeatArr: string[] = []
+    const licenceArr: string[] = []
+    for (const cmd of licenceCmds) {
+      const beat = cmd.beat_id ? beatMap.get(cmd.beat_id) : null
+      if (beat?.styles)    stylesArr.push(...beat.styles)
+      if (beat?.type_beat) typeBeatArr.push(...beat.type_beat)
+      const lic = cmd.licence_id ? licenceMap.get(cmd.licence_id) : null
+      if (lic?.modele) licenceArr.push(lic.modele)
     }
 
     return {
@@ -177,6 +218,12 @@ export default async function ContactsPage({
       dernierContactISO,
       type1ereAction,
       typeDerniereAction,
+      ltv,
+      dernier_achat_iso,
+      panier_moyen,
+      pref_style:     topPreference(stylesArr),
+      pref_type_beat: topPreference(typeBeatArr),
+      pref_licence:   topPreference(licenceArr),
     }
   })
 
