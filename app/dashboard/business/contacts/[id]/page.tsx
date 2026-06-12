@@ -193,7 +193,7 @@ export default async function FicheClientPage({
 
   const moisRegles = abonnement?.en_essai ? 0
     : (abonnement?.mensualites_payees ?? 0) > 0
-    ? (abonnement.mensualites_payees ?? 0)
+    ? (abonnement?.mensualites_payees ?? 0)
     : (abonnement?.date_debut
       ? Math.max(1, Math.round((Date.now() - new Date(abonnement.date_debut).getTime()) / (30.44 * 86400000)))
       : 0)
