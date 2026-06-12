@@ -18,9 +18,9 @@ function scoreRF(nb_achats: number, dernier_achat_iso: string | null): { label: 
   return                          { label: 'Dormant',     cls: 'bg-gray-700/60 text-gray-500'    }
 }
 
-function fmt(cents: number | null): string {
-  if (cents === null) return '—'
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(cents / 100)
+function fmt(euros: number | null): string {
+  if (euros === null) return '—'
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(euros)
 }
 
 function topOf(vals: (string | null)[]): { value: string; count: number; total: number } {
@@ -148,7 +148,7 @@ export default function ClientsView({
       if (!isNaN(ref) && !compareSigne(c.nb_achats, filtreCommandesSigne, ref)) return false
     }
     if (filtrePanierVal !== '') {
-      const ref = parseFloat(filtrePanierVal) * 100
+      const ref = parseFloat(filtrePanierVal)
       const val = c.panier_moyen
       if (!isNaN(ref)) {
         if (val === null) return false
@@ -156,7 +156,7 @@ export default function ClientsView({
       }
     }
     if (filtreLtvVal !== '') {
-      const ref = parseFloat(filtreLtvVal) * 100
+      const ref = parseFloat(filtreLtvVal)
       if (!isNaN(ref) && !compareSigne(c.ltv, filtreLtvSigne, ref)) return false
     }
     if (filtreLastVal !== '') {

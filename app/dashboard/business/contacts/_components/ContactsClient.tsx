@@ -28,9 +28,9 @@ export type ContactRow = {
   type1ereAction: string
   typeDerniereAction: string
   // Clients view extras
-  ltv: number              // en centimes
+  ltv: number              // en euros
   dernier_achat_iso: string | null
-  panier_moyen: number | null  // en centimes
+  panier_moyen: number | null  // en euros
   pref_style: string | null
   pref_type_beat: string | null
   pref_licence: string | null
