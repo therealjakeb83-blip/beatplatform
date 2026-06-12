@@ -177,7 +177,7 @@ export default function ClientsView({
   const totalOrders   = displayed.reduce((s, c) => s + c.nb_achats, 0)
   const ltvMoy        = displayed.length ? totalLtv / displayed.length : 0
   const commandesMoy  = displayed.length ? totalOrders / displayed.length : 0
-  const panierMoy     = totalOrders > 0  ? totalLtv / totalOrders : 0
+  const panierMoy     = totalOrders > 0  ? displayed.reduce((s, c) => s + (c.panier_moyen ?? 0) * c.nb_achats, 0) / totalOrders : 0
   const nbRegulier    = displayed.filter(c => scoreRF(c.nb_achats, c.dernier_achat_iso).label === 'Régulier').length
   const nbFidele      = displayed.filter(c => scoreRF(c.nb_achats, c.dernier_achat_iso).label === 'Fidèle').length
   const nbOccasionnel = displayed.filter(c => scoreRF(c.nb_achats, c.dernier_achat_iso).label === 'Occasionnel').length
