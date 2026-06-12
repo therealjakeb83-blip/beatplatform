@@ -22,6 +22,12 @@ return (
         <p className="text-gray-400 mb-8">Connecté en tant que {user.email}</p>
         <div className="flex flex-wrap gap-3 justify-center mb-4">
           <Link
+            href="/dashboard/business"
+            className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+          >
+            Business ↗
+          </Link>
+          <Link
             href="/dashboard/beats"
             className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
           >

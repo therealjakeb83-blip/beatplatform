@@ -17,7 +17,9 @@ export default async function BusinessLayout({
     .eq('id', user.id)
     .single()
 
-  const nomArtiste = beatmaker?.nom_artiste ?? user.email ?? 'Beatmaker'
+  if (!beatmaker) redirect('/')
+
+  const nomArtiste = beatmaker.nom_artiste ?? user.email ?? 'Beatmaker'
 
   return (
     <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
