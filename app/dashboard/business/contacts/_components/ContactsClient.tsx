@@ -33,6 +33,7 @@ export type ContactRow = {
   panier_moyen: number | null  // en euros
   pref_style: string | null
   pref_type_beat: string | null
+  pref_ambiance: string | null
   pref_licence: string | null
 }
 

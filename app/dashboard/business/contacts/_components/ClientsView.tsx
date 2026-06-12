@@ -514,11 +514,12 @@ export default function ClientsView({
                        : <span className="text-gray-700">—</span>}
                     </td>
                     <td className="px-3 py-3">
-                      {c.pref_style || c.pref_type_beat || c.pref_licence ? (
+                      {c.pref_style || c.pref_type_beat || c.pref_ambiance || c.pref_licence ? (
                         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
-                          <span className="text-gray-300 truncate">{c.pref_style    ?? <span className="text-gray-700">—</span>}</span>
+                          <span className="text-gray-300 truncate">{c.pref_style     ?? <span className="text-gray-700">—</span>}</span>
                           <span className="text-gray-300 truncate">{c.pref_type_beat ?? <span className="text-gray-700">—</span>}</span>
-                          <span className="text-gray-500 truncate col-span-2">{c.pref_licence  ?? <span className="text-gray-700">—</span>}</span>
+                          <span className="text-gray-500 truncate">{c.pref_ambiance  ?? <span className="text-gray-700">—</span>}</span>
+                          <span className="text-gray-500 truncate">{c.pref_licence   ?? <span className="text-gray-700">—</span>}</span>
                         </div>
                       ) : <span className="text-gray-700 text-xs">—</span>}
                     </td>

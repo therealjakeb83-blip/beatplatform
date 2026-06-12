@@ -80,7 +80,7 @@ export default async function ContactsPage({
       .select('id, prenom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
       .in('id', clientIds),
     beatIds.length > 0
-      ? supabase.from('beats').select('id, styles, type_beat').in('id', beatIds)
+      ? supabase.from('beats').select('id, styles, type_beat, ambiances').in('id', beatIds)
       : Promise.resolve({ data: [] as { id: string; styles: string[] | null; type_beat: string[] | null }[] }),
     licenceIds.length > 0
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
@@ -189,11 +189,13 @@ export default async function ContactsPage({
     // Préférences — styles/type_beat/licence depuis les beats achetés
     const stylesArr: string[] = []
     const typeBeatArr: string[] = []
+    const ambiancesArr: string[] = []
     const licenceArr: string[] = []
     for (const cmd of licenceCmds) {
       const beat = cmd.beat_id ? beatMap.get(cmd.beat_id) : null
       if (beat?.styles)    stylesArr.push(...beat.styles)
       if (beat?.type_beat) typeBeatArr.push(...beat.type_beat)
+      if ((beat as any)?.ambiances) ambiancesArr.push(...(beat as any).ambiances)
       const lic = cmd.licence_id ? licenceMap.get(cmd.licence_id) : null
       if (lic?.modele) licenceArr.push(lic.modele)
     }
@@ -224,6 +226,7 @@ export default async function ContactsPage({
       panier_moyen,
       pref_style:     topPreference(stylesArr),
       pref_type_beat: topPreference(typeBeatArr),
+      pref_ambiance:  topPreference(ambiancesArr),
       pref_licence:   topPreference(licenceArr),
     }
   })
