@@ -27,35 +27,41 @@ DECLARE
   c_id UUID;
 
 BEGIN
-  -- ── 0. Beatmaker + licences ──────────────────────────────────────
-  SELECT id INTO bm_id FROM beatmakers LIMIT 1;
-  IF bm_id IS NULL THEN RAISE EXCEPTION 'Aucun beatmaker trouvé dans la base'; END IF;
+  -- ── 0. Beatmaker via ses licences (contourne RLS et ambiguïté LIMIT 1) ──
+  -- On cherche le beatmaker qui A une licence MP3 — garantit que bm_id est le bon
+  SELECT beatmaker_id INTO bm_id FROM licences WHERE modele = 'mp3' LIMIT 1;
 
-  SELECT id INTO lic_mp3 FROM licences WHERE beatmaker_id = bm_id AND modele = 'mp3' LIMIT 1;
-
-  -- Si aucune licence trouvée → le trigger n'a pas tourné, on les crée avec les prix par défaut
-  IF lic_mp3 IS NULL THEN
-    RAISE NOTICE 'Aucune licence trouvée → création des 5 licences par défaut';
-    INSERT INTO licences (beatmaker_id, ordre, nom, prix, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive)
-    VALUES
-      (bm_id, 1, 'MP3 Basic',   25,  'mp3',      true,  false, false, false),
-      (bm_id, 2, 'MP3 + WAV',   45,  'wav',      true,  true,  false, false),
-      (bm_id, 3, 'WAV + Stems', 75,  'stems',    true,  true,  true,  false),
-      (bm_id, 4, 'Illimité',    150, 'illimite', true,  true,  true,  false),
-      (bm_id, 5, 'Exclusive',   500, 'exclusive', true,  true,  true,  true);
+  -- Fallback : via l'email du compte beatmaker principal
+  IF bm_id IS NULL THEN
+    SELECT id INTO bm_id FROM beatmakers WHERE email = 'contact@jakebmusic.com' LIMIT 1;
   END IF;
 
-  -- Récupération (existantes ou créées à l'instant)
-  SELECT id, prix INTO lic_mp3,  p_mp3  FROM licences WHERE beatmaker_id = bm_id AND modele = 'mp3'       LIMIT 1;
-  SELECT id, prix INTO lic_wav,  p_wav  FROM licences WHERE beatmaker_id = bm_id AND modele = 'wav'       LIMIT 1;
-  SELECT id, prix INTO lic_stm,  p_stm  FROM licences WHERE beatmaker_id = bm_id AND modele = 'stems'     LIMIT 1;
-  SELECT id, prix INTO lic_ill,  p_ill  FROM licences WHERE beatmaker_id = bm_id AND modele = 'illimite'  LIMIT 1;
-  SELECT id, prix INTO lic_excl, p_excl FROM licences WHERE beatmaker_id = bm_id AND modele = 'exclusive' LIMIT 1;
+  -- Dernier fallback : n'importe quel beatmaker
+  IF bm_id IS NULL THEN
+    SELECT id INTO bm_id FROM beatmakers LIMIT 1;
+  END IF;
 
-  IF lic_mp3 IS NULL THEN RAISE EXCEPTION 'Licences introuvables après création — vérifier la table licences'; END IF;
+  IF bm_id IS NULL THEN RAISE EXCEPTION 'Aucun beatmaker trouvé dans la base'; END IF;
 
-  RAISE NOTICE 'Licences — MP3:%€ (%) WAV:%€ (%) Stems:%€ (%) Illimité:%€ (%) Exclusive:%€ (%)',
-    p_mp3, lic_mp3, p_wav, lic_wav, p_stm, lic_stm, p_ill, lic_ill, p_excl, lic_excl;
+  -- Licences — SELECT séparés pour éviter tout problème d'assignation multi-variables
+  SELECT id   INTO lic_mp3  FROM licences WHERE beatmaker_id = bm_id AND modele = 'mp3'       LIMIT 1;
+  SELECT prix INTO p_mp3    FROM licences WHERE beatmaker_id = bm_id AND modele = 'mp3'       LIMIT 1;
+  SELECT id   INTO lic_wav  FROM licences WHERE beatmaker_id = bm_id AND modele = 'wav'       LIMIT 1;
+  SELECT prix INTO p_wav    FROM licences WHERE beatmaker_id = bm_id AND modele = 'wav'       LIMIT 1;
+  SELECT id   INTO lic_stm  FROM licences WHERE beatmaker_id = bm_id AND modele = 'stems'     LIMIT 1;
+  SELECT prix INTO p_stm    FROM licences WHERE beatmaker_id = bm_id AND modele = 'stems'     LIMIT 1;
+  SELECT id   INTO lic_ill  FROM licences WHERE beatmaker_id = bm_id AND modele = 'illimite'  LIMIT 1;
+  SELECT prix INTO p_ill    FROM licences WHERE beatmaker_id = bm_id AND modele = 'illimite'  LIMIT 1;
+  SELECT id   INTO lic_excl FROM licences WHERE beatmaker_id = bm_id AND modele = 'exclusive' LIMIT 1;
+  SELECT prix INTO p_excl   FROM licences WHERE beatmaker_id = bm_id AND modele = 'exclusive' LIMIT 1;
+
+  -- Vérification critique
+  IF lic_mp3 IS NULL THEN
+    RAISE EXCEPTION 'Licence MP3 introuvable pour beatmaker % — vérifier la table licences', bm_id;
+  END IF;
+
+  RAISE NOTICE 'Beatmaker: % | MP3:%€ WAV:%€ Stems:%€ Illimité:%€ Exclusive:%€',
+    bm_id, p_mp3, p_wav, p_stm, p_ill, p_excl;
 
   -- ── 1. Supprimer les commandes LICENCE fictives ──────────────────
   DELETE FROM commandes
