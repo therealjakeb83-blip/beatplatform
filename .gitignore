@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# graphify — cache régénérable + artefacts intermédiaires
+.graphify/cache/
+.graphify/.graphify/
