@@ -27,21 +27,38 @@ DECLARE
   c_id UUID;
 
 BEGIN
-  -- ── 0. Beatmaker via ses licences (contourne RLS et ambiguïté LIMIT 1) ──
-  -- On cherche le beatmaker qui A une licence MP3 — garantit que bm_id est le bon
-  SELECT beatmaker_id INTO bm_id FROM licences WHERE modele = 'mp3' LIMIT 1;
+  -- ── 0. Nettoyage du run précédent (données sur le mauvais beatmaker) ──────
+  -- Supprimer les commandes qui référencent nos beats fictifs (peu importe le beatmaker)
+  DELETE FROM commandes WHERE beat_id IN (
+    SELECT id FROM beats WHERE titre IN (
+      'Night Rider','Paranoia','Coco Loco','Favela King','Memories',
+      'Street Gospel','Montagne Or','Señorita','Dark Frequencies','Voodoo',
+      '2AM','Calor','Ghost Town','Summer Nights','Shadow Realm',
+      'Playa','Broken Mirror','Inferno','Nuit Blanche','Babylon'
+    )
+  );
+  -- Remettre Broken Mirror en public si marqué vendu sur le mauvais compte
+  UPDATE beats SET statut = 'public'
+  WHERE titre = 'Broken Mirror' AND image_url IS NULL;
+  -- Supprimer les beats fictifs du mauvais compte
+  DELETE FROM beats WHERE titre IN (
+    'Night Rider','Paranoia','Coco Loco','Favela King','Memories',
+    'Street Gospel','Montagne Or','Señorita','Dark Frequencies','Voodoo',
+    '2AM','Calor','Ghost Town','Summer Nights','Shadow Realm',
+    'Playa','Broken Mirror','Inferno','Nuit Blanche','Babylon'
+  );
+  RAISE NOTICE 'Nettoyage run précédent terminé';
 
-  -- Fallback : via l'email du compte beatmaker principal
+  -- ── 1. Beatmaker CORRECT : nicojacob83+test@gmail.com (boutique jakeb-test) ──
+  SELECT id INTO bm_id FROM beatmakers WHERE email = 'nicojacob83+test@gmail.com' LIMIT 1;
+
   IF bm_id IS NULL THEN
-    SELECT id INTO bm_id FROM beatmakers WHERE email = 'contact@jakebmusic.com' LIMIT 1;
+    SELECT id INTO bm_id FROM beatmakers WHERE slug LIKE 'jakeb-test%' LIMIT 1;
   END IF;
 
-  -- Dernier fallback : n'importe quel beatmaker
-  IF bm_id IS NULL THEN
-    SELECT id INTO bm_id FROM beatmakers LIMIT 1;
-  END IF;
+  IF bm_id IS NULL THEN RAISE EXCEPTION 'Beatmaker nicojacob83+test@gmail.com introuvable — vérifier la table beatmakers'; END IF;
 
-  IF bm_id IS NULL THEN RAISE EXCEPTION 'Aucun beatmaker trouvé dans la base'; END IF;
+  RAISE NOTICE 'Beatmaker cible : %', bm_id;
 
   -- Licences — SELECT séparés pour éviter tout problème d'assignation multi-variables
   SELECT id   INTO lic_mp3  FROM licences WHERE beatmaker_id = bm_id AND modele = 'mp3'       LIMIT 1;
