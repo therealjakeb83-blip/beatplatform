@@ -3,15 +3,58 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import SocialIcon from '../../_components/SocialIcon'
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
-function getLangue(pays: string | null | undefined): 'FR' | 'US' {
-  return pays && PAYS_FR.has(pays.toUpperCase()) ? 'FR' : 'US'
+function getLangue(pays: string | null | undefined): string {
+  return pays && PAYS_FR.has(pays.toUpperCase()) ? 'Français' : 'Anglophone'
 }
+
+function topN(counts: Map<string, number>, n: number): string[] {
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([v]) => v)
+}
+
+type BeatPrefs = {
+  styles: string[] | null
+  type_beat: string[] | null
+  ambiances: string[] | null
+  instruments: string[] | null
+} | null
+
+function accumPrefs(
+  counts: {
+    styles: Map<string, number>
+    typeBeat: Map<string, number>
+    ambiances: Map<string, number>
+    instruments: Map<string, number>
+  },
+  beat: BeatPrefs,
+  weight: number
+) {
+  if (!beat) return
+  for (const s of beat.styles      ?? []) counts.styles.set(s,      (counts.styles.get(s)      ?? 0) + weight)
+  for (const t of beat.type_beat   ?? []) counts.typeBeat.set(t,    (counts.typeBeat.get(t)    ?? 0) + weight)
+  for (const a of beat.ambiances   ?? []) counts.ambiances.set(a,   (counts.ambiances.get(a)   ?? 0) + weight)
+  for (const i of beat.instruments ?? []) counts.instruments.set(i, (counts.instruments.get(i) ?? 0) + weight)
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between py-2 border-b border-gray-800 last:border-0 gap-4">
+      <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
+      <span className="text-xs text-gray-200 text-right">{value}</span>
+    </div>
+  )
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type Commande = {
   id: string
+  beat_id: string | null
   created_at: string
   prix_paye: number
   statut: string
@@ -28,505 +71,739 @@ type Commande = {
   licences: { nom: string } | null
 }
 
-type BeatPrefs = {
-  styles: string[] | null
-  type_beat: string[] | null
-  ambiances: string[] | null
-  instruments: string[] | null
-} | null
+// ── Onglets ───────────────────────────────────────────────────────────────────
 
-function topN(counts: Map<string, number>, n: number): string[] {
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([v]) => v)
-}
+const TABS = [
+  { key: 'identite',    label: 'Identité'    },
+  { key: 'abonnement',  label: 'Abonnement'  },
+  { key: 'commandes',   label: 'Commandes'   },
+  { key: 'preferences', label: 'Préférences' },
+  { key: 'newsletter',  label: 'Newsletter'  },
+  { key: 'catalogue',   label: 'Activité'    },
+  { key: 'morceaux',    label: 'Morceaux'    },
+]
 
-function accumPrefs(
-  counts: { styles: Map<string, number>; typeBeat: Map<string, number>; ambiances: Map<string, number>; instruments: Map<string, number> },
-  beat: BeatPrefs,
-  weight: number
-) {
-  if (!beat) return
-  for (const s of beat.styles ?? [])    counts.styles.set(s,    (counts.styles.get(s)    ?? 0) + weight)
-  for (const t of beat.type_beat ?? []) counts.typeBeat.set(t,  (counts.typeBeat.get(t)  ?? 0) + weight)
-  for (const a of beat.ambiances ?? []) counts.ambiances.set(a, (counts.ambiances.get(a) ?? 0) + weight)
-  for (const i of beat.instruments ?? []) counts.instruments.set(i, (counts.instruments.get(i) ?? 0) + weight)
-}
-
-// ── RFM ──────────────────────────────────────────────────────────────────────
-
-type Segment = 'champion' | 'fidele' | 'potentiel' | 'a_risque' | 'dormant' | 'a_reactiver' | 'nouveau' | 'lead'
-
-const SEGMENT_CONFIG: Record<Segment, { label: string; color: string; desc: string }> = {
-  champion:    { label: 'Champion',     color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',  desc: 'Client très actif, acheteur régulier et haute valeur' },
-  fidele:      { label: 'Fidèle',       color: 'bg-green-500/20 text-green-400 border-green-500/30',     desc: "Achète régulièrement, bon niveau d'engagement" },
-  potentiel:   { label: 'Potentiel',    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',        desc: 'Nouvel acheteur à fort potentiel, à fidéliser' },
-  a_risque:    { label: 'À risque',     color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',  desc: "Bon client qui n'achète plus depuis un moment" },
-  dormant:     { label: 'Dormant',      color: 'bg-gray-600/30 text-gray-500 border-gray-600/30',        desc: 'Inactif depuis plusieurs mois' },
-  a_reactiver: { label: 'À réactiver', color: 'bg-red-500/20 text-red-400 border-red-500/30',           desc: 'Ancien abonné ayant résilié — à reconquérir' },
-  nouveau:     { label: 'Nouveau',      color: 'bg-teal-500/20 text-teal-400 border-teal-500/30',        desc: 'Premier achat récent — à convertir en régulier' },
-  lead:        { label: 'Lead',         color: 'bg-gray-700/40 text-gray-400 border-gray-600/30',        desc: 'Contact sans achat ni abonnement' },
-}
-
-function scoreR(derniere_commande: string | null): number {
-  if (!derniere_commande) return 0
-  const jours = (Date.now() - new Date(derniere_commande).getTime()) / 86400000
-  if (jours < 7)   return 5
-  if (jours < 30)  return 4
-  if (jours < 90)  return 3
-  if (jours < 180) return 2
-  if (jours < 365) return 1
-  return 0
-}
-
-function scoreF(nb: number): number {
-  if (nb >= 10) return 5
-  if (nb >= 5)  return 4
-  if (nb >= 3)  return 3
-  if (nb >= 2)  return 2
-  if (nb >= 1)  return 1
-  return 0
-}
-
-function scoreM(ltv: number): number {
-  if (ltv >= 500) return 5
-  if (ltv >= 200) return 4
-  if (ltv >= 100) return 3
-  if (ltv >= 50)  return 2
-  if (ltv >= 1)   return 1
-  return 0
-}
-
-function getSegment(
-  nb_achats: number,
-  ltv: number,
-  derniere_commande: string | null,
-  statut_abo: 'abonne' | 'ancien' | 'jamais'
-): { r: number; f: number; m: number; rfm: number; segment: Segment } {
-  const r = scoreR(derniere_commande)
-  const f = scoreF(nb_achats)
-  const m = scoreM(ltv)
-  const rfm = Math.round((r + f + m) / 15 * 100)
-
-  let segment: Segment
-  if (nb_achats === 0 && statut_abo === 'jamais') segment = 'lead'
-  else if (statut_abo === 'ancien')              segment = 'a_reactiver'
-  else if (r >= 4 && f >= 4 && m >= 3)          segment = 'champion'
-  else if (f >= 3 && m >= 2 && r >= 2)          segment = 'fidele'
-  else if ((f >= 2 || m >= 3) && r <= 2)        segment = 'a_risque'
-  else if (r <= 1)                              segment = 'dormant'
-  else if (nb_achats <= 2 && r >= 3 && m >= 2) segment = 'potentiel'
-  else if (nb_achats >= 1 && r >= 3)            segment = 'nouveau'
-  else                                          segment = 'dormant'
-
-  return { r, f, m, rfm, segment }
-}
-
-const SCORE_LABELS: Record<number, string> = {
-  0: 'Nul', 1: 'Faible', 2: 'Moyen', 3: 'Correct', 4: 'Bon', 5: 'Excellent',
-}
-
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function FicheClientPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ onglet?: string }>
 }) {
-  const { id: clientId } = await params
+  const { id: clientId }        = await params
+  const { onglet = 'identite' } = await searchParams
+
   const supabase = await createClient()
   const admin    = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
+  const beatmakerId = user.id
 
+  // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
     .from('clients')
-    .select('id, email, nom, prenom, nom_artiste, created_at, pays, telephone, instagram, spotify, youtube, tiktok, newsletter_consent')
+    .select('id, email, nom, prenom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes_admin, source_acquisition')
     .eq('id', clientId)
     .single()
 
   if (!client) redirect('/dashboard/business/contacts')
 
-  const [{ data: commandesRaw }, { data: abonnement }, { data: favorisRaw }] = await Promise.all([
+  // Toutes les données en parallèle
+  const [{ data: commandesRaw }, { data: abonnement }, { data: favorisRaw }, { data: morceauxRaw }] = await Promise.all([
     supabase
       .from('commandes')
       .select(`
-        id, created_at, prix_paye, statut, plateforme_source, type_commande,
+        id, beat_id, created_at, prix_paye, statut, plateforme_source, type_commande,
         beats(titre, image_url, styles, type_beat, ambiances, instruments),
         licences(nom)
       `)
-      .eq('beatmaker_id', user.id)
+      .eq('beatmaker_id', beatmakerId)
       .or(`client_id.eq.${clientId},acheteur_email.eq.${client.email}`)
       .order('created_at', { ascending: false }),
     supabase
       .from('abonnements_boutique')
-      .select('statut, date_debut, date_fin, en_essai, annulation_en_cours, plan, prix, mois_consecutifs, mensualites_payees')
-      .eq('beatmaker_id', user.id)
+      .select('statut, date_debut, date_fin, en_essai, annulation_en_cours, plan, prix, mensualites_payees')
+      .eq('beatmaker_id', beatmakerId)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
     admin
       .from('favoris')
-      .select('beat_id, beats(styles, type_beat, ambiances, instruments)')
+      .select('beat_id, beats(titre, image_url)')
       .eq('client_id', clientId),
+    supabase
+      .from('morceaux_clients')
+      .select('id, titre, lien_spotify, created_at')
+      .eq('beatmaker_id', beatmakerId)
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false }),
   ])
 
-  const commandes  = (commandesRaw ?? []) as unknown as Commande[]
-  const favoris    = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: BeatPrefs }>
+  const commandes = (commandesRaw ?? []) as unknown as Commande[]
+  const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: { titre?: string; image_url?: string } | null }>
+  const morceaux  = morceauxRaw ?? []
 
-  const payees    = commandes.filter(c => c.statut === 'payee')
-  const nbAchats  = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT').length
-  const ltv       = payees.reduce((s, c) => s + c.prix_paye, 0)
+  // Métriques
+  const payees         = commandes.filter(c => c.statut === 'payee')
+  const achats         = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT')
   const licencesPayees = payees.filter(c => c.type_commande === 'LICENCE')
+  const nbAchats       = licencesPayees.length
+  const ltv            = payees.reduce((s, c) => s + c.prix_paye, 0)
   const licenceLtv     = licencesPayees.reduce((s, c) => s + c.prix_paye, 0)
   const panierMoyen    = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
   const derniereCmd    = licencesPayees.map(c => c.created_at).sort().at(-1) ?? null
+  const moisAboCommandes = commandes.filter(
+    c => c.type_commande === 'RENOUVELLEMENT' || c.type_commande === 'CREATION_ABONNEMENT'
+  ).length
 
   const statut_abo: 'abonne' | 'ancien' | 'jamais' = !abonnement
     ? 'jamais'
-    : (abonnement.statut === 'actif' || abonnement.statut === 'impaye')
-    ? 'abonne'
-    : 'ancien'
+    : (abonnement.statut === 'actif' || abonnement.statut === 'impaye') ? 'abonne' : 'ancien'
 
-  const moisRegles = abonnement?.en_essai ? 0
+  const moisRegles = abonnement?.en_essai
+    ? 0
     : (abonnement?.mensualites_payees ?? 0) > 0
-    ? (abonnement?.mensualites_payees ?? 0)
-    : (abonnement?.date_debut
-      ? Math.max(1, Math.round((Date.now() - new Date(abonnement.date_debut).getTime()) / (30.44 * 86400000)))
-      : 0)
+    ? (abonnement.mensualites_payees ?? 0)
+    : moisAboCommandes || 0
 
-  const rfmScores = getSegment(nbAchats, ltv, derniereCmd, statut_abo)
-  const segConfig = SEGMENT_CONFIG[rfmScores.segment]
-
-  // Préférences — achats payés ×2, favoris ×1
+  // Préférences (achats ×2, favoris ×1)
   const prefCounts = {
-    styles:     new Map<string, number>(),
-    typeBeat:   new Map<string, number>(),
-    ambiances:  new Map<string, number>(),
+    styles:      new Map<string, number>(),
+    typeBeat:    new Map<string, number>(),
+    ambiances:   new Map<string, number>(),
     instruments: new Map<string, number>(),
   }
-  for (const c of payees)  accumPrefs(prefCounts, c.beats, 2)
-  for (const f of favoris) accumPrefs(prefCounts, f.beats, 1)
+  for (const c of payees) accumPrefs(prefCounts, c.beats, 2)
 
-  const prefs = {
-    stylePrefere:    topN(prefCounts.styles,   1)[0] ?? null,
-    typeBeatPrefere: topN(prefCounts.typeBeat, 1)[0] ?? null,
-    topStyles:       topN(prefCounts.styles,   5),
-    topAmbiances:    topN(prefCounts.ambiances, 5),
-    topInstruments:  topN(prefCounts.instruments, 5),
-  }
-  const hasPrefs = prefs.topStyles.length > 0 || prefs.topAmbiances.length > 0 || prefs.topInstruments.length > 0
+  const topStyles      = topN(prefCounts.styles,      5)
+  const topTypeBeat    = topN(prefCounts.typeBeat,    3)
+  const topAmbiances   = topN(prefCounts.ambiances,   5)
+  const topInstruments = topN(prefCounts.instruments, 5)
+  const topLicences    = (() => {
+    const m = new Map<string, number>()
+    for (const c of licencesPayees) {
+      const nom = c.licences?.nom
+      if (nom) m.set(nom, (m.get(nom) ?? 0) + 1)
+    }
+    return topN(m, 3)
+  })()
 
-  async function sauvegarderInstagram(formData: FormData) {
+  // ── Server actions ─────────────────────────────────────────────────────────
+
+  async function sauvegarderNotes(formData: FormData) {
     'use server'
-    const admin2 = createAdminClient()
-    const ig = (formData.get('instagram') as string ?? '').trim()
-    await admin2.from('clients').update({ instagram: ig || null }).eq('id', clientId)
+    const a = createAdminClient()
+    await a.from('clients').update({
+      notes_admin: (formData.get('notes') as string ?? '').trim() || null,
+    }).eq('id', clientId)
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
-  const nomComplet = `${client.prenom ?? ''} ${client.nom ?? ''}`.trim()
-  const initiales  = [client.prenom?.[0], client.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'
-  const langue     = getLangue(client.pays)
+  async function sauvegarderSociaux(formData: FormData) {
+    'use server'
+    const a = createAdminClient()
+    await a.from('clients').update({
+      instagram: (formData.get('instagram') as string ?? '').trim() || null,
+      spotify:   (formData.get('spotify')   as string ?? '').trim() || null,
+      youtube:   (formData.get('youtube')   as string ?? '').trim() || null,
+      tiktok:    (formData.get('tiktok')    as string ?? '').trim() || null,
+    }).eq('id', clientId)
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
 
-  const socials = [
-    client.spotify  && { href: `https://open.spotify.com/artist/${client.spotify}`,  label: 'Spotify',   color: 'hover:text-green-400'  },
-    client.youtube  && { href: `https://youtube.com/@${client.youtube}`,             label: 'YouTube',   color: 'hover:text-red-400'    },
-    client.tiktok   && { href: `https://tiktok.com/@${client.tiktok}`,              label: 'TikTok',    color: 'hover:text-pink-300'   },
-  ].filter(Boolean) as { href: string; label: string; color: string }[]
+  async function ajouterMorceau(formData: FormData) {
+    'use server'
+    const a     = createAdminClient()
+    const titre = (formData.get('titre') as string ?? '').trim()
+    const lien  = (formData.get('lien')  as string ?? '').trim()
+    if (!titre) return
+    await a.from('morceaux_clients').insert({
+      beatmaker_id: beatmakerId,
+      client_id:    clientId,
+      titre,
+      lien_spotify: lien || null,
+    })
+    revalidatePath(`/dashboard/business/contacts/${clientId}?onglet=morceaux`)
+  }
+
+  // ── UI helpers ─────────────────────────────────────────────────────────────
+
+  const nomComplet  = `${client.prenom ?? ''} ${client.nom ?? ''}`.trim()
+  const initiales   = [client.prenom?.[0], client.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'
+  const statutLabel = statut_abo === 'abonne' ? 'Abonné' : nbAchats > 0 ? 'Client' : 'Lead'
+  const statutCls   = statut_abo === 'abonne'
+    ? 'bg-green-500/20 text-green-400'
+    : nbAchats > 0 ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-700 text-gray-400'
+
+  const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const fmtDate    = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  const fmtDateRel = (iso: string | null) => {
+    if (!iso) return '–'
+    const j = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+    if (j === 0) return "Aujourd'hui"
+    if (j === 1) return 'Hier'
+    if (j < 7)   return `Il y a ${j}j`
+    if (j < 30)  return `Il y a ${Math.floor(j / 7)} sem`
+    if (j < 365) return `Il y a ${Math.floor(j / 30)} mois`
+    return `Il y a ${Math.floor(j / 365)} an${Math.floor(j / 365) > 1 ? 's' : ''}`
+  }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white px-4 py-10">
-      <div className="max-w-3xl mx-auto">
-        <Link href="/dashboard/business/contacts" className="text-sm text-gray-500 hover:text-gray-300 mb-6 block">
-          ← Contacts
+    <div className="flex-1 flex flex-col overflow-auto">
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-800 text-sm flex-shrink-0">
+        <Link href="/dashboard/business/contacts" className="text-gray-500 hover:text-white transition-colors">
+          Contacts
         </Link>
+        <span className="text-gray-700">›</span>
+        <span className="text-white font-semibold">{nomComplet || client.email}</span>
+      </div>
 
-        {/* ── Bloc 1 : Header client ── */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-          <div className="flex items-center gap-4 mb-5">
-            <div className="w-14 h-14 rounded-full bg-indigo-900/60 flex items-center justify-center text-indigo-300 font-bold text-xl flex-shrink-0">
-              {initiales}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold truncate">
-                {nomComplet || client.email}
-                {client.nom_artiste && (
-                  <span className="ml-2 text-sm font-normal text-gray-500">({client.nom_artiste})</span>
+      <div className="max-w-3xl mx-auto w-full px-6 py-8 space-y-4">
+
+        {/* ── En-tête ── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
+                {client.pays ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`https://flagcdn.com/w80/${client.pays.toLowerCase()}.png`}
+                    alt={client.pays}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-indigo-300 font-bold text-xl">{initiales}</span>
                 )}
-              </h1>
-              <p className="text-gray-400 text-sm">{client.email}</p>
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                {client.pays && (
-                  <span className="text-gray-600 text-xs">{client.pays} · {langue}</span>
-                )}
-                {statut_abo === 'abonne' && abonnement?.annulation_en_cours && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">Annulation en cours</span>
-                )}
-                {statut_abo === 'abonne' && !abonnement?.annulation_en_cours && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">Abonné</span>
-                )}
-                {statut_abo === 'ancien' && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">Ancien abonné</span>
-                )}
-                {statut_abo === 'jamais' && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-500 font-medium">Jamais abonné</span>
-                )}
-                {client.newsletter_consent && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">Newsletter</span>
-                )}
-                {client.instagram && (
-                  <a
-                    href={`https://instagram.com/${client.instagram.replace('@', '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-gray-500 hover:text-pink-400 transition-colors"
-                  >
-                    @{client.instagram.replace('@', '')}
-                  </a>
-                )}
-                {socials.map(s => (
-                  <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
-                    className={`text-xs text-gray-500 transition-colors ${s.color}`}>
-                    {s.label}
-                  </a>
-                ))}
               </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-800">
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Licences</p>
-              <p className="text-2xl font-black">{nbAchats}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">LTV</p>
-              <p className="text-2xl font-black">{ltv.toLocaleString('fr-FR')} €</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Panier moy.</p>
-              <p className="text-2xl font-black">{panierMoyen !== null ? `${panierMoyen} €` : '—'}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-1">Abonnement</p>
-              {abonnement?.statut === 'actif' ? (
-                <p className="text-green-400 font-bold">Actif</p>
-              ) : abonnement?.statut === 'impaye' ? (
-                <p className="text-red-400 font-bold">Impayé</p>
-              ) : (
-                <p className="text-gray-600">—</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-gray-600 text-xs">
-              Client depuis le {new Date(client.created_at).toLocaleDateString('fr-FR', {
-                day: '2-digit', month: 'long', year: 'numeric',
-              })}
-            </p>
-            <form action={sauvegarderInstagram} className="flex items-center gap-1">
-              <span className="text-gray-600 text-xs">@</span>
-              <input
-                name="instagram"
-                type="text"
-                defaultValue={client.instagram ?? ''}
-                placeholder="instagram"
-                className="w-28 text-xs bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
-              />
-              <button type="submit" className="text-xs px-2 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">
-                OK
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* ── Bloc 2 : Score RFM ── */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-white">Score RFM</h2>
-            <span className={`text-xs px-3 py-1 rounded-full font-medium border ${segConfig.color}`}>
-              {segConfig.label}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 mb-4">{segConfig.desc}</p>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            {[
-              { label: 'Récence',   score: rfmScores.r, hint: 'Dernier achat' },
-              { label: 'Fréquence', score: rfmScores.f, hint: 'Nb achats'     },
-              { label: 'Valeur',    score: rfmScores.m, hint: 'LTV'           },
-            ].map(({ label, score, hint }) => (
-              <div key={label} className="text-center">
-                <p className="text-2xl font-black text-white">
-                  {score}<span className="text-gray-600 text-sm font-normal">/5</span>
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-                <p className="text-xs text-gray-700 mt-0.5">{SCORE_LABELS[score]}</p>
-              </div>
-            ))}
-          </div>
-          <div className="pt-3 border-t border-gray-800 text-center">
-            <span className="text-xs text-gray-600">Score global : </span>
-            <span className="text-sm font-bold text-white">{rfmScores.rfm}</span>
-            <span className="text-xs text-gray-600">/100</span>
-          </div>
-        </div>
-
-        {/* ── Bloc 3 : Abonnement ── */}
-        {abonnement && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
-            <h2 className="font-bold text-white mb-3">Abonnement</h2>
-            <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm text-white capitalize">Plan {abonnement.plan}</p>
-                <p className="text-xs text-gray-500">
-                  Depuis le {new Date(abonnement.date_debut).toLocaleDateString('fr-FR')}
-                  {abonnement.en_essai && ' · Essai gratuit'}
-                  {abonnement.prix > 0 && ` · ${(abonnement.prix / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €/mois`}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                  abonnement.statut === 'actif'  ? 'bg-green-500/20 text-green-400'
-                  : abonnement.statut === 'impaye' ? 'bg-red-500/20 text-red-400'
-                  : 'bg-gray-700 text-gray-400'
-                }`}>
-                  {abonnement.statut === 'actif' ? 'Actif'
-                    : abonnement.statut === 'impaye' ? 'Impayé'
-                    : 'Annulé'}
-                </span>
-                {abonnement.annulation_en_cours && (
-                  <span className="text-xs text-orange-400">Annulation en cours</span>
-                )}
-              </div>
-            </div>
-            {moisRegles > 0 && (
-              <div className="pt-3 border-t border-gray-800">
-                <p className="text-xs text-gray-500">
-                  <span className="text-white font-medium">{moisRegles} mois</span> réglés
-                  {!abonnement.mensualites_payees && (
-                    <span className="text-gray-700 ml-1">(approx.)</span>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <h1 className="text-lg font-bold leading-tight">{nomComplet || client.email}</h1>
+                  {client.nom_artiste && (
+                    <span className="text-sm text-gray-500 italic">{client.nom_artiste}</span>
                   )}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Bloc 4 : Préférences musicales ── */}
-        {hasPrefs && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
-            <h2 className="font-bold text-white mb-4">Préférences musicales</h2>
-
-            {(prefs.stylePrefere || prefs.typeBeatPrefere) && (
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {prefs.stylePrefere && (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-2">Style</p>
-                    <span className="text-sm px-3 py-1.5 rounded-lg bg-indigo-900/40 text-indigo-300 font-medium">
-                      {prefs.stylePrefere}
+                </div>
+                <a
+                  href={`mailto:${client.email}`}
+                  className="text-indigo-400 text-xs mt-0.5 hover:text-indigo-300 transition-colors block"
+                >
+                  {client.email}
+                </a>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statutCls}`}>
+                    {statutLabel}
+                  </span>
+                  {abonnement?.annulation_en_cours && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">
+                      Annulation en cours
                     </span>
-                  </div>
-                )}
-                {prefs.typeBeatPrefere && (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-2">Type beat</p>
-                    <span className="text-sm px-3 py-1.5 rounded-lg bg-purple-900/40 text-purple-300 font-medium">
-                      {prefs.typeBeatPrefere}
+                  )}
+                  {client.newsletter_consent ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+                      NWT ✓
                     </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {prefs.topStyles.length > 1 && (
-              <div className="mb-3">
-                <p className="text-gray-500 text-xs mb-1.5">Tous les styles</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {prefs.topStyles.map(s => (
-                    <span key={s} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{s}</span>
-                  ))}
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-600 border border-gray-800">
+                      NWT ✗
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
-
-            {prefs.topAmbiances.length > 0 && (
-              <div className="mb-3">
-                <p className="text-gray-500 text-xs mb-1.5">Ambiances</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {prefs.topAmbiances.map(a => (
-                    <span key={a} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{a}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {prefs.topInstruments.length > 0 && (
-              <div>
-                <p className="text-gray-500 text-xs mb-1.5">Instruments</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {prefs.topInstruments.map(inst => (
-                    <span key={inst} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{inst}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Bloc 5 : Historique ── */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="font-bold text-white mb-4">
-            Historique <span className="text-gray-500 font-normal">({commandes.length})</span>
-          </h2>
-
-          {commandes.length === 0 ? (
-            <p className="text-gray-600 text-sm">Aucun achat pour l&apos;instant.</p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {commandes.map(c => {
-                const isAbo  = c.type_commande === 'CREATION_ABONNEMENT'
-                const isRnvt = c.type_commande === 'RENOUVELLEMENT'
-                const isBs   = c.plateforme_source === 'beatstars'
-                const titre  = isAbo  ? 'Création abonnement'
-                  : isRnvt ? 'Renouvellement abonnement'
-                  : c.beats?.titre ?? (isBs ? 'Import BeatStars' : 'Beat supprimé')
-                const licence = isAbo || isRnvt ? '—'
-                  : c.licences?.nom ?? (isBs ? '—' : 'Licence inconnue')
-                const avatarLabel = isAbo ? 'ABO' : isRnvt ? 'RNV' : isBs ? 'BS' : '?'
-
+            </div>
+            {/* Icônes réseaux en haut à droite */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {(['instagram', 'spotify', 'youtube', 'tiktok'] as const).map(p => {
+                const val = (client as Record<string, unknown>)[p] as string | null
                 return (
-                  <div key={c.id} className="flex items-center gap-3 py-3 border-b border-gray-800 last:border-0">
-                    {c.beats?.image_url ? (
-                      <img src={c.beats.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                    ) : (
-                      <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold ${
-                        isAbo || isRnvt ? 'bg-indigo-900/40 text-indigo-400' : 'bg-gray-800 text-gray-600'
-                      }`}>
-                        {avatarLabel}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-white text-sm truncate">{titre}</p>
-                      <p className="text-xs text-gray-500">
-                        {licence} · {new Date(c.created_at).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-white">{c.prix_paye} €</p>
-                      {isBs && <p className="text-xs text-orange-400">BeatStars</p>}
-                    </div>
+                  <div
+                    key={p}
+                    className={`p-2 rounded-xl border transition-colors ${val ? 'bg-gray-800 border-gray-700 hover:border-gray-500' : 'border-gray-800 opacity-20'}`}
+                  >
+                    <SocialIcon platform={p} value={val} size={16} />
                   </div>
                 )
               })}
             </div>
-          )}
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-800">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">LTV</p>
+              <p className="text-2xl font-black">{fmt(ltv)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Achats</p>
+              <p className="text-2xl font-black">{nbAchats}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Panier moyen</p>
+              <p className="text-2xl font-black">{panierMoyen ? fmt(panierMoyen) : '–'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Dernier achat</p>
+              <p className="text-sm font-semibold text-gray-300 mt-1">{fmtDateRel(derniereCmd)}</p>
+            </div>
+          </div>
         </div>
+
+        {/* ── Tags ── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-600 font-semibold uppercase tracking-wide flex-shrink-0 mr-1">Tags</span>
+            <details className="group">
+              <summary className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer select-none list-none flex items-center gap-1 px-2.5 py-1 rounded-full border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
+                + Ajouter
+              </summary>
+              <div className="absolute mt-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-xl p-2 shadow-xl z-10">
+                <input
+                  type="text"
+                  placeholder="Nouveau tag..."
+                  className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors w-40"
+                />
+                <button className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors whitespace-nowrap">
+                  OK
+                </button>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        {/* ── Onglets ── */}
+        <div className="flex gap-2 flex-wrap">
+          {TABS.map(tab => (
+            <Link
+              key={tab.key}
+              href={`/dashboard/business/contacts/${clientId}?onglet=${tab.key}`}
+              className={`text-xs px-4 py-2 rounded-xl border transition-all font-medium ${
+                onglet === tab.key
+                  ? 'bg-indigo-600 border-indigo-500 text-white'
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* IDENTITÉ                                                          */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'identite' && (
+          <div className="space-y-4">
+            {/* Infos */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+              <h2 className="font-bold text-sm mb-3">Identité</h2>
+              <Row label="Prénom de contact" value={client.prenom ?? '–'} />
+              <Row label="Nom d'artiste"     value={client.nom_artiste ?? '–'} />
+              <Row label="Pays"              value={client.pays?.toUpperCase() ?? '–'} />
+              <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(client.pays)} />
+              <Row label="Téléphone"         value={client.telephone ?? '–'} />
+              <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
+              <Row label="Source"            value={client.source_acquisition ?? '–'} />
+              <Row label="Client depuis"     value={fmtDate(client.created_at)} />
+
+              {/* Accordion réseaux sociaux */}
+              <details className="group mt-1">
+                <summary className="flex items-center gap-1 py-2 text-xs text-gray-600 hover:text-gray-400 cursor-pointer select-none list-none border-b border-gray-800">
+                  Réseaux sociaux
+                  <span className="group-open:rotate-180 transition-transform duration-150 ml-1">▾</span>
+                </summary>
+                <form action={sauvegarderSociaux} className="pt-2 space-y-0">
+                  {(['instagram', 'spotify', 'youtube', 'tiktok'] as const).map(r => (
+                    <div key={r} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0 gap-3">
+                      <span className="flex items-center gap-1.5 text-xs text-gray-500 flex-shrink-0 w-24 capitalize">
+                        <SocialIcon platform={r} value={(client as Record<string, unknown>)[r] as string | null} size={12} />
+                        {r}
+                      </span>
+                      <input
+                        name={r}
+                        type="text"
+                        defaultValue={(client as Record<string, unknown>)[r] as string ?? ''}
+                        placeholder={`@${r}`}
+                        className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  ))}
+                  <button
+                    type="submit"
+                    className="mt-3 text-xs px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                  >
+                    Enregistrer
+                  </button>
+                </form>
+              </details>
+
+              {/* Notes */}
+              <div className="pt-3">
+                <p className="text-xs text-gray-500 mb-1.5">Notes</p>
+                <form action={sauvegarderNotes}>
+                  <textarea
+                    name="notes"
+                    defaultValue={client.notes_admin ?? ''}
+                    placeholder="Notes internes..."
+                    rows={3}
+                    className="w-full text-xs text-gray-200 bg-gray-800/60 border border-gray-700 hover:border-gray-600 focus:border-indigo-500 focus:bg-indigo-950/20 rounded-lg px-3 py-2.5 outline-none cursor-text transition-colors leading-relaxed resize-none"
+                  />
+                  <button
+                    type="submit"
+                    className="mt-1.5 text-xs px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Sauvegarder
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Emails */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+              <h2 className="font-bold text-sm mb-3">Emails</h2>
+              <div className="flex items-center gap-3 py-2 border-b border-gray-800">
+                <span className="flex-1 text-xs text-gray-200 truncate">{client.email}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-medium flex-shrink-0">
+                  Principal
+                </span>
+              </div>
+              <details className="mt-3 group">
+                <summary className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer select-none list-none flex items-center gap-1 w-fit">
+                  <span className="text-base leading-none">+</span> Ajouter une adresse
+                </summary>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="email"
+                    placeholder="nouvelle@email.com"
+                    className="flex-1 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
+                  />
+                  <button className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors whitespace-nowrap">
+                    Ajouter
+                  </button>
+                </div>
+              </details>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ABONNEMENT                                                        */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'abonnement' && (
+          <div className="space-y-4">
+            {abonnement ? (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                <h2 className="font-bold text-sm mb-3">
+                  {abonnement.statut === 'actif' ? 'Abonnement actif' : 'Dernier abonnement'}
+                </h2>
+                <Row label="Statut" value={
+                  abonnement.statut === 'actif'
+                    ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">
+                        Actif{abonnement.annulation_en_cours ? ' · Annulation en cours' : ''}
+                      </span>
+                    : abonnement.statut === 'impaye'
+                    ? <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">Impayé</span>
+                    : <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/60 text-gray-500 font-medium">Annulé</span>
+                } />
+                <Row label="Plan"   value={<span className="capitalize">{abonnement.plan}</span>} />
+                <Row label={abonnement.statut === 'actif' ? 'Depuis' : 'Débuté'} value={fmtDate(abonnement.date_debut)} />
+                {abonnement.en_essai && <Row label="Essai gratuit" value="Oui" />}
+                {(abonnement.prix ?? 0) > 0 && (
+                  <Row
+                    label="Prix"
+                    value={`${((abonnement.prix ?? 0) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €/mois`}
+                  />
+                )}
+                <Row
+                  label="Mois réglés"
+                  value={moisRegles > 0
+                    ? `${moisRegles} mois${!abonnement.mensualites_payees ? ' (approx.)' : ''}`
+                    : '–'}
+                />
+                {abonnement.date_fin && abonnement.statut === 'actif' && (
+                  <Row label="Prochain renouvellement" value={fmtDate(abonnement.date_fin)} />
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center py-10">
+                <p className="text-gray-600 text-sm">Pas d&apos;abonnement</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* COMMANDES                                                         */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'commandes' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            {achats.length === 0 ? (
+              <div className="py-10 text-center text-gray-600 text-sm">Aucune commande.</div>
+            ) : (
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Beat</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Licence</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Montant</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {achats.map((a, i) => {
+                    const isBs  = a.plateforme_source === 'beatstars'
+                    const titre = a.beats?.titre ?? (isBs ? 'Import BeatStars' : 'Beat supprimé')
+                    return (
+                      <tr
+                        key={a.id}
+                        className={`${i < achats.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}
+                      >
+                        <td className="px-5 py-3 font-medium text-white">{titre}</td>
+                        <td className="px-5 py-3 text-xs text-gray-400">
+                          {a.type_commande === 'CREATION_ABONNEMENT'
+                            ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">Abonnement</span>
+                            : isBs ? '–' : a.licences?.nom ?? 'Inconnue'}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.created_at)}</td>
+                        <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(a.prix_paye)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* PRÉFÉRENCES                                                       */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'preferences' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <h2 className="font-bold text-sm mb-3">Préférences musicales</h2>
+            <Row label="Style"       value={topStyles[0]      ?? '–'} />
+            <Row label="Type beat"   value={topTypeBeat[0]    ?? '–'} />
+            <Row label="Ambiance"    value={topAmbiances[0]   ?? '–'} />
+            <Row label="Instruments" value={topInstruments[0] ?? '–'} />
+            <Row label="Licence"     value={topLicences[0]    ?? '–'} />
+
+            {(topStyles.length > 1 || topTypeBeat.length > 1 || topAmbiances.length > 0 || topInstruments.length > 0) && (
+              <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
+                {topStyles.length > 1 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Tous les styles</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {topStyles.map(s => (
+                        <span key={s} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {topTypeBeat.length > 1 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Types beat</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {topTypeBeat.map(t => (
+                        <span key={t} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {topAmbiances.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Ambiances</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {topAmbiances.map(a => (
+                        <span key={a} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{a}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {topInstruments.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Instruments</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {topInstruments.map(ins => (
+                        <span key={ins} className="text-xs px-2 py-1 rounded-md bg-gray-800 text-gray-400">{ins}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* NEWSLETTER                                                        */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'newsletter' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-sm">Engagement newsletter</h2>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                client.newsletter_consent ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-800 text-gray-500'
+              }`}>
+                {client.newsletter_consent ? 'Inscrit' : 'Non inscrit'}
+              </span>
+            </div>
+            {client.newsletter_consent ? (
+              <>
+                <div className="h-1.5 rounded-full bg-gray-800 mb-5 overflow-hidden">
+                  <div className="h-full rounded-full bg-gray-700 w-0" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Ouverture',  val: '–', sub: 'Non disponible' },
+                    { label: 'Clics',      val: '–', sub: 'Non disponible' },
+                    { label: 'Conversion', val: '–', sub: 'Non disponible' },
+                    { label: 'Réponses',   val: '–', sub: 'Non disponible' },
+                  ].map(m => (
+                    <div key={m.label} className="bg-gray-800/60 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">{m.label}</p>
+                      <p className="text-sm font-bold text-white">{m.val}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">{m.sub}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-600 mt-4">
+                  Les statistiques d&apos;engagement seront disponibles dans Analytics — Marketing.
+                </p>
+              </>
+            ) : (
+              <div className="py-6 text-center text-gray-600 text-sm">
+                Ce contact n&apos;est pas inscrit à la newsletter.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* CATALOGUE / ACTIVITÉ                                              */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'catalogue' && (
+          <div className="space-y-4">
+            {/* Free downloads — pas de table en DB pour l'instant */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+                <h2 className="font-bold text-sm">Free downloads</h2>
+                <span className="text-xs text-gray-500">0 téléchargement</span>
+              </div>
+              <div className="py-8 text-center text-gray-600 text-xs">Aucun free download.</div>
+            </div>
+
+            {/* Favoris */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+                <h2 className="font-bold text-sm">Favoris</h2>
+                <span className="text-xs text-gray-500">
+                  {favoris.length} beat{favoris.length > 1 ? 's' : ''}
+                </span>
+              </div>
+              {favoris.length === 0 ? (
+                <div className="py-8 text-center text-gray-600 text-xs">Aucun favori.</div>
+              ) : (
+                <div className="divide-y divide-gray-800">
+                  {favoris.map((fav, i) => {
+                    const beatAchete = licencesPayees.some(c => c.beat_id === fav.beat_id)
+                    return (
+                      <div key={i} className="flex items-center justify-between px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-pink-500 flex-shrink-0" />
+                          <span className="text-sm text-white">{fav.beats?.titre ?? 'Beat supprimé'}</span>
+                          {beatAchete && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-medium">
+                              Acheté ✓
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* MORCEAUX                                                          */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {onglet === 'morceaux' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+              <h2 className="font-bold text-sm">Morceaux publiés</h2>
+              <span className="text-xs text-gray-500">
+                {morceaux.length} morceau{morceaux.length > 1 ? 'x' : ''}
+              </span>
+            </div>
+
+            {morceaux.length === 0 ? (
+              <div className="py-10 text-center text-gray-600 text-sm">Aucun morceau ajouté.</div>
+            ) : (
+              <div className="divide-y divide-gray-800">
+                {morceaux.map(m => (
+                  <div key={m.id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-800/40 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-green-400 text-xs">♪</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{m.titre}</p>
+                        <p className="text-xs text-gray-600">{fmtDate(m.created_at)}</p>
+                      </div>
+                    </div>
+                    {m.lien_spotify && (
+                      <a
+                        href={m.lien_spotify}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-colors flex-shrink-0 ml-4"
+                      >
+                        Spotify →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulaire accordéon "Ajouter" */}
+            <div className="px-5 py-4 border-t border-gray-800">
+              <details className="group">
+                <summary className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer select-none list-none flex items-center gap-1 w-fit">
+                  <span className="text-base leading-none">+</span> Ajouter un morceau
+                </summary>
+                <form action={ajouterMorceau} className="mt-3 flex items-center gap-2">
+                  <input
+                    name="titre"
+                    type="text"
+                    required
+                    placeholder="Titre du morceau"
+                    className="flex-1 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
+                  />
+                  <input
+                    name="lien"
+                    type="url"
+                    placeholder="Lien Spotify"
+                    className="flex-1 bg-gray-800 border border-gray-700 focus:border-green-500 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-semibold transition-colors whitespace-nowrap"
+                  >
+                    Ajouter
+                  </button>
+                </form>
+              </details>
+            </div>
+          </div>
+        )}
+
       </div>
-    </main>
+    </div>
   )
 }
