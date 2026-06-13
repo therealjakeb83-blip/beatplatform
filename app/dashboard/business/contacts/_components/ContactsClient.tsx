@@ -135,8 +135,8 @@ function ContactsHeader() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={handleClose}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="px-6 pt-6 pb-4 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
               <h2 className="text-white font-bold text-lg">Nouveau contact</h2>
               <button onClick={handleClose} className="text-gray-600 hover:text-white transition-colors text-xl leading-none">×</button>
