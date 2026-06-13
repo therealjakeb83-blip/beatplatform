@@ -44,7 +44,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
 
   const canSubmit = clientId
     ? true
-    : newsletter && compte && email.includes('@') && pays !== ''
+    : newsletter && compte && email.includes('@') && pays !== '' && prenom.trim() !== ''
 
   function handleClose() {
     setDownloadUrl(null)
@@ -165,7 +165,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
                 type="text"
                 value={prenom}
                 onChange={e => setPrenom(e.target.value)}
-                placeholder="Prénom"
+                placeholder="Prénom *"
                 className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
               />
               <input
