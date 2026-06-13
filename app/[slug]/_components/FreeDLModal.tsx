@@ -44,7 +44,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
 
   const canSubmit = clientId
     ? true
-    : newsletter && compte && email.includes('@')
+    : newsletter && compte && email.includes('@') && pays !== ''
 
   function handleClose() {
     setDownloadUrl(null)
@@ -189,7 +189,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
               className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-sm outline-none transition-colors cursor-pointer text-gray-500"
               style={{ color: pays ? 'white' : undefined }}
             >
-              <option value="">Pays</option>
+              <option value="" disabled>Pays *</option>
               {PAYS.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
             </select>
             <label className="flex items-start gap-3 cursor-pointer select-none">
