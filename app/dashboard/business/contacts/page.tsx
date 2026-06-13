@@ -31,42 +31,102 @@ export default async function ContactsPage({
     .single()
   if (!beatmaker) redirect('/')
 
-  // Fetch via RLS (beatmaker_id = auth.uid())
-  const [commandesRes, aboRes, leadsRes, listesRes] = await Promise.all([
+  const beatmakerId = user.id
+
+  // ── 1. Leads — fetch indépendant AVANT le return anticipé ─────────────────
+  const leadsRes = await admin
+    .from('leads')
+    .select('client_id, source, created_at, newsletter_inscrit')
+    .eq('beatmaker_id', beatmakerId)
+
+  const leadsRaw     = leadsRes.data    ?? []
+  const leadsError   = leadsRes.error
+  const leadClientIds = leadsRaw.map(l => l.client_id)
+
+  type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null; newsletter_consent: boolean | null }
+  type FavBeat    = { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }
+
+  let leadClientMap  = new Map<string, LeadClient>()
+  let favorisBeatMap = new Map<string, FavBeat[]>()
+
+  if (leadClientIds.length > 0) {
+    const [leadClientsRes, leadFavorisRes] = await Promise.all([
+      admin.from('clients')
+        .select('id, prenom, nom, pays, newsletter_consent')
+        .in('id', leadClientIds),
+      admin.from('favoris')
+        .select('client_id, beats(styles, type_beat, ambiances)')
+        .in('client_id', leadClientIds),
+    ])
+    for (const c of leadClientsRes.data ?? []) leadClientMap.set(c.id, c as LeadClient)
+    for (const fav of leadFavorisRes.data ?? []) {
+      const arr = favorisBeatMap.get(fav.client_id) ?? []
+      arr.push(fav.beats as unknown as FavBeat)
+      favorisBeatMap.set(fav.client_id, arr)
+    }
+  }
+
+  const leadsData: LeadRow[] = leadsRaw.flatMap(l => {
+    const client = leadClientMap.get(l.client_id)
+    if (!client) return []
+    const beats  = favorisBeatMap.get(l.client_id) ?? []
+    const stylesA = beats.flatMap(b => b?.styles    ?? [])
+    const typeA   = beats.flatMap(b => b?.type_beat  ?? [])
+    const ambA    = beats.flatMap(b => b?.ambiances  ?? [])
+    return [{
+      id:                l.client_id,
+      prenom:            client.prenom,
+      nom:               client.nom,
+      pays:              client.pays,
+      newsletter_consent:(client.newsletter_consent ?? false) || (l.newsletter_inscrit ?? false),
+      source:            (l.source as string) ?? 'visite',
+      lead_created_at:   l.created_at,
+      nb_favoris:        beats.length,
+      pref_style:        topPreference(stylesA),
+      pref_type_beat:    topPreference(typeA),
+      pref_ambiance:     topPreference(ambA),
+    }]
+  })
+
+  // DEBUG: encode counts in listes nom temporarily
+  const debugInfo = `raw:${leadsRaw.length}|clients:${leadClientMap.size}|data:${leadsData.length}|err:${leadsError?.code ?? 'none'}|uid:${beatmakerId.slice(0,8)}`
+
+  // ── 2. Commandes + abos + listes ──────────────────────────────────────────
+  const [commandesRes, aboRes, listesRes] = await Promise.all([
     supabase
       .from('commandes')
       .select('client_id, created_at, prix_paye, statut, type_commande, beat_id, licence_id')
-      .eq('beatmaker_id', user.id)
+      .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
     supabase
       .from('abonnements_boutique')
       .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
-      .eq('beatmaker_id', user.id)
+      .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
-    admin
-      .from('leads')
-      .select('client_id, source, created_at, newsletter_inscrit')
-      .eq('beatmaker_id', user.id),
     supabase
       .from('listes_contacts')
       .select('id, nom')
-      .eq('beatmaker_id', user.id),
+      .eq('beatmaker_id', beatmakerId),
   ])
 
   const commandes = commandesRes.data ?? []
   const abos      = aboRes.data      ?? []
-  const leads     = leadsRes.data    ?? []
   const listesRaw = listesRes.data   ?? []
 
-  // Client IDs
+  const listes = [
+    { id: 'debug', nom: debugInfo, nb: 0 },
+    ...listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 })),
+  ]
+
+  // Client IDs (pour onglet Tous/Clients)
   const clientIds = [...new Set([
     ...commandes.map(c => c.client_id as string),
     ...abos.map(a => a.client_id as string),
-    ...leads.map(l => l.client_id),
+    ...leadsRaw.map(l => l.client_id),
   ])]
 
   if (clientIds.length === 0) {
-    return <ContactsClient contacts={[]} listes={[]} leadsData={[]} vue={vue} />
+    return <ContactsClient contacts={[]} listes={listes} leadsData={leadsData} vue={vue} />
   }
 
   // Beat IDs & Licence IDs from LICENCE commandes
@@ -74,7 +134,6 @@ export default async function ContactsPage({
   const beatIds    = [...new Set(licenceCmdsAll.map(c => c.beat_id).filter(Boolean) as string[])]
   const licenceIds = [...new Set(licenceCmdsAll.map(c => c.licence_id).filter(Boolean) as string[])]
 
-  // Fetch in parallel: clients (admin), beats (own RLS), licences (own RLS)
   const [clientsRes, beatsRes, licencesRes] = await Promise.all([
     admin
       .from('clients')
@@ -92,7 +151,6 @@ export default async function ContactsPage({
   const beatMap    = new Map((beatsRes.data ?? []).map(b => [b.id, b]))
   const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
 
-  // Maps pour accès rapide
   const commandesParClient = new Map<string, typeof commandes>()
   for (const cmd of commandes) {
     const id = cmd.client_id as string
@@ -110,19 +168,17 @@ export default async function ContactsPage({
     }
   }
 
-  const leadParClient = new Map<string, (typeof leads)[0]>()
-  for (const lead of leads) leadParClient.set(lead.client_id, lead)
+  const leadParClient = new Map<string, (typeof leadsRaw)[0]>()
+  for (const lead of leadsRaw) leadParClient.set(lead.client_id, lead)
 
   const contacts: ContactRow[] = clientsRaw.map(c => {
     const cmds     = commandesParClient.get(c.id) ?? []
     const abo      = aboParClient.get(c.id)
     const lead     = leadParClient.get(c.id)
 
-    // Séparer licences et abonnements
     const licenceCmds = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
     const nbAchats    = licenceCmds.length
 
-    // Statut
     let statut: ContactRow['statut']
     let statutAboDetail: ContactRow['statut_abo_detail'] = null
     if (abo && (abo.statut === 'actif' || abo.statut === 'impaye')) {
@@ -137,11 +193,10 @@ export default async function ContactsPage({
       statut = 'lead'
     }
 
-    // 1ère action avec ce beatmaker
     const candidatsPrem: Date[] = []
-    if (lead)                  candidatsPrem.push(new Date(lead.created_at))
-    if (abo)                   candidatsPrem.push(new Date(abo.created_at))
-    for (const cmd of cmds)    candidatsPrem.push(new Date(cmd.created_at))
+    if (lead)               candidatsPrem.push(new Date(lead.created_at))
+    if (abo)                candidatsPrem.push(new Date(abo.created_at))
+    for (const cmd of cmds) candidatsPrem.push(new Date(cmd.created_at))
     const premierContactISO = candidatsPrem.length
       ? new Date(Math.min(...candidatsPrem.map(d => d.getTime()))).toISOString()
       : c.created_at
@@ -157,7 +212,6 @@ export default async function ContactsPage({
       type1ereAction = 'Achat'
     }
 
-    // Dernière action avec ce beatmaker
     const candidatsDern: Date[] = []
     if (lead)               candidatsDern.push(new Date(lead.created_at))
     if (abo)                candidatsDern.push(new Date(abo.created_at))
@@ -179,7 +233,6 @@ export default async function ContactsPage({
       }
     }
 
-    // Clients view extras — LTV = toutes commandes payées (licences + renouvellements)
     const ltv = cmds.filter(cmd => cmd.statut === 'payee').reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
     const dernier_achat_iso = licenceCmds.length
       ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
@@ -187,7 +240,6 @@ export default async function ContactsPage({
     const licenceLtv   = licenceCmds.reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
     const panier_moyen = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
 
-    // Préférences — styles/type_beat/licence depuis les beats achetés
     const stylesArr: string[] = []
     const typeBeatArr: string[] = []
     const ambiancesArr: string[] = []
@@ -230,56 +282,6 @@ export default async function ContactsPage({
       pref_ambiance:  topPreference(ambiancesArr),
       pref_licence:   topPreference(licenceArr),
     }
-  })
-
-  const listes = listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 }))
-
-  // ── Build LeadRow[] — fetch clients leads séparément (select minimal) ────
-  const leadClientIds = leads.map(l => l.client_id)
-
-  type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null; newsletter_consent: boolean | null }
-  type FavBeat    = { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }
-
-  let leadClientMap  = new Map<string, LeadClient>()
-  let favorisBeatMap = new Map<string, FavBeat[]>()
-
-  if (leadClientIds.length > 0) {
-    const [leadClientsRes, leadFavorisRes] = await Promise.all([
-      admin.from('clients')
-        .select('id, prenom, nom, pays, newsletter_consent')
-        .in('id', leadClientIds),
-      admin.from('favoris')
-        .select('client_id, beats(styles, type_beat, ambiances)')
-        .in('client_id', leadClientIds),
-    ])
-    for (const c of leadClientsRes.data ?? []) leadClientMap.set(c.id, c)
-    for (const fav of leadFavorisRes.data ?? []) {
-      const arr = favorisBeatMap.get(fav.client_id) ?? []
-      arr.push(fav.beats as unknown as FavBeat)
-      favorisBeatMap.set(fav.client_id, arr)
-    }
-  }
-
-  const leadsData: LeadRow[] = leads.flatMap(l => {
-    const client = leadClientMap.get(l.client_id)
-    if (!client) return []
-    const beats  = favorisBeatMap.get(l.client_id) ?? []
-    const stylesA = beats.flatMap(b => b?.styles    ?? [])
-    const typeA   = beats.flatMap(b => b?.type_beat  ?? [])
-    const ambA    = beats.flatMap(b => b?.ambiances  ?? [])
-    return [{
-      id:                l.client_id,
-      prenom:            client.prenom,
-      nom:               client.nom,
-      pays:              client.pays,
-      newsletter_consent:(client.newsletter_consent ?? false) || (l.newsletter_inscrit ?? false),
-      source:            (l.source as string) ?? 'visite',
-      lead_created_at:   l.created_at,
-      nb_favoris:        beats.length,
-      pref_style:        topPreference(stylesA),
-      pref_type_beat:    topPreference(typeA),
-      pref_ambiance:     topPreference(ambA),
-    }]
   })
 
   return <ContactsClient contacts={contacts} listes={listes} leadsData={leadsData} vue={vue} />
