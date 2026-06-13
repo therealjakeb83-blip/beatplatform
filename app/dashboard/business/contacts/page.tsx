@@ -227,6 +227,7 @@ export default async function ContactsPage({
     if (source === 'free_download') return 'Free DL'
     if (source === 'newsletter')   return 'Inscription NWT'
     if (source === 'visite')       return 'Visite'
+    if (source === 'manuel')       return 'Ajout manuel'
     return 'Inscription'
   }
 

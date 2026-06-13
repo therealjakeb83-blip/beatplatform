@@ -97,7 +97,9 @@ const labelCls = `text-xs text-gray-500 mb-1 block`
 function ContactsHeader() {
   const [open, setOpen] = useState(false)
   const [openImport, setOpenImport] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [prenom, setPrenom] = useState('')
   const [nom, setNom] = useState('')
   const [email, setEmail] = useState('')
@@ -115,12 +117,31 @@ function ContactsHeader() {
     setPrenom(''); setNom(''); setEmail(''); setTelephone('')
     setPays(''); setNomArtiste(''); setInstagram(''); setSpotify('')
     setYoutube(''); setTiktok(''); setNewsletter(''); setNotes('')
+    setSaveError(null)
   }
-  function handleClose() { setOpen(false); reset() }
-  function handleSave() {
-    if (!prenom || !nom || !email) return
-    setSaved(true)
-    setTimeout(() => { setSaved(false); handleClose() }, 1500)
+  function handleClose() { setOpen(false); setSaved(false); reset() }
+  async function handleSave() {
+    if (!prenom.trim() || !nom.trim() || !email.trim()) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prenom, nom, email, telephone, pays, nomArtiste, instagram, spotify, youtube, tiktok, newsletter }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSaveError(data.error ?? 'Une erreur est survenue')
+        setSaving(false)
+        return
+      }
+      setSaved(true)
+      setTimeout(() => { handleClose(); window.location.reload() }, 1500)
+    } catch {
+      setSaveError('Erreur réseau — réessaie.')
+      setSaving(false)
+    }
   }
 
   return (
@@ -181,9 +202,14 @@ function ContactsHeader() {
               </div>
             )}
             {!saved && (
-              <div className="px-6 py-4 border-t border-gray-800 flex gap-3 flex-shrink-0">
-                <button onClick={handleSave} disabled={!prenom.trim() || !nom.trim() || !email.trim()} className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors">Ajouter le contact</button>
-                <button onClick={handleClose} className="px-4 py-2 rounded-xl border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white text-sm transition-colors">Annuler</button>
+              <div className="px-6 py-4 border-t border-gray-800 flex-shrink-0">
+                {saveError && <p className="text-red-400 text-xs mb-3">{saveError}</p>}
+                <div className="flex gap-3">
+                  <button onClick={handleSave} disabled={!prenom.trim() || !nom.trim() || !email.trim() || saving} className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors">
+                    {saving ? 'Enregistrement…' : 'Ajouter le contact'}
+                  </button>
+                  <button onClick={handleClose} disabled={saving} className="px-4 py-2 rounded-xl border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-40">Annuler</button>
+                </div>
               </div>
             )}
           </div>

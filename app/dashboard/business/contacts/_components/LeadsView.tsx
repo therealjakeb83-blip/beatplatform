@@ -66,6 +66,7 @@ function sourceLabel(source: string): string {
   if (source === 'newsletter')   return 'Inscription NWT'
   if (source === 'visite')       return 'Compte créé'
   if (source === 'achat')        return 'Achat'
+  if (source === 'manuel')       return 'Ajout manuel'
   return source
 }
 
