@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { beatId, slug, email, newsletterConsent = false } = body
+  const { beatId, slug, email, prenom, nom, nomArtiste, pays, newsletterConsent = false } = body
 
   if (!beatId || !slug) {
     return NextResponse.json({ error: 'Paramètres manquants.' }, { status: 400 })
@@ -87,16 +87,25 @@ export async function POST(req: Request) {
 
     if (existing) {
       clientId = existing.id
-      if (newsletterConsent) {
-        await admin.from('clients').update({ newsletter_consent: true }).eq('id', clientId)
+      const updates: Record<string, unknown> = {}
+      if (newsletterConsent) updates.newsletter_consent = true
+      if (prenom)     updates.prenom      = prenom
+      if (nom)        updates.nom         = nom
+      if (nomArtiste) updates.nom_artiste = nomArtiste
+      if (pays)       updates.pays        = pays
+      if (Object.keys(updates).length > 0) {
+        await admin.from('clients').update(updates).eq('id', clientId)
       }
     } else {
-      const newId = crypto.randomUUID()
-      const nom   = emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
+      const newId  = crypto.randomUUID()
+      const nomVal = nom || emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
       await admin.from('clients').insert({
         id:                 newId,
         email:              emailNorm,
-        nom,
+        prenom:             prenom   || null,
+        nom:                nomVal,
+        nom_artiste:        nomArtiste || null,
+        pays:               pays       || null,
         newsletter_consent: newsletterConsent,
       })
       clientId = newId

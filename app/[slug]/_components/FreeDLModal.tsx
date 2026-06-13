@@ -18,8 +18,24 @@ type Props = {
   clientId: string | null
 }
 
+const PAYS = [
+  { code: 'FR', label: 'France' }, { code: 'BE', label: 'Belgique' },
+  { code: 'CH', label: 'Suisse' }, { code: 'CA', label: 'Canada' },
+  { code: 'US', label: 'États-Unis' }, { code: 'GB', label: 'Royaume-Uni' },
+  { code: 'DE', label: 'Allemagne' }, { code: 'ES', label: 'Espagne' },
+  { code: 'IT', label: 'Italie' }, { code: 'NL', label: 'Pays-Bas' },
+  { code: 'SN', label: 'Sénégal' }, { code: 'CI', label: "Côte d'Ivoire" },
+  { code: 'MA', label: 'Maroc' }, { code: 'DZ', label: 'Algérie' },
+  { code: 'TN', label: 'Tunisie' }, { code: 'CM', label: 'Cameroun' },
+  { code: 'ML', label: 'Mali' }, { code: 'BJ', label: 'Bénin' },
+]
+
 export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, clientId }: Props) {
   const [email, setEmail]             = useState('')
+  const [prenom, setPrenom]           = useState('')
+  const [nom, setNom]                 = useState('')
+  const [nomArtiste, setNomArtiste]   = useState('')
+  const [pays, setPays]               = useState('')
   const [newsletter, setNewsletter]   = useState(false)
   const [compte, setCompte]           = useState(false)
   const [loading, setLoading]         = useState(false)
@@ -34,6 +50,10 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
     setDownloadUrl(null)
     setError(null)
     setEmail('')
+    setPrenom('')
+    setNom('')
+    setNomArtiste('')
+    setPays('')
     setNewsletter(false)
     setCompte(false)
     onClose()
@@ -46,7 +66,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
 
     const body = clientId
       ? { beatId, slug }
-      : { beatId, slug, email, newsletterConsent: newsletter }
+      : { beatId, slug, email, prenom: prenom || undefined, nom: nom || undefined, nomArtiste: nomArtiste || undefined, pays: pays || undefined, newsletterConsent: newsletter }
 
     const res = await fetch('/api/free-download', {
       method: 'POST',
@@ -130,16 +150,48 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
             </button>
           </form>
         ) : (
-          /* Non-connected — email + checkboxes */
+          /* Non-connected — email + infos + checkboxes */
           <form onSubmit={handleSubmit} className="space-y-3">
             <input
               type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="ton@email.com"
+              placeholder="ton@email.com *"
               className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
             />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={prenom}
+                onChange={e => setPrenom(e.target.value)}
+                placeholder="Prénom"
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+              />
+              <input
+                type="text"
+                value={nom}
+                onChange={e => setNom(e.target.value)}
+                placeholder="Nom"
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+              />
+            </div>
+            <input
+              type="text"
+              value={nomArtiste}
+              onChange={e => setNomArtiste(e.target.value)}
+              placeholder="Nom d'artiste"
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+            />
+            <select
+              value={pays}
+              onChange={e => setPays(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-sm outline-none transition-colors cursor-pointer text-gray-500"
+              style={{ color: pays ? 'white' : undefined }}
+            >
+              <option value="">Pays</option>
+              {PAYS.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+            </select>
             <label className="flex items-start gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
