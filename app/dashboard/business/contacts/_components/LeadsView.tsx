@@ -14,6 +14,7 @@ export type LeadRow = {
   source: string          // 'visite' | 'newsletter' | 'free_download' | 'achat'
   lead_created_at: string // = 1ère action
   nb_favoris: number
+  nb_free_downloads: number
   pref_style: string | null
   pref_type_beat: string | null
   pref_ambiance: string | null
@@ -168,7 +169,7 @@ export default function LeadsView({
     if (filtreNewsletter === 'non'     &&  l.newsletter_consent) return false
     if (filtreFreeDLVal !== '') {
       const ref = parseInt(filtreFreeDLVal)
-      if (!isNaN(ref) && !compareSigne(0, filtreFreeDLSigne, ref)) return false
+      if (!isNaN(ref) && !compareSigne(l.nb_free_downloads, filtreFreeDLSigne, ref)) return false
     }
     if (filtreFavVal !== '') {
       const ref = parseInt(filtreFavVal)
@@ -528,7 +529,9 @@ export default function LeadsView({
                       <p className="text-[10px] text-gray-600 mt-0.5">{sourceLabel(l.source)}</p>
                     </td>
                     <td className="px-3 py-3 text-right">
-                      <span className="text-gray-700 text-xs">—</span>
+                      {l.nb_free_downloads > 0
+                        ? <span className="font-semibold text-green-400">{l.nb_free_downloads}</span>
+                        : <span className="text-gray-700 text-xs">—</span>}
                     </td>
                     <td className="px-3 py-3 text-right">
                       {l.nb_favoris > 0

@@ -48,14 +48,19 @@ export default async function ContactsPage({
 
   let leadClientMap  = new Map<string, LeadClient>()
   let favorisBeatMap = new Map<string, FavBeat[]>()
+  let freeDLCountMap = new Map<string, number>()
 
   if (leadClientIds.length > 0) {
-    const [leadClientsRes, leadFavorisRes] = await Promise.all([
+    const [leadClientsRes, leadFavorisRes, freeDLsRes] = await Promise.all([
       admin.from('clients')
         .select('id, prenom, nom, pays, newsletter_consent')
         .in('id', leadClientIds),
       admin.from('favoris')
         .select('client_id, beats(styles, type_beat, ambiances)')
+        .in('client_id', leadClientIds),
+      admin.from('free_downloads')
+        .select('client_id')
+        .eq('beatmaker_id', beatmakerId)
         .in('client_id', leadClientIds),
     ])
     for (const c of leadClientsRes.data ?? []) leadClientMap.set(c.id, c as LeadClient)
@@ -63,6 +68,9 @@ export default async function ContactsPage({
       const arr = favorisBeatMap.get(fav.client_id) ?? []
       arr.push(fav.beats as unknown as FavBeat)
       favorisBeatMap.set(fav.client_id, arr)
+    }
+    for (const dl of freeDLsRes.data ?? []) {
+      freeDLCountMap.set(dl.client_id, (freeDLCountMap.get(dl.client_id) ?? 0) + 1)
     }
   }
 
@@ -82,6 +90,7 @@ export default async function ContactsPage({
       source:            (l.source as string) ?? 'visite',
       lead_created_at:   l.created_at,
       nb_favoris:        beats.length,
+      nb_free_downloads: freeDLCountMap.get(l.client_id) ?? 0,
       pref_style:        topPreference(stylesA),
       pref_type_beat:    topPreference(typeA),
       pref_ambiance:     topPreference(ambA),
