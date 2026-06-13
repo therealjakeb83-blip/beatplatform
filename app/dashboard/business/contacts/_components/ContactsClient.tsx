@@ -604,7 +604,7 @@ export default function ContactsClient({
   leadsData: LeadRow[]
   vue: string
 }) {
-  const clients = contacts.filter(c => c.nb_achats > 0)
+  const clients = contacts.filter(c => c.statut === 'abonne' || c.statut === 'ancien' || c.statut === 'client')
 
   const tabs = [
     { key: '',           label: 'Tous'         },
