@@ -604,17 +604,14 @@ export default function ContactsClient({
   leadsData: LeadRow[]
   vue: string
 }) {
-  const clients    = contacts.filter(c => c.nb_achats > 0)
-  const newsletter = contacts.filter(c => c.newsletter_consent)
+  const clients = contacts.filter(c => c.nb_achats > 0)
 
   const tabs = [
-    { key: '',           label: 'Tous'       },
-    { key: 'clients',    label: 'Clients'    },
-    { key: 'leads',      label: 'Leads'      },
-    { key: 'newsletter', label: 'Newsletter' },
+    { key: '',           label: 'Tous'         },
+    { key: 'clients',    label: 'Clients'      },
+    { key: 'leads',      label: 'Leads'        },
+    { key: 'newsletter', label: '🔒 Newsletter' },
   ]
-
-  const currentList = vue === 'newsletter' ? newsletter : contacts
 
   const tabNav = (
     <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
@@ -629,6 +626,31 @@ export default function ContactsClient({
       ))}
     </div>
   )
+
+  if (vue === 'newsletter') {
+    return (
+      <div className="max-w-6xl mx-auto px-8 py-8">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">Contacts</h1>
+            <ContactsHeader />
+          </div>
+          {tabNav}
+        </div>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center text-3xl mb-5">
+            🔒
+          </div>
+          <h2 className="text-white font-bold text-lg mb-2">Newsletter — bientôt disponible</h2>
+          <p className="text-gray-500 text-sm max-w-md leading-relaxed">
+            Cette section affichera les statistiques de tes campagnes email : taux d&apos;ouverture,
+            clics, réponses et conversions. Elle sera disponible une fois l&apos;intégration
+            newsletter en place.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (vue === 'clients') {
     return (
@@ -670,7 +692,7 @@ export default function ContactsClient({
         {tabNav}
       </div>
 
-      <ContactsTable contacts={currentList} listes={listes} />
+      <ContactsTable contacts={contacts} listes={listes} />
     </div>
   )
 }
