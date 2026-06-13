@@ -13,6 +13,8 @@ export type LeadRow = {
   newsletter_consent: boolean
   source: string          // 'visite' | 'newsletter' | 'free_download' | 'achat'
   lead_created_at: string // = 1ère action
+  derniere_action_at: string
+  derniere_action_type: string
   nb_favoris: number
   nb_free_downloads: number
   pref_style: string | null
@@ -431,6 +433,11 @@ export default function LeadsView({
                   </div>
                 </th>
 
+                {/* Dernière action */}
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                  Dernière action
+                </th>
+
                 {/* Free DL */}
                 <th className="text-right px-3 py-3">
                   <div ref={refFreeDL} className="relative inline-flex justify-end">
@@ -528,6 +535,10 @@ export default function LeadsView({
                       <p className="text-xs text-gray-400 leading-none">{dateRel(l.lead_created_at)}</p>
                       <p className="text-[10px] text-gray-600 mt-0.5">{sourceLabel(l.source)}</p>
                     </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <p className="text-xs text-gray-400 leading-none">{dateRel(l.derniere_action_at)}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">{l.derniere_action_type}</p>
+                    </td>
                     <td className="px-3 py-3 text-right">
                       {l.nb_free_downloads > 0
                         ? <span className="font-semibold text-green-400">{l.nb_free_downloads}</span>
@@ -549,7 +560,7 @@ export default function LeadsView({
               })}
               {displayed.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-600 text-sm">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-600 text-sm">
                     Aucun lead ne correspond à ces filtres.
                   </td>
                 </tr>

@@ -46,9 +46,10 @@ export default async function ContactsPage({
   type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null; newsletter_consent: boolean | null }
   type FavBeat    = { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }
 
-  let leadClientMap  = new Map<string, LeadClient>()
-  let favorisBeatMap = new Map<string, FavBeat[]>()
-  let freeDLCountMap = new Map<string, number>()
+  let leadClientMap    = new Map<string, LeadClient>()
+  let favorisBeatMap   = new Map<string, FavBeat[]>()
+  let freeDLCountMap   = new Map<string, number>()
+  let leadDerniereMap  = new Map<string, { at: string; type: string }>()
 
   if (leadClientIds.length > 0) {
     const [leadClientsRes, leadFavorisRes, freeDLsRes] = await Promise.all([
@@ -56,44 +57,70 @@ export default async function ContactsPage({
         .select('id, prenom, nom, pays, newsletter_consent')
         .in('id', leadClientIds),
       admin.from('favoris')
-        .select('client_id, beats(styles, type_beat, ambiances)')
+        .select('client_id, created_at, beats(styles, type_beat, ambiances)')
         .in('client_id', leadClientIds),
       admin.from('free_downloads')
-        .select('client_id')
+        .select('client_id, downloaded_at')
         .eq('beatmaker_id', beatmakerId)
         .in('client_id', leadClientIds),
     ])
     for (const c of leadClientsRes.data ?? []) leadClientMap.set(c.id, c as LeadClient)
+
+    const leadFavDatesMap = new Map<string, Date[]>()
     for (const fav of leadFavorisRes.data ?? []) {
       const arr = favorisBeatMap.get(fav.client_id) ?? []
       arr.push(fav.beats as unknown as FavBeat)
       favorisBeatMap.set(fav.client_id, arr)
+      const dates = leadFavDatesMap.get(fav.client_id) ?? []
+      dates.push(new Date(fav.created_at))
+      leadFavDatesMap.set(fav.client_id, dates)
     }
+
+    const leadDLDatesMap = new Map<string, Date[]>()
     for (const dl of freeDLsRes.data ?? []) {
       freeDLCountMap.set(dl.client_id, (freeDLCountMap.get(dl.client_id) ?? 0) + 1)
+      const dates = leadDLDatesMap.get(dl.client_id) ?? []
+      dates.push(new Date(dl.downloaded_at))
+      leadDLDatesMap.set(dl.client_id, dates)
+    }
+
+    for (const l of leadsRaw) {
+      const evts: { date: Date; type: string }[] = []
+      const src = l.source === 'free_download' ? 'Free DL'
+        : l.source === 'newsletter' ? 'Inscription NWT'
+        : l.source === 'visite'     ? 'Visite'
+        : 'Inscription'
+      evts.push({ date: new Date(l.created_at), type: src })
+      for (const d of leadFavDatesMap.get(l.client_id) ?? []) evts.push({ date: d, type: 'Favori' })
+      for (const d of leadDLDatesMap.get(l.client_id) ?? [])  evts.push({ date: d, type: 'Free DL' })
+      evts.sort((a, b) => b.date.getTime() - a.date.getTime())
+      leadDerniereMap.set(l.client_id, { at: evts[0].date.toISOString(), type: evts[0].type })
     }
   }
 
   const leadsData: LeadRow[] = leadsRaw.flatMap(l => {
-    const client = leadClientMap.get(l.client_id)
+    const client  = leadClientMap.get(l.client_id)
     if (!client) return []
-    const beats  = favorisBeatMap.get(l.client_id) ?? []
+    const beats   = favorisBeatMap.get(l.client_id) ?? []
+    const derniere = leadDerniereMap.get(l.client_id) ?? { at: l.created_at, type: 'Inscription' }
     const stylesA = beats.flatMap(b => b?.styles    ?? [])
     const typeA   = beats.flatMap(b => b?.type_beat  ?? [])
     const ambA    = beats.flatMap(b => b?.ambiances  ?? [])
     return [{
-      id:                l.client_id,
-      prenom:            client.prenom,
-      nom:               client.nom,
-      pays:              client.pays,
-      newsletter_consent:(client.newsletter_consent ?? false) || (l.newsletter_inscrit ?? false),
-      source:            (l.source as string) ?? 'visite',
-      lead_created_at:   l.created_at,
-      nb_favoris:        beats.length,
-      nb_free_downloads: freeDLCountMap.get(l.client_id) ?? 0,
-      pref_style:        topPreference(stylesA),
-      pref_type_beat:    topPreference(typeA),
-      pref_ambiance:     topPreference(ambA),
+      id:                   l.client_id,
+      prenom:               client.prenom,
+      nom:                  client.nom,
+      pays:                 client.pays,
+      newsletter_consent:   (client.newsletter_consent ?? false) || (l.newsletter_inscrit ?? false),
+      source:               (l.source as string) ?? 'visite',
+      lead_created_at:      l.created_at,
+      derniere_action_at:   derniere.at,
+      derniere_action_type: derniere.type,
+      nb_favoris:           beats.length,
+      nb_free_downloads:    freeDLCountMap.get(l.client_id) ?? 0,
+      pref_style:           topPreference(stylesA),
+      pref_type_beat:       topPreference(typeA),
+      pref_ambiance:        topPreference(ambA),
     }]
   })
 
