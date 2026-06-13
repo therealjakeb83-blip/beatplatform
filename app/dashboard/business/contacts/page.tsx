@@ -40,8 +40,7 @@ export default async function ContactsPage({
     .select('client_id, source, created_at, newsletter_inscrit')
     .eq('beatmaker_id', beatmakerId)
 
-  const leadsRaw     = leadsRes.data    ?? []
-  const leadsError   = leadsRes.error
+  const leadsRaw      = leadsRes.data ?? []
   const leadClientIds = leadsRaw.map(l => l.client_id)
 
   type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null; newsletter_consent: boolean | null }
@@ -89,9 +88,6 @@ export default async function ContactsPage({
     }]
   })
 
-  // DEBUG: encode counts in listes nom temporarily
-  const debugInfo = `raw:${leadsRaw.length}|clients:${leadClientMap.size}|data:${leadsData.length}|err:${leadsError?.code ?? 'none'}|uid:${beatmakerId.slice(0,8)}`
-
   // ── 2. Commandes + abos + listes ──────────────────────────────────────────
   const [commandesRes, aboRes, listesRes] = await Promise.all([
     supabase
@@ -114,10 +110,7 @@ export default async function ContactsPage({
   const abos      = aboRes.data      ?? []
   const listesRaw = listesRes.data   ?? []
 
-  const listes = [
-    { id: 'debug', nom: debugInfo, nb: 0 },
-    ...listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 })),
-  ]
+  const listes = listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 }))
 
   // Client IDs (pour onglet Tous/Clients)
   const clientIds = [...new Set([
