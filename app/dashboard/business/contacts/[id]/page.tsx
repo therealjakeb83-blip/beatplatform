@@ -105,7 +105,7 @@ export default async function FicheClientPage({
   // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
     .from('clients')
-    .select('id, email, nom, prenom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes_admin, source_acquisition')
+    .select('id, email, nom, prenom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes, tags')
     .eq('id', clientId)
     .single()
 
@@ -198,8 +198,31 @@ export default async function FicheClientPage({
     'use server'
     const a = createAdminClient()
     await a.from('clients').update({
-      notes_admin: (formData.get('notes') as string ?? '').trim() || null,
+      notes: (formData.get('notes') as string ?? '').trim() || null,
     }).eq('id', clientId)
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
+  async function ajouterTag(formData: FormData) {
+    'use server'
+    const a   = createAdminClient()
+    const tag = (formData.get('tag') as string ?? '').trim()
+    if (!tag) return
+    const { data: current } = await a.from('clients').select('tags').eq('id', clientId).single()
+    const tags = current?.tags ?? []
+    if (!tags.includes(tag)) {
+      await a.from('clients').update({ tags: [...tags, tag] }).eq('id', clientId)
+    }
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
+  async function supprimerTag(formData: FormData) {
+    'use server'
+    const a   = createAdminClient()
+    const tag = (formData.get('tag') as string ?? '').trim()
+    const { data: current } = await a.from('clients').select('tags').eq('id', clientId).single()
+    const tags = (current?.tags ?? []).filter((t: string) => t !== tag)
+    await a.from('clients').update({ tags }).eq('id', clientId)
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -357,20 +380,30 @@ export default async function FicheClientPage({
         <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-600 font-semibold uppercase tracking-wide flex-shrink-0 mr-1">Tags</span>
-            <details className="group">
+            {(client.tags ?? []).map((tag: string) => (
+              <form key={tag} action={supprimerTag}>
+                <input type="hidden" name="tag" value={tag} />
+                <button type="submit" className="text-xs px-2.5 py-1 rounded-full bg-gray-800 border border-gray-700 text-gray-300 flex items-center gap-1.5 hover:border-red-500/50 hover:text-red-400 transition-colors">
+                  {tag}
+                  <span className="text-gray-600 leading-none">✕</span>
+                </button>
+              </form>
+            ))}
+            <details className="group relative">
               <summary className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer select-none list-none flex items-center gap-1 px-2.5 py-1 rounded-full border border-indigo-500/30 hover:border-indigo-400/50 transition-colors">
                 + Ajouter
               </summary>
-              <div className="absolute mt-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-xl p-2 shadow-xl z-10">
+              <form action={ajouterTag} className="absolute mt-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-xl p-2 shadow-xl z-10">
                 <input
+                  name="tag"
                   type="text"
                   placeholder="Nouveau tag..."
                   className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors w-40"
                 />
-                <button className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors whitespace-nowrap">
+                <button type="submit" className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors whitespace-nowrap">
                   OK
                 </button>
-              </div>
+              </form>
             </details>
           </div>
         </div>
@@ -406,7 +439,6 @@ export default async function FicheClientPage({
               <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(client.pays)} />
               <Row label="Téléphone"         value={client.telephone ?? '–'} />
               <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
-              <Row label="Source"            value={client.source_acquisition ?? '–'} />
               <Row label="Client depuis"     value={fmtDate(client.created_at)} />
 
               {/* Accordion réseaux sociaux */}
@@ -446,7 +478,7 @@ export default async function FicheClientPage({
                 <form action={sauvegarderNotes}>
                   <textarea
                     name="notes"
-                    defaultValue={client.notes_admin ?? ''}
+                    defaultValue={client.notes ?? ''}
                     placeholder="Notes internes..."
                     rows={3}
                     className="w-full text-xs text-gray-200 bg-gray-800/60 border border-gray-700 hover:border-gray-600 focus:border-indigo-500 focus:bg-indigo-950/20 rounded-lg px-3 py-2.5 outline-none cursor-text transition-colors leading-relaxed resize-none"
