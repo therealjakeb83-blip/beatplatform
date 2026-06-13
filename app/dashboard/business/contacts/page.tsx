@@ -43,7 +43,7 @@ export default async function ContactsPage({
       .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
       .eq('beatmaker_id', user.id)
       .not('client_id', 'is', null),
-    supabase
+    admin
       .from('leads')
       .select('client_id, source, created_at, newsletter_inscrit')
       .eq('beatmaker_id', user.id),
