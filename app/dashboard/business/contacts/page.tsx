@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import ContactsClient, { ContactRow } from './_components/ContactsClient'
+import type { LeadRow } from './_components/LeadsView'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -44,7 +45,7 @@ export default async function ContactsPage({
       .not('client_id', 'is', null),
     supabase
       .from('leads')
-      .select('client_id, created_at, newsletter_inscrit')
+      .select('client_id, source, created_at, newsletter_inscrit')
       .eq('beatmaker_id', user.id),
     supabase
       .from('listes_contacts')
@@ -65,7 +66,7 @@ export default async function ContactsPage({
   ])]
 
   if (clientIds.length === 0) {
-    return <ContactsClient contacts={[]} listes={[]} vue={vue} />
+    return <ContactsClient contacts={[]} listes={[]} leadsData={[]} vue={vue} />
   }
 
   // Beat IDs & Licence IDs from LICENCE commandes
@@ -233,5 +234,45 @@ export default async function ContactsPage({
 
   const listes = listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 }))
 
-  return <ContactsClient contacts={contacts} listes={listes} vue={vue} />
+  // ── Build LeadRow[] ────────────────────────────────────────────────────────
+  const leadClientIds = leads.map(l => l.client_id)
+
+  let favorisBeatMap = new Map<string, { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }[]>()
+  if (leadClientIds.length > 0) {
+    const { data: leadFavoris } = await admin
+      .from('favoris')
+      .select('client_id, beats(styles, type_beat, ambiances)')
+      .in('client_id', leadClientIds)
+    for (const fav of leadFavoris ?? []) {
+      const arr = favorisBeatMap.get(fav.client_id) ?? []
+      arr.push(fav.beats as unknown as { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null })
+      favorisBeatMap.set(fav.client_id, arr)
+    }
+  }
+
+  const clientMap = new Map(clientsRaw.map(c => [c.id, c]))
+
+  const leadsData: LeadRow[] = leads.flatMap(l => {
+    const client = clientMap.get(l.client_id)
+    if (!client) return []
+    const beats    = favorisBeatMap.get(l.client_id) ?? []
+    const stylesA  = beats.flatMap(b => b?.styles    ?? [])
+    const typeA    = beats.flatMap(b => b?.type_beat  ?? [])
+    const ambA     = beats.flatMap(b => b?.ambiances  ?? [])
+    return [{
+      id:                l.client_id,
+      prenom:            client.prenom,
+      nom:               client.nom,
+      pays:              client.pays,
+      newsletter_consent:(client.newsletter_consent ?? false) || (l.newsletter_inscrit ?? false),
+      source:            (l.source as string) ?? 'visite',
+      lead_created_at:   l.created_at,
+      nb_favoris:        beats.length,
+      pref_style:        topPreference(stylesA),
+      pref_type_beat:    topPreference(typeA),
+      pref_ambiance:     topPreference(ambA),
+    }]
+  })
+
+  return <ContactsClient contacts={contacts} listes={listes} leadsData={leadsData} vue={vue} />
 }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import { joursDepuis } from '../../_lib/utils'
 import ClientsView from './ClientsView'
+import LeadsView, { type LeadRow } from './LeadsView'
 
 export type ContactRow = {
   id: string
@@ -595,15 +596,15 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
 export default function ContactsClient({
   contacts,
   listes,
+  leadsData,
   vue,
 }: {
   contacts: ContactRow[]
   listes: { id: string; nom: string; nb: number }[]
+  leadsData: LeadRow[]
   vue: string
 }) {
-  const clients   = contacts.filter(c => c.nb_achats > 0)
-  const leads     = contacts.filter(c => c.statut === 'lead')
-  const abonnes   = contacts.filter(c => c.statut === 'abonne' || c.statut === 'ancien')
+  const clients    = contacts.filter(c => c.nb_achats > 0)
   const newsletter = contacts.filter(c => c.newsletter_consent)
 
   const tabs = [
@@ -613,7 +614,7 @@ export default function ContactsClient({
     { key: 'newsletter', label: 'Newsletter' },
   ]
 
-  const currentList = vue === 'leads' ? leads : vue === 'newsletter' ? newsletter : contacts
+  const currentList = vue === 'newsletter' ? newsletter : contacts
 
   const tabNav = (
     <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
@@ -640,6 +641,21 @@ export default function ContactsClient({
           {tabNav}
         </div>
         <ClientsView clients={clients} listes={listes} />
+      </div>
+    )
+  }
+
+  if (vue === 'leads') {
+    return (
+      <div className="max-w-6xl mx-auto px-8 py-8">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">Contacts</h1>
+            <ContactsHeader />
+          </div>
+          {tabNav}
+        </div>
+        <LeadsView leads={leadsData} listes={listes} />
       </div>
     )
   }
