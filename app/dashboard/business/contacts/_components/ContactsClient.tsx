@@ -655,6 +655,7 @@ export default function ContactsClient({
           </div>
           {tabNav}
         </div>
+        <p className="text-xs text-yellow-400 mb-2">DEBUG: {leadsData.length} leads reçus du serveur</p>
         <LeadsView leads={leadsData} listes={listes} />
       </div>
     )
