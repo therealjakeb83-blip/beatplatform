@@ -234,31 +234,39 @@ export default async function ContactsPage({
 
   const listes = listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 }))
 
-  // ── Build LeadRow[] ────────────────────────────────────────────────────────
+  // ── Build LeadRow[] — fetch clients leads séparément (select minimal) ────
   const leadClientIds = leads.map(l => l.client_id)
 
-  let favorisBeatMap = new Map<string, { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }[]>()
+  type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null; newsletter_consent: boolean | null }
+  type FavBeat    = { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }
+
+  let leadClientMap  = new Map<string, LeadClient>()
+  let favorisBeatMap = new Map<string, FavBeat[]>()
+
   if (leadClientIds.length > 0) {
-    const { data: leadFavoris } = await admin
-      .from('favoris')
-      .select('client_id, beats(styles, type_beat, ambiances)')
-      .in('client_id', leadClientIds)
-    for (const fav of leadFavoris ?? []) {
+    const [leadClientsRes, leadFavorisRes] = await Promise.all([
+      admin.from('clients')
+        .select('id, prenom, nom, pays, newsletter_consent')
+        .in('id', leadClientIds),
+      admin.from('favoris')
+        .select('client_id, beats(styles, type_beat, ambiances)')
+        .in('client_id', leadClientIds),
+    ])
+    for (const c of leadClientsRes.data ?? []) leadClientMap.set(c.id, c)
+    for (const fav of leadFavorisRes.data ?? []) {
       const arr = favorisBeatMap.get(fav.client_id) ?? []
-      arr.push(fav.beats as unknown as { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null })
+      arr.push(fav.beats as unknown as FavBeat)
       favorisBeatMap.set(fav.client_id, arr)
     }
   }
 
-  const clientMap = new Map(clientsRaw.map(c => [c.id, c]))
-
   const leadsData: LeadRow[] = leads.flatMap(l => {
-    const client = clientMap.get(l.client_id)
+    const client = leadClientMap.get(l.client_id)
     if (!client) return []
-    const beats    = favorisBeatMap.get(l.client_id) ?? []
-    const stylesA  = beats.flatMap(b => b?.styles    ?? [])
-    const typeA    = beats.flatMap(b => b?.type_beat  ?? [])
-    const ambA     = beats.flatMap(b => b?.ambiances  ?? [])
+    const beats  = favorisBeatMap.get(l.client_id) ?? []
+    const stylesA = beats.flatMap(b => b?.styles    ?? [])
+    const typeA   = beats.flatMap(b => b?.type_beat  ?? [])
+    const ambA    = beats.flatMap(b => b?.ambiances  ?? [])
     return [{
       id:                l.client_id,
       prenom:            client.prenom,
