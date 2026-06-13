@@ -115,6 +115,7 @@ export default async function ContactsPage({
       .eq('beatmaker_id', beatmakerId),
   ])
 
+
   const commandes = commandesRes.data ?? []
   const abos      = aboRes.data      ?? []
   const listesRaw = listesRes.data   ?? []
@@ -137,7 +138,7 @@ export default async function ContactsPage({
   const beatIds    = [...new Set(licenceCmdsAll.map(c => c.beat_id).filter(Boolean) as string[])]
   const licenceIds = [...new Set(licenceCmdsAll.map(c => c.licence_id).filter(Boolean) as string[])]
 
-  const [clientsRes, beatsRes, licencesRes] = await Promise.all([
+  const [clientsRes, beatsRes, licencesRes, favorisClientsRes, freeDLsClientsRes] = await Promise.all([
     admin
       .from('clients')
       .select('id, prenom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
@@ -148,6 +149,13 @@ export default async function ContactsPage({
     licenceIds.length > 0
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
       : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
+    admin.from('favoris')
+      .select('client_id, created_at')
+      .in('client_id', clientIds),
+    admin.from('free_downloads')
+      .select('client_id, downloaded_at')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', clientIds),
   ])
 
   const clientsRaw = clientsRes.data ?? []
@@ -174,6 +182,27 @@ export default async function ContactsPage({
   const leadParClient = new Map<string, (typeof leadsRaw)[0]>()
   for (const lead of leadsRaw) leadParClient.set(lead.client_id, lead)
 
+  // Map d'événements extra (favoris + free_downloads) par client
+  type ExtraEvent = { date: Date; type: string }
+  const extraEventsParClient = new Map<string, ExtraEvent[]>()
+  for (const fav of favorisClientsRes.data ?? []) {
+    const arr = extraEventsParClient.get(fav.client_id) ?? []
+    arr.push({ date: new Date(fav.created_at), type: 'Favori' })
+    extraEventsParClient.set(fav.client_id, arr)
+  }
+  for (const dl of freeDLsClientsRes.data ?? []) {
+    const arr = extraEventsParClient.get(dl.client_id) ?? []
+    arr.push({ date: new Date(dl.downloaded_at), type: 'Free DL' })
+    extraEventsParClient.set(dl.client_id, arr)
+  }
+
+  function leadSourceLabel(source: string | null): string {
+    if (source === 'free_download') return 'Free DL'
+    if (source === 'newsletter')   return 'Inscription NWT'
+    if (source === 'visite')       return 'Visite'
+    return 'Inscription'
+  }
+
   const contacts: ContactRow[] = clientsRaw.map(c => {
     const cmds     = commandesParClient.get(c.id) ?? []
     const abo      = aboParClient.get(c.id)
@@ -196,45 +225,18 @@ export default async function ContactsPage({
       statut = 'lead'
     }
 
-    const candidatsPrem: Date[] = []
-    if (lead)               candidatsPrem.push(new Date(lead.created_at))
-    if (abo)                candidatsPrem.push(new Date(abo.created_at))
-    for (const cmd of cmds) candidatsPrem.push(new Date(cmd.created_at))
-    const premierContactISO = candidatsPrem.length
-      ? new Date(Math.min(...candidatsPrem.map(d => d.getTime()))).toISOString()
-      : c.created_at
+    // Tous les événements triés chronologiquement
+    const events: ExtraEvent[] = []
+    if (lead) events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source) })
+    if (abo)  events.push({ date: new Date(abo.created_at),  type: 'Abonnement' })
+    for (const cmd of licenceCmds) events.push({ date: new Date(cmd.created_at), type: 'Commande' })
+    for (const ev of extraEventsParClient.get(c.id) ?? []) events.push(ev)
+    events.sort((a, b) => a.date.getTime() - b.date.getTime())
 
-    let type1ereAction = 'Inscription'
-    if (abo && nbAchats > 0) {
-      const aboDate  = new Date(abo.created_at)
-      const firstCmd = new Date(Math.min(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime())))
-      type1ereAction = firstCmd < aboDate ? 'Achat' : 'Abonnement'
-    } else if (abo) {
-      type1ereAction = 'Abonnement'
-    } else if (nbAchats > 0) {
-      type1ereAction = 'Achat'
-    }
-
-    const candidatsDern: Date[] = []
-    if (lead)               candidatsDern.push(new Date(lead.created_at))
-    if (abo)                candidatsDern.push(new Date(abo.created_at))
-    for (const cmd of cmds) candidatsDern.push(new Date(cmd.created_at))
-    const dernierContactISO = candidatsDern.length
-      ? new Date(Math.max(...candidatsDern.map(d => d.getTime()))).toISOString()
-      : c.created_at
-
-    let typeDerniereAction = 'Inscription'
-    if (candidatsDern.length > 0) {
-      const aboDate = abo ? new Date(abo.created_at) : null
-      const lastCmd = cmds.length
-        ? new Date(Math.max(...cmds.map(cmd => new Date(cmd.created_at).getTime())))
-        : null
-      if (lastCmd && (!aboDate || lastCmd >= aboDate)) {
-        typeDerniereAction = 'Commande'
-      } else if (aboDate) {
-        typeDerniereAction = 'Abonnement'
-      }
-    }
+    const premierContactISO  = events.length ? events[0].date.toISOString() : c.created_at
+    const type1ereAction     = events[0]?.type ?? 'Inscription'
+    const dernierContactISO  = events.length ? events[events.length - 1].date.toISOString() : c.created_at
+    const typeDerniereAction = events[events.length - 1]?.type ?? 'Inscription'
 
     const ltv = cmds.filter(cmd => cmd.statut === 'payee').reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
     const dernier_achat_iso = licenceCmds.length
