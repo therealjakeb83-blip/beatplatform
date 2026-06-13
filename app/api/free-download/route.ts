@@ -48,8 +48,30 @@ export async function POST(req: Request) {
   let clientEmail: string
 
   if (user) {
-    clientId    = user.id
-    clientEmail = user.email!
+    // Vérifier que cet user a bien un compte clients (pas un beatmaker)
+    const { data: clientRecord } = await admin
+      .from('clients')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (clientRecord) {
+      clientId    = user.id
+      clientEmail = user.email!
+    } else {
+      // L'user connecté est un beatmaker, pas un client → traiter comme visiteur anonyme
+      const emailNorm = (user.email ?? '').toLowerCase().trim()
+      const { data: existing } = await admin.from('clients').select('id').eq('email', emailNorm).maybeSingle()
+      if (existing) {
+        clientId = existing.id
+      } else {
+        const newId = crypto.randomUUID()
+        const nom   = emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
+        await admin.from('clients').insert({ id: newId, email: emailNorm, nom, newsletter_consent: false })
+        clientId = newId
+      }
+      clientEmail = emailNorm
+    }
   } else {
     // Non connecté — email obligatoire
     const emailNorm = (email ?? '').toLowerCase().trim()
@@ -104,11 +126,12 @@ export async function POST(req: Request) {
   }
 
   // 4. Log free_download
-  await admin.from('free_downloads').insert({
+  const { error: dlError } = await admin.from('free_downloads').insert({
     beatmaker_id: beatmakerId,
     client_id:    clientId,
     beat_id:      beatId,
   })
+  if (dlError) console.error('[free-download] Insert free_downloads error:', JSON.stringify(dlError))
 
   // 5. Signed URL R2 (1h, force-download)
   const PUBLIC_URL = process.env.R2_PUBLIC_URL!
