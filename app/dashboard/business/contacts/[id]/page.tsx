@@ -167,7 +167,7 @@ export default async function FicheClientPage({
   const moisRegles = abonnement?.en_essai
     ? 0
     : (abonnement?.mensualites_payees ?? 0) > 0
-    ? (abonnement.mensualites_payees ?? 0)
+    ? (abonnement?.mensualites_payees ?? 0)
     : moisAboCommandes || 0
 
   // Préférences (achats ×2, favoris ×1)
