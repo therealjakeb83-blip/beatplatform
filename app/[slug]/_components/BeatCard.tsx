@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from './PlayerContext'
 import FavoriButton from './FavoriButton'
+import FreeDLModal from './FreeDLModal'
 
 export type LicencePublic = {
   id: string
@@ -21,6 +23,7 @@ export type BeatPublic = BeatMin & {
   instruments: string[] | null
   licences: LicencePublic[]
   prive?: boolean
+  free_download_actif?: boolean
 }
 
 export default function BeatCard({
@@ -37,10 +40,12 @@ export default function BeatCard({
   clientId?: string | null
 }) {
   const { play, currentBeat, isPlaying } = usePlayer()
+  const [modalOpen, setModalOpen] = useState(false)
 
   const isActive = currentBeat?.id === beat.id
   const hasAudio = !!beat.mp3_tague_url
   const estVerrouille = beat.prive && !estAbonne
+  const showFreeDL = beat.free_download_actif && beat.mp3_tague_url && !estVerrouille
 
   function handlePlay(e: React.MouseEvent) {
     e.preventDefault()
@@ -102,7 +107,28 @@ export default function BeatCard({
             ▶ En lecture
           </div>
         )}
+
+        {/* Badge Free DL */}
+        {showFreeDL && (
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setModalOpen(true) }}
+            className="absolute bottom-2 left-2 flex items-center gap-1 bg-green-600/90 hover:bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full transition-colors"
+          >
+            ↓ Free
+          </button>
+        )}
       </div>
+
+      {showFreeDL && (
+        <FreeDLModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          beatId={beat.id}
+          beatTitre={beat.titre}
+          slug={slug}
+          clientId={clientId}
+        />
+      )}
 
       {/* Infos */}
       <div className="p-4">

@@ -7,6 +7,7 @@ import { Suspense } from 'react'
 import LicencesTable from '../_components/LicencesTable'
 import BeatDetailPlayButton from '../_components/BeatDetailPlayButton'
 import SuccessBanner from '../_components/SuccessBanner'
+import FreeDLButton from '../_components/FreeDLButton'
 import type { LicencePublic } from '../_components/BeatCard'
 
 export default async function BeatDetailPage({
@@ -30,7 +31,7 @@ export default async function BeatDetailPage({
   const { data: beat } = await supabase
     .from('beats')
     .select(`
-      id, titre, bpm, cle, image_url, mp3_tague_url, statut,
+      id, titre, bpm, cle, image_url, mp3_tague_url, statut, free_download_actif,
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
@@ -212,6 +213,23 @@ export default async function BeatDetailPage({
         estAbonne={estAbonne}
         remisePct={beatmaker.abo_remise_pct ?? 0}
       />
+
+      {beat.free_download_actif && beat.mp3_tague_url && (
+        <div className="mt-6 border-t border-gray-800 pt-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-white mb-0.5">Téléchargement gratuit disponible</p>
+              <p className="text-xs text-gray-500">Usage personnel uniquement — non commercial</p>
+            </div>
+            <FreeDLButton
+              beatId={beatId}
+              beatTitre={beat.titre}
+              slug={slug}
+              clientId={user?.id ?? null}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

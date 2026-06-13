@@ -452,24 +452,24 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 - **Analytics :** réécriture complète en SQL réel — onglet par onglet (Ventes en premier, Vue d'ensemble en dernier)
 - **Paiements/Profil :** restent hors business (`/dashboard/paiements/`, `/dashboard/profil/`)
 
-### Phase 0 — Foundation ⬜ À faire
+### Phase 0 — Foundation ✅ Validée
 
 | # | Sous-étape | Statut |
 |---|-----------|--------|
-| 0.1 | Migration SQL `supabase/business_migration.sql` : 6 nouvelles tables + 5 colonnes + RLS | ⬜ |
-| 0.2 | Layout `app/dashboard/business/layout.tsx` + Sidebar avec auth réelle | ⬜ |
-| 0.3 | Utilitaires `app/dashboard/business/_lib/utils.ts` : initiales, joursDepuis, formatMontant, compareSigne | ⬜ |
+| 0.1 | Migration SQL `supabase/business_migration.sql` : 6 nouvelles tables + 5 colonnes + RLS | ✅ |
+| 0.2 | Layout `app/dashboard/business/layout.tsx` + Sidebar avec auth réelle | ✅ |
+| 0.3 | Utilitaires `app/dashboard/business/_lib/utils.ts` : initiales, joursDepuis, formatMontant, compareSigne | ✅ |
 
-**Tables à créer :** `codes_promo` · `listes_contacts` · `liste_membres` · `campagnes` · `free_downloads` · `morceaux_clients`
+**Tables créées :** `codes_promo` · `listes_contacts` · `liste_membres` · `campagnes` · `free_downloads` · `morceaux_clients`
 
-**Colonnes à ajouter :** `clients` (spotify, youtube, tiktok, notes, tags) · `beats` (couleur) · `commandes` (notes) · `abonnements_boutique` (fin_essai, annulation_en_cours)
+**Colonnes ajoutées :** `clients` (spotify, youtube, tiktok, notes, tags) · `beats` (couleur) · `commandes` (notes) · `abonnements_boutique` (fin_essai, annulation_en_cours)
 
-### Phase 1 — CRM ⬜ À faire
+### Phase 1 — CRM (en cours)
 
 | # | Page | Route cible | Remplace | Statut |
 |---|------|-------------|----------|--------|
-| 1.1 | Contacts (liste) | `/dashboard/business/contacts/` | `/dashboard/crm/` | ⬜ |
-| 1.2 | Fiche client | `/dashboard/business/contacts/[id]/` | `/dashboard/crm/[clientId]/` | ⬜ |
+| 1.1 | Contacts (liste) | `/dashboard/business/contacts/` | `/dashboard/crm/` | ✅ |
+| 1.2 | Fiche client | `/dashboard/business/contacts/[id]/` | `/dashboard/crm/[clientId]/` | ✅ |
 | 1.3 | Doublons | `/dashboard/business/doublons/` | `/dashboard/crm/doublons/` | ⬜ |
 | 1.4 | Segments | `/dashboard/business/segments/` | *(nouveau)* | ⬜ |
 | 1.5 | Listes | `/dashboard/business/listes/` | *(nouveau)* | ⬜ |
@@ -512,6 +512,38 @@ Composants communs d'abord : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCar
 
 ---
 
+## Étape 12 — Free Download (boutique + CRM)
+
+> **Contexte :** Permettre aux visiteurs de télécharger gratuitement les beats marqués `free_download_actif = true`. Génère automatiquement un lead `source = 'free_download'` et log dans `free_downloads`. Décision prise le 2026-06-13.
+
+### Décisions clés
+
+- **Téléchargement :** double livraison — URL R2 signée retournée directement (DL immédiat) + email Resend avec le même lien (assurance si fermeture fenêtre)
+- **Disclaimer :** message hardcodé V1 (usage personnel, maquette, réseaux OK, streaming interdit) — paramétrable par beatmaker en V2
+- **Compte :** inscription obligatoire via 2 checkboxes (newsletter + création compte). Compte invité créé si non connecté (même pattern que webhook Stripe)
+- **Source lead :** si le visiteur est déjà lead/client, la source existante est conservée (pas d'écrasement). Seul un nouveau lead prend `source = 'free_download'`
+- **Fichier livré :** `mp3_tague_url` (MP3 taguée, seul fichier disponible sans achat de licence)
+
+### Sous-étapes
+
+| # | Sous-étape | Fichiers touchés | Statut |
+|---|-----------|-----------------|--------|
+| 12.1 | SQL : GRANT service_role sur `free_downloads` + vérification table créée | `supabase/service_role_grants.sql` | ⬜ |
+| 12.2 | Boutique — page catalogue : ajouter `free_download_actif` dans SELECT + prop `BeatPublic` + badge sur `BeatCard` | `app/[slug]/page.tsx` · `BeatCard.tsx` | ⬜ |
+| 12.3 | Boutique — page beat : ajouter `free_download_actif` dans SELECT + section "Télécharger gratuitement" | `app/[slug]/[beatId]/page.tsx` | ⬜ |
+| 12.4 | Composant `FreeDLModal.tsx` : disclaimer + formulaire email/checkboxes (non connecté) ou bouton direct (connecté) | `app/[slug]/_components/FreeDLModal.tsx` (nouveau) | ⬜ |
+| 12.5 | API POST `/api/free-download` : vérif beat, upsert client, upsert lead, insert free_downloads, signed URL + email Resend | `app/api/free-download/route.ts` (nouveau) | ⬜ |
+| 12.6 | Dashboard — Fiche client onglet Activité : remplacer placeholder par requête réelle `free_downloads` | `app/dashboard/business/contacts/[id]/page.tsx` | ⬜ |
+
+### Règles métier importantes
+
+- Un beat `free_download_actif = true` doit avoir un `mp3_tague_url` non null — sinon le bouton est masqué
+- Un client connecté qui a déjà téléchargé ce beat → le bouton reste actif (re-téléchargement autorisé, log quand même)
+- Un client connecté qui a **acheté** ce beat → afficher "Vous avez acheté ce beat" à la place du bouton Free DL
+- `free_downloads.achete` : mis à `true` automatiquement si une commande pour ce beat existe déjà (à la requête)
+
+---
+
 ## Journal des sessions
 
 | Date | Étapes travaillées | Résumé |
@@ -541,4 +573,6 @@ Composants communs d'abord : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCar
 | 2026-05-21 | Optimisation CRM (11c) — architecture complète | Revue exhaustive de toutes les tables Airtable (CLIENTS, COMMANDES, ABONNEMENTS, IDENTIFIANTS). Validation donnée par donnée (liste vs fiche). Architecture CRM étendue à 5 sprints. Décisions clés : 2 dimensions de statut indépendantes (abonnement + achat), LTV inclut tout, mois réglés = compteur réel, préférences musicales depuis achats+favoris. Leads : définition, sources, score chaleur, affichage CRM. Email marketing Resend : templates brandés, domaine `[slug]@mail.myproducer.com` par défaut + domaine pro (pas de webmail). Sprint 1 entièrement planifié (14 sous-étapes, 0 BDD). |
 | 2026-05-21 | Optimisation CRM (11c) — Sprint 1 + Sprint 2 ✅ | Sprint 1 : badge statut abo 3 états, filtres, LTV, langue, dernière commande, style/type beat, préférences musicales (achats×2 + favoris×1). Sprint 2 : type_commande, mensualites_payees, LTV réelle (webhook invoice.payment_succeeded), instagram éditable, newsletter_consent + checkbox inscription + toggle mon-compte + export CSV. Migration SQL : supabase/sprint2_crm.sql exécutée. |
 | 2026-05-21 | Optimisation CRM (11c) — Sprint 3 ✅ | Score RFM (R/F/M /5 → score /100). 8 segments auto (Champion/Fidèle/Potentiel/À risque/Dormant/À réactiver/Nouveau/Lead). KPIs ligne 2 cliquables. LTV moyenne. Section "Actions recommandées" (3 vues métier). 6 filtres segments. Badge segment dans chaque ligne. Fiche : bloc RFM complet avec description. Fix nbAchats + historique labels. |
-| 2026-06-12 | Outil Business (11d) — Plan validé | Session grill-me : 14 décisions d'architecture prises. Plan de migration crm-proto → /dashboard/business en 4 phases (Foundation → CRM → Commerce → Analytics → Dashboard). Décisions clés : layout dédié, suppression anciennes routes, codes promo table Supabase, splits supprimés, Marketing en placeholder 🔒, analytics onglet par onglet. Roadmap mise à jour. **PROCHAINE SESSION : Phase 0 — Foundation (SQL + layout + utils).** |
+| 2026-06-12 | Outil Business (11d) — Plan validé | Session grill-me : 14 décisions d'architecture prises. Plan de migration crm-proto → /dashboard/business en 4 phases (Foundation → CRM → Commerce → Analytics → Dashboard). Décisions clés : layout dédié, suppression anciennes routes, codes promo table Supabase, splits supprimés, Marketing en placeholder 🔒, analytics onglet par onglet. Roadmap mise à jour. |
+| 2026-06-13 | Outil Business (11d) — Phase 0 + CRM 1.1 + 1.2 ✅ | Foundation validée (SQL + layout + sidebar). Vue Contacts : 4 onglets (Tous/Clients/Abonnés/Leads), KPIs, filtres, préférences. Vue Leads : score chaleur, 20 leads de test. Fiche client : 7 onglets (Identité/Abonnement/Commandes/Préférences/Newsletter/Activité/Morceaux). Fix lead 42501 : GRANT authenticated + service_role manquants sur table `leads`. |
+| 2026-06-13 | Étape 12 — Free Download — Décisions | Périmètre complet planifié : boutique (badge BeatCard + modal + page beat) + API (client invité + lead upsert + free_downloads + signed URL + email Resend) + dashboard fiche client Activité. 6 sous-étapes documentées. Double livraison (DL direct + email). **PROCHAINE ÉTAPE : 12.1 SQL puis 12.2→12.6 code.** |

@@ -112,7 +112,13 @@ export default async function FicheClientPage({
   if (!client) redirect('/dashboard/business/contacts')
 
   // Toutes les données en parallèle
-  const [{ data: commandesRaw }, { data: abonnement }, { data: favorisRaw }, { data: morceauxRaw }] = await Promise.all([
+  const [
+    { data: commandesRaw },
+    { data: abonnement },
+    { data: favorisRaw },
+    { data: morceauxRaw },
+    { data: freeDLRaw },
+  ] = await Promise.all([
     supabase
       .from('commandes')
       .select(`
@@ -141,11 +147,20 @@ export default async function FicheClientPage({
       .eq('beatmaker_id', beatmakerId)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('free_downloads')
+      .select('beat_id, downloaded_at, beats(titre)')
+      .eq('client_id', clientId)
+      .eq('beatmaker_id', beatmakerId)
+      .order('downloaded_at', { ascending: false }),
   ])
+
+  type FreeDL = { beat_id: string; downloaded_at: string; beats: { titre: string } | null }
 
   const commandes = (commandesRaw ?? []) as unknown as Commande[]
   const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: { titre?: string; image_url?: string } | null }>
   const morceaux  = morceauxRaw ?? []
+  const freeDLs   = (freeDLRaw   ?? []) as unknown as FreeDL[]
 
   // Métriques
   const payees         = commandes.filter(c => c.statut === 'payee')
@@ -718,13 +733,39 @@ export default async function FicheClientPage({
         {/* ══════════════════════════════════════════════════════════════════ */}
         {onglet === 'catalogue' && (
           <div className="space-y-4">
-            {/* Free downloads — pas de table en DB pour l'instant */}
+            {/* Free downloads */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
                 <h2 className="font-bold text-sm">Free downloads</h2>
-                <span className="text-xs text-gray-500">0 téléchargement</span>
+                <span className="text-xs text-gray-500">
+                  {freeDLs.length} téléchargement{freeDLs.length > 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="py-8 text-center text-gray-600 text-xs">Aucun free download.</div>
+              {freeDLs.length === 0 ? (
+                <div className="py-8 text-center text-gray-600 text-xs">Aucun free download.</div>
+              ) : (
+                <div className="divide-y divide-gray-800">
+                  {freeDLs.map((dl, i) => {
+                    const beatAchete = licencesPayees.some(c => c.beat_id === dl.beat_id)
+                    return (
+                      <div key={i} className="flex items-center justify-between px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                          <span className="text-sm text-white">{dl.beats?.titre ?? 'Beat supprimé'}</span>
+                          {beatAchete && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-medium">
+                              Acheté ✓
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500 flex-shrink-0 ml-4">
+                          {fmtDateRel(dl.downloaded_at)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Favoris */}

@@ -70,7 +70,7 @@ export default async function BoutiquePage({
   const { data: rawBeats } = await supabase
     .from('beats')
     .select(`
-      id, titre, bpm, cle, image_url, mp3_tague_url,
+      id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif,
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
@@ -85,8 +85,8 @@ export default async function BoutiquePage({
 
   // mp3_tague_url inclus uniquement pour les abonnés (sinon le player est bloqué côté client)
   const selectPrives = estAbonne
-    ? `id, titre, bpm, cle, image_url, mp3_tague_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
-    : `id, titre, bpm, cle, image_url, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+    ? `id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+    : `id, titre, bpm, cle, image_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
 
   const { data: rawBeatsPrives } = await supabase
     .from('beats')
@@ -103,6 +103,7 @@ export default async function BoutiquePage({
     cle: string | null
     image_url: string | null
     mp3_tague_url: string | null
+    free_download_actif: boolean
     styles: string[] | null
     ambiances: string[] | null
     instruments: string[] | null
@@ -129,6 +130,7 @@ export default async function BoutiquePage({
       cle: beat.cle,
       image_url: beat.image_url,
       mp3_tague_url: beat.mp3_tague_url,
+      free_download_actif: beat.free_download_actif,
       styles: beat.styles,
       ambiances: beat.ambiances,
       instruments: beat.instruments,

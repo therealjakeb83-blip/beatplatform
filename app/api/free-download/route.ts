@@ -1,0 +1,159 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
+import { r2, R2_BUCKET } from '@/lib/r2'
+import { getResend } from '@/lib/resend'
+
+export const runtime = 'nodejs'
+
+export async function POST(req: Request) {
+  const body = await req.json()
+  const { beatId, slug, email, newsletterConsent = false } = body
+
+  if (!beatId || !slug) {
+    return NextResponse.json({ error: 'Paramètres manquants.' }, { status: 400 })
+  }
+
+  const admin    = createAdminClient()
+  const supabase = await createClient()
+
+  // 1. Récupérer beatmaker + beat
+  const { data: beatmaker } = await admin
+    .from('beatmakers')
+    .select('id, nom_artiste')
+    .eq('slug', slug)
+    .single()
+
+  if (!beatmaker) return NextResponse.json({ error: 'Boutique introuvable.' }, { status: 404 })
+
+  const { data: beat } = await admin
+    .from('beats')
+    .select('id, titre, mp3_tague_url, free_download_actif, beatmaker_id')
+    .eq('id', beatId)
+    .eq('beatmaker_id', beatmaker.id)
+    .single()
+
+  if (!beat?.free_download_actif) {
+    return NextResponse.json({ error: 'Téléchargement gratuit non disponible.' }, { status: 403 })
+  }
+  if (!beat.mp3_tague_url) {
+    return NextResponse.json({ error: 'Fichier non disponible.' }, { status: 404 })
+  }
+
+  // 2. Résoudre le client
+  const { data: { user } } = await supabase.auth.getUser()
+  let clientId: string
+  let clientEmail: string
+
+  if (user) {
+    clientId    = user.id
+    clientEmail = user.email!
+  } else {
+    // Non connecté — email obligatoire
+    const emailNorm = (email ?? '').toLowerCase().trim()
+    if (!emailNorm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+      return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
+    }
+
+    const { data: existing } = await admin
+      .from('clients')
+      .select('id')
+      .eq('email', emailNorm)
+      .maybeSingle()
+
+    if (existing) {
+      clientId = existing.id
+      if (newsletterConsent) {
+        await admin.from('clients').update({ newsletter_consent: true }).eq('id', clientId)
+      }
+    } else {
+      const newId = crypto.randomUUID()
+      const nom   = emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
+      await admin.from('clients').insert({
+        id:                 newId,
+        email:              emailNorm,
+        nom,
+        newsletter_consent: newsletterConsent,
+      })
+      clientId = newId
+    }
+    clientEmail = emailNorm
+  }
+
+  const beatmakerId = beatmaker.id
+
+  // 3. Upsert lead (source conservée si lead existant)
+  const { data: existingLead } = await admin
+    .from('leads')
+    .select('id, newsletter_inscrit')
+    .eq('client_id', clientId)
+    .eq('beatmaker_id', beatmakerId)
+    .maybeSingle()
+
+  if (!existingLead) {
+    await admin.from('leads').insert({
+      client_id:          clientId,
+      beatmaker_id:       beatmakerId,
+      source:             'free_download',
+      newsletter_inscrit: newsletterConsent,
+    })
+  } else if (newsletterConsent && !existingLead.newsletter_inscrit) {
+    await admin.from('leads').update({ newsletter_inscrit: true }).eq('id', existingLead.id)
+  }
+
+  // 4. Log free_download
+  await admin.from('free_downloads').insert({
+    beatmaker_id: beatmakerId,
+    client_id:    clientId,
+    beat_id:      beatId,
+  })
+
+  // 5. Signed URL R2 (1h, force-download)
+  const PUBLIC_URL = process.env.R2_PUBLIC_URL!
+  const key        = beat.mp3_tague_url.replace(PUBLIC_URL + '/', '')
+  const filename   = `${beat.titre}.mp3`
+
+  const downloadUrl = await getSignedUrl(
+    r2,
+    new GetObjectCommand({
+      Bucket:                      R2_BUCKET,
+      Key:                         key,
+      ResponseContentDisposition:  `attachment; filename="${filename}"`,
+    }),
+    { expiresIn: 3600 }
+  )
+
+  // 6. Email avec le lien (non-bloquant)
+  try {
+    await getResend().emails.send({
+      from:    `My Producer <noreply@jakebmusic.com>`,
+      to:      clientEmail,
+      subject: `Ton free download — ${beat.titre}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#111;">
+          <h2 style="color:#4f46e5;">Ton free download est prêt !</h2>
+          <p>Voici ton téléchargement gratuit pour le beat <strong>${beat.titre}</strong> de ${beatmaker.nom_artiste}.</p>
+          <p style="margin:24px 0;">
+            <a href="${downloadUrl}"
+               style="background:#16a34a;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
+              ↓ Télécharger ${beat.titre}
+            </a>
+          </p>
+          <p style="color:#888;font-size:12px;border-top:1px solid #eee;padding-top:12px;">
+            Ce lien expire dans 1 heure. Télécharge le fichier rapidement !
+          </p>
+          <p style="color:#888;font-size:12px;">
+            Rappel : usage personnel uniquement — maquettes et réseaux sociaux OK.
+            Diffusion sur plateformes de streaming interdite sans achat de licence.
+          </p>
+        </div>
+      `,
+    })
+  } catch (e) {
+    console.error('[free-download] Email error:', e)
+  }
+
+  return NextResponse.json({ downloadUrl, beatTitre: beat.titre })
+}
