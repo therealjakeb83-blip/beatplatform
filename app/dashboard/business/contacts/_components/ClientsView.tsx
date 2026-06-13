@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { ContactRow } from './ContactsClient'
 import { joursDepuis } from '../../_lib/utils'
 
-function initiales(prenom: string, nom: string) {
-  return `${prenom[0] ?? ''}${nom[0] ?? ''}`.toUpperCase() || '?'
+function initiales(prenom: string | null, nom: string | null) {
+  return `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`.toUpperCase() || '?'
 }
 
 function scoreRF(nb_achats: number, dernier_achat_iso: string | null): { label: string; cls: string } {

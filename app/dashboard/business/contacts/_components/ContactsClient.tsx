@@ -49,8 +49,8 @@ function dateRel(iso: string): string {
   return `${a} an${a > 1 ? 's' : ''}`
 }
 
-function initiales(prenom: string, nom: string) {
-  return `${prenom[0] ?? ''}${nom[0] ?? ''}`.toUpperCase() || '?'
+function initiales(prenom: string | null, nom: string | null) {
+  return `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`.toUpperCase() || '?'
 }
 
 function statutBadge(statut: ContactRow['statut']): { label: string; cls: string } | null {
