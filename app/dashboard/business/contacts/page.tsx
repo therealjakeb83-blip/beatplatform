@@ -34,7 +34,8 @@ export default async function ContactsPage({
   const beatmakerId = user.id
 
   // ── 1. Leads — fetch indépendant AVANT le return anticipé ─────────────────
-  const leadsRes = await admin
+  // Utilise supabase (client authentifié) car leads n'a pas GRANT service_role
+  const leadsRes = await supabase
     .from('leads')
     .select('client_id, source, created_at, newsletter_inscrit')
     .eq('beatmaker_id', beatmakerId)
