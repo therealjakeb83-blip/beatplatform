@@ -8,10 +8,27 @@ DECLARE
   b2_id   uuid;
   b3_id   uuid;
 BEGIN
-  SELECT id INTO bm_id FROM beatmakers LIMIT 1;
+  SELECT id INTO bm_id FROM beatmakers WHERE slug = 'jakeb-test';
+  IF bm_id IS NULL THEN
+    RAISE EXCEPTION 'Beatmaker jakeb-test introuvable';
+  END IF;
   SELECT id INTO b1_id FROM beats WHERE beatmaker_id = bm_id LIMIT 1 OFFSET 0;
   SELECT id INTO b2_id FROM beats WHERE beatmaker_id = bm_id LIMIT 1 OFFSET 1;
   SELECT id INTO b3_id FROM beats WHERE beatmaker_id = bm_id LIMIT 1 OFFSET 2;
+
+  -- ── Nettoyage leads existants pour ces emails (mauvais beatmaker_id) ─────
+  DELETE FROM leads
+  WHERE client_id IN (
+    SELECT id FROM clients WHERE email IN (
+      'kevin.martin.beats@gmail.com','yanis.bouchama@hotmail.fr','dylan.roussel@gmail.com',
+      'nathan.fabre@icloud.com','axel.petit.music@gmail.com','thibault.remy@gmail.com',
+      'antoine.guerin@protonmail.com','loic.bonnet@gmail.com','marcus.j.music@gmail.com',
+      'jamal.williams.beats@gmail.com','devon.carter.prod@gmail.com','tyler.brooks.music@gmail.com',
+      'james.mitchell.uk@gmail.com','ryan.thompson.beats@gmail.com','connor.walsh.prod@gmail.com',
+      'sidy.diallo.music@gmail.com','mohammed.alaoui@gmail.com','pierre.tremblay.beats@gmail.com',
+      'alex.gagnon.prod@gmail.com','kwame.asante.music@gmail.com'
+    )
+  );
 
   -- ── Clients leads ────────────────────────────────────────────
   INSERT INTO clients(id,prenom,nom,nom_artiste,email,pays,newsletter_consent,created_at) VALUES
