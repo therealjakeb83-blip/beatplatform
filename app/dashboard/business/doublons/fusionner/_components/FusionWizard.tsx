@@ -79,6 +79,7 @@ export default function FusionWizard({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [erreur, setErreur]   = useState<string | null>(null)
 
   // Pour chaque champ en conflit, stocke la valeur choisie
   // Par défaut : valeur du conservé
@@ -98,6 +99,7 @@ export default function FusionWizard({
 
   async function confirmer() {
     setLoading(true)
+    setErreur(null)
 
     // champs_conserves = champs où on a choisi la valeur de l'archivé
     //                  + champs où seul l'archivé a une valeur (transfert automatique)
@@ -116,7 +118,7 @@ export default function FusionWizard({
       }
     }
 
-    await fetch('/api/business/doublons/fusionner', {
+    const res = await fetch('/api/business/doublons/fusionner', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -135,6 +137,13 @@ export default function FusionWizard({
         raisons,
       }),
     })
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      setErreur(json.erreur ?? 'Erreur serveur — la fusion n\'a pas été sauvegardée.')
+      setLoading(false)
+      return
+    }
 
     router.push('/dashboard/business/doublons')
     router.refresh()
@@ -228,6 +237,13 @@ export default function FusionWizard({
       ) : (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center">
           <p className="text-xs text-gray-600">Aucun conflit à résoudre — tous les champs sont identiques ou vides sur l'un des contacts.</p>
+        </div>
+      )}
+
+      {/* Erreur */}
+      {erreur && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400">
+          {erreur}
         </div>
       )}
 
