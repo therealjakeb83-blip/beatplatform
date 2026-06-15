@@ -99,12 +99,20 @@ export default function FusionWizard({
   async function confirmer() {
     setLoading(true)
 
-    // champs_conserves = uniquement les champs où on a choisi la valeur de l'archivé
+    // champs_conserves = champs où on a choisi la valeur de l'archivé
+    //                  + champs où seul l'archivé a une valeur (transfert automatique)
     const champs_conserves: Record<string, string> = {}
     for (const c of champsCandidats) {
       const valArchive = archive[c.key] as string
       if (choix[c.key] === valArchive) {
         champs_conserves[c.key] = valArchive
+      }
+    }
+    for (const c of CHAMPS) {
+      const vC = conserve[c.key] as string | null
+      const vA = archive[c.key] as string | null
+      if (!vC && vA) {
+        champs_conserves[c.key] = vA
       }
     }
 

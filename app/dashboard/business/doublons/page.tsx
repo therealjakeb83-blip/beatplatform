@@ -124,8 +124,8 @@ export default async function DoublonsPage() {
     )
   }
 
-  // ── Données clients, commandes, abos, doublons ignorés ────────────────────
-  const [clientsRes, commandesRes, aboRes, ignoresRes] = await Promise.all([
+  // ── Données clients, commandes, abos, doublons ignorés + fusionnés ─────────
+  const [clientsRes, commandesRes, aboRes, ignoresRes, fusionsRes] = await Promise.all([
     admin.from('clients')
       .select('id, prenom, nom, email, pays, telephone')
       .in('id', clientIds),
@@ -140,12 +140,16 @@ export default async function DoublonsPage() {
     supabase.from('doublons_ignores')
       .select('client_id_1, client_id_2')
       .eq('beatmaker_id', beatmakerId),
+    supabase.from('fusions_crm')
+      .select('client_id_archive')
+      .eq('beatmaker_id', beatmakerId),
   ])
 
-  const clientsRaw = clientsRes.data ?? []
-  const commandes  = commandesRes.data ?? []
-  const abos       = aboRes.data ?? []
-  const ignores    = ignoresRes.data ?? []
+  const clientsRaw  = clientsRes.data ?? []
+  const commandes   = commandesRes.data ?? []
+  const abos        = aboRes.data ?? []
+  const ignores     = ignoresRes.data ?? []
+  const archiveIds  = new Set((fusionsRes.data ?? []).map(f => f.client_id_archive))
 
   const ignoresSet = new Set(
     ignores.map(p => [p.client_id_1, p.client_id_2].sort().join('|'))
@@ -171,7 +175,7 @@ export default async function DoublonsPage() {
     }
   }
 
-  const clients: ClientData[] = clientsRaw.map(c => ({
+  const clients: ClientData[] = clientsRaw.filter(c => !archiveIds.has(c.id)).map(c => ({
     id:         c.id,
     prenom:     c.prenom,
     nom:        c.nom,
