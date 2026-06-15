@@ -65,7 +65,7 @@ export default async function FusionnerPage({
     if (cmd.type_commande === 'LICENCE') achatsMap.set(id, (achatsMap.get(id) ?? 0) + 1)
   }
 
-  function enrichir(c: typeof raw_conserve) {
+  function enrichir(c: NonNullable<typeof raw_conserve>) {
     return {
       ...c,
       ltv:       ltvMap.get(c.id) ?? 0,
