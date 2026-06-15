@@ -111,6 +111,38 @@ export default async function FicheClientPage({
 
   if (!client) redirect('/dashboard/business/contacts')
 
+  // Fusion virtuelle — ce contact est-il un conservé ?
+  const { data: fusionRows } = await supabase
+    .from('fusions_crm')
+    .select('client_id_archive, emails_archives, champs_conserves')
+    .eq('beatmaker_id', beatmakerId)
+    .eq('client_id_conserve', clientId)
+
+  const fusions        = fusionRows ?? []
+  const archiveIds     = fusions.map(f => f.client_id_archive)
+  const emailsSecondaires: string[] = fusions.flatMap(f => (f.emails_archives as string[]) ?? [])
+  const champsOverride = fusions.reduce((acc, f) => ({ ...acc, ...(f.champs_conserves as Record<string, string>) }), {} as Record<string, string>)
+
+  // Appliquer les overrides sur les champs en conflit
+  const clientDisplay = {
+    ...client,
+    telephone:   (champsOverride.telephone   ?? client.telephone)   as string | null,
+    pays:        (champsOverride.pays         ?? client.pays)        as string | null,
+    instagram:   (champsOverride.instagram    ?? client.instagram)   as string | null,
+    spotify:     (champsOverride.spotify      ?? client.spotify)     as string | null,
+    youtube:     (champsOverride.youtube      ?? client.youtube)     as string | null,
+    tiktok:      (champsOverride.tiktok       ?? client.tiktok)      as string | null,
+    notes:       (champsOverride.notes        ?? client.notes)       as string | null,
+    nom_artiste: (champsOverride.nom_artiste  ?? client.nom_artiste) as string | null,
+  }
+
+  // Construire les clauses OR pour inclure les archivés
+  const allClientIds  = [clientId, ...archiveIds]
+  const allEmails     = [client.email, ...emailsSecondaires]
+  const orCommandes   = allClientIds.map(id => `client_id.eq.${id}`)
+    .concat(allEmails.map(e => `acheteur_email.eq.${e}`))
+    .join(',')
+
   // Toutes les données en parallèle
   const [
     { data: commandesRaw },
@@ -127,30 +159,30 @@ export default async function FicheClientPage({
         licences(nom)
       `)
       .eq('beatmaker_id', beatmakerId)
-      .or(`client_id.eq.${clientId},acheteur_email.eq.${client.email}`)
+      .or(orCommandes)
       .order('created_at', { ascending: false }),
     supabase
       .from('abonnements_boutique')
       .select('statut, date_debut, date_fin, en_essai, annulation_en_cours, plan, prix, mensualites_payees')
       .eq('beatmaker_id', beatmakerId)
-      .eq('client_id', clientId)
+      .in('client_id', allClientIds)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
     admin
       .from('favoris')
       .select('beat_id, beats(titre, image_url)')
-      .eq('client_id', clientId),
+      .in('client_id', allClientIds),
     supabase
       .from('morceaux_clients')
       .select('id, titre, lien_spotify, created_at')
       .eq('beatmaker_id', beatmakerId)
-      .eq('client_id', clientId)
+      .in('client_id', allClientIds)
       .order('created_at', { ascending: false }),
     supabase
       .from('free_downloads')
       .select('beat_id, downloaded_at, beats(titre)')
-      .eq('client_id', clientId)
+      .in('client_id', allClientIds)
       .eq('beatmaker_id', beatmakerId)
       .order('downloaded_at', { ascending: false }),
   ])
@@ -309,11 +341,11 @@ export default async function FicheClientPage({
           <div className="flex items-start justify-between gap-4 mb-5">
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
-                {client.pays ? (
+                {clientDisplay.pays ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={`https://flagcdn.com/w80/${client.pays.toLowerCase()}.png`}
-                    alt={client.pays}
+                    src={`https://flagcdn.com/w80/${clientDisplay.pays.toLowerCase()}.png`}
+                    alt={clientDisplay.pays}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -323,8 +355,8 @@ export default async function FicheClientPage({
               <div>
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <h1 className="text-lg font-bold leading-tight">{nomComplet || client.email}</h1>
-                  {client.nom_artiste && (
-                    <span className="text-sm text-gray-500 italic">{client.nom_artiste}</span>
+                  {clientDisplay.nom_artiste && (
+                    <span className="text-sm text-gray-500 italic">{clientDisplay.nom_artiste}</span>
                   )}
                 </div>
                 <a
@@ -333,6 +365,11 @@ export default async function FicheClientPage({
                 >
                   {client.email}
                 </a>
+                {emailsSecondaires.map(e => (
+                  <a key={e} href={`mailto:${e}`} className="text-gray-600 text-xs hover:text-gray-400 transition-colors block">
+                    {e} <span className="text-gray-700 text-[10px]">· archivé</span>
+                  </a>
+                ))}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statutCls}`}>
                     {statutLabel}
@@ -357,7 +394,7 @@ export default async function FicheClientPage({
             {/* Icônes réseaux en haut à droite */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {(['instagram', 'spotify', 'youtube', 'tiktok'] as const).map(p => {
-                const val = (client as Record<string, unknown>)[p] as string | null
+                const val = (clientDisplay as Record<string, unknown>)[p] as string | null
                 return (
                   <div
                     key={p}
@@ -449,10 +486,10 @@ export default async function FicheClientPage({
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h2 className="font-bold text-sm mb-3">Identité</h2>
               <Row label="Prénom de contact" value={client.prenom ?? '–'} />
-              <Row label="Nom d'artiste"     value={client.nom_artiste ?? '–'} />
-              <Row label="Pays"              value={client.pays?.toUpperCase() ?? '–'} />
-              <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(client.pays)} />
-              <Row label="Téléphone"         value={client.telephone ?? '–'} />
+              <Row label="Nom d'artiste"     value={clientDisplay.nom_artiste ?? '–'} />
+              <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />
+              <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(clientDisplay.pays)} />
+              <Row label="Téléphone"         value={clientDisplay.telephone ?? '–'} />
               <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
               <Row label="Client depuis"     value={fmtDate(client.created_at)} />
 
@@ -466,13 +503,13 @@ export default async function FicheClientPage({
                   {(['instagram', 'spotify', 'youtube', 'tiktok'] as const).map(r => (
                     <div key={r} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0 gap-3">
                       <span className="flex items-center gap-1.5 text-xs text-gray-500 flex-shrink-0 w-24 capitalize">
-                        <SocialIcon platform={r} value={(client as Record<string, unknown>)[r] as string | null} size={12} />
+                        <SocialIcon platform={r} value={(clientDisplay as Record<string, unknown>)[r] as string | null} size={12} />
                         {r}
                       </span>
                       <input
                         name={r}
                         type="text"
-                        defaultValue={(client as Record<string, unknown>)[r] as string ?? ''}
+                        defaultValue={(clientDisplay as Record<string, unknown>)[r] as string ?? ''}
                         placeholder={`@${r}`}
                         className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
                       />
@@ -493,7 +530,7 @@ export default async function FicheClientPage({
                 <form action={sauvegarderNotes}>
                   <textarea
                     name="notes"
-                    defaultValue={client.notes ?? ''}
+                    defaultValue={clientDisplay.notes ?? ''}
                     placeholder="Notes internes..."
                     rows={3}
                     className="w-full text-xs text-gray-200 bg-gray-800/60 border border-gray-700 hover:border-gray-600 focus:border-indigo-500 focus:bg-indigo-950/20 rounded-lg px-3 py-2.5 outline-none cursor-text transition-colors leading-relaxed resize-none"

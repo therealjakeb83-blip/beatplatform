@@ -183,16 +183,22 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
 
               {/* Actions */}
               <div className="px-5 py-3 border-t border-gray-800 flex items-center gap-3">
-                <button
-                  disabled
-                  title="Bientôt disponible"
-                  className="text-xs px-4 py-1.5 rounded-xl bg-indigo-600/30 text-indigo-400/50 font-semibold cursor-not-allowed"
-                >
-                  Fusionner
-                </button>
+                {(() => {
+                  const conserve = pair.a.ltv >= pair.b.ltv ? pair.a : pair.b
+                  const archive  = pair.a.ltv >= pair.b.ltv ? pair.b : pair.a
+                  const raisonsParam = encodeURIComponent(JSON.stringify(pair.raisons))
+                  return (
+                    <Link
+                      href={`/dashboard/business/doublons/fusionner?conserve=${conserve.id}&archive=${archive.id}&raisons=${raisonsParam}`}
+                      className="text-xs px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+                    >
+                      Fusionner
+                    </Link>
+                  )
+                })()}
                 <IgnorerButton id1={pair.a.id} id2={pair.b.id} />
                 <p className="text-xs text-gray-700">
-                  La fusion conserve la fiche avec la LTV la plus haute et migre toutes les commandes
+                  La fusion conserve la fiche avec la LTV la plus haute
                 </p>
               </div>
 

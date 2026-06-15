@@ -98,7 +98,7 @@ export default async function ContactsPage({
     }
   }
 
-  const leadsData: LeadRow[] = leadsRaw.flatMap(l => {
+  const leadsData: LeadRow[] = leadsRaw.filter(l => !archiveIds.has(l.client_id)).flatMap(l => {
     const client  = leadClientMap.get(l.client_id)
     if (!client) return []
     const beats   = favorisBeatMap.get(l.client_id) ?? []
@@ -124,8 +124,8 @@ export default async function ContactsPage({
     }]
   })
 
-  // ── 2. Commandes + abos + listes ──────────────────────────────────────────
-  const [commandesRes, aboRes, listesRes] = await Promise.all([
+  // ── 2. Commandes + abos + listes + fusions ────────────────────────────────
+  const [commandesRes, aboRes, listesRes, fusionsRes] = await Promise.all([
     supabase
       .from('commandes')
       .select('client_id, created_at, prix_paye, statut, type_commande, beat_id, licence_id')
@@ -140,7 +140,20 @@ export default async function ContactsPage({
       .from('listes_contacts')
       .select('id, nom')
       .eq('beatmaker_id', beatmakerId),
+    supabase
+      .from('fusions_crm')
+      .select('client_id_conserve, client_id_archive')
+      .eq('beatmaker_id', beatmakerId),
   ])
+
+  // IDs archivés (masqués) + map conservé → archives
+  const archiveIds = new Set((fusionsRes.data ?? []).map(f => f.client_id_archive))
+  const conserveToArchives = new Map<string, string[]>()
+  for (const f of fusionsRes.data ?? []) {
+    const arr = conserveToArchives.get(f.client_id_conserve) ?? []
+    arr.push(f.client_id_archive)
+    conserveToArchives.set(f.client_id_conserve, arr)
+  }
 
 
   const commandes = commandesRes.data ?? []
@@ -231,8 +244,13 @@ export default async function ContactsPage({
     return 'Inscription'
   }
 
-  const contacts: ContactRow[] = clientsRaw.map(c => {
-    const cmds     = commandesParClient.get(c.id) ?? []
+  const contacts: ContactRow[] = clientsRaw
+  .filter(c => !archiveIds.has(c.id))
+  .map(c => {
+    // Fusionner les commandes des contacts archivés si ce contact est un conservé
+    const cmdsBase = commandesParClient.get(c.id) ?? []
+    const cmdsArchives = (conserveToArchives.get(c.id) ?? []).flatMap(aid => commandesParClient.get(aid) ?? [])
+    const cmds     = [...cmdsBase, ...cmdsArchives]
     const abo      = aboParClient.get(c.id)
     const lead     = leadParClient.get(c.id)
 
