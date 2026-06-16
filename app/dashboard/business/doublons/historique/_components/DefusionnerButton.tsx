@@ -23,8 +23,7 @@ export default function DefusionnerButton({ fusionId }: { fusionId: string }) {
       setLoading(false)
       return
     }
-    router.refresh()
-    router.push('/dashboard/business/doublons/historique')
+    window.location.href = '/dashboard/business/doublons/historique'
   }
 
   if (confirme) {
