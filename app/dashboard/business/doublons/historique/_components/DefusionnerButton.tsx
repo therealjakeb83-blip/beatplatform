@@ -12,18 +12,23 @@ export default function DefusionnerButton({ fusionId }: { fusionId: string }) {
   async function defusionner() {
     setLoading(true)
     setErreur(null)
-    const res = await fetch('/api/business/doublons/defusionner', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: fusionId }),
-    })
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}))
-      setErreur(json.erreur ?? 'Erreur serveur')
+    try {
+      const res = await fetch('/api/business/doublons/defusionner', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: fusionId }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setErreur(json.erreur ?? 'Erreur serveur')
+        setLoading(false)
+        return
+      }
+      window.location.href = '/dashboard/business/doublons/historique'
+    } catch {
+      setErreur('Erreur réseau — réessaie')
       setLoading(false)
-      return
     }
-    window.location.href = '/dashboard/business/doublons/historique'
   }
 
   if (confirme) {
