@@ -150,6 +150,7 @@ export default async function FicheClientPage({
     { data: favorisRaw },
     { data: morceauxRaw },
     { data: freeDLRaw },
+    { data: archivesDateRaw },
   ] = await Promise.all([
     supabase
       .from('commandes')
@@ -185,6 +186,9 @@ export default async function FicheClientPage({
       .in('client_id', allClientIds)
       .eq('beatmaker_id', beatmakerId)
       .order('downloaded_at', { ascending: false }),
+    archiveIds.length > 0
+      ? admin.from('clients').select('created_at').in('id', archiveIds)
+      : Promise.resolve({ data: [] as { created_at: string }[] }),
   ])
 
   type FreeDL = { beat_id: string; downloaded_at: string; beats: { titre: string } | null }
@@ -193,6 +197,10 @@ export default async function FicheClientPage({
   const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: { titre?: string; image_url?: string } | null }>
   const morceaux  = morceauxRaw ?? []
   const freeDLs   = (freeDLRaw   ?? []) as unknown as FreeDL[]
+
+  // "Client depuis" = date la plus ancienne parmi conservé + archivés
+  const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at)]
+  const clientDepuis = allDates.sort()[0]
 
   // Métriques
   const payees         = commandes.filter(c => c.statut === 'payee')
@@ -491,7 +499,7 @@ export default async function FicheClientPage({
               <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(clientDisplay.pays)} />
               <Row label="Téléphone"         value={clientDisplay.telephone ?? '–'} />
               <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
-              <Row label="Client depuis"     value={fmtDate(client.created_at)} />
+              <Row label="Client depuis"     value={fmtDate(clientDepuis)} />
 
               {/* Accordion réseaux sociaux */}
               <details className="group mt-1">
