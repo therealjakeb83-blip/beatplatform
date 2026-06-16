@@ -14,7 +14,7 @@ export default function DefusionnerButton({ fusionId }: { fusionId: string }) {
     setErreur(null)
     try {
       const res = await fetch('/api/business/doublons/defusionner', {
-        method: 'DELETE',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: fusionId }),
       })
