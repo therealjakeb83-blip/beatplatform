@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 export async function DELETE(request: Request) {
@@ -29,5 +30,10 @@ export async function DELETE(request: Request) {
     .eq('id', id)
 
   if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+
+  revalidatePath('/dashboard/business/doublons/historique')
+  revalidatePath('/dashboard/business/doublons')
+  revalidatePath('/dashboard/business/contacts')
+
   return NextResponse.json({ ok: true })
 }

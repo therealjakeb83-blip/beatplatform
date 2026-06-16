@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function DefusionnerButton({ fusionId }: { fusionId: string }) {
   const [confirme, setConfirme] = useState(false)
   const [loading, setLoading]   = useState(false)
   const [erreur, setErreur]     = useState<string | null>(null)
+  const router = useRouter()
 
   async function defusionner() {
     setLoading(true)
@@ -21,7 +23,8 @@ export default function DefusionnerButton({ fusionId }: { fusionId: string }) {
       setLoading(false)
       return
     }
-    window.location.reload()
+    router.refresh()
+    router.push('/dashboard/business/doublons/historique')
   }
 
   if (confirme) {
