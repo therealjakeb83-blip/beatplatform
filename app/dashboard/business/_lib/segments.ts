@@ -1,10 +1,17 @@
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+export type BadgeCondition = {
+  champ: 'score_rf' | 'score_chaleur'
+  op: 'eq' | 'neq' | 'any'
+  vals: string[]
+}
+
 export type Condition = {
   lien?: 'ET' | 'OU'
   champ: string
   op: 'eq' | 'neq' | 'gte' | 'lte' | 'contient' | 'existe'
   val: string | number | boolean
+  badge?: BadgeCondition
 }
 
 export type SegmentDB = {
@@ -248,32 +255,43 @@ function getValeur(contact: ContactFiltre, champ: string): unknown {
 function evalCondition(contact: ContactFiltre, cond: Condition): boolean {
   const val = getValeur(contact, cond.champ)
 
-  if (cond.op === 'existe') return val !== null && val !== '' && val !== Infinity
+  let result: boolean
 
-  if (cond.champ === 'tags') {
+  if (cond.op === 'existe') {
+    result = val !== null && val !== '' && val !== Infinity
+  } else if (cond.champ === 'tags') {
     const tags = val as string[]
-    if (cond.op === 'contient') return tags.includes(String(cond.val))
-    if (cond.op === 'eq')       return tags.includes(String(cond.val))
-    if (cond.op === 'neq')      return !tags.includes(String(cond.val))
-    return false
-  }
-
-  if (typeof val === 'boolean') {
+    if (cond.op === 'contient') result = tags.includes(String(cond.val))
+    else if (cond.op === 'eq')  result = tags.includes(String(cond.val))
+    else if (cond.op === 'neq') result = !tags.includes(String(cond.val))
+    else result = false
+  } else if (typeof val === 'boolean') {
     const cmpBool = String(cond.val) === 'true'
-    if (cond.op === 'eq')  return val === cmpBool
-    if (cond.op === 'neq') return val !== cmpBool
-    return false
+    if (cond.op === 'eq')       result = val === cmpBool
+    else if (cond.op === 'neq') result = val !== cmpBool
+    else result = false
+  } else if (cond.op === 'gte') {
+    result = Number(val) >= Number(cond.val)
+  } else if (cond.op === 'lte') {
+    result = Number(val) <= Number(cond.val)
+  } else {
+    const cmpStr  = String(val).toLowerCase()
+    const condStr = String(cond.val).toLowerCase()
+    if (cond.op === 'contient') result = cmpStr.includes(condStr)
+    else if (cond.op === 'eq')  result = cmpStr === condStr
+    else if (cond.op === 'neq') result = cmpStr !== condStr
+    else result = false
   }
 
-  if (cond.op === 'gte') return Number(val) >= Number(cond.val)
-  if (cond.op === 'lte') return Number(val) <= Number(cond.val)
+  // Badge intégré (uniquement pour statut) — évalué en AND avec le statut
+  if (result && cond.badge && cond.badge.vals.length > 0) {
+    const badgeVal = cond.badge.champ === 'score_rf' ? contact.score_rf : contact.score_chaleur
+    if (cond.badge.op === 'any')      result = cond.badge.vals.includes(badgeVal)
+    else if (cond.badge.op === 'eq')  result = badgeVal === cond.badge.vals[0]
+    else if (cond.badge.op === 'neq') result = badgeVal !== cond.badge.vals[0]
+  }
 
-  const cmpStr  = String(val).toLowerCase()
-  const condStr = String(cond.val).toLowerCase()
-  if (cond.op === 'contient') return cmpStr.includes(condStr)
-  if (cond.op === 'eq')       return cmpStr === condStr
-  if (cond.op === 'neq')      return cmpStr !== condStr
-  return false
+  return result
 }
 
 export function evaluerFiltres(contact: ContactFiltre, filtres: Condition[]): boolean {

@@ -1,18 +1,35 @@
 'use client'
 
 import { useState } from 'react'
-import { CHAMPS, OPS_PAR_TYPE, COULEURS, type Condition, type CatalogOptions } from '../../_lib/segments'
+import { CHAMPS, OPS_PAR_TYPE, COULEURS, type Condition, type BadgeCondition, type CatalogOptions } from '../../_lib/segments'
 
-// Scores qui proposent "TOUS" (= n'importe quel badge)
-const SCORES_AVEC_TOUS = ['score_rf', 'score_chaleur']
-
-// Badges RF/chaleur selon le statut sélectionné (suggestion contextuelle)
-const BADGE_HINT: Record<string, string> = {
+// Badge champ selon le statut sélectionné
+const BADGE_CHAMP: Record<string, 'score_rf' | 'score_chaleur'> = {
   abonne: 'score_rf',
   ancien: 'score_rf',
   client: 'score_rf',
   lead:   'score_chaleur',
 }
+
+const BADGE_OPTIONS: Record<string, { val: string; label: string }[]> = {
+  score_rf: [
+    { val: 'Régulier',    label: 'Régulier' },
+    { val: 'Fidèle',      label: 'Fidèle' },
+    { val: 'Occasionnel', label: 'Occasionnel' },
+    { val: 'Dormant',     label: 'Dormant' },
+  ],
+  score_chaleur: [
+    { val: 'Chaud', label: 'Chaud' },
+    { val: 'Tiède', label: 'Tiède' },
+    { val: 'Froid', label: 'Froid' },
+  ],
+}
+
+const BADGE_OPS = [
+  { val: 'eq',  label: 'est' },
+  { val: 'neq', label: "n'est pas" },
+  { val: 'any', label: 'est parmi' },
+]
 
 type Props = {
   catalog: CatalogOptions
@@ -29,9 +46,9 @@ type Props = {
 
 function valeurDefaut(champ: string, catalog: CatalogOptions): string {
   const def = CHAMPS.find(c => c.champ === champ)
-  if (def?.options?.length)                 return def.options[0].val
-  if (def?.catalogKey && catalog[def.catalogKey].length) return catalog[def.catalogKey][0]
-  if (def?.type === 'number')               return '0'
+  if (def?.options?.length)                                  return def.options[0].val
+  if (def?.catalogKey && catalog[def.catalogKey].length)     return catalog[def.catalogKey][0]
+  if (def?.type === 'number')                                return '0'
   return ''
 }
 
@@ -67,10 +84,35 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
       const updated = { ...c, ...patch }
       if (patch.champ && patch.champ !== c.champ) {
         const ops = opsForChamp(patch.champ)
-        updated.op  = ops[0].val
-        updated.val = valeurDefaut(patch.champ, catalog)
+        updated.op    = ops[0].val
+        updated.val   = valeurDefaut(patch.champ, catalog)
+        updated.badge = undefined
       }
       return updated
+    }))
+  }
+
+  function handleStatutValChange(i: number, newStatut: string) {
+    const newBadgeChamp = BADGE_CHAMP[newStatut]
+    setFiltres(f => f.map((c, idx) => {
+      if (idx !== i) return c
+      const updated = { ...c, val: newStatut }
+      // Si le badge champ change (client→lead ou inverse), on réinitialise le badge
+      if (c.badge && newBadgeChamp && c.badge.champ !== newBadgeChamp) {
+        updated.badge = undefined
+      }
+      return updated
+    }))
+  }
+
+  function updateBadge(i: number, patch: Partial<BadgeCondition> | null) {
+    setFiltres(f => f.map((c, idx) => {
+      if (idx !== i) return c
+      if (patch === null) return { ...c, badge: undefined }
+      const badgeChamp = BADGE_CHAMP[String(c.val)] ?? 'score_rf'
+      const defaultOpts = BADGE_OPTIONS[badgeChamp]
+      const current: BadgeCondition = c.badge ?? { champ: badgeChamp, op: 'eq', vals: [defaultOpts[0].val] }
+      return { ...c, badge: { ...current, ...patch, champ: badgeChamp } }
     }))
   }
 
@@ -78,28 +120,6 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
     setFiltres(f => f.map((c, idx) =>
       idx !== i ? c : { ...c, lien: c.lien === 'OU' ? 'ET' : 'OU' }
     ))
-  }
-
-  // Suggestion badge quand on change la valeur d'un statut
-  function handleStatutChange(i: number, newVal: string) {
-    updateCondition(i, { val: newVal })
-    const badgeChamp = BADGE_HINT[newVal]
-    if (!badgeChamp) return
-    const alreadyHas = filtres.some(f => f.champ === badgeChamp)
-    if (!alreadyHas) {
-      // On suggère d'ajouter le badge en l'insérant juste après la condition statut
-      const inserted: Condition = {
-        lien:  'ET',
-        champ: badgeChamp,
-        op:    'eq',
-        val:   'TOUS',
-      }
-      setFiltres(prev => {
-        const next = [...prev]
-        next.splice(i + 1, 0, inserted)
-        return next
-      })
-    }
   }
 
   async function handleSubmit() {
@@ -110,8 +130,12 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
     fd.append('nom',         nom.trim())
     fd.append('description', description.trim())
     fd.append('couleur',     couleur)
-    // "TOUS" = pas de filtre sur ce champ → on ne l'envoie pas
-    const filtresEffectifs = filtres.filter(f => !(SCORES_AVEC_TOUS.includes(f.champ) && String(f.val) === 'TOUS'))
+    // Nettoyage : badge 'any' sans vals sélectionnées = on le supprime
+    const filtresEffectifs = filtres.map(f => {
+      if (!f.badge) return f
+      if (f.badge.op === 'any' && f.badge.vals.length === 0) return { ...f, badge: undefined }
+      return f
+    })
     fd.append('filtres', JSON.stringify(filtresEffectifs))
     await onSave(fd)
     setPending(false)
@@ -122,34 +146,100 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
 
     const def = CHAMPS.find(c => c.champ === cond.champ)
 
-    // Champ statut — gestion spéciale avec suggestion badge
+    // Champ statut — valeur + badge intégré
     if (cond.champ === 'statut') {
+      const badgeChamp = BADGE_CHAMP[String(cond.val)]
+      const badgeOpts  = badgeChamp ? BADGE_OPTIONS[badgeChamp] : []
+      const badge      = cond.badge
+
       return (
-        <select
-          value={String(cond.val)}
-          onChange={e => handleStatutChange(i, e.target.value)}
-          className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
-        >
-          {def?.options?.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-        </select>
+        <div className="flex flex-col gap-1.5 flex-1">
+          {/* Valeur statut */}
+          <select
+            value={String(cond.val)}
+            onChange={e => handleStatutValChange(i, e.target.value)}
+            className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
+          >
+            {def?.options?.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+          </select>
+
+          {/* Badge intégré */}
+          {badgeOpts.length > 0 && (
+            <div className="ml-3 pl-3 border-l border-gray-700 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold">Badge</span>
+
+                {/* Toggle activer/désactiver le badge */}
+                <button
+                  type="button"
+                  onClick={() => badge ? updateBadge(i, null) : updateBadge(i, { op: 'eq', vals: [badgeOpts[0].val] })}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                    badge
+                      ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400'
+                      : 'bg-gray-800 border-gray-700 text-gray-600 hover:text-gray-400'
+                  }`}
+                >
+                  {badge ? 'Actif' : 'Tous les badges'}
+                </button>
+
+                {/* Badge activé : op + valeur(s) */}
+                {badge && (
+                  <>
+                    {/* Op */}
+                    <select
+                      value={badge.op}
+                      onChange={e => {
+                        const newOp = e.target.value as BadgeCondition['op']
+                        const vals  = newOp === 'any' ? [] : [badgeOpts[0].val]
+                        updateBadge(i, { op: newOp, vals })
+                      }}
+                      className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-white outline-none cursor-pointer"
+                    >
+                      {BADGE_OPS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                    </select>
+
+                    {/* Valeur unique (est / n'est pas) */}
+                    {badge.op !== 'any' && (
+                      <select
+                        value={badge.vals[0] ?? badgeOpts[0].val}
+                        onChange={e => updateBadge(i, { vals: [e.target.value] })}
+                        className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-white outline-none cursor-pointer"
+                      >
+                        {badgeOpts.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                      </select>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Checkboxes pour "est parmi" */}
+              {badge?.op === 'any' && (
+                <div className="flex items-center gap-3 flex-wrap pt-0.5">
+                  {badgeOpts.map(o => (
+                    <label key={o.val} className="flex items-center gap-1.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={badge.vals.includes(o.val)}
+                        onChange={e => {
+                          const next = e.target.checked
+                            ? [...badge.vals, o.val]
+                            : badge.vals.filter(v => v !== o.val)
+                          updateBadge(i, { vals: next })
+                        }}
+                        className="accent-indigo-500 cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-300 group-hover:text-white transition-colors">{o.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )
     }
 
-    // Scores avec option TOUS
-    if (SCORES_AVEC_TOUS.includes(cond.champ)) {
-      return (
-        <select
-          value={String(cond.val)}
-          onChange={e => updateCondition(i, { val: e.target.value })}
-          className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
-        >
-          <option value="TOUS">TOUS les badges</option>
-          {def?.options?.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-        </select>
-      )
-    }
-
-    // Champs avec options statiques
+    // Champs avec options statiques (enum/boolean)
     if (def?.options) {
       return (
         <select
@@ -253,7 +343,6 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
 
             {filtres.map((cond, i) => {
               const ops = opsForChamp(cond.champ)
-              const showOp = cond.op !== 'existe'
 
               return (
                 <div key={i} className="space-y-1.5">
@@ -271,20 +360,13 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
                     </div>
                   )}
 
-                  {/* Badge hint */}
-                  {SCORES_AVEC_TOUS.includes(cond.champ) && String(cond.val) === 'TOUS' && (
-                    <p className="text-[10px] text-gray-600 italic pl-2">
-                      "TOUS" = pas de filtre sur ce badge — tu peux choisir un badge spécifique
-                    </p>
-                  )}
-
                   {/* Ligne condition */}
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-start gap-2 flex-wrap">
                     {/* Champ */}
                     <select
                       value={cond.champ}
                       onChange={e => updateCondition(i, { champ: e.target.value })}
-                      className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer flex-1 min-w-[140px]"
+                      className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer min-w-[140px]"
                     >
                       {CHAMPS.map(c => (
                         <option key={c.champ} value={c.champ}>{c.label}</option>
@@ -292,15 +374,17 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
                     </select>
 
                     {/* Opérateur */}
-                    <select
-                      value={cond.op}
-                      onChange={e => updateCondition(i, { op: e.target.value as Condition['op'] })}
-                      className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
-                    >
-                      {ops.map(o => (
-                        <option key={o.val} value={o.val}>{o.label}</option>
-                      ))}
-                    </select>
+                    {cond.champ !== 'statut' && (
+                      <select
+                        value={cond.op}
+                        onChange={e => updateCondition(i, { op: e.target.value as Condition['op'] })}
+                        className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
+                      >
+                        {ops.map(o => (
+                          <option key={o.val} value={o.val}>{o.label}</option>
+                        ))}
+                      </select>
+                    )}
 
                     {/* Valeur */}
                     {renderValeurInput(cond, i)}
@@ -310,7 +394,7 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
                       <button
                         type="button"
                         onClick={() => removeCondition(i)}
-                        className="text-gray-600 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0 ml-auto"
+                        className="text-gray-600 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0 mt-1.5"
                       >
                         ✕
                       </button>
