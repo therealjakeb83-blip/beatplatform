@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
+import IdentiteSaveButton from './_components/IdentiteSaveButton'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -574,9 +575,7 @@ export default async function FicheClientPage({
                 <EditRow label="Téléphone"         name="telephone"   value={clientDisplay.telephone}    placeholder="+33 6 00 00 00 00" />
                 <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
                 <Row label="Client depuis"     value={fmtDate(clientDepuis)} />
-                <button type="submit" className="mt-3 text-xs px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white transition-colors">
-                  Sauvegarder
-                </button>
+                <IdentiteSaveButton />
               </form>
 
               {/* Accordion réseaux sociaux */}
