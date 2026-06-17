@@ -111,10 +111,10 @@ export const CHAMPS: ChampDef[] = [
   {
     champ: 'statut', label: 'Statut', type: 'enum',
     options: [
-      { val: 'a_achete', label: 'A acheté (clients + abonnés)' },
+      { val: 'a_achete', label: 'Client' },
       { val: 'abonne',   label: 'Abonné actif' },
       { val: 'ancien',   label: 'Ancien abonné' },
-      { val: 'client',   label: 'Client (sans abonnement)' },
+      { val: 'client',   label: 'Achat direct (jamais abonné)' },
       { val: 'lead',     label: 'Lead' },
     ],
   },
