@@ -50,6 +50,21 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+function EditRow({ label, name, value, placeholder }: { label: string; name: string; value: string | null; placeholder?: string }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-gray-800 gap-4">
+      <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
+      <input
+        name={name}
+        type="text"
+        defaultValue={value ?? ''}
+        placeholder={placeholder ?? '–'}
+        className="text-xs text-right bg-transparent border-b border-transparent hover:border-gray-600 focus:border-indigo-500 text-gray-200 placeholder-gray-600 outline-none transition-colors py-0.5 px-1 max-w-[220px] w-full"
+      />
+    </div>
+  )
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Commande = {
@@ -105,7 +120,7 @@ export default async function FicheClientPage({
   // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
     .from('clients')
-    .select('id, email, nom, prenom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes, tags, emails_secondaires')
+    .select('id, email, nom, prenom, surnom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes, tags, emails_secondaires')
     .eq('id', clientId)
     .single()
 
@@ -252,6 +267,24 @@ export default async function FicheClientPage({
 
   // ── Server actions ─────────────────────────────────────────────────────────
 
+  async function sauvegarderIdentite(formData: FormData) {
+    'use server'
+    const a           = createAdminClient()
+    const surnom      = (formData.get('surnom')      as string ?? '').trim() || null
+    const nom_artiste = (formData.get('nom_artiste') as string ?? '').trim() || null
+    const telephone   = (formData.get('telephone')   as string ?? '').trim() || null
+    await a.from('clients').update({ surnom, nom_artiste, telephone }).eq('id', clientId)
+    // Supprimer les overrides fusion pour ces champs — l'édition directe prend le dessus
+    const { data: fusions } = await a.from('fusions_crm').select('id, champs_conserves').eq('client_id_conserve', clientId)
+    for (const f of fusions ?? []) {
+      const champs = { ...(f.champs_conserves as Record<string, string> ?? {}) }
+      delete champs.nom_artiste
+      delete champs.telephone
+      await a.from('fusions_crm').update({ champs_conserves: champs }).eq('id', f.id)
+    }
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
   async function sauvegarderNotes(formData: FormData) {
     'use server'
     const a = createAdminClient()
@@ -336,7 +369,8 @@ export default async function FicheClientPage({
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
 
-  const nomComplet  = `${client.prenom ?? ''} ${client.nom ?? ''}`.trim()
+  const prenomDisplay = (client as Record<string, unknown>).surnom as string | null ?? client.prenom
+  const nomComplet  = `${prenomDisplay ?? ''} ${client.nom ?? ''}`.trim()
   const initiales   = [client.prenom?.[0], client.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'
   const statutLabel = statut_abo === 'abonne' ? 'Abonné' : nbAchats > 0 ? 'Client' : 'Lead'
   const statutCls   = statut_abo === 'abonne'
@@ -519,13 +553,19 @@ export default async function FicheClientPage({
             {/* Infos */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h2 className="font-bold text-sm mb-3">Identité</h2>
-              <Row label="Prénom de contact" value={client.prenom ?? '–'} />
-              <Row label="Nom d'artiste"     value={clientDisplay.nom_artiste ?? '–'} />
-              <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />
-              <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(clientDisplay.pays)} />
-              <Row label="Téléphone"         value={clientDisplay.telephone ?? '–'} />
-              <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
-              <Row label="Client depuis"     value={fmtDate(clientDepuis)} />
+              <form action={sauvegarderIdentite}>
+                <Row label="Prénom"            value={client.prenom ?? '–'} />
+                <EditRow label="Prénom de contact" name="surnom"      value={(client as Record<string, unknown>).surnom as string | null}   placeholder="Surnom ou prénom personnalisé…" />
+                <EditRow label="Nom d'artiste"     name="nom_artiste" value={clientDisplay.nom_artiste}  placeholder="Nom d'artiste…" />
+                <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />
+                <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(clientDisplay.pays)} />
+                <EditRow label="Téléphone"         name="telephone"   value={clientDisplay.telephone}    placeholder="+33 6 00 00 00 00" />
+                <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
+                <Row label="Client depuis"     value={fmtDate(clientDepuis)} />
+                <button type="submit" className="mt-3 text-xs px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white transition-colors">
+                  Sauvegarder
+                </button>
+              </form>
 
               {/* Accordion réseaux sociaux */}
               <details className="group mt-1">

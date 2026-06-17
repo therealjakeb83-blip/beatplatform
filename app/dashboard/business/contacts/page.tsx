@@ -184,7 +184,7 @@ export default async function ContactsPage({
   const [clientsRes, beatsRes, licencesRes, favorisClientsRes, freeDLsClientsRes] = await Promise.all([
     admin
       .from('clients')
-      .select('id, prenom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
+      .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
       .in('id', clientIds),
     beatIds.length > 0
       ? supabase.from('beats').select('id, styles, type_beat, ambiances').in('id', beatIds)
@@ -310,7 +310,7 @@ export default async function ContactsPage({
     const override = champsOverrideMap.get(c.id) ?? {}
     return {
       id:                 c.id,
-      prenom:             c.prenom,
+      prenom:             (c as Record<string, unknown>).surnom as string | null ?? c.prenom,
       nom:                c.nom,
       nom_artiste:        (override.nom_artiste ?? c.nom_artiste) as string | null,
       email:              c.email,
