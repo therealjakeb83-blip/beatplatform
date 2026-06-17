@@ -130,10 +130,11 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
     fd.append('nom',         nom.trim())
     fd.append('description', description.trim())
     fd.append('couleur',     couleur)
-    // Nettoyage : badge 'any' sans vals sélectionnées = on le supprime
+    // Nettoyage : "Tous les badges" ou 'any' sans sélection = pas de filtre badge
     const filtresEffectifs = filtres.map(f => {
       if (!f.badge) return f
       if (f.badge.op === 'any' && f.badge.vals.length === 0) return { ...f, badge: undefined }
+      if ((f.badge.op === 'eq' || f.badge.op === 'neq') && f.badge.vals[0] === '__tous__') return { ...f, badge: undefined }
       return f
     })
     fd.append('filtres', JSON.stringify(filtresEffectifs))
@@ -150,7 +151,10 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
     if (cond.champ === 'statut') {
       const badgeChamp = BADGE_CHAMP[String(cond.val)]
       const badgeOpts  = badgeChamp ? BADGE_OPTIONS[badgeChamp] : []
-      const badge      = cond.badge
+      // Badge affiché en lecture : si pas de badge sauvegardé, on affiche "Tous" par défaut
+      const badge = cond.badge ?? (badgeOpts.length > 0
+        ? { champ: badgeChamp, op: 'eq' as const, vals: ['__tous__'] }
+        : undefined)
 
       return (
         <div className="flex flex-col gap-1.5 flex-1">
@@ -163,58 +167,41 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
             {def?.options?.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
           </select>
 
-          {/* Badge intégré */}
-          {badgeOpts.length > 0 && (
+          {/* Badge intégré — toujours visible, ressemble à une ligne de condition */}
+          {badge && badgeOpts.length > 0 && (
             <div className="ml-3 pl-3 border-l border-gray-700 flex flex-col gap-1.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold">Badge</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold w-10 flex-shrink-0">Badge</span>
 
-                {/* Toggle activer/désactiver le badge */}
-                <button
-                  type="button"
-                  onClick={() => badge ? updateBadge(i, null) : updateBadge(i, { op: 'eq', vals: [badgeOpts[0].val] })}
-                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                    badge
-                      ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400'
-                      : 'bg-gray-800 border-gray-700 text-gray-600 hover:text-gray-400'
-                  }`}
+                {/* Op */}
+                <select
+                  value={badge.op}
+                  onChange={e => {
+                    const newOp = e.target.value as BadgeCondition['op']
+                    const vals  = newOp === 'any' ? [] : ['__tous__']
+                    updateBadge(i, { op: newOp, vals })
+                  }}
+                  className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
                 >
-                  {badge ? 'Actif' : 'Tous les badges'}
-                </button>
+                  {BADGE_OPS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                </select>
 
-                {/* Badge activé : op + valeur(s) */}
-                {badge && (
-                  <>
-                    {/* Op */}
-                    <select
-                      value={badge.op}
-                      onChange={e => {
-                        const newOp = e.target.value as BadgeCondition['op']
-                        const vals  = newOp === 'any' ? [] : [badgeOpts[0].val]
-                        updateBadge(i, { op: newOp, vals })
-                      }}
-                      className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-white outline-none cursor-pointer"
-                    >
-                      {BADGE_OPS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                    </select>
-
-                    {/* Valeur unique (est / n'est pas) */}
-                    {badge.op !== 'any' && (
-                      <select
-                        value={badge.vals[0] ?? badgeOpts[0].val}
-                        onChange={e => updateBadge(i, { vals: [e.target.value] })}
-                        className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-1.5 text-xs text-white outline-none cursor-pointer"
-                      >
-                        {badgeOpts.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                      </select>
-                    )}
-                  </>
+                {/* Valeur unique (est / n'est pas) */}
+                {badge.op !== 'any' && (
+                  <select
+                    value={badge.vals[0] ?? '__tous__'}
+                    onChange={e => updateBadge(i, { vals: [e.target.value] })}
+                    className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none cursor-pointer"
+                  >
+                    <option value="__tous__">Tous les badges</option>
+                    {badgeOpts.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                  </select>
                 )}
               </div>
 
               {/* Checkboxes pour "est parmi" */}
-              {badge?.op === 'any' && (
-                <div className="flex items-center gap-3 flex-wrap pt-0.5">
+              {badge.op === 'any' && (
+                <div className="flex items-center gap-3 flex-wrap pl-14">
                   {badgeOpts.map(o => (
                     <label key={o.val} className="flex items-center gap-1.5 cursor-pointer group">
                       <input
