@@ -36,15 +36,18 @@ export default async function ContactsPage({
   // ── 0. Fusions — nécessaire pour filtrer les archivés dans leads ──────────
   const { data: fusionsEarly } = await supabase
     .from('fusions_crm')
-    .select('client_id_conserve, client_id_archive')
+    .select('client_id_conserve, client_id_archive, champs_conserves')
     .eq('beatmaker_id', beatmakerId)
 
   const archiveIds = new Set((fusionsEarly ?? []).map(f => f.client_id_archive))
   const conserveToArchives = new Map<string, string[]>()
+  const champsOverrideMap = new Map<string, Record<string, string>>()
   for (const f of fusionsEarly ?? []) {
     const arr = conserveToArchives.get(f.client_id_conserve) ?? []
     arr.push(f.client_id_archive)
     conserveToArchives.set(f.client_id_conserve, arr)
+    const existing = champsOverrideMap.get(f.client_id_conserve) ?? {}
+    champsOverrideMap.set(f.client_id_conserve, { ...existing, ...((f.champs_conserves as Record<string, string>) ?? {}) })
   }
 
   // ── 1. Leads — fetch indépendant AVANT le return anticipé ─────────────────
@@ -304,18 +307,19 @@ export default async function ContactsPage({
       if (lic?.modele) licenceArr.push(lic.modele)
     }
 
+    const override = champsOverrideMap.get(c.id) ?? {}
     return {
       id:                 c.id,
       prenom:             c.prenom,
       nom:                c.nom,
-      nom_artiste:        c.nom_artiste,
+      nom_artiste:        (override.nom_artiste ?? c.nom_artiste) as string | null,
       email:              c.email,
-      pays:               c.pays,
-      telephone:          c.telephone,
-      instagram:          c.instagram,
-      spotify:            c.spotify,
-      youtube:            c.youtube,
-      tiktok:             c.tiktok,
+      pays:               (override.pays        ?? c.pays)        as string | null,
+      telephone:          (override.telephone   ?? c.telephone)   as string | null,
+      instagram:          (override.instagram   ?? c.instagram)   as string | null,
+      spotify:            (override.spotify     ?? c.spotify)     as string | null,
+      youtube:            (override.youtube     ?? c.youtube)     as string | null,
+      tiktok:             (override.tiktok      ?? c.tiktok)      as string | null,
       newsletter_consent: (c.newsletter_consent ?? false) || (lead?.newsletter_inscrit ?? false),
       statut,
       statut_abo_detail:  statutAboDetail,
