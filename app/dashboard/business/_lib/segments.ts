@@ -16,7 +16,15 @@ export type SegmentDB = {
   created_at: string
 }
 
-// Données minimales qu'un contact doit avoir pour être filtrable
+export type CatalogOptions = {
+  styles:      string[]
+  typeBeat:    string[]
+  ambiances:   string[]
+  instruments: string[]
+  licences:    string[]
+}
+
+// Données nécessaires pour évaluer les filtres
 export type ContactFiltre = {
   statut: 'abonne' | 'ancien' | 'client' | 'lead'
   ltv: number
@@ -35,9 +43,47 @@ export type ContactFiltre = {
   pref_style: string | null
   pref_type_beat: string | null
   pref_ambiance: string | null
+  pref_instruments: string | null
   pref_licence: string | null
   tags: string[]
   source: string | null
+  score_rf: 'Régulier' | 'Fidèle' | 'Occasionnel' | 'Dormant'
+  score_chaleur: 'Chaud' | 'Tiède' | 'Froid'
+  nb_favoris: number
+  nb_free_downloads: number
+}
+
+// ── Scores ─────────────────────────────────────────────────────────────────────
+
+export function computeScoreRF(
+  nbAchats: number,
+  dernierAchatIso: string | null,
+): 'Régulier' | 'Fidèle' | 'Occasionnel' | 'Dormant' {
+  const jours = dernierAchatIso
+    ? Math.floor((Date.now() - new Date(dernierAchatIso).getTime()) / 86_400_000)
+    : Infinity
+  const frequent = nbAchats >= 3
+  const recent   = jours <= 180
+  if (frequent && recent)  return 'Régulier'
+  if (frequent && !recent) return 'Fidèle'
+  if (!frequent && recent) return 'Occasionnel'
+  return 'Dormant'
+}
+
+export function computeScoreChaleur(
+  source: string | null,
+  nbFavoris: number,
+  nbFreeDL: number,
+  newsletterConsent: boolean,
+): 'Chaud' | 'Tiède' | 'Froid' {
+  let score = 0
+  if (source === 'free_download') score += 40
+  else if (source === 'newsletter') score += 20
+  else if (source === 'visite')     score += 10
+  score += nbFreeDL  * 15
+  score += nbFavoris * 10
+  if (newsletterConsent) score += 10
+  return score > 70 ? 'Chaud' : score >= 35 ? 'Tiède' : 'Froid'
 }
 
 // ── Définition des champs disponibles dans le filter builder ───────────────────
@@ -49,6 +95,7 @@ export type ChampDef = {
   label: string
   type: TypeValeur
   options?: { val: string; label: string }[]
+  catalogKey?: keyof CatalogOptions   // options dynamiques depuis le catalogue
   unite?: string
 }
 
@@ -63,13 +110,33 @@ export const CHAMPS: ChampDef[] = [
       { val: 'lead',   label: 'Lead' },
     ],
   },
+  // Scores
+  {
+    champ: 'score_rf', label: 'Score client (RF)', type: 'enum',
+    options: [
+      { val: 'Régulier',    label: 'Régulier — fréquent + récent' },
+      { val: 'Fidèle',      label: 'Fidèle — fréquent + dormant' },
+      { val: 'Occasionnel', label: 'Occasionnel — peu fréquent + récent' },
+      { val: 'Dormant',     label: 'Dormant — peu fréquent + inactif' },
+    ],
+  },
+  {
+    champ: 'score_chaleur', label: 'Score chaleur (lead)', type: 'enum',
+    options: [
+      { val: 'Chaud', label: 'Chaud' },
+      { val: 'Tiède', label: 'Tiède' },
+      { val: 'Froid', label: 'Froid' },
+    ],
+  },
   // Achats
-  { champ: 'ltv',             label: 'LTV',             type: 'number', unite: '€' },
-  { champ: 'nb_achats',       label: 'Nb achats',       type: 'number' },
-  { champ: 'panier_moyen',    label: 'Panier moyen',    type: 'number', unite: '€' },
-  { champ: 'mensualites_payees', label: 'Mois réglés',  type: 'number' },
-  { champ: 'dernier_achat_jours', label: 'Dernier achat', type: 'number', unite: 'jours' },
-  { champ: 'client_depuis_jours', label: 'Client depuis', type: 'number', unite: 'jours' },
+  { champ: 'ltv',                  label: 'LTV',             type: 'number', unite: '€' },
+  { champ: 'nb_achats',            label: 'Nb achats',       type: 'number' },
+  { champ: 'panier_moyen',         label: 'Panier moyen',    type: 'number', unite: '€' },
+  { champ: 'mensualites_payees',   label: 'Mois réglés',     type: 'number' },
+  { champ: 'dernier_achat_jours',  label: 'Dernier achat',   type: 'number', unite: 'jours' },
+  { champ: 'client_depuis_jours',  label: 'Client depuis',   type: 'number', unite: 'jours' },
+  { champ: 'nb_favoris',           label: 'Nb favoris',      type: 'number' },
+  { champ: 'nb_free_downloads',    label: 'Nb free DL',      type: 'number' },
   // Identité
   {
     champ: 'langue', label: 'Langue', type: 'enum',
@@ -103,13 +170,14 @@ export const CHAMPS: ChampDef[] = [
     champ: 'a_tiktok', label: 'A un TikTok', type: 'boolean',
     options: [{ val: 'true', label: 'Oui' }, { val: 'false', label: 'Non' }],
   },
-  // Préférences
-  { champ: 'pref_style',     label: 'Style préféré',     type: 'text' },
-  { champ: 'pref_type_beat', label: 'Type beat préféré', type: 'text' },
-  { champ: 'pref_ambiance',  label: 'Ambiance préférée', type: 'text' },
-  { champ: 'pref_licence',   label: 'Licence préférée',  type: 'text' },
+  // Préférences musicales (options dynamiques depuis catalogue)
+  { champ: 'pref_style',       label: 'Style préféré',       type: 'text', catalogKey: 'styles'      },
+  { champ: 'pref_type_beat',   label: 'Type beat préféré',   type: 'text', catalogKey: 'typeBeat'    },
+  { champ: 'pref_ambiance',    label: 'Ambiance préférée',   type: 'text', catalogKey: 'ambiances'   },
+  { champ: 'pref_instruments', label: 'Instrument préféré',  type: 'text', catalogKey: 'instruments' },
+  { champ: 'pref_licence',     label: 'Licence préférée',    type: 'text', catalogKey: 'licences'    },
   // Tags & source
-  { champ: 'tags',   label: 'Tag',           type: 'text' },
+  { champ: 'tags', label: 'Tag', type: 'text' },
   {
     champ: 'source', label: 'Source d\'entrée', type: 'enum',
     options: [
@@ -131,10 +199,10 @@ export const OPS_PAR_TYPE: Record<TypeValeur, { val: Condition['op']; label: str
     { val: 'neq', label: 'est différent de' },
   ],
   text: [
-    { val: 'eq',      label: 'est exactement' },
+    { val: 'eq',       label: 'est exactement' },
     { val: 'contient', label: 'contient' },
-    { val: 'neq',     label: 'n\'est pas' },
-    { val: 'existe',  label: 'existe' },
+    { val: 'neq',      label: 'n\'est pas' },
+    { val: 'existe',   label: 'existe' },
   ],
 }
 
@@ -148,12 +216,16 @@ function getValeur(contact: ContactFiltre, champ: string): unknown {
 
   switch (champ) {
     case 'statut':               return contact.statut
+    case 'score_rf':             return contact.score_rf
+    case 'score_chaleur':        return contact.score_chaleur
     case 'ltv':                  return contact.ltv
     case 'nb_achats':            return contact.nb_achats
     case 'panier_moyen':         return contact.panier_moyen ?? 0
     case 'mensualites_payees':   return contact.mensualites_payees
     case 'dernier_achat_jours':  return joursDepuis(contact.dernier_achat_iso)
     case 'client_depuis_jours':  return joursDepuis(contact.premierContactISO)
+    case 'nb_favoris':           return contact.nb_favoris
+    case 'nb_free_downloads':    return contact.nb_free_downloads
     case 'newsletter':           return contact.newsletter_consent
     case 'langue':
       return contact.langue ?? (PAYS_FR.has((contact.pays ?? '').toUpperCase()) ? 'FR' : 'EN')
@@ -165,6 +237,7 @@ function getValeur(contact: ContactFiltre, champ: string): unknown {
     case 'pref_style':           return contact.pref_style ?? ''
     case 'pref_type_beat':       return contact.pref_type_beat ?? ''
     case 'pref_ambiance':        return contact.pref_ambiance ?? ''
+    case 'pref_instruments':     return contact.pref_instruments ?? ''
     case 'pref_licence':         return contact.pref_licence ?? ''
     case 'tags':                 return contact.tags
     case 'source':               return contact.source ?? ''
@@ -185,7 +258,6 @@ function evalCondition(contact: ContactFiltre, cond: Condition): boolean {
     return false
   }
 
-  // boolean fields — val peut être string 'true'/'false' (depuis le form)
   if (typeof val === 'boolean') {
     const cmpBool = String(cond.val) === 'true'
     if (cond.op === 'eq')  return val === cmpBool
@@ -196,7 +268,7 @@ function evalCondition(contact: ContactFiltre, cond: Condition): boolean {
   if (cond.op === 'gte') return Number(val) >= Number(cond.val)
   if (cond.op === 'lte') return Number(val) <= Number(cond.val)
 
-  const cmpStr = String(val).toLowerCase()
+  const cmpStr  = String(val).toLowerCase()
   const condStr = String(cond.val).toLowerCase()
   if (cond.op === 'contient') return cmpStr.includes(condStr)
   if (cond.op === 'eq')       return cmpStr === condStr

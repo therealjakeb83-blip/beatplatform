@@ -2,11 +2,15 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { evaluerFiltres, couleurCls, type Condition } from '../../_lib/segments'
+import {
+  evaluerFiltres, couleurCls,
+  computeScoreRF, computeScoreChaleur,
+  type Condition, type ContactFiltre,
+} from '../../_lib/segments'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
-function topPreference(vals: string[]): string | null {
+function topPref(vals: string[]): string | null {
   if (!vals.length) return null
   const counts: Record<string, number> = {}
   for (const v of vals) counts[v] = (counts[v] ?? 0) + 1
@@ -20,7 +24,7 @@ type SegmentContact = {
   email: string
   pays: string | null
   newsletter_consent: boolean
-  statut: 'abonne' | 'ancien' | 'client' | 'lead'
+  statut: ContactFiltre['statut']
   ltv: number
   dernier_achat_iso: string | null
   pref_style: string | null
@@ -40,7 +44,6 @@ export default async function SegmentDetailPage({
   if (!user) redirect('/connexion')
   const beatmakerId = user.id
 
-  // Charger le segment
   const { data: segment } = await supabase
     .from('segments_crm')
     .select('id, nom, description, couleur, filtres')
@@ -74,7 +77,7 @@ export default async function SegmentDetailPage({
 
   const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
 
-  // Commandes + abos + clients
+  // Commandes + abos en parallèle
   const [commandesRes, aboRes] = await Promise.all([
     supabase
       .from('commandes')
@@ -101,23 +104,32 @@ export default async function SegmentDetailPage({
     return <EmptyState segment={segment} />
   }
 
-  // Beats pour préférences
+  // Beats (pour préférences)
   const licenceBeatIds = [...new Set(
     commandes.filter(c => c.type_commande === 'LICENCE' && c.beat_id).map(c => c.beat_id as string)
   )]
+  const licenceIds = [...new Set(
+    commandes.filter(c => c.licence_id).map(c => c.licence_id as string)
+  )]
 
-  const [clientsRes, beatsRes] = await Promise.all([
+  const [clientsRes, beatsRes, licencesRes, favorisRes, freeDLRes] = await Promise.all([
     admin.from('clients')
       .select('id, prenom, surnom, nom, email, pays, langue, newsletter_consent, instagram, spotify, youtube, tiktok, tags')
       .in('id', clientIds),
     licenceBeatIds.length
-      ? supabase.from('beats').select('id, styles, type_beat').in('id', licenceBeatIds)
-      : Promise.resolve({ data: [] as { id: string; styles: string[] | null; type_beat: string[] | null }[] }),
+      ? supabase.from('beats').select('id, styles, type_beat, ambiances, instruments').in('id', licenceBeatIds)
+      : Promise.resolve({ data: [] as { id: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null; instruments: string[] | null }[] }),
+    licenceIds.length
+      ? supabase.from('licences').select('id, modele').in('id', licenceIds)
+      : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
+    admin.from('favoris').select('client_id').in('client_id', clientIds),
+    admin.from('free_downloads').select('client_id').eq('beatmaker_id', beatmakerId).in('client_id', clientIds),
   ])
 
-  const beatMap = new Map((beatsRes.data ?? []).map(b => [b.id, b]))
+  const beatMap    = new Map((beatsRes.data    ?? []).map(b => [b.id, b]))
+  const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
 
-  // Maps commandes + abos
+  // Maps
   const commandesParClient = new Map<string, typeof commandes>()
   for (const cmd of commandes) {
     const id  = cmd.client_id as string
@@ -135,6 +147,11 @@ export default async function SegmentDetailPage({
     }
   }
 
+  const favorisCount = new Map<string, number>()
+  const freeDLCount  = new Map<string, number>()
+  for (const f of favorisRes.data ?? []) favorisCount.set(f.client_id, (favorisCount.get(f.client_id) ?? 0) + 1)
+  for (const d of freeDLRes.data  ?? []) freeDLCount.set(d.client_id,  (freeDLCount.get(d.client_id)  ?? 0) + 1)
+
   // Construire contacts enrichis + filtrer
   const contacts: SegmentContact[] = (clientsRes.data ?? [])
     .filter(c => !archiveIds.has(c.id))
@@ -145,12 +162,12 @@ export default async function SegmentDetailPage({
       const abo          = aboParClient.get(c.id)
       const lead         = leadMap.get(c.id)
 
-      const licenceCmds = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
-      const nbAchats    = licenceCmds.length
-      const payees      = cmds.filter(cmd => cmd.statut === 'payee')
-      const ltv         = payees.reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
-      const licenceLtv  = licenceCmds.filter(c => c.statut === 'payee').reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
-      const panierMoyen = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
+      const licenceCmds  = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
+      const nbAchats     = licenceCmds.length
+      const payees       = cmds.filter(cmd => cmd.statut === 'payee')
+      const ltv          = payees.reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
+      const licenceLtv   = licenceCmds.filter(c => c.statut === 'payee').reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
+      const panierMoyen  = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
       const dernierAchat = licenceCmds.length
         ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
         : null
@@ -158,7 +175,7 @@ export default async function SegmentDetailPage({
         ? new Date(Math.min(...cmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
         : new Date().toISOString()
 
-      let statut: SegmentContact['statut']
+      let statut: ContactFiltre['statut']
       if (abo && (abo.statut === 'actif' || abo.statut === 'impaye')) statut = 'abonne'
       else if (abo && abo.statut === 'annule') statut = 'ancien'
       else if (nbAchats > 0) statut = 'client'
@@ -167,15 +184,26 @@ export default async function SegmentDetailPage({
       const langueEffective: 'FR' | 'EN' = ((c as Record<string, unknown>).langue as 'FR' | 'EN' | null)
         ?? (PAYS_FR.has((c.pays ?? '').toUpperCase()) ? 'FR' : 'EN')
 
-      const stylesArr: string[] = []
-      const typeBeatArr: string[] = []
+      const stylesArr: string[]      = []
+      const typeBeatArr: string[]    = []
+      const ambiancesArr: string[]   = []
+      const instrumentsArr: string[] = []
+      const licenceArr: string[]     = []
       for (const cmd of licenceCmds) {
         const beat = cmd.beat_id ? beatMap.get(cmd.beat_id) : null
-        if (beat?.styles)    stylesArr.push(...beat.styles)
-        if (beat?.type_beat) typeBeatArr.push(...beat.type_beat)
+        if (beat?.styles)      stylesArr.push(...beat.styles)
+        if (beat?.type_beat)   typeBeatArr.push(...beat.type_beat)
+        if (beat?.ambiances)   ambiancesArr.push(...beat.ambiances)
+        if (beat?.instruments) instrumentsArr.push(...beat.instruments)
+        const lic = cmd.licence_id ? licenceMap.get(cmd.licence_id) : null
+        if (lic?.modele) licenceArr.push(lic.modele)
       }
 
-      const contactFiltre = {
+      const nbFavoris        = favorisCount.get(c.id) ?? 0
+      const nbFreeDL         = freeDLCount.get(c.id)  ?? 0
+      const newsletterConsent = (c.newsletter_consent ?? false) || (lead?.newsletter_inscrit ?? false)
+
+      const contactFiltre: ContactFiltre = {
         statut,
         ltv,
         nb_achats:          nbAchats,
@@ -183,19 +211,24 @@ export default async function SegmentDetailPage({
         mensualites_payees: abo?.mensualites_payees ?? 0,
         dernier_achat_iso:  dernierAchat,
         premierContactISO:  premierContact,
-        newsletter_consent: (c.newsletter_consent ?? false) || (lead?.newsletter_inscrit ?? false),
+        newsletter_consent: newsletterConsent,
         langue:             langueEffective,
         pays:               c.pays ?? null,
         instagram:          c.instagram ?? null,
         spotify:            c.spotify   ?? null,
         youtube:            c.youtube   ?? null,
         tiktok:             c.tiktok    ?? null,
-        pref_style:         topPreference(stylesArr),
-        pref_type_beat:     topPreference(typeBeatArr),
-        pref_ambiance:      null,
-        pref_licence:       null,
+        pref_style:         topPref(stylesArr),
+        pref_type_beat:     topPref(typeBeatArr),
+        pref_ambiance:      topPref(ambiancesArr),
+        pref_instruments:   topPref(instrumentsArr),
+        pref_licence:       topPref(licenceArr),
         tags:               ((c as Record<string, unknown>).tags as string[]) ?? [],
         source:             lead?.source ?? null,
+        nb_favoris:         nbFavoris,
+        nb_free_downloads:  nbFreeDL,
+        score_rf:           computeScoreRF(nbAchats, dernierAchat),
+        score_chaleur:      computeScoreChaleur(lead?.source ?? null, nbFavoris, nbFreeDL, newsletterConsent),
       }
 
       if (!evaluerFiltres(contactFiltre, filtres)) return []
@@ -207,12 +240,12 @@ export default async function SegmentDetailPage({
         nom:                c.nom,
         email:              c.email,
         pays:               c.pays,
-        newsletter_consent: contactFiltre.newsletter_consent,
+        newsletter_consent: newsletterConsent,
         statut,
         ltv,
-        dernier_achat_iso: dernierAchat,
-        pref_style:        topPreference(stylesArr),
-        pref_type_beat:    topPreference(typeBeatArr),
+        dernier_achat_iso:  dernierAchat,
+        pref_style:         topPref(stylesArr),
+        pref_type_beat:     topPref(typeBeatArr),
       }]
     })
     .sort((a, b) => b.ltv - a.ltv)
@@ -287,14 +320,11 @@ export default async function SegmentDetailPage({
                   key={c.id}
                   className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors ${i % 2 !== 0 ? 'bg-gray-950/40' : ''}`}
                 >
-                  {/* NWT */}
                   <td className="px-4 py-3 text-center">
                     {c.newsletter_consent
                       ? <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
                       : <span className="text-gray-700 text-xs">–</span>}
                   </td>
-
-                  {/* Contact */}
                   <td className="px-4 py-2.5">
                     <Link href={`/dashboard/business/contacts/${c.id}`} className="flex items-center gap-3 group">
                       <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
@@ -315,35 +345,23 @@ export default async function SegmentDetailPage({
                       </div>
                     </Link>
                   </td>
-
-                  {/* Statut */}
                   <td className="px-4 py-3">
                     {c.statut === 'abonne' && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Abonné</span>}
                     {c.statut === 'ancien' && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">Ancien</span>}
                     {c.statut === 'client' && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400">Client</span>}
                     {c.statut === 'lead'   && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-400">Lead</span>}
                   </td>
-
-                  {/* Style */}
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {[c.pref_style, c.pref_type_beat].filter(Boolean).join(' · ') || <span className="text-gray-700">–</span>}
                   </td>
-
-                  {/* Dernier achat */}
                   <td className="px-4 py-3 text-right text-xs text-gray-400 whitespace-nowrap">
                     {fmtDateRel(c.dernier_achat_iso)}
                   </td>
-
-                  {/* LTV */}
                   <td className="px-4 py-3 text-right font-semibold text-white text-xs whitespace-nowrap">
                     {fmt(c.ltv)}
                   </td>
-
-                  {/* Lien fiche */}
                   <td className="px-3 py-3 text-center">
-                    <Link href={`/dashboard/business/contacts/${c.id}`} className="text-gray-600 hover:text-indigo-400 transition-colors">
-                      →
-                    </Link>
+                    <Link href={`/dashboard/business/contacts/${c.id}`} className="text-gray-600 hover:text-indigo-400 transition-colors">→</Link>
                   </td>
                 </tr>
               ))}
@@ -355,7 +373,7 @@ export default async function SegmentDetailPage({
   )
 }
 
-function EmptyState({ segment }: { segment: { nom: string; couleur: string; description: string | null } }) {
+function EmptyState({ segment }: { segment: { nom: string; description: string | null } }) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-800 flex-shrink-0">
