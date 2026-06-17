@@ -220,6 +220,12 @@ function PageHeader() {
       <h1 className="text-2xl font-bold">Doublons</h1>
       <div className="flex items-center gap-2">
         <Link
+          href="/dashboard/business/doublons/ignores"
+          className="text-xs px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white transition-colors"
+        >
+          Paires ignorées
+        </Link>
+        <Link
           href="/dashboard/business/doublons/historique"
           className="text-xs px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white transition-colors"
         >
