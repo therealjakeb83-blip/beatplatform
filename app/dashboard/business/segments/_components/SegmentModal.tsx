@@ -5,11 +5,10 @@ import { CHAMPS, OPS_PAR_TYPE, COULEURS, type Condition, type BadgeCondition, ty
 
 // Badge champ selon le statut sélectionné
 const BADGE_CHAMP: Record<string, 'score_rf' | 'score_chaleur'> = {
-  a_achete: 'score_rf',
-  abonne:   'score_rf',
-  ancien:   'score_rf',
-  client:   'score_rf',
-  lead:     'score_chaleur',
+  abonne: 'score_rf',
+  ancien: 'score_rf',
+  client: 'score_rf',
+  lead:   'score_chaleur',
 }
 
 const BADGE_OPTIONS: Record<string, { val: string; label: string }[]> = {
@@ -63,12 +62,12 @@ export default function SegmentModal({ catalog, segmentId, onClose, onSave, init
   const [description, setDescription] = useState(initial?.description ?? '')
   const [couleur,     setCouleur]     = useState(initial?.couleur     ?? 'indigo')
   const [filtres,     setFiltres]     = useState<Condition[]>(
-    initial?.filtres?.length ? initial.filtres : [{ champ: 'statut', op: 'eq', val: 'a_achete' }]
+    initial?.filtres?.length ? initial.filtres : [{ champ: 'statut', op: 'eq', val: 'client' }]
   )
   const [pending, setPending] = useState(false)
 
   function addCondition() {
-    setFiltres(f => [...f, { lien: 'ET', champ: 'statut', op: 'eq', val: 'a_achete' }])
+    setFiltres(f => [...f, { lien: 'ET', champ: 'statut', op: 'eq', val: 'client' }])
   }
 
   function removeCondition(i: number) {
