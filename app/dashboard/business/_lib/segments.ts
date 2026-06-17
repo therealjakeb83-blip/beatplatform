@@ -114,7 +114,7 @@ export const CHAMPS: ChampDef[] = [
       { val: 'a_achete', label: 'Client' },
       { val: 'abonne',   label: 'Abonné actif' },
       { val: 'ancien',   label: 'Ancien abonné' },
-      { val: 'client',   label: 'Achat direct (jamais abonné)' },
+      { val: 'client',   label: 'Client jamais abonné' },
       { val: 'lead',     label: 'Lead' },
     ],
   },
