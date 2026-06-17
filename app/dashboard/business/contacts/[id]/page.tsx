@@ -273,7 +273,8 @@ export default async function FicheClientPage({
     const surnom      = (formData.get('surnom')      as string ?? '').trim() || null
     const nom_artiste = (formData.get('nom_artiste') as string ?? '').trim() || null
     const telephone   = (formData.get('telephone')   as string ?? '').trim() || null
-    await a.from('clients').update({ surnom, nom_artiste, telephone }).eq('id', clientId)
+    const langue      = (formData.get('langue')      as string ?? '').trim() || null
+    await a.from('clients').update({ surnom, nom_artiste, telephone, langue }).eq('id', clientId)
     // Supprimer les overrides fusion pour ces champs — l'édition directe prend le dessus
     const { data: fusions } = await a.from('fusions_crm').select('id, champs_conserves').eq('client_id_conserve', clientId)
     for (const f of fusions ?? []) {
@@ -558,7 +559,17 @@ export default async function FicheClientPage({
                 <EditRow label="Prénom de contact" name="surnom"      value={(client as Record<string, unknown>).surnom as string | null}   placeholder="Surnom ou prénom personnalisé…" />
                 <EditRow label="Nom d'artiste"     name="nom_artiste" value={clientDisplay.nom_artiste}  placeholder="Nom d'artiste…" />
                 <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />
-                <Row label="Langue"            value={client.langue ? (client.langue === 'FR' ? 'Français' : 'Anglophone') : getLangue(clientDisplay.pays)} />
+                <div className="flex items-center justify-between py-2 border-b border-gray-800 gap-4">
+                  <span className="text-xs text-gray-500 flex-shrink-0">Langue</span>
+                  <select
+                    name="langue"
+                    defaultValue={client.langue ?? (PAYS_FR.has((clientDisplay.pays ?? '').toUpperCase()) ? 'FR' : 'EN')}
+                    className="text-xs text-right bg-transparent border-b border-transparent hover:border-gray-600 focus:border-indigo-500 text-gray-200 outline-none transition-colors py-0.5 cursor-pointer"
+                  >
+                    <option value="FR">Français</option>
+                    <option value="EN">Anglophone</option>
+                  </select>
+                </div>
                 <EditRow label="Téléphone"         name="telephone"   value={clientDisplay.telephone}    placeholder="+33 6 00 00 00 00" />
                 <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
                 <Row label="Client depuis"     value={fmtDate(clientDepuis)} />
