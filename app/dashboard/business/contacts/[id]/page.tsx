@@ -562,6 +562,7 @@ export default async function FicheClientPage({
                 <div className="flex items-center justify-between py-2 border-b border-gray-800 gap-4">
                   <span className="text-xs text-gray-500 flex-shrink-0">Langue</span>
                   <select
+                    key={client.langue ?? 'auto'}
                     name="langue"
                     defaultValue={client.langue ?? (PAYS_FR.has((clientDisplay.pays ?? '').toUpperCase()) ? 'FR' : 'EN')}
                     className="text-xs text-right bg-transparent border-b border-transparent hover:border-gray-600 focus:border-indigo-500 text-gray-200 outline-none transition-colors py-0.5 cursor-pointer"
