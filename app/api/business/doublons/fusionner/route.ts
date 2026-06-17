@@ -58,5 +58,11 @@ export async function POST(request: Request) {
   })
 
   if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+
+  // Nettoyer doublons_ignores si cette paire y était
+  await supabase.from('doublons_ignores').delete()
+    .eq('beatmaker_id', user.id)
+    .or(`and(client_id_1.eq.${client_id_conserve},client_id_2.eq.${client_id_archive}),and(client_id_1.eq.${client_id_archive},client_id_2.eq.${client_id_conserve})`)
+
   return NextResponse.json({ ok: true })
 }
