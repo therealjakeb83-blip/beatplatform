@@ -97,6 +97,13 @@ export default function FusionWizard({
     return init
   })
 
+  // Champs qui seront transférés automatiquement (seul l'archivé les a)
+  const champsAutoTransfer = CHAMPS.filter(c => {
+    const vC = conserve[c.key] as string | null
+    const vA = archive[c.key] as string | null
+    return !vC && !!vA
+  })
+
   async function confirmer() {
     setLoading(true)
     setErreur(null)
@@ -133,6 +140,11 @@ export default function FusionWizard({
           ltv:       archive.ltv,
           nb_achats: archive.nb_achats,
           pays:      archive.pays,
+          instagram: archive.instagram,
+          spotify:   archive.spotify,
+          youtube:   archive.youtube,
+          tiktok:    archive.tiktok,
+          notes:     archive.notes,
         },
         raisons,
       }),
@@ -189,6 +201,25 @@ export default function FusionWizard({
         </div>
         <p className="text-xs text-gray-700 mt-3">Les commandes avec l'adresse secondaire apparaîtront sur la fiche fusionnée.</p>
       </div>
+
+      {/* Transfert automatique */}
+      {champsAutoTransfer.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Transfert automatique</p>
+          <p className="text-xs text-gray-600 mb-4">Ces champs n&apos;existent que sur le contact archivé — ils seront copiés sur le contact conservé.</p>
+          <div className="space-y-2">
+            {champsAutoTransfer.map(c => (
+              <div key={c.key} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0 gap-4">
+                <span className="text-xs text-gray-500 flex-shrink-0">{c.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-green-400 font-medium">{archive[c.key] as string}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 border border-green-500/20 font-medium">→ conservé</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Résolution des conflits */}
       {champsCandidats.length > 0 ? (

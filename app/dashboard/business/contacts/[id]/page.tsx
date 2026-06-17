@@ -105,7 +105,7 @@ export default async function FicheClientPage({
   // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
     .from('clients')
-    .select('id, email, nom, prenom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes, tags')
+    .select('id, email, nom, prenom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes, tags, emails_secondaires')
     .eq('id', clientId)
     .single()
 
@@ -120,7 +120,10 @@ export default async function FicheClientPage({
 
   const fusions        = fusionRows ?? []
   const archiveIds     = fusions.map(f => f.client_id_archive)
-  const emailsSecondaires: string[] = fusions.flatMap(f => (f.emails_archives as string[]) ?? [])
+  // Emails secondaires = ceux des contacts fusionnés + ceux ajoutés manuellement
+  const emailsFusion:   string[] = fusions.flatMap(f => (f.emails_archives as string[]) ?? [])
+  const emailsManuels:  string[] = (client?.emails_secondaires as string[]) ?? []
+  const emailsSecondaires: string[] = [...new Set([...emailsFusion, ...emailsManuels])]
   const champsOverride = fusions.reduce((acc, f) => ({ ...acc, ...(f.champs_conserves as Record<string, string>) }), {} as Record<string, string>)
 
   // Appliquer les overrides sur les champs en conflit
@@ -290,6 +293,29 @@ export default async function FicheClientPage({
       youtube:   (formData.get('youtube')   as string ?? '').trim() || null,
       tiktok:    (formData.get('tiktok')    as string ?? '').trim() || null,
     }).eq('id', clientId)
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
+  async function ajouterEmailSecondaire(formData: FormData) {
+    'use server'
+    const a     = createAdminClient()
+    const email = (formData.get('email') as string ?? '').trim().toLowerCase()
+    if (!email) return
+    const { data: current } = await a.from('clients').select('emails_secondaires').eq('id', clientId).single()
+    const existants = (current?.emails_secondaires as string[]) ?? []
+    if (!existants.includes(email)) {
+      await a.from('clients').update({ emails_secondaires: [...existants, email] }).eq('id', clientId)
+    }
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
+  async function supprimerEmailSecondaire(formData: FormData) {
+    'use server'
+    const a     = createAdminClient()
+    const email = (formData.get('email') as string ?? '').trim().toLowerCase()
+    const { data: current } = await a.from('clients').select('emails_secondaires').eq('id', clientId).single()
+    const existants = (current?.emails_secondaires as string[]) ?? []
+    await a.from('clients').update({ emails_secondaires: existants.filter(e => e !== email) }).eq('id', clientId)
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -556,26 +582,61 @@ export default async function FicheClientPage({
             {/* Emails */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h2 className="font-bold text-sm mb-3">Emails</h2>
+
+              {/* Email principal */}
               <div className="flex items-center gap-3 py-2 border-b border-gray-800">
                 <span className="flex-1 text-xs text-gray-200 truncate">{client.email}</span>
                 <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-medium flex-shrink-0">
                   Principal
                 </span>
               </div>
+
+              {/* Emails secondaires des fusions (lecture seule) */}
+              {emailsFusion.map(e => (
+                <div key={e} className="flex items-center gap-3 py-2 border-b border-gray-800">
+                  <span className="flex-1 text-xs text-gray-400 truncate">{e}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-500 font-medium flex-shrink-0">
+                    Fusion
+                  </span>
+                </div>
+              ))}
+
+              {/* Emails secondaires ajoutés manuellement (avec suppression) */}
+              {emailsManuels.map(e => (
+                <div key={e} className="flex items-center gap-3 py-2 border-b border-gray-800">
+                  <span className="flex-1 text-xs text-gray-400 truncate">{e}</span>
+                  <form action={supprimerEmailSecondaire}>
+                    <input type="hidden" name="email" value={e} />
+                    <button
+                      type="submit"
+                      className="text-xs px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-500 hover:text-red-400 hover:border-red-500/50 transition-colors flex-shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </form>
+                </div>
+              ))}
+
+              {/* Formulaire ajout */}
               <details className="mt-3 group">
                 <summary className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer select-none list-none flex items-center gap-1 w-fit">
                   <span className="text-base leading-none">+</span> Ajouter une adresse
                 </summary>
-                <div className="mt-2 flex items-center gap-2">
+                <form action={ajouterEmailSecondaire} className="mt-2 flex items-center gap-2">
                   <input
+                    name="email"
                     type="email"
+                    required
                     placeholder="nouvelle@email.com"
                     className="flex-1 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
                   />
-                  <button className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors whitespace-nowrap">
+                  <button
+                    type="submit"
+                    className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors whitespace-nowrap"
+                  >
                     Ajouter
                   </button>
-                </div>
+                </form>
               </details>
             </div>
           </div>
