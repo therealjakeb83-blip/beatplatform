@@ -111,10 +111,11 @@ export const CHAMPS: ChampDef[] = [
   {
     champ: 'statut', label: 'Statut', type: 'enum',
     options: [
-      { val: 'abonne', label: 'Abonné' },
-      { val: 'ancien', label: 'Ancien abonné' },
-      { val: 'client', label: 'Client' },
-      { val: 'lead',   label: 'Lead' },
+      { val: 'a_achete', label: 'A acheté (clients + abonnés)' },
+      { val: 'abonne',   label: 'Abonné actif' },
+      { val: 'ancien',   label: 'Ancien abonné' },
+      { val: 'client',   label: 'Client (sans abonnement)' },
+      { val: 'lead',     label: 'Lead' },
     ],
   },
   // Scores
@@ -253,6 +254,19 @@ function getValeur(contact: ContactFiltre, champ: string): unknown {
 }
 
 function evalCondition(contact: ContactFiltre, cond: Condition): boolean {
+  // Cas spécial : 'a_achete' = tous ceux qui ont déjà payé (client + abonné + ancien)
+  if (cond.champ === 'statut' && String(cond.val) === 'a_achete') {
+    const estAchete = ['abonne', 'ancien', 'client'].includes(contact.statut)
+    let result = cond.op === 'neq' ? !estAchete : estAchete
+    if (result && cond.badge && cond.badge.vals.length > 0) {
+      const badgeVal = cond.badge.champ === 'score_rf' ? contact.score_rf : contact.score_chaleur
+      if (cond.badge.op === 'any')      result = cond.badge.vals.includes(badgeVal)
+      else if (cond.badge.op === 'eq')  result = badgeVal === cond.badge.vals[0]
+      else if (cond.badge.op === 'neq') result = badgeVal !== cond.badge.vals[0]
+    }
+    return result
+  }
+
   const val = getValeur(contact, cond.champ)
 
   let result: boolean
