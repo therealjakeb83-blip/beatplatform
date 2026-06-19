@@ -220,7 +220,7 @@ function renderCell(key: string, m: MembreRow): React.ReactNode {
   }
 }
 
-// ── Sélecteur de colonnes (avec drag & drop pour réordonner) ─────────────────
+// ── Sélecteur de colonnes (visibilité uniquement) ────────────────────────────
 
 const COL_BY_KEY = new Map(COLONNES.map(c => [c.key, c]))
 
@@ -228,17 +228,13 @@ function ColonnePicker({
   activeKeys,
   colOrder,
   onToggle,
-  onReorder,
 }: {
   activeKeys: Set<string>
   colOrder: string[]
   onToggle: (key: string) => void
-  onReorder: (order: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref     = useRef<HTMLDivElement>(null)
-  const dragIdx = useRef<number | null>(null)
-  const [draggingKey, setDraggingKey] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -248,25 +244,6 @@ function ColonnePicker({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
-
-  function onDragStart(idx: number, key: string) {
-    dragIdx.current = idx
-    setDraggingKey(key)
-  }
-  function onDragOver(e: React.DragEvent, idx: number) {
-    e.preventDefault()
-    const from = dragIdx.current
-    if (from === null || from === idx) return
-    const next = [...colOrder]
-    const [removed] = next.splice(from, 1)
-    next.splice(idx, 0, removed)
-    dragIdx.current = idx
-    onReorder(next)
-  }
-  function onDragEnd() {
-    dragIdx.current = null
-    setDraggingKey(null)
-  }
 
   return (
     <div ref={ref} className="relative">
@@ -286,59 +263,33 @@ function ColonnePicker({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-40 w-56 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-40 w-52 overflow-hidden">
           <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-            Colonnes visibles · glisser pour réordonner
+            Colonnes visibles
           </p>
-          <div className="p-1">
-            {colOrder.map((key, idx) => {
+          <div className="p-1 pb-2">
+            {colOrder.map(key => {
               const col = COL_BY_KEY.get(key)
               if (!col) return null
               return (
-                <div
+                <label
                   key={key}
-                  draggable
-                  onDragStart={() => onDragStart(idx, key)}
-                  onDragOver={(e) => onDragOver(e, idx)}
-                  onDragEnd={onDragEnd}
-                  className={`flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-gray-800 transition-colors group ${
-                    draggingKey === key ? 'opacity-40' : ''
-                  }`}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors group"
                 >
-                  {/* Grip */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 16 16"
-                    fill="currentColor"
-                    className="w-3 h-3 text-gray-700 group-hover:text-gray-500 flex-shrink-0 cursor-grab"
+                  <div
+                    className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                      activeKeys.has(key) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
+                    }`}
                   >
-                    <circle cx="5" cy="4"  r="1.2"/><circle cx="11" cy="4"  r="1.2"/>
-                    <circle cx="5" cy="8"  r="1.2"/><circle cx="11" cy="8"  r="1.2"/>
-                    <circle cx="5" cy="12" r="1.2"/><circle cx="11" cy="12" r="1.2"/>
-                  </svg>
-
-                  {/* Checkbox */}
-                  <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
-                    <div
-                      onClick={() => onToggle(key)}
-                      className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
-                        activeKeys.has(key) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
-                      }`}
-                    >
-                      {activeKeys.has(key) && (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-2.5 h-2.5">
-                          <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <span
-                      onClick={() => onToggle(key)}
-                      className="text-xs text-gray-400 group-hover:text-white transition-colors"
-                    >
-                      {col.label}
-                    </span>
-                  </label>
-                </div>
+                    {activeKeys.has(key) && (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-2.5 h-2.5">
+                        <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <input type="checkbox" checked={activeKeys.has(key)} onChange={() => onToggle(key)} className="sr-only" />
+                  <span className="text-xs text-gray-400 group-hover:text-white transition-colors">{col.label}</span>
+                </label>
               )
             })}
           </div>
@@ -486,9 +437,12 @@ export default function ListeDetailClient({
   ajouterContacts,
   retirerContact,
 }: Props) {
-  const [showModal,  setShowModal]  = useState(false)
-  const [activeKeys, setActiveKeys] = useState<Set<string>>(DEFAULT_KEYS)
-  const [colOrder,   setColOrder]   = useState<string[]>(ALL_KEYS)
+  const [showModal,     setShowModal]     = useState(false)
+  const [activeKeys,    setActiveKeys]    = useState<Set<string>>(DEFAULT_KEYS)
+  const [colOrder,      setColOrder]      = useState<string[]>(ALL_KEYS)
+  const [draggingKey,   setDraggingKey]   = useState<string | null>(null)
+  const [dragOverKey,   setDragOverKey]   = useState<string | null>(null)
+  const dragIdx = useRef<number | null>(null)
 
   // Hydrate depuis localStorage après montage
   useEffect(() => {
@@ -508,6 +462,30 @@ export default function ListeDetailClient({
   function reorderCols(order: string[]) {
     setColOrder(order)
     saveColOrder(order)
+  }
+
+  // ── Drag & drop sur les headers de colonne ──────────────────────────────────
+  function onColDragStart(key: string) {
+    dragIdx.current = colOrder.indexOf(key)
+    setDraggingKey(key)
+  }
+  function onColDragOver(e: React.DragEvent, key: string) {
+    e.preventDefault()
+    setDragOverKey(key)
+    const from = dragIdx.current
+    if (from === null) return
+    const to = colOrder.indexOf(key)
+    if (from === to) return
+    const next = [...colOrder]
+    const [removed] = next.splice(from, 1)
+    next.splice(to, 0, removed)
+    dragIdx.current = to
+    reorderCols(next)
+  }
+  function onColDragEnd() {
+    dragIdx.current = null
+    setDraggingKey(null)
+    setDragOverKey(null)
   }
 
   const colsActives = colOrder
@@ -557,7 +535,6 @@ export default function ListeDetailClient({
                 activeKeys={activeKeys}
                 colOrder={colOrder}
                 onToggle={toggleCol}
-                onReorder={reorderCols}
               />
 
               <button
@@ -608,9 +585,20 @@ export default function ListeDetailClient({
                   {colsActives.map(col => (
                     <th
                       key={col.key}
-                      className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap ${
-                        col.align === 'right' ? 'text-right' : 'text-left'
-                      }`}
+                      draggable
+                      onDragStart={() => onColDragStart(col.key)}
+                      onDragOver={(e) => onColDragOver(e, col.key)}
+                      onDragEnd={onColDragEnd}
+                      className={[
+                        'px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap select-none transition-all',
+                        col.align === 'right' ? 'text-right' : 'text-left',
+                        draggingKey === col.key
+                          ? 'opacity-30 cursor-grabbing text-gray-500'
+                          : 'cursor-grab text-gray-500 hover:text-gray-300',
+                        dragOverKey === col.key && draggingKey !== col.key
+                          ? 'border-l-2 border-indigo-500'
+                          : '',
+                      ].join(' ')}
                     >
                       {col.label}
                     </th>
