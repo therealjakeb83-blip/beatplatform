@@ -97,7 +97,6 @@ const TABS = [
   { key: 'newsletter',  label: 'Newsletter'  },
   { key: 'catalogue',   label: 'Activité'    },
   { key: 'morceaux',    label: 'Morceaux'    },
-  { key: 'listes',      label: 'Listes'      },
 ]
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -171,8 +170,6 @@ export default async function FicheClientPage({
     { data: morceauxRaw },
     { data: freeDLRaw },
     { data: archivesDateRaw },
-    { data: listesContactRaw },
-    { data: toutesListesRaw },
   ] = await Promise.all([
     supabase
       .from('commandes')
@@ -211,25 +208,11 @@ export default async function FicheClientPage({
     archiveIds.length > 0
       ? admin.from('clients').select('created_at').in('id', archiveIds)
       : Promise.resolve({ data: [] as { created_at: string }[] }),
-    supabase
-      .from('listes_crm_contacts')
-      .select('liste_id')
-      .eq('client_id', clientId),
-    supabase
-      .from('listes_crm')
-      .select('id, nom')
-      .eq('beatmaker_id', beatmakerId)
-      .order('nom'),
   ])
 
   type FreeDL = { beat_id: string; downloaded_at: string; beats: { titre: string } | null }
 
   const commandes = (commandesRaw ?? []) as unknown as Commande[]
-
-  // Listes
-  const listeIds      = new Set((listesContactRaw ?? []).map(l => l.liste_id as string))
-  const listesContact = (toutesListesRaw ?? []).filter(l => listeIds.has(l.id))
-  const toutesListes  = toutesListesRaw ?? []
   const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: { titre?: string; image_url?: string } | null }>
   const morceaux  = morceauxRaw ?? []
   const freeDLs   = (freeDLRaw   ?? []) as unknown as FreeDL[]
@@ -384,55 +367,6 @@ export default async function FicheClientPage({
       lien_spotify: lien || null,
     })
     revalidatePath(`/dashboard/business/contacts/${clientId}?onglet=morceaux`)
-  }
-
-  async function ajouterAListe(formData: FormData) {
-    'use server'
-    const s = await createClient()
-    const { data: { user } } = await s.auth.getUser()
-    if (!user) return
-    const listeId = formData.get('liste_id') as string
-    if (!listeId) return
-    await s.from('listes_crm_contacts').upsert(
-      { liste_id: listeId, client_id: clientId },
-      { onConflict: 'liste_id,client_id', ignoreDuplicates: true }
-    )
-    revalidatePath(`/dashboard/business/contacts/${clientId}`)
-    revalidatePath(`/dashboard/business/listes/${listeId}`)
-    revalidatePath('/dashboard/business/listes')
-  }
-
-  async function retirerDeListe(formData: FormData) {
-    'use server'
-    const s = await createClient()
-    const { data: { user } } = await s.auth.getUser()
-    if (!user) return
-    const listeId = formData.get('liste_id') as string
-    await s.from('listes_crm_contacts')
-      .delete()
-      .eq('liste_id', listeId)
-      .eq('client_id', clientId)
-    revalidatePath(`/dashboard/business/contacts/${clientId}`)
-    revalidatePath(`/dashboard/business/listes/${listeId}`)
-    revalidatePath('/dashboard/business/listes')
-  }
-
-  async function creerEtAjouter(formData: FormData) {
-    'use server'
-    const s = await createClient()
-    const { data: { user } } = await s.auth.getUser()
-    if (!user) return
-    const nom = (formData.get('nom') as string ?? '').trim()
-    if (!nom) return
-    const { data: nouvelleListe } = await s.from('listes_crm').insert({
-      beatmaker_id: user.id,
-      nom,
-      description: (formData.get('description') as string ?? '').trim() || null,
-    }).select('id').single()
-    if (!nouvelleListe) return
-    await s.from('listes_crm_contacts').insert({ liste_id: nouvelleListe.id, client_id: clientId })
-    revalidatePath(`/dashboard/business/contacts/${clientId}`)
-    revalidatePath('/dashboard/business/listes')
   }
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
@@ -1092,100 +1026,6 @@ export default async function FicheClientPage({
                     className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-semibold transition-colors whitespace-nowrap"
                   >
                     Ajouter
-                  </button>
-                </form>
-              </details>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* LISTES                                                            */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {onglet === 'listes' && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-
-            {/* Listes actuelles */}
-            {listesContact.length > 0 ? (
-              <div>
-                {listesContact.map(liste => (
-                  <div key={liste.id} className="flex items-center justify-between px-5 py-3.5 border-b border-gray-800 last:border-0 group">
-                    <Link
-                      href={`/dashboard/business/listes/${liste.id}`}
-                      className="text-sm font-semibold text-white hover:text-indigo-300 transition-colors"
-                    >
-                      {liste.nom}
-                    </Link>
-                    <form action={retirerDeListe}>
-                      <input type="hidden" name="liste_id" value={liste.id} />
-                      <button
-                        type="submit"
-                        className="text-xs text-gray-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                        onClick={e => { if (!confirm(`Retirer de "${liste.nom}" ?`)) e.preventDefault() }}
-                      >
-                        Retirer
-                      </button>
-                    </form>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-5 py-6 text-center">
-                <p className="text-xs text-gray-600">Ce contact n'est dans aucune liste</p>
-              </div>
-            )}
-
-            {/* Ajouter à une liste ou créer */}
-            <div className="px-5 py-4 border-t border-gray-800 flex flex-col gap-3">
-
-              {/* Choisir une liste existante */}
-              {toutesListes.filter(l => !listeIds.has(l.id)).length > 0 && (
-                <form action={ajouterAListe} className="flex items-center gap-2">
-                  <select
-                    name="liste_id"
-                    required
-                    className="flex-1 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-white outline-none cursor-pointer"
-                  >
-                    <option value="">Choisir une liste…</option>
-                    {toutesListes
-                      .filter(l => !listeIds.has(l.id))
-                      .map(l => (
-                        <option key={l.id} value={l.id}>{l.nom}</option>
-                      ))}
-                  </select>
-                  <button
-                    type="submit"
-                    className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-semibold transition-colors whitespace-nowrap"
-                  >
-                    Ajouter
-                  </button>
-                </form>
-              )}
-
-              {/* Créer une nouvelle liste */}
-              <details className="group">
-                <summary className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer select-none list-none flex items-center gap-1 w-fit">
-                  <span className="text-base leading-none">+</span> Créer une nouvelle liste
-                </summary>
-                <form action={creerEtAjouter} className="mt-3 flex flex-col gap-2">
-                  <input
-                    name="nom"
-                    type="text"
-                    required
-                    placeholder="Nom de la liste"
-                    className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
-                  />
-                  <input
-                    name="description"
-                    type="text"
-                    placeholder="Description (optionnel)"
-                    className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    className="self-start text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-semibold transition-colors"
-                  >
-                    Créer et ajouter
                   </button>
                 </form>
               </details>

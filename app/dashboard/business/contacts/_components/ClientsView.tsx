@@ -90,6 +90,8 @@ export default function ClientsView({
   const [nomListe,      setNomListe]      = useState('')
   const [descListe,     setDescListe]     = useState('')
   const [listeCreee,    setListeCreee]    = useState(false)
+  const [savingListe,   setSavingListe]   = useState(false)
+  const [listeError,    setListeError]    = useState<string | null>(null)
 
   const refContact   = useRef<HTMLDivElement>(null)
   const refAbo       = useRef<HTMLDivElement>(null)
@@ -197,9 +199,43 @@ export default function ClientsView({
   function toggle(id: string) {
     setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
   }
-  function creerListe() {
-    setListeCreee(true)
-    setTimeout(() => { setShowListeModal(false); setListeCreee(false); setNomListe(''); setDescListe(''); setSelected(new Set()) }, 1500)
+  async function creerListe() {
+    if (!nomListe.trim()) return
+    setSavingListe(true)
+    setListeError(null)
+    try {
+      const res = await fetch('/api/business/listes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: nomListe, description: descListe, client_ids: [...selected] }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setListeError(data.erreur ?? 'Erreur'); setSavingListe(false); return }
+      setListeCreee(true)
+      setTimeout(() => { setShowListeModal(false); setListeCreee(false); setNomListe(''); setDescListe(''); setSelected(new Set()); setSavingListe(false) }, 1500)
+    } catch {
+      setListeError('Erreur réseau')
+      setSavingListe(false)
+    }
+  }
+
+  async function ajouterAListe(listeId: string) {
+    setSavingListe(true)
+    setListeError(null)
+    try {
+      const res = await fetch(`/api/business/listes/${listeId}/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_ids: [...selected] }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setListeError(data.erreur ?? 'Erreur'); setSavingListe(false); return }
+      setListeCreee(true)
+      setTimeout(() => { setShowListeModal(false); setListeCreee(false); setSelected(new Set()); setSavingListe(false) }, 1500)
+    } catch {
+      setListeError('Erreur réseau')
+      setSavingListe(false)
+    }
   }
 
   const hBtn = (active: boolean) =>
@@ -551,42 +587,50 @@ export default function ClientsView({
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
             {listeCreee ? (
               <div className="text-center py-4">
-                <p className="text-green-400 font-semibold text-sm">Liste créée ✓</p>
-                <p className="text-gray-500 text-xs mt-1">{selected.size} contacts ajoutés</p>
+                <p className="text-green-400 font-semibold text-sm">Contacts ajoutés ✓</p>
+                <p className="text-gray-500 text-xs mt-1">{selected.size} client{selected.size > 1 ? 's' : ''} ajouté{selected.size > 1 ? 's' : ''}</p>
               </div>
             ) : (
               <>
-                <h2 className="font-bold text-white mb-1">Créer une liste</h2>
+                <h2 className="font-bold text-white mb-1">Ajouter à une liste</h2>
                 <p className="text-xs text-gray-500 mb-4">{selected.size} client{selected.size > 1 ? 's' : ''} sélectionné{selected.size > 1 ? 's' : ''}</p>
+
+                {listes.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Listes existantes</p>
+                    <div className="flex flex-col gap-1.5 max-h-36 overflow-auto">
+                      {listes.map(l => (
+                        <button
+                          key={l.id}
+                          onClick={() => ajouterAListe(l.id)}
+                          disabled={savingListe}
+                          className="text-left text-xs px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 transition-colors flex items-center justify-between"
+                        >
+                          <span>{l.nom}</span>
+                          <span className="text-gray-600">{l.nb} contacts</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-500 mb-2">{listes.length > 0 ? 'Ou créer une nouvelle liste' : 'Créer une liste'}</p>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Nom de la liste</label>
-                    <input autoFocus type="text" value={nomListe} onChange={e => setNomListe(e.target.value)} placeholder="Ex : Top clients juin"
+                    <input autoFocus type="text" value={nomListe} onChange={e => setNomListe(e.target.value)} placeholder="Nom de la liste…"
                       className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition-colors" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Description <span className="text-gray-600">(optionnel)</span></label>
-                    <input type="text" value={descListe} onChange={e => setDescListe(e.target.value)} placeholder="Contexte de cette liste…"
+                    <input type="text" value={descListe} onChange={e => setDescListe(e.target.value)} placeholder="Description (optionnel)"
                       className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition-colors" />
                   </div>
-                  {listes.length > 0 && (
-                    <>
-                      <p className="text-xs text-gray-600">Ou ajouter à une liste existante :</p>
-                      <div className="flex flex-col gap-1.5 max-h-32 overflow-auto">
-                        {listes.map(l => (
-                          <button key={l.id} className="text-left text-xs px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">
-                            {l.nom} <span className="text-gray-600">· {l.nb} contacts</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
                 </div>
+                {listeError && <p className="text-red-400 text-xs mt-2">{listeError}</p>}
                 <div className="flex gap-2 mt-5">
-                  <button onClick={creerListe} disabled={!nomListe.trim()} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-white transition-colors">
-                    Créer la liste
+                  <button onClick={creerListe} disabled={!nomListe.trim() || savingListe} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-white transition-colors">
+                    {savingListe ? 'Création…' : 'Créer la liste'}
                   </button>
-                  <button onClick={() => setShowListeModal(false)} className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm text-gray-400 transition-colors">
+                  <button onClick={() => { setShowListeModal(false); setNomListe(''); setDescListe(''); setListeError(null) }} className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm text-gray-400 transition-colors">
                     Annuler
                   </button>
                 </div>

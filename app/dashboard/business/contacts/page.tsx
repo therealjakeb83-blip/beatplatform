@@ -154,16 +154,21 @@ export default async function ContactsPage({
       .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
     supabase
-      .from('listes_contacts')
-      .select('id, nom')
-      .eq('beatmaker_id', beatmakerId),
+      .from('listes_crm')
+      .select('id, nom, listes_crm_contacts(count)')
+      .eq('beatmaker_id', beatmakerId)
+      .order('nom'),
   ])
 
   const commandes = commandesRes.data ?? []
   const abos      = aboRes.data      ?? []
   const listesRaw = listesRes.data   ?? []
 
-  const listes = listesRaw.map(l => ({ id: l.id, nom: l.nom, nb: 0 }))
+  const listes = (listesRaw ?? []).map(l => ({
+    id:  l.id,
+    nom: l.nom,
+    nb:  ((l.listes_crm_contacts ?? []) as { count: number }[])[0]?.count ?? 0,
+  }))
 
   // Client IDs (pour onglet Tous/Clients)
   const clientIds = [...new Set([
