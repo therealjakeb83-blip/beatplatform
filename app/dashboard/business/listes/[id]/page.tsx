@@ -98,7 +98,7 @@ export default async function ListeDetailPage({
   const [clientsRes, commandesRes, abosRes, leadsRes] = await Promise.all([
     admin
       .from('clients')
-      .select('id, prenom, nom, surnom, nom_artiste, email, pays')
+      .select('id, prenom, nom, surnom, nom_artiste, email, pays, telephone, instagram, spotify, youtube, tiktok')
       .in('id', allClientIds),
     membreIds.length > 0
       ? supabase
@@ -119,10 +119,15 @@ export default async function ListeDetailPage({
     membreIds.length > 0
       ? supabase
           .from('leads')
-          .select('client_id, newsletter_consent, source, nb_favoris')
+          .select('client_id, newsletter_consent, source, nb_favoris, nb_free_downloads, lead_created_at, derniere_action_at, pref_style, pref_type_beat, pref_ambiance')
           .eq('beatmaker_id', beatmakerId)
           .in('client_id', membreIds)
-      : Promise.resolve({ data: [] as { client_id: string; newsletter_consent: boolean; source: string; nb_favoris: number }[] }),
+      : Promise.resolve({ data: [] as {
+          client_id: string; newsletter_consent: boolean; source: string
+          nb_favoris: number; nb_free_downloads: number
+          lead_created_at: string; derniere_action_at: string
+          pref_style: string | null; pref_type_beat: string | null; pref_ambiance: string | null
+        }[] }),
   ])
 
   const clients   = clientsRes.data   ?? []
@@ -142,7 +147,8 @@ export default async function ListeDetailPage({
     arr.push(cmd)
     cmdsParClient.set(id, arr)
   }
-  const leadParClient = new Map<string, { newsletter_consent: boolean; source: string; nb_favoris: number }>()
+  type LeadData = { newsletter_consent: boolean; source: string; nb_favoris: number; nb_free_downloads: number; lead_created_at: string; derniere_action_at: string; pref_style: string | null; pref_type_beat: string | null; pref_ambiance: string | null }
+  const leadParClient = new Map<string, LeadData>()
   for (const l of leads) {
     if (!leadParClient.has(l.client_id)) leadParClient.set(l.client_id, l)
   }
@@ -164,6 +170,9 @@ export default async function ListeDetailPage({
       const dernierAchat = licences.length
         ? new Date(Math.max(...licences.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
         : null
+      const premiereCommande = cmds.length > 0
+        ? new Date(Math.min(...cmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
+        : null
       const aboStatut = aboParClient.get(c.id)
       const leadData  = leadParClient.get(c.id)
       let statut: MembreRow['statut']
@@ -171,19 +180,44 @@ export default async function ListeDetailPage({
       else if (aboStatut === 'annule')                     statut = 'ancien'
       else if (licences.length > 0)                        statut = 'client'
       else                                                 statut = 'lead'
+
+      const premiereContactISO = (() => {
+        const candidates = [leadData?.lead_created_at, premiereCommande].filter(Boolean) as string[]
+        if (!candidates.length) return null
+        return candidates.reduce((min, d) => d < min ? d : min)
+      })()
+      const dernierContactISO = (() => {
+        const candidates = [leadData?.derniere_action_at, dernierAchat].filter(Boolean) as string[]
+        if (!candidates.length) return null
+        return candidates.reduce((max, d) => d > max ? d : max)
+      })()
+
       return {
-        id:                c.id,
-        label:             contactLabel(raw),
-        nom:               c.nom ?? '',
-        email:             c.email ?? '',
-        pays:              c.pays ?? null,
+        id:                   c.id,
+        label:                contactLabel(raw),
+        nom:                  c.nom ?? '',
+        email:                c.email ?? '',
+        pays:                 c.pays ?? null,
         statut,
+        statut_abo_detail:    aboStatut ?? null,
         nb_achats,
         ltv,
-        dernier_achat_iso: dernierAchat,
-        newsletter_consent: leadData?.newsletter_consent ?? false,
-        lead_source:        leadData?.source ?? null,
-        lead_nb_favoris:    leadData?.nb_favoris ?? 0,
+        panier_moyen:         nb_achats > 0 ? ltv / nb_achats : 0,
+        dernier_achat_iso:    dernierAchat,
+        premiere_contact_iso: premiereContactISO,
+        dernier_contact_iso:  dernierContactISO,
+        newsletter_consent:   leadData?.newsletter_consent ?? false,
+        lead_source:          leadData?.source ?? null,
+        lead_nb_favoris:      leadData?.nb_favoris ?? 0,
+        lead_nb_free_dl:      leadData?.nb_free_downloads ?? 0,
+        pref_style:           leadData?.pref_style ?? null,
+        pref_type_beat:       leadData?.pref_type_beat ?? null,
+        pref_ambiance:        leadData?.pref_ambiance ?? null,
+        instagram:            (c as Record<string, string | null>).instagram ?? null,
+        spotify:              (c as Record<string, string | null>).spotify ?? null,
+        youtube:              (c as Record<string, string | null>).youtube ?? null,
+        tiktok:               (c as Record<string, string | null>).tiktok ?? null,
+        telephone:            (c as Record<string, string | null>).telephone ?? null,
       }
     })
     .sort((a, b) => b.ltv - a.ltv)

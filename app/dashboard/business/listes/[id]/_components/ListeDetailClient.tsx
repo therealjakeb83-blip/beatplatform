@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import SocialIcon from '../../../_components/SocialIcon'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,12 +13,25 @@ export type MembreRow = {
   email: string
   pays: string | null
   statut: 'abonne' | 'ancien' | 'client' | 'lead'
+  statut_abo_detail: string | null
   nb_achats: number
   ltv: number
+  panier_moyen: number
   dernier_achat_iso: string | null
+  premiere_contact_iso: string | null
+  dernier_contact_iso: string | null
   newsletter_consent: boolean
   lead_source: string | null
   lead_nb_favoris: number
+  lead_nb_free_dl: number
+  pref_style: string | null
+  pref_type_beat: string | null
+  pref_ambiance: string | null
+  instagram: string | null
+  spotify: string | null
+  youtube: string | null
+  tiktok: string | null
+  telephone: string | null
 }
 
 export type ContactLight = {
@@ -28,12 +42,45 @@ export type ContactLight = {
   pays: string | null
 }
 
-type Props = {
-  liste: { id: string; nom: string; description: string | null }
-  membres: MembreRow[]
-  tousContacts: ContactLight[]
-  ajouterContacts: (fd: FormData) => Promise<void>
-  retirerContact: (fd: FormData) => Promise<void>
+// ── Définition des colonnes ───────────────────────────────────────────────────
+
+type ColDef = { key: string; label: string; defaultOn: boolean; align: 'left' | 'right' }
+
+const COLONNES: ColDef[] = [
+  { key: 'statut',          label: 'Statut',          defaultOn: true,  align: 'left'  },
+  { key: 'score',           label: 'Score',           defaultOn: false, align: 'left'  },
+  { key: 'newsletter',      label: 'Newsletter',      defaultOn: false, align: 'left'  },
+  { key: 'ltv',             label: 'LTV',             defaultOn: true,  align: 'right' },
+  { key: 'dernier_achat',   label: 'Dernier achat',   defaultOn: true,  align: 'right' },
+  { key: 'nb_licences',     label: 'Nb licences',     defaultOn: false, align: 'right' },
+  { key: 'panier_moyen',    label: 'Panier moyen',    defaultOn: false, align: 'right' },
+  { key: 'abonnement',      label: 'Abonnement',      defaultOn: false, align: 'left'  },
+  { key: 'premiere_action', label: '1ère action',     defaultOn: false, align: 'left'  },
+  { key: 'derniere_action', label: 'Dernière action', defaultOn: false, align: 'left'  },
+  { key: 'source',          label: 'Source',          defaultOn: false, align: 'left'  },
+  { key: 'favoris',         label: 'Favoris',         defaultOn: false, align: 'right' },
+  { key: 'free_dl',         label: 'Free DL',         defaultOn: false, align: 'right' },
+  { key: 'socials',         label: 'Socials',         defaultOn: false, align: 'left'  },
+  { key: 'prefs',           label: 'Préférences',     defaultOn: false, align: 'left'  },
+]
+
+const DEFAULT_KEYS = new Set(COLONNES.filter(c => c.defaultOn).map(c => c.key))
+const LS_KEY = 'business_liste_colonnes'
+
+function loadActiveKeys(): Set<string> {
+  if (typeof window === 'undefined') return DEFAULT_KEYS
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (!raw) return DEFAULT_KEYS
+    const arr = JSON.parse(raw) as string[]
+    return new Set(arr)
+  } catch {
+    return DEFAULT_KEYS
+  }
+}
+
+function saveActiveKeys(keys: Set<string>) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify([...keys])) } catch {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -77,7 +124,7 @@ function scoreChaleur(m: MembreRow): { label: string; cls: string } {
   if (m.newsletter_consent) score += 15
   if (score > 55) return { label: 'Chaud', cls: 'bg-red-500/20 text-red-400'    }
   if (score >= 25) return { label: 'Tiède', cls: 'bg-amber-500/20 text-amber-400' }
-  return               { label: 'Froid', cls: 'bg-gray-700/60 text-gray-500'    }
+  return                  { label: 'Froid', cls: 'bg-gray-700/60 text-gray-500'  }
 }
 
 const STATUT_LABEL: Record<MembreRow['statut'], string> = {
@@ -87,10 +134,146 @@ const STATUT_LABEL: Record<MembreRow['statut'], string> = {
   lead:   'Lead',
 }
 const STATUT_CLS: Record<MembreRow['statut'], string> = {
-  abonne: 'text-indigo-400',
-  ancien: 'text-gray-500',
-  client: 'text-green-400',
-  lead:   'text-gray-400',
+  abonne: 'bg-indigo-500/20 text-indigo-400',
+  ancien: 'bg-gray-700/60 text-gray-500',
+  client: 'bg-green-500/20 text-green-400',
+  lead:   'bg-amber-500/20 text-amber-400',
+}
+
+const STATUT_ABO_LABEL: Record<string, string> = {
+  actif:                'Actif',
+  impaye:               'Impayé',
+  annulation_en_cours:  'Annulation...',
+  annule:               'Annulé',
+}
+
+function renderCell(key: string, m: MembreRow): React.ReactNode {
+  switch (key) {
+    case 'statut':
+      return (
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${STATUT_CLS[m.statut]}`}>
+          {STATUT_LABEL[m.statut]}
+        </span>
+      )
+    case 'score': {
+      const s = m.statut !== 'lead' ? scoreRF(m.nb_achats, m.dernier_achat_iso) : scoreChaleur(m)
+      return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${s.cls}`}>{s.label}</span>
+    }
+    case 'newsletter':
+      return m.newsletter_consent
+        ? <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-500/10 text-green-500">Newsletter</span>
+        : <span className="text-gray-700 text-xs">—</span>
+    case 'ltv':
+      return <span className="text-xs font-semibold text-white">{fmt(m.ltv)}</span>
+    case 'dernier_achat':
+      return <span className="text-xs text-gray-400 whitespace-nowrap">{formatDate(m.dernier_achat_iso)}</span>
+    case 'nb_licences':
+      return <span className="text-xs text-gray-300">{m.nb_achats > 0 ? m.nb_achats : '—'}</span>
+    case 'panier_moyen':
+      return <span className="text-xs text-gray-300">{m.panier_moyen > 0 ? fmt(m.panier_moyen) : '—'}</span>
+    case 'abonnement':
+      return m.statut_abo_detail
+        ? <span className="text-xs text-gray-300">{STATUT_ABO_LABEL[m.statut_abo_detail] ?? m.statut_abo_detail}</span>
+        : <span className="text-gray-700 text-xs">—</span>
+    case 'premiere_action':
+      return <span className="text-xs text-gray-400 whitespace-nowrap">{formatDate(m.premiere_contact_iso)}</span>
+    case 'derniere_action':
+      return <span className="text-xs text-gray-400 whitespace-nowrap">{formatDate(m.dernier_contact_iso)}</span>
+    case 'source':
+      return <span className="text-xs text-gray-300">{m.lead_source ?? <span className="text-gray-700">—</span>}</span>
+    case 'favoris':
+      return <span className="text-xs text-gray-300">{m.lead_nb_favoris > 0 ? m.lead_nb_favoris : <span className="text-gray-700">—</span>}</span>
+    case 'free_dl':
+      return <span className="text-xs text-gray-300">{m.lead_nb_free_dl > 0 ? m.lead_nb_free_dl : <span className="text-gray-700">—</span>}</span>
+    case 'socials':
+      return (
+        <div className="flex items-center gap-1.5">
+          <SocialIcon platform="instagram" value={m.instagram} size={14} />
+          <SocialIcon platform="spotify"   value={m.spotify}   size={14} />
+          <SocialIcon platform="youtube"   value={m.youtube}   size={14} />
+          <SocialIcon platform="tiktok"    value={m.tiktok}    size={14} />
+          <SocialIcon platform="whatsapp"  value={m.telephone} size={14} />
+        </div>
+      )
+    case 'prefs': {
+      const prefs = [m.pref_style, m.pref_type_beat, m.pref_ambiance].filter(Boolean)
+      return prefs.length > 0
+        ? <span className="text-xs text-gray-400">{prefs.join(' · ')}</span>
+        : <span className="text-gray-700 text-xs">—</span>
+    }
+    default:
+      return null
+  }
+}
+
+// ── Sélecteur de colonnes ─────────────────────────────────────────────────────
+
+function ColonnePicker({
+  activeKeys,
+  onToggle,
+}: {
+  activeKeys: Set<string>
+  onToggle: (key: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors border ${
+          open
+            ? 'bg-gray-700 border-gray-600 text-white'
+            : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+        }`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+          <path fillRule="evenodd" d="M2 3.75A.75.75 0 0 1 2.75 3h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 3.75ZM2 8a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 8Zm6 4.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4A.75.75 0 0 1 8 12.25Z" clipRule="evenodd" />
+        </svg>
+        Colonnes
+        <span className="text-[10px] text-gray-500">▾</span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-40 w-56 p-1 overflow-hidden">
+          <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">Colonnes visibles</p>
+          {COLONNES.map(col => (
+            <label
+              key={col.key}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors group"
+            >
+              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                activeKeys.has(col.key) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
+              }`}>
+                {activeKeys.has(col.key) && (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-2.5 h-2.5">
+                    <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <input
+                type="checkbox"
+                checked={activeKeys.has(col.key)}
+                onChange={() => onToggle(col.key)}
+                className="sr-only"
+              />
+              <span className="text-xs text-gray-400 group-hover:text-white transition-colors">{col.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Modale ajout contacts ─────────────────────────────────────────────────────
@@ -141,7 +324,6 @@ function AjouterModal({
         className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header modale */}
         <div className="px-5 pt-5 pb-4 border-b border-gray-800 flex-shrink-0">
           <h2 className="text-sm font-bold text-white mb-3">Ajouter des contacts</h2>
           <input
@@ -154,7 +336,6 @@ function AjouterModal({
           />
         </div>
 
-        {/* Liste contacts */}
         <div className="flex-1 overflow-auto">
           {filtered.length === 0 ? (
             <p className="text-xs text-gray-600 text-center py-8">
@@ -169,7 +350,6 @@ function AjouterModal({
                   selected.has(c.id) ? 'bg-indigo-950/30' : ''
                 }`}
               >
-                {/* Avatar */}
                 <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
                   {c.pays
                     // eslint-disable-next-line @next/next/no-img-element
@@ -177,16 +357,12 @@ function AjouterModal({
                     : <span className="text-indigo-300 font-bold text-[10px]">{initiales(c.label, c.nom)}</span>
                   }
                 </div>
-                {/* Nom + email */}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-white truncate">{c.label} {c.nom}</p>
                   <p className="text-[10px] text-gray-600 truncate">{c.email}</p>
                 </div>
-                {/* Checkbox */}
                 <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
-                  selected.has(c.id)
-                    ? 'bg-indigo-600 border-indigo-600'
-                    : 'border-gray-600'
+                  selected.has(c.id) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
                 }`}>
                   {selected.has(c.id) && (
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-2.5 h-2.5">
@@ -199,16 +375,12 @@ function AjouterModal({
           )}
         </div>
 
-        {/* Footer modale */}
         <div className="px-5 py-4 border-t border-gray-800 flex items-center justify-between flex-shrink-0">
           <span className="text-xs text-gray-500">
             {selected.size > 0 ? `${selected.size} sélectionné${selected.size > 1 ? 's' : ''}` : 'Aucune sélection'}
           </span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="text-xs px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors"
-            >
+            <button onClick={onClose} className="text-xs px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">
               Annuler
             </button>
             <button
@@ -227,6 +399,14 @@ function AjouterModal({
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
+type Props = {
+  liste: { id: string; nom: string; description: string | null }
+  membres: MembreRow[]
+  tousContacts: ContactLight[]
+  ajouterContacts: (fd: FormData) => Promise<void>
+  retirerContact: (fd: FormData) => Promise<void>
+}
+
 export default function ListeDetailClient({
   liste,
   membres,
@@ -235,6 +415,23 @@ export default function ListeDetailClient({
   retirerContact,
 }: Props) {
   const [showModal, setShowModal] = useState(false)
+  const [activeKeys, setActiveKeys] = useState<Set<string>>(DEFAULT_KEYS)
+
+  // Hydrate depuis localStorage après montage
+  useEffect(() => {
+    setActiveKeys(loadActiveKeys())
+  }, [])
+
+  function toggleCol(key: string) {
+    setActiveKeys(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      saveActiveKeys(next)
+      return next
+    })
+  }
+
+  const colsActives = COLONNES.filter(c => activeKeys.has(c.key))
 
   async function handleAjouter(ids: string[]) {
     const fd = new FormData()
@@ -275,7 +472,8 @@ export default function ListeDetailClient({
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Ajouter des contacts */}
+              <ColonnePicker activeKeys={activeKeys} onToggle={toggleCol} />
+
               <button
                 onClick={() => setShowModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-semibold text-white transition-colors"
@@ -286,7 +484,6 @@ export default function ListeDetailClient({
                 Ajouter des contacts
               </button>
 
-              {/* Lancer une campagne (désactivé) */}
               <button
                 disabled
                 title="Disponible dans le sprint Marketing"
@@ -319,22 +516,28 @@ export default function ListeDetailClient({
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Badges</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Dernier achat</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">LTV</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide sticky left-0 bg-gray-950 z-10">
+                    Contact
+                  </th>
+                  {colsActives.map(col => (
+                    <th
+                      key={col.key}
+                      className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap ${
+                        col.align === 'right' ? 'text-right' : 'text-left'
+                      }`}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
                   <th className="w-16" />
                 </tr>
               </thead>
               <tbody>
-                {membres.map(m => {
-                  const rf      = m.statut !== 'lead' ? scoreRF(m.nb_achats, m.dernier_achat_iso) : null
-                  const chaleur = m.statut === 'lead' ? scoreChaleur(m) : null
-                  return (
+                {membres.map(m => (
                   <tr key={m.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors group">
 
-                    {/* Contact */}
-                    <td className="px-6 py-3">
+                    {/* Contact — fixe */}
+                    <td className="px-6 py-3 sticky left-0 bg-gray-950 group-hover:bg-gray-800/40 transition-colors z-10">
                       <Link href={`/dashboard/business/contacts/${m.id}`} className="flex items-center gap-3 group/link">
                         <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center flex-shrink-0">
                           {m.pays
@@ -344,54 +547,23 @@ export default function ListeDetailClient({
                           }
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-white group-hover/link:text-indigo-300 transition-colors text-xs">
+                          <p className="font-semibold text-white group-hover/link:text-indigo-300 transition-colors text-xs whitespace-nowrap">
                             {m.label} {m.nom}
                           </p>
-                          <p className="text-[10px] text-gray-600 truncate">{m.email}</p>
+                          <p className="text-[10px] text-gray-600 truncate max-w-[160px]">{m.email}</p>
                         </div>
                       </Link>
                     </td>
 
-                    {/* Badges */}
-                    <td className="px-6 py-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {/* Statut */}
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${STATUT_CLS[m.statut]}`}>
-                          {STATUT_LABEL[m.statut]}
-                        </span>
-                        {/* Score RF (clients/abonnés/anciens) */}
-                        {rf && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${rf.cls}`}>
-                            {rf.label}
-                          </span>
-                        )}
-                        {/* Score Chaleur (leads) */}
-                        {chaleur && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${chaleur.cls}`}>
-                            {chaleur.label}
-                          </span>
-                        )}
-                        {/* Newsletter */}
-                        {m.newsletter_consent && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap bg-green-500/10 text-green-500">
-                            Newsletter
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Dernier achat */}
-                    <td className="px-6 py-3 text-right text-xs text-gray-400 whitespace-nowrap">
-                      {m.dernier_achat_iso
-                        ? formatDate(m.dernier_achat_iso)
-                        : <span className="text-gray-700">—</span>
-                      }
-                    </td>
-
-                    {/* LTV */}
-                    <td className="px-6 py-3 text-right text-white font-semibold text-xs whitespace-nowrap">
-                      {fmt(m.ltv)}
-                    </td>
+                    {/* Colonnes dynamiques */}
+                    {colsActives.map(col => (
+                      <td
+                        key={col.key}
+                        className={`px-4 py-3 ${col.align === 'right' ? 'text-right' : ''}`}
+                      >
+                        {renderCell(col.key, m)}
+                      </td>
+                    ))}
 
                     {/* Retirer */}
                     <td className="px-4 py-3 text-right">
@@ -403,8 +575,7 @@ export default function ListeDetailClient({
                       </button>
                     </td>
                   </tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>
