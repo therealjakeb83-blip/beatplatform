@@ -101,7 +101,7 @@ export default async function TelechargerPage({
           <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Fichiers inclus</h2>
           <div className="flex flex-col gap-3">
             {fichiersSignes.map(f => (
-              <TelechargerBouton key={f.label} label={f.label} url={f.url} />
+              <TelechargerBouton key={f.label} label={f.label} url={f.url} commandeId={commandeId} />
             ))}
           </div>
         </div>
@@ -110,7 +110,7 @@ export default async function TelechargerPage({
         {pdfSigneUrl && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
             <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Contrat de licence</h2>
-            <TelechargerBouton label="Contrat PDF" url={pdfSigneUrl} icon="pdf" />
+            <TelechargerBouton label="Contrat PDF" url={pdfSigneUrl} icon="pdf" commandeId={commandeId} />
           </div>
         )}
 

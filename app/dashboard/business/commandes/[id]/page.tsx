@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import RenvoyerButton from './_components/RenvoyerButton'
+import CopyButton from './_components/CopyButton'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -33,8 +35,23 @@ type CommandeDetail = {
     email: string
     pays: string | null
   } | null
-  beats: { id: string; titre: string; couleur: string | null; image_url: string | null } | null
-  licences: { id: string; nom: string; modele: string } | null
+  beats: {
+    id: string
+    titre: string
+    couleur: string | null
+    image_url: string | null
+    mp3_propre_url: string | null
+    wav_url: string | null
+    stems_url: string | null
+  } | null
+  licences: {
+    id: string
+    nom: string
+    modele: string
+    inclut_mp3: boolean
+    inclut_wav: boolean
+    inclut_stems: boolean
+  } | null
 }
 
 type HistoriqueCommande = {
@@ -101,8 +118,8 @@ export default async function CommandeDetailPage({
        source_marketing, type_transaction, plateforme_source,
        acheteur_email, acheteur_nom, notes, client_id,
        clients (id, prenom, nom, email, pays),
-       beats (id, titre, couleur, image_url),
-       licences (id, nom, modele)`
+       beats (id, titre, couleur, image_url, mp3_propre_url, wav_url, stems_url),
+       licences (id, nom, modele, inclut_mp3, inclut_wav, inclut_stems)`
     )
     .eq('id', id)
     .eq('beatmaker_id', user.id)
@@ -127,6 +144,34 @@ export default async function CommandeDetailPage({
   const ltv = historiqueClient
     .filter(h => h.statut === 'payee')
     .reduce((sum, h) => sum + (h.prix_paye ?? 0), 0)
+
+  /* Historique téléchargements */
+  const { data: downloadsRaw } = await admin
+    .from('licence_downloads')
+    .select('id, fichier, downloaded_at')
+    .eq('commande_id', id)
+    .order('downloaded_at', { ascending: false })
+  const downloads = (downloadsRaw ?? []) as { id: string; fichier: string; downloaded_at: string }[]
+
+  /* Fichiers disponibles selon la licence */
+  const fichiersDispos: { label: string; url: string | null }[] = []
+  if (c.licences && c.beats) {
+    if (c.licences.inclut_mp3 && c.beats.mp3_propre_url)
+      fichiersDispos.push({ label: 'MP3 (sans tag)', url: c.beats.mp3_propre_url })
+    if (c.licences.inclut_wav && c.beats.wav_url)
+      fichiersDispos.push({ label: 'WAV', url: c.beats.wav_url })
+    if (c.licences.inclut_stems && c.beats.stems_url)
+      fichiersDispos.push({ label: 'Stems (ZIP)', url: c.beats.stems_url })
+  }
+  if (c.contrat_pdf_url)
+    fichiersDispos.push({ label: 'Contrat PDF', url: c.contrat_pdf_url })
+
+  /* Email destinataire pour le renvoi */
+  const destinataire = (c.clients as { email: string } | null)?.email ?? c.acheteur_email ?? ''
+
+  /* URL de téléchargement permanente */
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://beatplatform.vercel.app'
+  const downloadPageUrl = `${APP_URL}/telechargement/${id}`
 
   /* Calculs financiers */
   const remise    = c.reduction_montant ?? 0
@@ -485,36 +530,106 @@ export default async function CommandeDetailPage({
           </div>
         </div>
 
-        {/* Fichiers */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Livraison des fichiers</h2>
-          <div className="flex items-center gap-3">
+        {/* Accès aux fichiers — admin */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Accès aux fichiers</h2>
             {c.fichiers_livres ? (
-              <>
-                <div className="w-8 h-8 rounded-full bg-green-500/15 border border-green-500/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Fichiers livrés</p>
-                  <p className="text-xs text-gray-500">Le client a reçu les fichiers · Non remboursable</p>
-                </div>
-              </>
+              <span className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">Livrés</span>
             ) : (
-              <>
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-300">Fichiers non livrés</p>
-                  <p className="text-xs text-gray-500">Le client n&apos;a pas encore téléchargé ses fichiers</p>
-                </div>
-              </>
+              <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">En attente</span>
             )}
           </div>
+
+          {/* Lien permanent */}
+          <div>
+            <p className="text-[10px] text-gray-600 mb-1.5">Lien de téléchargement permanent</p>
+            <div className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2">
+              <code className="text-xs text-indigo-400 flex-1 truncate">{downloadPageUrl}</code>
+              <CopyButton text={downloadPageUrl} />
+            </div>
+          </div>
+
+          {/* Fichiers inclus */}
+          {fichiersDispos.length > 0 && (
+            <div>
+              <p className="text-[10px] text-gray-600 mb-2">Fichiers inclus dans cette licence</p>
+              <div className="space-y-1.5">
+                {fichiersDispos.map(f => (
+                  <div key={f.label} className="flex items-center justify-between bg-gray-800 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                        f.label === 'Contrat PDF'
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-indigo-500/20 text-indigo-400'
+                      }`}>
+                        {f.label === 'Contrat PDF' ? 'PDF' : f.label.slice(0, 3).toUpperCase()}
+                      </div>
+                      <span className="text-sm text-white">{f.label}</span>
+                    </div>
+                    {f.url ? (
+                      <span className="text-xs text-green-400">Disponible</span>
+                    ) : (
+                      <span className="text-xs text-gray-600">Manquant</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Renvoyer par email */}
+          {destinataire && (
+            <div className="pt-1 border-t border-gray-800">
+              <p className="text-[10px] text-gray-600 mb-3">
+                Envoie le lien de téléchargement par email au client
+              </p>
+              <RenvoyerButton commandeId={id} destinataire={destinataire} />
+            </div>
+          )}
+        </div>
+
+        {/* Historique téléchargements */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Historique téléchargements</h2>
+            <span className="text-xs text-gray-600">{downloads.length} événement{downloads.length !== 1 ? 's' : ''}</span>
+          </div>
+          {downloads.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm text-gray-600">Aucun téléchargement enregistré</p>
+              <p className="text-xs text-gray-700 mt-1">Les téléchargements apparaîtront ici dès que le client cliquera sur ses fichiers</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-800/50">
+              {downloads.map(dl => (
+                <div key={dl.id} className="px-5 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                      dl.fichier === 'Contrat PDF'
+                        ? 'bg-red-500/20 text-red-400'
+                        : dl.fichier === 'email_renvoi'
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : 'bg-indigo-500/20 text-indigo-400'
+                    }`}>
+                      {dl.fichier === 'email_renvoi' ? '✉' : dl.fichier === 'Contrat PDF' ? 'PDF' : dl.fichier.slice(0, 3).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm text-white">
+                        {dl.fichier === 'email_renvoi' ? 'Lien renvoyé par email' : dl.fichier}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {new Date(dl.downloaded_at).toLocaleString('fr-FR', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Timeline */}

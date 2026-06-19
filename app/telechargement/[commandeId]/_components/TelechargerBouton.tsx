@@ -4,15 +4,28 @@ export default function TelechargerBouton({
   label,
   url,
   icon = 'file',
+  commandeId,
 }: {
   label: string
   url: string
   icon?: 'file' | 'pdf'
+  commandeId?: string
 }) {
+  function handleClick() {
+    if (commandeId) {
+      fetch(`/api/telechargement/${commandeId}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fichier: label }),
+      }).catch(() => {})
+    }
+  }
+
   return (
     <a
       href={url}
       download
+      onClick={handleClick}
       className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors group"
     >
       <div className="flex items-center gap-3">
