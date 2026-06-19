@@ -13,10 +13,13 @@ export default function TelechargerBouton({
 }) {
   function handleClick() {
     if (commandeId) {
+      // keepalive garantit que la requête survit même si le navigateur
+      // déclenche un téléchargement cross-origin juste après le clic
       fetch(`/api/telechargement/${commandeId}/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fichier: label }),
+        keepalive: true,
       }).catch(() => {})
     }
   }

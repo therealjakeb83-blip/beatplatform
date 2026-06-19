@@ -31,13 +31,18 @@ export async function POST(
   const forwarded = req.headers.get('x-forwarded-for')
   const ip_address = forwarded ? forwarded.split(',')[0].trim() : null
 
-  await admin.from('licence_downloads').insert({
+  const { error } = await admin.from('licence_downloads').insert({
     commande_id:  commandeId,
     beatmaker_id: commande.beatmaker_id,
     client_id:    commande.client_id ?? null,
     fichier,
     ip_address,
   })
+
+  if (error) {
+    console.error('[log] Erreur insert licence_downloads:', error)
+    return NextResponse.json({ ok: false }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }
