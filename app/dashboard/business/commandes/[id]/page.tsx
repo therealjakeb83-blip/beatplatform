@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 
@@ -88,7 +89,10 @@ export default async function CommandeDetailPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const { data: commande } = await supabase
+  // Admin client pour bypasser la RLS de la table clients (join)
+  const admin = createAdminClient()
+
+  const { data: commande } = await admin
     .from('commandes')
     .select(
       `id, created_at, prix_paye, devise, statut,
@@ -111,7 +115,7 @@ export default async function CommandeDetailPage({
   /* Historique client */
   let historiqueClient: HistoriqueCommande[] = []
   if (c.client_id) {
-    const { data } = await supabase
+    const { data } = await admin
       .from('commandes')
       .select('id, created_at, prix_paye, statut, type_transaction')
       .eq('beatmaker_id', user.id)

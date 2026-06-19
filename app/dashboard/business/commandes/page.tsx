@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import CommandesClient from './_components/CommandesClient'
 
@@ -41,7 +42,10 @@ export default async function CommandesPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const { data } = await supabase
+  // Admin client pour bypasser la RLS de la table clients (join)
+  const admin = createAdminClient()
+
+  const { data } = await admin
     .from('commandes')
     .select(
       `id, created_at, prix_paye, devise, statut,
