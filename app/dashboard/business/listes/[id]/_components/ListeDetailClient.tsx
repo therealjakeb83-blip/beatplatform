@@ -12,8 +12,12 @@ export type MembreRow = {
   email: string
   pays: string | null
   statut: 'abonne' | 'ancien' | 'client' | 'lead'
+  nb_achats: number
   ltv: number
   dernier_achat_iso: string | null
+  newsletter_consent: boolean
+  lead_source: string | null
+  lead_nb_favoris: number
 }
 
 export type ContactLight = {
@@ -48,6 +52,32 @@ function fmt(euros: number): string {
     style: 'currency', currency: 'EUR',
     minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(euros)
+}
+
+function joursDepuis(iso: string | null): number {
+  if (!iso) return Infinity
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+}
+
+function scoreRF(nb_achats: number, dernier_achat_iso: string | null): { label: string; cls: string } {
+  const frequent = nb_achats >= 3
+  const recent   = dernier_achat_iso ? joursDepuis(dernier_achat_iso) <= 180 : false
+  if (frequent && recent)  return { label: 'Régulier',    cls: 'bg-green-500/20 text-green-400'  }
+  if (frequent && !recent) return { label: 'Fidèle',      cls: 'bg-indigo-500/20 text-indigo-400' }
+  if (!frequent && recent) return { label: 'Occasionnel', cls: 'bg-amber-500/20 text-amber-400'  }
+  return                          { label: 'Dormant',     cls: 'bg-gray-700/60 text-gray-500'    }
+}
+
+function scoreChaleur(m: MembreRow): { label: string; cls: string } {
+  let score = 0
+  if (m.lead_source === 'free_download') score += 40
+  else if (m.lead_source === 'newsletter') score += 20
+  else if (m.lead_source === 'visite')   score += 10
+  score += m.lead_nb_favoris * 10
+  if (m.newsletter_consent) score += 15
+  if (score > 55) return { label: 'Chaud', cls: 'bg-red-500/20 text-red-400'    }
+  if (score >= 25) return { label: 'Tiède', cls: 'bg-amber-500/20 text-amber-400' }
+  return               { label: 'Froid', cls: 'bg-gray-700/60 text-gray-500'    }
 }
 
 const STATUT_LABEL: Record<MembreRow['statut'], string> = {
@@ -290,14 +320,17 @@ export default function ListeDetailClient({
               <thead>
                 <tr className="border-b border-gray-800">
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Badges</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Dernier achat</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">LTV</th>
                   <th className="w-16" />
                 </tr>
               </thead>
               <tbody>
-                {membres.map(m => (
+                {membres.map(m => {
+                  const rf      = m.statut !== 'lead' ? scoreRF(m.nb_achats, m.dernier_achat_iso) : null
+                  const chaleur = m.statut === 'lead' ? scoreChaleur(m) : null
+                  return (
                   <tr key={m.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors group">
 
                     {/* Contact */}
@@ -319,9 +352,32 @@ export default function ListeDetailClient({
                       </Link>
                     </td>
 
-                    {/* Statut */}
-                    <td className="px-6 py-3 text-xs">
-                      <span className={STATUT_CLS[m.statut]}>{STATUT_LABEL[m.statut]}</span>
+                    {/* Badges */}
+                    <td className="px-6 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Statut */}
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${STATUT_CLS[m.statut]}`}>
+                          {STATUT_LABEL[m.statut]}
+                        </span>
+                        {/* Score RF (clients/abonnés/anciens) */}
+                        {rf && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${rf.cls}`}>
+                            {rf.label}
+                          </span>
+                        )}
+                        {/* Score Chaleur (leads) */}
+                        {chaleur && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${chaleur.cls}`}>
+                            {chaleur.label}
+                          </span>
+                        )}
+                        {/* Newsletter */}
+                        {m.newsletter_consent && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap bg-green-500/10 text-green-500">
+                            Newsletter
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Dernier achat */}
@@ -347,7 +403,8 @@ export default function ListeDetailClient({
                       </button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

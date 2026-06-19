@@ -94,8 +94,8 @@ export default async function ListeDetailPage({
     )
   }
 
-  // Infos clients (admin) + commandes + abos membres en parallèle
-  const [clientsRes, commandesRes, abosRes] = await Promise.all([
+  // Infos clients (admin) + commandes + abos + leads membres en parallèle
+  const [clientsRes, commandesRes, abosRes, leadsRes] = await Promise.all([
     admin
       .from('clients')
       .select('id, prenom, nom, surnom, nom_artiste, email, pays')
@@ -116,11 +116,19 @@ export default async function ListeDetailPage({
           .in('client_id', membreIds)
           .not('client_id', 'is', null)
       : Promise.resolve({ data: [] as { client_id: unknown; statut: string }[] }),
+    membreIds.length > 0
+      ? supabase
+          .from('leads')
+          .select('client_id, newsletter_consent, source, nb_favoris')
+          .eq('beatmaker_id', beatmakerId)
+          .in('client_id', membreIds)
+      : Promise.resolve({ data: [] as { client_id: string; newsletter_consent: boolean; source: string; nb_favoris: number }[] }),
   ])
 
   const clients   = clientsRes.data   ?? []
   const commandes = commandesRes.data ?? []
   const abos      = abosRes.data      ?? []
+  const leads     = leadsRes.data     ?? []
 
   // Maps
   const aboParClient = new Map<string, string>()
@@ -133,6 +141,10 @@ export default async function ListeDetailPage({
     const arr = cmdsParClient.get(id) ?? []
     arr.push(cmd)
     cmdsParClient.set(id, arr)
+  }
+  const leadParClient = new Map<string, { newsletter_consent: boolean; source: string; nb_favoris: number }>()
+  for (const l of leads) {
+    if (!leadParClient.has(l.client_id)) leadParClient.set(l.client_id, l)
   }
 
   function contactLabel(c: Record<string, unknown>): string {
@@ -148,10 +160,12 @@ export default async function ListeDetailPage({
       const payees   = cmds.filter(cmd => cmd.statut === 'payee')
       const ltv      = payees.reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
       const licences = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
+      const nb_achats = licences.length
       const dernierAchat = licences.length
         ? new Date(Math.max(...licences.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
         : null
       const aboStatut = aboParClient.get(c.id)
+      const leadData  = leadParClient.get(c.id)
       let statut: MembreRow['statut']
       if (aboStatut === 'actif' || aboStatut === 'impaye') statut = 'abonne'
       else if (aboStatut === 'annule')                     statut = 'ancien'
@@ -164,8 +178,12 @@ export default async function ListeDetailPage({
         email:             c.email ?? '',
         pays:              c.pays ?? null,
         statut,
+        nb_achats,
         ltv,
         dernier_achat_iso: dernierAchat,
+        newsletter_consent: leadData?.newsletter_consent ?? false,
+        lead_source:        leadData?.source ?? null,
+        lead_nb_favoris:    leadData?.nb_favoris ?? 0,
       }
     })
     .sort((a, b) => b.ltv - a.ltv)
