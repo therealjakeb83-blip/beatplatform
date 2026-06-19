@@ -28,11 +28,15 @@ export async function POST(
     return NextResponse.json({ ok: false }, { status: 404 })
   }
 
+  const forwarded = req.headers.get('x-forwarded-for')
+  const ip_address = forwarded ? forwarded.split(',')[0].trim() : null
+
   await admin.from('licence_downloads').insert({
     commande_id:  commandeId,
     beatmaker_id: commande.beatmaker_id,
     client_id:    commande.client_id ?? null,
     fichier,
+    ip_address,
   })
 
   return NextResponse.json({ ok: true })
