@@ -64,23 +64,37 @@ const COLONNES: ColDef[] = [
   { key: 'prefs',           label: 'Préférences',     defaultOn: false, align: 'left'  },
 ]
 
+const ALL_KEYS     = COLONNES.map(c => c.key)
 const DEFAULT_KEYS = new Set(COLONNES.filter(c => c.defaultOn).map(c => c.key))
-const LS_KEY = 'business_liste_colonnes'
+const LS_KEYS  = 'business_liste_colonnes'
+const LS_ORDER = 'business_liste_colonnes_order'
 
 function loadActiveKeys(): Set<string> {
   if (typeof window === 'undefined') return DEFAULT_KEYS
   try {
-    const raw = localStorage.getItem(LS_KEY)
+    const raw = localStorage.getItem(LS_KEYS)
     if (!raw) return DEFAULT_KEYS
-    const arr = JSON.parse(raw) as string[]
-    return new Set(arr)
-  } catch {
-    return DEFAULT_KEYS
-  }
+    return new Set(JSON.parse(raw) as string[])
+  } catch { return DEFAULT_KEYS }
+}
+function saveActiveKeys(keys: Set<string>) {
+  try { localStorage.setItem(LS_KEYS, JSON.stringify([...keys])) } catch {}
 }
 
-function saveActiveKeys(keys: Set<string>) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify([...keys])) } catch {}
+function loadColOrder(): string[] {
+  if (typeof window === 'undefined') return ALL_KEYS
+  try {
+    const raw = localStorage.getItem(LS_ORDER)
+    if (!raw) return ALL_KEYS
+    const saved = JSON.parse(raw) as string[]
+    const knownSet = new Set(ALL_KEYS)
+    const valid    = saved.filter(k => knownSet.has(k))
+    const newCols  = ALL_KEYS.filter(k => !valid.includes(k))
+    return [...valid, ...newCols]
+  } catch { return ALL_KEYS }
+}
+function saveColOrder(order: string[]) {
+  try { localStorage.setItem(LS_ORDER, JSON.stringify(order)) } catch {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -206,17 +220,25 @@ function renderCell(key: string, m: MembreRow): React.ReactNode {
   }
 }
 
-// ── Sélecteur de colonnes ─────────────────────────────────────────────────────
+// ── Sélecteur de colonnes (avec drag & drop pour réordonner) ─────────────────
+
+const COL_BY_KEY = new Map(COLONNES.map(c => [c.key, c]))
 
 function ColonnePicker({
   activeKeys,
+  colOrder,
   onToggle,
+  onReorder,
 }: {
   activeKeys: Set<string>
+  colOrder: string[]
   onToggle: (key: string) => void
+  onReorder: (order: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const ref     = useRef<HTMLDivElement>(null)
+  const dragIdx = useRef<number | null>(null)
+  const [draggingKey, setDraggingKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -226,6 +248,25 @@ function ColonnePicker({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
+
+  function onDragStart(idx: number, key: string) {
+    dragIdx.current = idx
+    setDraggingKey(key)
+  }
+  function onDragOver(e: React.DragEvent, idx: number) {
+    e.preventDefault()
+    const from = dragIdx.current
+    if (from === null || from === idx) return
+    const next = [...colOrder]
+    const [removed] = next.splice(from, 1)
+    next.splice(idx, 0, removed)
+    dragIdx.current = idx
+    onReorder(next)
+  }
+  function onDragEnd() {
+    dragIdx.current = null
+    setDraggingKey(null)
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -245,31 +286,62 @@ function ColonnePicker({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-40 w-56 p-1 overflow-hidden">
-          <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">Colonnes visibles</p>
-          {COLONNES.map(col => (
-            <label
-              key={col.key}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors group"
-            >
-              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
-                activeKeys.has(col.key) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
-              }`}>
-                {activeKeys.has(col.key) && (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-2.5 h-2.5">
-                    <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+        <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-40 w-56 overflow-hidden">
+          <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-600">
+            Colonnes visibles · glisser pour réordonner
+          </p>
+          <div className="p-1">
+            {colOrder.map((key, idx) => {
+              const col = COL_BY_KEY.get(key)
+              if (!col) return null
+              return (
+                <div
+                  key={key}
+                  draggable
+                  onDragStart={() => onDragStart(idx, key)}
+                  onDragOver={(e) => onDragOver(e, idx)}
+                  onDragEnd={onDragEnd}
+                  className={`flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-gray-800 transition-colors group ${
+                    draggingKey === key ? 'opacity-40' : ''
+                  }`}
+                >
+                  {/* Grip */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="w-3 h-3 text-gray-700 group-hover:text-gray-500 flex-shrink-0 cursor-grab"
+                  >
+                    <circle cx="5" cy="4"  r="1.2"/><circle cx="11" cy="4"  r="1.2"/>
+                    <circle cx="5" cy="8"  r="1.2"/><circle cx="11" cy="8"  r="1.2"/>
+                    <circle cx="5" cy="12" r="1.2"/><circle cx="11" cy="12" r="1.2"/>
                   </svg>
-                )}
-              </div>
-              <input
-                type="checkbox"
-                checked={activeKeys.has(col.key)}
-                onChange={() => onToggle(col.key)}
-                className="sr-only"
-              />
-              <span className="text-xs text-gray-400 group-hover:text-white transition-colors">{col.label}</span>
-            </label>
-          ))}
+
+                  {/* Checkbox */}
+                  <label className="flex items-center gap-2 flex-1 cursor-pointer select-none">
+                    <div
+                      onClick={() => onToggle(key)}
+                      className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                        activeKeys.has(key) ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
+                      }`}
+                    >
+                      {activeKeys.has(key) && (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white" className="w-2.5 h-2.5">
+                          <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      onClick={() => onToggle(key)}
+                      className="text-xs text-gray-400 group-hover:text-white transition-colors"
+                    >
+                      {col.label}
+                    </span>
+                  </label>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -414,12 +486,14 @@ export default function ListeDetailClient({
   ajouterContacts,
   retirerContact,
 }: Props) {
-  const [showModal, setShowModal] = useState(false)
+  const [showModal,  setShowModal]  = useState(false)
   const [activeKeys, setActiveKeys] = useState<Set<string>>(DEFAULT_KEYS)
+  const [colOrder,   setColOrder]   = useState<string[]>(ALL_KEYS)
 
   // Hydrate depuis localStorage après montage
   useEffect(() => {
     setActiveKeys(loadActiveKeys())
+    setColOrder(loadColOrder())
   }, [])
 
   function toggleCol(key: string) {
@@ -431,7 +505,14 @@ export default function ListeDetailClient({
     })
   }
 
-  const colsActives = COLONNES.filter(c => activeKeys.has(c.key))
+  function reorderCols(order: string[]) {
+    setColOrder(order)
+    saveColOrder(order)
+  }
+
+  const colsActives = colOrder
+    .map(key => COL_BY_KEY.get(key))
+    .filter((c): c is ColDef => !!c && activeKeys.has(c.key))
 
   async function handleAjouter(ids: string[]) {
     const fd = new FormData()
@@ -472,7 +553,12 @@ export default function ListeDetailClient({
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <ColonnePicker activeKeys={activeKeys} onToggle={toggleCol} />
+              <ColonnePicker
+                activeKeys={activeKeys}
+                colOrder={colOrder}
+                onToggle={toggleCol}
+                onReorder={reorderCols}
+              />
 
               <button
                 onClick={() => setShowModal(true)}
