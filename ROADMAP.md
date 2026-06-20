@@ -464,23 +464,23 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 
 **Colonnes ajoutées :** `clients` (spotify, youtube, tiktok, notes, tags) · `beats` (couleur) · `commandes` (notes) · `abonnements_boutique` (fin_essai, annulation_en_cours)
 
-### Phase 1 — CRM (en cours)
+### Phase 1 — CRM ✅ Complète
 
 | # | Page | Route cible | Remplace | Statut |
 |---|------|-------------|----------|--------|
 | 1.1 | Contacts (liste) | `/dashboard/business/contacts/` | `/dashboard/crm/` | ✅ |
 | 1.2 | Fiche client | `/dashboard/business/contacts/[id]/` | `/dashboard/crm/[clientId]/` | ✅ |
-| 1.3 | Doublons | `/dashboard/business/doublons/` | `/dashboard/crm/doublons/` | ⬜ |
-| 1.4 | Segments | `/dashboard/business/segments/` | *(nouveau)* | ⬜ |
-| 1.5 | Listes | `/dashboard/business/listes/` | *(nouveau)* | ⬜ |
+| 1.3 | Doublons | `/dashboard/business/doublons/` | `/dashboard/crm/doublons/` | ✅ |
+| 1.4 | Segments | `/dashboard/business/segments/` | *(nouveau)* | ✅ |
+| 1.5 | Listes | `/dashboard/business/listes/` | *(nouveau)* | ✅ |
 
 **Suppressions après Phase 1 :** `/dashboard/crm/` (liste, fiche, doublons, email/[encodedEmail])
 
-### Phase 2 — Commerce ⬜ À faire
+### Phase 2 — Commerce (en cours)
 
 | # | Page | Route cible | Remplace | Statut |
 |---|------|-------------|----------|--------|
-| 2.1 | Commandes + fiche | `/dashboard/business/commandes/` + `/[id]/` | `/dashboard/commandes/` | ⬜ |
+| 2.1 | Commandes + fiche | `/dashboard/business/commandes/` + `/[id]/` | `/dashboard/commandes/` | ✅ |
 | 2.2 | Abonnements | `/dashboard/business/abonnements/` | liste de `/dashboard/abonnements/` | ⬜ |
 | 2.3 | Plans | `/dashboard/business/plans/` | config de `/dashboard/abonnements/` | ⬜ |
 | 2.4 | Beats (CRUD) | `/dashboard/business/beats/` | `/dashboard/beats/` (+ sous-routes) | ⬜ |
@@ -576,3 +576,7 @@ Composants communs d'abord : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCar
 | 2026-06-12 | Outil Business (11d) — Plan validé | Session grill-me : 14 décisions d'architecture prises. Plan de migration crm-proto → /dashboard/business en 4 phases (Foundation → CRM → Commerce → Analytics → Dashboard). Décisions clés : layout dédié, suppression anciennes routes, codes promo table Supabase, splits supprimés, Marketing en placeholder 🔒, analytics onglet par onglet. Roadmap mise à jour. |
 | 2026-06-13 | Outil Business (11d) — Phase 0 + CRM 1.1 + 1.2 ✅ | Foundation validée (SQL + layout + sidebar). Vue Contacts : 4 onglets (Tous/Clients/Abonnés/Leads), KPIs, filtres, préférences. Vue Leads : score chaleur, 20 leads de test. Fiche client : 7 onglets (Identité/Abonnement/Commandes/Préférences/Newsletter/Activité/Morceaux). Fix lead 42501 : GRANT authenticated + service_role manquants sur table `leads`. |
 | 2026-06-13 | Étape 12 — Free Download — Décisions | Périmètre complet planifié : boutique (badge BeatCard + modal + page beat) + API (client invité + lead upsert + free_downloads + signed URL + email Resend) + dashboard fiche client Activité. 6 sous-étapes documentées. Double livraison (DL direct + email). **PROCHAINE ÉTAPE : 12.1 SQL puis 12.2→12.6 code.** |
+| 2026-06-15 | Outil Business (11d) — Phase 1.3 Doublons ✅ | Page Doublons complète : algorithme Levenshtein (email + nom + téléphone), KPIs, paires ignorer/désignorer, fusion manuelle via FusionWizard, historique des fusions (défusion possible). Table `fusions_crm` + `doublons_ignores`. |
+| 2026-06-17 | Outil Business (11d) — Fiche client + Phase 1.4 Segments ✅ | Fiche client : surnom CRM, nom_artiste, téléphone et langue éditables (bouton save inline). Segments : filter builder ET/OU custom, badge statut intégré comme condition (est/n'est pas/est parmi), compteurs dynamiques, edit mode, dropdowns catalogue. |
+| 2026-06-19 | Outil Business (11d) — Phase 1.5 Listes + Phase 2.1 Commandes ✅ | Listes CRM : création/modification/suppression + détail liste, ajout/retrait contacts depuis modale, sélecteur de colonnes dynamique (15 colonnes, localStorage), drag & drop sur les headers. Commandes : liste complète + fiche détail (Articles HT/TVA, Historique téléchargements, Liens, Timeline auto, Remboursement, Renvoyer email). Fix fiche commande : admin client pour join clients. |
+| 2026-06-20 | Bug fix — Historique téléchargements ✅ | `licence_downloads` manquait d'un `GRANT INSERT TO service_role`. Ajout `supabase/licence_downloads_grants.sql`. Historique téléchargements fonctionnel (date, fichier, IP). Comportement confirmé : les DL depuis le dashboard beatmaker ne sont pas loggués (correct). |
