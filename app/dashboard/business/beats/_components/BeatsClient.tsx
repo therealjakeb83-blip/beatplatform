@@ -23,22 +23,6 @@ const STATUT_LABEL: Record<string, string> = {
   vendu:     'Exclusif vendu',
 }
 
-const LIC_BADGE: Record<string, string> = {
-  mp3:       'bg-sky-500/20 text-sky-400',
-  wav:       'bg-indigo-500/20 text-indigo-400',
-  stems:     'bg-violet-500/20 text-violet-400',
-  illimite:  'bg-pink-500/20 text-pink-400',
-  exclusive: 'bg-amber-500/20 text-amber-400',
-}
-
-const LIC_LABEL: Record<string, string> = {
-  mp3:       'MP3',
-  wav:       'WAV',
-  stems:     'Stems',
-  illimite:  'Illimité',
-  exclusive: 'Exclusif',
-}
-
 const TABS = [
   { label: 'Tous',           value: '' },
   { label: 'Public',         value: 'public' },
@@ -87,18 +71,6 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
   const [search,       setSearch]       = useState('')
   const [sortKey,      setSortKey]      = useState<SortKey>('created_at')
   const [sortDir,      setSortDir]      = useState<'asc' | 'desc'>('desc')
-  const [resetting,    setResetting]    = useState(false)
-
-  async function handleResetLicences() {
-    if (!confirm('Réinitialiser toutes les licences selon les fichiers disponibles ? Les configurations manuelles seront écrasées.')) return
-    setResetting(true)
-    try {
-      await fetch('/api/beats/reset-licences', { method: 'POST' })
-      router.refresh()
-    } finally {
-      setResetting(false)
-    }
-  }
 
   const genres = useMemo(() => {
     const set = new Set<string>()
@@ -145,25 +117,15 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
           <h1 className="text-2xl font-bold text-white">Beats</h1>
           <p className="text-sm text-gray-500 mt-1">Catalogue et gestion des licences</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleResetLicences}
-            disabled={resetting}
-            className="text-xs text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-50"
-            title="Réinitialise les licences de tous les beats selon les fichiers uploadés"
-          >
-            {resetting ? 'Réinitialisation…' : 'Réinitialiser les licences'}
-          </button>
-          <Link
-            href="/dashboard/beats/nouveau"
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors text-white text-sm font-medium px-4 py-2 rounded-lg"
-          >
+        <Link
+          href="/dashboard/beats/nouveau"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors text-white text-sm font-medium px-4 py-2 rounded-lg"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
             <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
           </svg>
           Ajouter un beat
-          </Link>
-        </div>
+        </Link>
       </div>
 
       {/* Tabs statut */}
@@ -232,7 +194,6 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Beat</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Licences</th>
                 <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">
                   <button onClick={() => handleSort('created_at')} className="hover:text-gray-400 transition-colors">
                     Date <SortIcon active={sortKey === 'created_at'} dir={sortDir} />
@@ -261,23 +222,6 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
                     </div>
                   </td>
 
-                  <td className="px-4 py-3">
-                    {b.licences.length > 0 ? (
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {b.licences.map(l => (
-                          <span
-                            key={l}
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${LIC_BADGE[l] ?? 'bg-gray-700 text-gray-400'}`}
-                          >
-                            {LIC_LABEL[l] ?? l}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-gray-700">—</span>
-                    )}
-                  </td>
-
                   <td className="px-4 py-3 text-right text-xs text-gray-600">
                     {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })}
                   </td>
@@ -292,7 +236,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
 
               {displayed.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-16 text-center text-xs text-gray-700">
+                  <td colSpan={3} className="px-5 py-16 text-center text-xs text-gray-700">
                     Aucun beat trouvé
                   </td>
                 </tr>
@@ -302,7 +246,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
             {displayed.length > 0 && (
               <tfoot>
                 <tr className="border-t border-gray-800 bg-gray-900/50">
-                  <td className="px-5 py-3 text-xs text-gray-600 font-semibold" colSpan={4}>
+                  <td className="px-5 py-3 text-xs text-gray-600 font-semibold" colSpan={3}>
                     {displayed.length} beat{displayed.length > 1 ? 's' : ''}
                   </td>
                 </tr>
