@@ -68,6 +68,10 @@ export default async function BeatsPage() {
     licencesMap.get(bl.beat_id)!.push(modele)
   }
 
+  // Fallback : si un beat n'a pas d'entrées beat_licences, on affiche
+  // toutes les licences configurées du beatmaker
+  const defaultLicences = (licRows ?? []).map((l: LicRow) => l.modele)
+
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
     id:            b.id as string,
     titre:         b.titre as string,
@@ -80,7 +84,7 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
-    licences:      licencesMap.get(b.id as string) ?? [],
+    licences:      licencesMap.get(b.id as string) ?? defaultLicences,
   }))
 
   return <BeatsClient beats={beats} />
