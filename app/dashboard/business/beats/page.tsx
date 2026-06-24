@@ -60,13 +60,19 @@ export default async function BeatsPage() {
   // Map beat_id → modeles actifs (filtrage actif en JS pour éviter l'ambiguïté Supabase)
   type BlRow = { beat_id: string; licence_id: string; actif: boolean }
   const licencesMap = new Map<string, string[]>()
+  // Beats ayant AU MOINS une entrée beat_licences (même inactive) = configurés
+  const beatsConfigures = new Set<string>()
   for (const bl of (blRows ?? []) as BlRow[]) {
+    beatsConfigures.add(bl.beat_id)
     if (!bl.actif) continue
     const modele = modeleMap.get(bl.licence_id)
     if (!modele) continue
     if (!licencesMap.has(bl.beat_id)) licencesMap.set(bl.beat_id, [])
     licencesMap.get(bl.beat_id)!.push(modele)
   }
+
+  // Fallback pour beats non encore configurés : toutes les licences actives du beatmaker
+  const toutesLicences = ((licRows ?? []) as LicRow[]).map(l => l.modele)
 
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
     id:            b.id as string,
@@ -80,7 +86,9 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
-    licences:      licencesMap.get(b.id as string) ?? [],
+    licences:      beatsConfigures.has(b.id as string)
+                     ? (licencesMap.get(b.id as string) ?? [])
+                     : toutesLicences,
   }))
 
   return <BeatsClient beats={beats} />
