@@ -92,7 +92,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           actif: licences_actives.includes(l.id),
           prix_override: l.modele === 'exclusive' && exclusif_prix_override ? parseInt(exclusif_prix_override) : null,
           sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
-        }))
+        })),
+        { onConflict: 'beat_id,licence_id' }
       )
     }
   }
