@@ -273,6 +273,12 @@ export default function CodesPromoClient({
       return
     }
 
+    if (editingId) {
+      setCodes(prev => prev.map(c => c.id === editingId ? data.code : c))
+    } else {
+      setCodes(prev => [data.code, ...prev])
+    }
+
     setLoading(false)
     fermerModal()
     router.refresh()
