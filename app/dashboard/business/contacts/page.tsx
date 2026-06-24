@@ -292,7 +292,7 @@ export default async function ContactsPage({
     const dernierContactISO  = events.length ? events[events.length - 1].date.toISOString() : c.created_at
     const typeDerniereAction = events[events.length - 1]?.type ?? 'Inscription'
 
-    const ltv = cmds.filter(cmd => cmd.statut === 'payee').reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
+    const ltv = licenceCmds.filter(cmd => cmd.statut === 'payee').reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
     const dernier_achat_iso = licenceCmds.length
       ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
       : null
