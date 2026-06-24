@@ -207,7 +207,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
               {displayed.map(b => (
                 <tr
                   key={b.id}
-                  onClick={() => router.push(`/dashboard/beats/${b.id}/modifier`)}
+                  onClick={() => router.push(`/dashboard/business/beats/${b.id}/modifier`)}
                   className="hover:bg-gray-800/40 transition-colors cursor-pointer"
                 >
                   <td className="px-5 py-3">
