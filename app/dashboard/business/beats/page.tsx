@@ -37,12 +37,11 @@ export default async function BeatsPage() {
 
   const [{ data: blRows }, { data: licRows }] = beatIds.length > 0
     ? await Promise.all([
-        // Récupère toutes les lignes beat_licences actives pour ces beats
+        // Récupère toutes les lignes beat_licences pour ces beats (filtrage actif en JS)
         admin
           .from('beat_licences')
-          .select('beat_id, licence_id')
-          .in('beat_id', beatIds)
-          .eq('actif', true),
+          .select('beat_id, licence_id, actif')
+          .in('beat_id', beatIds),
         // Récupère les licences du beatmaker (id → modele)
         admin
           .from('licences')
@@ -58,18 +57,21 @@ export default async function BeatsPage() {
     modeleMap.set(l.id, l.modele)
   }
 
-  // Map beat_id → modeles actifs
-  type BlRow = { beat_id: string; licence_id: string }
+  // Map beat_id → modeles actifs (filtrage actif en JS pour éviter l'ambiguïté Supabase)
+  type BlRow = { beat_id: string; licence_id: string; actif: boolean }
   const licencesMap = new Map<string, string[]>()
   for (const bl of (blRows ?? []) as BlRow[]) {
+    if (!bl.actif) continue
     const modele = modeleMap.get(bl.licence_id)
     if (!modele) continue
     if (!licencesMap.has(bl.beat_id)) licencesMap.set(bl.beat_id, [])
     licencesMap.get(bl.beat_id)!.push(modele)
   }
 
-  // Fallback : si un beat n'a pas d'entrées beat_licences, on affiche
-  // toutes les licences configurées du beatmaker
+  // Beats qui ont des entrées dans beat_licences (même toutes inactives)
+  const beatsAvecBl = new Set((blRows ?? []).map((bl) => (bl as BlRow).beat_id))
+
+  // Fallback uniquement pour les beats SANS aucune entrée beat_licences (anciens beats)
   const defaultLicences = ((licRows ?? []) as LicRow[]).map(l => l.modele)
 
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
@@ -84,7 +86,9 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
-    licences:      licencesMap.get(b.id as string) ?? defaultLicences,
+    licences:      beatsAvecBl.has(b.id as string)
+                     ? (licencesMap.get(b.id as string) ?? [])
+                     : defaultLicences,
   }))
 
   return <BeatsClient beats={beats} />
