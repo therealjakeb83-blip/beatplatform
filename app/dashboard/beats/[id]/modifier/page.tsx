@@ -44,7 +44,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
   const licencesActives = (licences ?? [])
     .filter(l => {
       const bl = (beatLicences ?? []).find(x => x.licence_id === l.id)
-      return bl ? bl.actif : true
+      return bl ? bl.actif : false
     })
     .map(l => l.id)
 

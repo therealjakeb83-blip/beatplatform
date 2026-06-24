@@ -68,12 +68,6 @@ export default async function BeatsPage() {
     licencesMap.get(bl.beat_id)!.push(modele)
   }
 
-  // Beats qui ont des entrées dans beat_licences (même toutes inactives)
-  const beatsAvecBl = new Set((blRows ?? []).map((bl) => (bl as BlRow).beat_id))
-
-  // Fallback uniquement pour les beats SANS aucune entrée beat_licences (anciens beats)
-  const defaultLicences = ((licRows ?? []) as LicRow[]).map(l => l.modele)
-
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
     id:            b.id as string,
     titre:         b.titre as string,
@@ -86,9 +80,7 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
-    licences:      beatsAvecBl.has(b.id as string)
-                     ? (licencesMap.get(b.id as string) ?? [])
-                     : defaultLicences,
+    licences:      licencesMap.get(b.id as string) ?? [],
   }))
 
   return <BeatsClient beats={beats} />
