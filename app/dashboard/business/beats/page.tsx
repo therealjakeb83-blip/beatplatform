@@ -70,7 +70,7 @@ export default async function BeatsPage() {
 
   // Fallback : si un beat n'a pas d'entrées beat_licences, on affiche
   // toutes les licences configurées du beatmaker
-  const defaultLicences = (licRows ?? []).map((l: LicRow) => l.modele)
+  const defaultLicences = ((licRows ?? []) as LicRow[]).map(l => l.modele)
 
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
     id:            b.id as string,
