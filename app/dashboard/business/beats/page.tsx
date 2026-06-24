@@ -51,7 +51,7 @@ export default async function BeatsPage() {
           .eq('statut', 'payee')
           .not('beat_id', 'is', null),
       ])
-    : [{ data: [] as unknown[], error: null }, { data: [] as unknown[], error: null }]
+    : [{ data: [] as unknown[] }, { data: [] as unknown[] }]
 
   // Map beat_id → licences modeles actifs
   type BlRow = { beat_id: string; licences: { modele: string } | null }
