@@ -27,7 +27,7 @@ export default async function BeatsPage() {
 
   const { data: rawBeats } = await admin
     .from('beats')
-    .select('id, titre, bpm, cle, statut, image_url, couleur, created_at, styles, type_beat, mp3_tague_url, mp3_propre_url, wav_url, stems_url')
+    .select('id, titre, bpm, cle, statut, image_url, couleur, created_at, styles, type_beat, mp3_tague_url')
     .eq('beatmaker_id', user.id)
     .is('supprime_le', null)
     .order('created_at', { ascending: false })
@@ -60,36 +60,12 @@ export default async function BeatsPage() {
   // Map beat_id → modeles actifs (filtrage actif en JS pour éviter l'ambiguïté Supabase)
   type BlRow = { beat_id: string; licence_id: string; actif: boolean }
   const licencesMap = new Map<string, string[]>()
-  // Set des beats ayant AU MOINS une entrée dans beat_licences (même inactive)
-  const beatsAvecBl = new Set<string>()
   for (const bl of (blRows ?? []) as BlRow[]) {
-    beatsAvecBl.add(bl.beat_id)
     if (!bl.actif) continue
     const modele = modeleMap.get(bl.licence_id)
     if (!modele) continue
     if (!licencesMap.has(bl.beat_id)) licencesMap.set(bl.beat_id, [])
     licencesMap.get(bl.beat_id)!.push(modele)
-  }
-
-  // Modeles actifs du beatmaker (pour le fallback des vieux beats)
-  const modelesActifs = ((licRows ?? []) as LicRow[]).map(l => l.modele)
-
-  // Fallback pour beats sans entrées beat_licences : déduit des fichiers disponibles
-  type RawBeat = { mp3_propre_url?: unknown; wav_url?: unknown; stems_url?: unknown }
-  function getLicencesFallback(b: RawBeat): string[] {
-    const hasMp3 = !!b.mp3_propre_url
-    const hasWav  = !!b.wav_url
-    const hasStems = !!b.stems_url
-    return modelesActifs.filter(m => {
-      switch (m) {
-        case 'mp3':      return hasMp3
-        case 'wav':      return hasMp3 && hasWav
-        case 'stems':
-        case 'illimite':
-        case 'exclusive': return hasMp3 && hasWav && hasStems
-        default:          return false
-      }
-    })
   }
 
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
@@ -104,9 +80,7 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
-    licences:      beatsAvecBl.has(b.id as string)
-                     ? (licencesMap.get(b.id as string) ?? [])
-                     : getLicencesFallback(b),
+    licences:      licencesMap.get(b.id as string) ?? [],
   }))
 
   return <BeatsClient beats={beats} />
