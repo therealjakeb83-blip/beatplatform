@@ -240,16 +240,20 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
                   </td>
 
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {b.licences.length > 0
-                        ? b.licences.map(l => (
-                            <span key={l} className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${LIC_BADGE[l] ?? 'bg-gray-700 text-gray-400'}`}>
-                              {LIC_LABEL[l] ?? l}
-                            </span>
-                          ))
-                        : <span className="text-[10px] text-gray-700">—</span>
-                      }
-                    </div>
+                    {b.licences.length > 0 ? (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {b.licences.map(l => (
+                          <span
+                            key={l}
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${LIC_BADGE[l] ?? 'bg-gray-700 text-gray-400'}`}
+                          >
+                            {LIC_LABEL[l] ?? l}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-700">—</span>
+                    )}
                   </td>
 
                   <td className="px-4 py-3 text-right text-xs text-gray-600">
