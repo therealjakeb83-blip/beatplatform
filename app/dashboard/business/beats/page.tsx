@@ -34,45 +34,66 @@ export default async function BeatsPage() {
     .limit(500)
 
   const beatIds = (rawBeats ?? []).map(b => b.id as string)
+  if (beatIds.length === 0) return <BeatsClient beats={[]} />
 
-  const [{ data: blRows }, { data: licRows }] = beatIds.length > 0
-    ? await Promise.all([
-        // Récupère toutes les lignes beat_licences pour ces beats (filtrage actif en JS)
-        admin
-          .from('beat_licences')
-          .select('beat_id, licence_id, actif')
-          .in('beat_id', beatIds),
-        // Récupère les licences du beatmaker (id → modele)
-        admin
-          .from('licences')
-          .select('id, modele')
-          .eq('beatmaker_id', user.id),
-      ])
-    : [{ data: [] as unknown[] }, { data: [] as unknown[] }]
+  const [{ data: blRows }, { data: licRows }] = await Promise.all([
+    // Récupère toutes les lignes beat_licences pour ces beats (filtrage actif en JS)
+    admin
+      .from('beat_licences')
+      .select('beat_id, licence_id, actif')
+      .in('beat_id', beatIds),
+    // Récupère les licences ACTIVES du beatmaker (id → modele)
+    admin
+      .from('licences')
+      .select('id, modele')
+      .eq('beatmaker_id', user.id)
+      .eq('actif', true),
+  ])
+
+  type LicRow = { id: string; modele: string }
+  type BlRow  = { beat_id: string; licence_id: string; actif: boolean }
 
   // Map licence_id → modele
-  type LicRow = { id: string; modele: string }
   const modeleMap = new Map<string, string>()
-  for (const l of (licRows ?? []) as LicRow[]) {
-    modeleMap.set(l.id, l.modele)
+  for (const l of (licRows ?? []) as LicRow[]) modeleMap.set(l.id, l.modele)
+
+  // Beats ayant AU MOINS une entrée beat_licences = configurés
+  const beatsConfigures = new Set<string>()
+  for (const bl of (blRows ?? []) as BlRow[]) beatsConfigures.add(bl.beat_id)
+
+  // --- Migration silencieuse : initialise beat_licences pour les vieux beats ---
+  const beatsNonConfigures = beatIds.filter(id => !beatsConfigures.has(id))
+  if (beatsNonConfigures.length > 0 && (licRows ?? []).length > 0) {
+    const entries = beatsNonConfigures.flatMap(beatId =>
+      (licRows as LicRow[]).map(l => ({
+        beat_id:       beatId,
+        licence_id:    l.id,
+        actif:         true,
+        prix_override: null,
+        sur_demande:   false,
+      }))
+    )
+    await admin
+      .from('beat_licences')
+      .upsert(entries, { onConflict: 'beat_id,licence_id' })
+    // Les nouveaux beats sont maintenant configurés avec toutes licences actives
+    for (const id of beatsNonConfigures) beatsConfigures.add(id)
   }
+  // -------------------------------------------------------------------------
 
   // Map beat_id → modeles actifs (filtrage actif en JS pour éviter l'ambiguïté Supabase)
-  type BlRow = { beat_id: string; licence_id: string; actif: boolean }
   const licencesMap = new Map<string, string[]>()
-  // Beats ayant AU MOINS une entrée beat_licences (même inactive) = configurés
-  const beatsConfigures = new Set<string>()
   for (const bl of (blRows ?? []) as BlRow[]) {
-    beatsConfigures.add(bl.beat_id)
     if (!bl.actif) continue
     const modele = modeleMap.get(bl.licence_id)
     if (!modele) continue
     if (!licencesMap.has(bl.beat_id)) licencesMap.set(bl.beat_id, [])
     licencesMap.get(bl.beat_id)!.push(modele)
   }
-
-  // Fallback pour beats non encore configurés : toutes les licences actives du beatmaker
-  const toutesLicences = ((licRows ?? []) as LicRow[]).map(l => l.modele)
+  // Beats nouvellement migrés : toutes les licences actives
+  for (const id of beatsNonConfigures) {
+    licencesMap.set(id, (licRows as LicRow[]).map(l => l.modele))
+  }
 
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
     id:            b.id as string,
@@ -86,9 +107,7 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
-    licences:      beatsConfigures.has(b.id as string)
-                     ? (licencesMap.get(b.id as string) ?? [])
-                     : toutesLicences,
+    licences:      licencesMap.get(b.id as string) ?? [],
   }))
 
   return <BeatsClient beats={beats} />
