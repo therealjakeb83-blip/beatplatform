@@ -76,14 +76,14 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.error)
-    router.push('/dashboard/beats')
+    router.push('/dashboard/business/beats')
   }
 
   async function handleDelete() {
     const res = await fetch(`/api/beats/${beat.id}/supprimer`, { method: 'DELETE' })
     const result = await res.json()
     if (!res.ok) throw new Error(result.error)
-    router.push('/dashboard/beats')
+    router.push('/dashboard/business/beats')
   }
 
   return (

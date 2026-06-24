@@ -41,10 +41,24 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
       .eq('beat_id', id),
   ])
 
+  // Si le beat n'a jamais eu d'entrées beat_licences (vieux beat), on pré-remplit
+  // selon les fichiers disponibles ; sinon on respecte les valeurs en base.
+  const hasEntries = (beatLicences ?? []).length > 0
   const licencesActives = (licences ?? [])
     .filter(l => {
       const bl = (beatLicences ?? []).find(x => x.licence_id === l.id)
-      return bl ? bl.actif : false
+      if (bl) return bl.actif
+      if (!hasEntries) {
+        switch (l.modele) {
+          case 'mp3':      return !!beat.mp3_propre_url
+          case 'wav':      return !!beat.mp3_propre_url && !!beat.wav_url
+          case 'stems':
+          case 'illimite':
+          case 'exclusive': return !!beat.mp3_propre_url && !!beat.wav_url && !!beat.stems_url
+          default:          return false
+        }
+      }
+      return false
     })
     .map(l => l.id)
 

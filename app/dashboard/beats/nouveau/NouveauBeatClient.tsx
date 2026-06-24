@@ -37,7 +37,7 @@ export default function NouveauBeatClient({ beatId, licences }: { beatId: string
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.error)
-    router.push('/dashboard/beats')
+    router.push('/dashboard/business/beats')
   }
 
   return (

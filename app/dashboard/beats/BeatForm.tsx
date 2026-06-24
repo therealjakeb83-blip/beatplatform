@@ -597,7 +597,7 @@ export default function BeatForm({
           className="flex-1 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50">
           {uploading ? 'En cours...' : submitLabel}
         </button>
-        <Link href="/dashboard/beats"
+        <Link href="/dashboard/business/beats"
           className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold transition-colors">
           Annuler
         </Link>
