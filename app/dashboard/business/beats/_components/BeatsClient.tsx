@@ -48,7 +48,7 @@ const TABS = [
   { label: 'Exclusif vendu', value: 'vendu' },
 ]
 
-type SortKey = 'created_at' | 'ca' | 'ventes'
+type SortKey = 'created_at'
 
 /* ─── helpers ────────────────────────────────────────────────────── */
 
@@ -113,25 +113,16 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
       return true
     })
     return [...filtered].sort((a, b) => {
-      let va: number, vb: number
-      if (sortKey === 'created_at') {
-        va = new Date(a.created_at).getTime()
-        vb = new Date(b.created_at).getTime()
-      } else {
-        va = a[sortKey]
-        vb = b[sortKey]
-      }
+      const va = new Date(a.created_at).getTime()
+      const vb = new Date(b.created_at).getTime()
       return sortDir === 'desc' ? vb - va : va - vb
     })
-  }, [beats, filtreStatut, filtreGenre, search, sortKey, sortDir])
+  }, [beats, filtreStatut, filtreGenre, search, sortDir])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
     else { setSortKey(key); setSortDir('desc') }
   }
-
-  const totalCA    = displayed.reduce((s, b) => s + b.ca, 0)
-  const totalVente = displayed.reduce((s, b) => s + b.ventes, 0)
 
   return (
     <div className="max-w-6xl mx-auto px-8 py-8">
@@ -221,16 +212,6 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
                 <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Beat</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Licences</th>
                 <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-                  <button onClick={() => handleSort('ca')} className="hover:text-gray-400 transition-colors">
-                    CA <SortIcon active={sortKey === 'ca'} dir={sortDir} />
-                  </button>
-                </th>
-                <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-                  <button onClick={() => handleSort('ventes')} className="hover:text-gray-400 transition-colors">
-                    Ventes <SortIcon active={sortKey === 'ventes'} dir={sortDir} />
-                  </button>
-                </th>
-                <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">
                   <button onClick={() => handleSort('created_at')} className="hover:text-gray-400 transition-colors">
                     Date <SortIcon active={sortKey === 'created_at'} dir={sortDir} />
                   </button>
@@ -271,16 +252,6 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
                     </div>
                   </td>
 
-                  <td className="px-4 py-3 text-right">
-                    <span className={`text-sm font-bold ${b.ca > 0 ? 'text-green-400' : 'text-gray-700'}`}>
-                      {b.ca > 0 ? `${(b.ca / 100).toFixed(2)} €` : '—'}
-                    </span>
-                  </td>
-
-                  <td className="px-4 py-3 text-right text-sm font-semibold text-gray-300">
-                    {b.ventes > 0 ? b.ventes : <span className="text-gray-700">—</span>}
-                  </td>
-
                   <td className="px-4 py-3 text-right text-xs text-gray-600">
                     {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })}
                   </td>
@@ -295,7 +266,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
 
               {displayed.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center text-xs text-gray-700">
+                  <td colSpan={4} className="px-5 py-16 text-center text-xs text-gray-700">
                     Aucun beat trouvé
                   </td>
                 </tr>
@@ -305,16 +276,9 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
             {displayed.length > 0 && (
               <tfoot>
                 <tr className="border-t border-gray-800 bg-gray-900/50">
-                  <td className="px-5 py-3 text-xs text-gray-600 font-semibold" colSpan={2}>
+                  <td className="px-5 py-3 text-xs text-gray-600 font-semibold" colSpan={4}>
                     {displayed.length} beat{displayed.length > 1 ? 's' : ''}
                   </td>
-                  <td className="px-4 py-3 text-right text-xs font-bold text-green-400">
-                    {totalCA > 0 ? `${(totalCA / 100).toFixed(2)} €` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right text-xs font-bold text-gray-400">
-                    {totalVente > 0 ? totalVente : '—'}
-                  </td>
-                  <td colSpan={2} />
                 </tr>
               </tfoot>
             )}

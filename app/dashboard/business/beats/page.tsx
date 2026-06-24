@@ -16,8 +16,6 @@ export type BeatRow = {
   type_beat: string[] | null
   mp3_tague_url: string | null
   licences: string[]   // modeles actifs : 'mp3' | 'wav' | 'stems' | 'illimite' | 'exclusive'
-  ventes: number
-  ca: number           // en centimes
 }
 
 export default async function BeatsPage() {
@@ -37,38 +35,37 @@ export default async function BeatsPage() {
 
   const beatIds = (rawBeats ?? []).map(b => b.id as string)
 
-  const [{ data: blRows }, { data: cmdRows }] = beatIds.length > 0
+  const [{ data: blRows }, { data: licRows }] = beatIds.length > 0
     ? await Promise.all([
+        // Récupère toutes les lignes beat_licences actives pour ces beats
         admin
           .from('beat_licences')
-          .select('beat_id, licences(modele)')
+          .select('beat_id, licence_id')
           .in('beat_id', beatIds)
           .eq('actif', true),
+        // Récupère les licences du beatmaker (id → modele)
         admin
-          .from('commandes')
-          .select('beat_id, prix_paye')
-          .eq('beatmaker_id', user.id)
-          .eq('statut', 'payee')
-          .not('beat_id', 'is', null),
+          .from('licences')
+          .select('id, modele')
+          .eq('beatmaker_id', user.id),
       ])
     : [{ data: [] as unknown[] }, { data: [] as unknown[] }]
 
-  // Map beat_id → licences modeles actifs
-  type BlRow = { beat_id: string; licences: { modele: string } | null }
-  const licencesMap = new Map<string, string[]>()
-  for (const bl of (blRows ?? []) as BlRow[]) {
-    if (!bl.beat_id || !bl.licences?.modele) continue
-    if (!licencesMap.has(bl.beat_id)) licencesMap.set(bl.beat_id, [])
-    licencesMap.get(bl.beat_id)!.push(bl.licences.modele)
+  // Map licence_id → modele
+  type LicRow = { id: string; modele: string }
+  const modeleMap = new Map<string, string>()
+  for (const l of (licRows ?? []) as LicRow[]) {
+    modeleMap.set(l.id, l.modele)
   }
 
-  // Map beat_id → { ventes, ca }
-  type CmdRow = { beat_id: string | null; prix_paye: number }
-  const statsMap = new Map<string, { ventes: number; ca: number }>()
-  for (const cmd of (cmdRows ?? []) as CmdRow[]) {
-    if (!cmd.beat_id) continue
-    const cur = statsMap.get(cmd.beat_id) ?? { ventes: 0, ca: 0 }
-    statsMap.set(cmd.beat_id, { ventes: cur.ventes + 1, ca: cur.ca + (cmd.prix_paye ?? 0) })
+  // Map beat_id → modeles actifs
+  type BlRow = { beat_id: string; licence_id: string }
+  const licencesMap = new Map<string, string[]>()
+  for (const bl of (blRows ?? []) as BlRow[]) {
+    const modele = modeleMap.get(bl.licence_id)
+    if (!modele) continue
+    if (!licencesMap.has(bl.beat_id)) licencesMap.set(bl.beat_id, [])
+    licencesMap.get(bl.beat_id)!.push(modele)
   }
 
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
@@ -84,8 +81,6 @@ export default async function BeatsPage() {
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
     licences:      licencesMap.get(b.id as string) ?? [],
-    ventes:        statsMap.get(b.id as string)?.ventes ?? 0,
-    ca:            statsMap.get(b.id as string)?.ca ?? 0,
   }))
 
   return <BeatsClient beats={beats} />
