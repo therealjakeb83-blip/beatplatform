@@ -153,7 +153,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { ca_brut, ca_net, mrr, arr, collab_ca, panier_moyen, beats_vendus, ecoutes, free_dl },
+    kpis: { ca: ca_brut, ca_brut, ca_net, mrr, arr, collab_ca, panier_moyen, beats_vendus, ecoutes, free_dl },
     historique,
     top_beats,
     dernieres_licences,
