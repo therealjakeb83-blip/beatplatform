@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import type { LicencePublic } from './BeatCard'
 import AcheterBouton from './AcheterBouton'
 
@@ -14,6 +17,14 @@ function formatStreams(n: number | null) {
   if (n >= 1_000_000) return `${n / 1_000_000}M`
   if (n >= 1_000) return `${n / 1_000}k`
   return String(n)
+}
+
+type CodeApplique = {
+  code: string
+  type_valeur: 'pourcentage' | 'montant'
+  valeur: number
+  depense_min: number | null
+  licences_eligibles: string[] | null
 }
 
 export default function LicencesTable({
@@ -37,91 +48,204 @@ export default function LicencesTable({
   estAbonne?: boolean
   remisePct?: number
 }) {
+  const [codeInput, setCodeInput] = useState('')
+  const [codeApplique, setCodeApplique] = useState<CodeApplique | null>(null)
+  const [erreurCode, setErreurCode] = useState<string | null>(null)
+  const [chargementCode, setChargementCode] = useState(false)
+
   const licencesTriees = [...licences].sort((a, b) => a.prix - b.prix)
 
   if (licencesTriees.length === 0) return null
+
+  async function validerCode() {
+    const code = codeInput.trim().toUpperCase()
+    if (!code) return
+    setChargementCode(true)
+    setErreurCode(null)
+    try {
+      const res = await fetch('/api/stripe/valider-code-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, beat_id: beatId, slug }),
+      })
+      const data = await res.json()
+      if (data.valide) {
+        setCodeApplique({ code, ...data })
+        setCodeInput('')
+      } else {
+        setErreurCode(data.erreur ?? 'Code invalide')
+      }
+    } catch {
+      setErreurCode('Erreur réseau')
+    } finally {
+      setChargementCode(false)
+    }
+  }
+
+  function supprimerCode() {
+    setCodeApplique(null)
+    setErreurCode(null)
+  }
 
   return (
     <div className="mt-10">
       <h2 className="text-lg font-bold text-white mb-4">Licences disponibles</h2>
       <div className="flex flex-col gap-3">
-        {licencesTriees.map(l => (
-          <div
-            key={l.id}
-            className={`rounded-xl border p-5 ${
-              l.est_exclusive
-                ? 'border-yellow-500/40 bg-yellow-500/5'
-                : 'border-gray-800 bg-gray-900'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-white">{l.nom}</span>
-                  {l.est_exclusive && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">
-                      Exclusive
-                    </span>
-                  )}
-                  {/* Fichiers inclus */}
-                  {FICHIERS[l.modele]?.map(f => (
-                    <span key={f} className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
-                      {f}
-                    </span>
-                  ))}
+        {licencesTriees.map(l => {
+          const estIllimiteOuExclusive = l.modele === 'illimite' || l.modele === 'exclusive'
+          const aRemiseMembre = estAbonne && remisePct > 0 && !estIllimiteOuExclusive
+          const prixApresMembre = aRemiseMembre
+            ? Math.round(l.prix * (1 - remisePct / 100))
+            : l.prix
+
+          const codeEstApplicable = !estIllimiteOuExclusive &&
+            codeApplique !== null &&
+            (!codeApplique.licences_eligibles?.length || codeApplique.licences_eligibles.includes(l.modele)) &&
+            (!codeApplique.depense_min || prixApresMembre >= codeApplique.depense_min)
+
+          const prixFinal = codeEstApplicable
+            ? (codeApplique!.type_valeur === 'pourcentage'
+                ? Math.round(prixApresMembre * (1 - codeApplique!.valeur / 100))
+                : Math.max(0, prixApresMembre - codeApplique!.valeur))
+            : prixApresMembre
+
+          const aUneReduction = prixFinal < l.prix
+
+          return (
+            <div
+              key={l.id}
+              className={`rounded-xl border p-5 ${
+                l.est_exclusive
+                  ? 'border-yellow-500/40 bg-yellow-500/5'
+                  : 'border-gray-800 bg-gray-900'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-white">{l.nom}</span>
+                    {l.est_exclusive && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">
+                        Exclusive
+                      </span>
+                    )}
+                    {FICHIERS[l.modele]?.map(f => (
+                      <span key={f} className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                    {l.streams_limite !== undefined && (
+                      <span>
+                        Streams monétisés : <span className="text-gray-400">{formatStreams(l.streams_limite)}</span>
+                      </span>
+                    )}
+                    {l.vues_video_limite !== undefined && (
+                      <span>
+                        Vues vidéo : <span className="text-gray-400">{formatStreams(l.vues_video_limite)}</span>
+                      </span>
+                    )}
+                    {l.clips_video_limite !== undefined && l.clips_video_limite !== null && (
+                      <span>
+                        Clips : <span className="text-gray-400">{l.clips_video_limite}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Détails usage */}
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                  {l.streams_limite !== undefined && (
-                    <span>
-                      Streams monétisés : <span className="text-gray-400">{formatStreams(l.streams_limite)}</span>
-                    </span>
-                  )}
-                  {l.vues_video_limite !== undefined && (
-                    <span>
-                      Vues vidéo : <span className="text-gray-400">{formatStreams(l.vues_video_limite)}</span>
-                    </span>
-                  )}
-                  {l.clips_video_limite !== undefined && l.clips_video_limite !== null && (
-                    <span>
-                      Clips : <span className="text-gray-400">{l.clips_video_limite}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-shrink-0 text-right flex flex-col items-end gap-2">
-                {l.sur_demande ? (
-                  <span className="text-indigo-400 font-semibold">Sur demande</span>
-                ) : (() => {
-                  const aRemise = estAbonne && remisePct > 0 && l.modele !== 'illimite' && l.modele !== 'exclusive'
-                  const prixRemise = aRemise ? Math.round(l.prix * (1 - remisePct / 100)) : null
-                  return (
+                <div className="flex-shrink-0 text-right flex flex-col items-end gap-2">
+                  {l.sur_demande ? (
+                    <span className="text-indigo-400 font-semibold">Sur demande</span>
+                  ) : (
                     <>
-                      {aRemise ? (
-                        <div className="flex flex-col items-end">
+                      <div className="flex flex-col items-end">
+                        {aUneReduction && (
                           <span className="text-sm text-gray-500 line-through">{l.prix}€</span>
-                          <span className="text-2xl font-black text-indigo-300">{prixRemise}€</span>
-                          <span className="text-xs text-indigo-400 font-medium">-{remisePct}% membre</span>
+                        )}
+                        <span className={`text-2xl font-black ${aUneReduction ? 'text-green-400' : 'text-white'}`}>
+                          {prixFinal}€
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {aRemiseMembre && (
+                            <span className="text-xs text-indigo-400 font-medium">-{remisePct}% membre</span>
+                          )}
+                          {codeEstApplicable && (
+                            <span className="text-xs text-green-500 font-medium">
+                              {codeApplique!.type_valeur === 'pourcentage'
+                                ? `-${codeApplique!.valeur}% code`
+                                : `-${codeApplique!.valeur}€ code`}
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-2xl font-black text-white">{l.prix}€</span>
-                      )}
+                      </div>
                       <AcheterBouton
                         beatId={beatId}
                         licenceId={l.id}
                         slug={slug}
                         label="Acheter"
+                        codePromo={codeEstApplicable ? codeApplique!.code : undefined}
                       />
                     </>
-                  )
-                })()}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {/* Section code promo */}
+      <div className="mt-6 pt-5 border-t border-gray-800">
+        {codeApplique ? (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-green-400">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>
+                Code <strong>{codeApplique.code}</strong> appliqué —{' '}
+                <span className="text-gray-400">
+                  {codeApplique.type_valeur === 'pourcentage'
+                    ? `-${codeApplique.valeur}%`
+                    : `-${codeApplique.valeur}€`}
+                </span>
+              </span>
+            </div>
+            <button
+              onClick={supprimerCode}
+              className="text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
+            >
+              Supprimer
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={codeInput}
+                onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
+                onKeyDown={e => e.key === 'Enter' && validerCode()}
+                placeholder="Code promo"
+                className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+              />
+              <button
+                onClick={validerCode}
+                disabled={!codeInput.trim() || chargementCode}
+                className="px-4 py-2 rounded-lg border border-gray-700 text-sm text-gray-300 hover:bg-gray-800 disabled:opacity-40 transition-colors whitespace-nowrap"
+              >
+                {chargementCode ? '...' : 'Appliquer'}
+              </button>
+            </div>
+            {erreurCode && (
+              <p className="text-red-400 text-xs mt-2">{erreurCode}</p>
+            )}
+          </div>
+        )}
+      </div>
+
       <p className="text-xs text-gray-600 mt-4 text-center">
         Propulsé par My Producer · Les paiements sont sécurisés
       </p>

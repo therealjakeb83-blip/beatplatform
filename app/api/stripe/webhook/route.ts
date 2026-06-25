@@ -93,11 +93,9 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   const hasSplits = meta.has_splits === 'true'
   const transferGroup = meta.transfer_group ?? null
 
-  const discounts = session.total_details?.breakdown?.discounts ?? []
-  const premierDiscount = discounts[0]
-  const reduction = premierDiscount ? Math.round(premierDiscount.amount / 100) : 0
-  const discountObj = premierDiscount?.discount as unknown as { promotion_code?: { code?: string } | null }
-  const promoCode = discountObj?.promotion_code?.code ?? null
+  // Code promo appliqué côté serveur avant checkout — lu depuis les métadonnées
+  const promoCode = meta.code_promo ?? null
+  const reduction = meta.reduction_code_promo ? Math.round(Number(meta.reduction_code_promo) / 100) : 0
 
   const supabase = createAdminClient()
 
@@ -194,6 +192,22 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   }
 
   console.log('[webhook] Commande créée:', commande?.id)
+
+  // Incrémenter le compteur d'utilisations du code promo
+  if (promoCode) {
+    const { data: codePromoData } = await supabase
+      .from('codes_promo')
+      .select('id, utilisations')
+      .eq('beatmaker_id', meta.beatmaker_id)
+      .eq('code', promoCode)
+      .maybeSingle()
+    if (codePromoData) {
+      await supabase
+        .from('codes_promo')
+        .update({ utilisations: codePromoData.utilisations + 1 })
+        .eq('id', codePromoData.id)
+    }
+  }
 
   // Créer un lead pour ce beatmaker si le client n'en a pas déjà un
   if (clientId) {

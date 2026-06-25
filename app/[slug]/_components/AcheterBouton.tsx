@@ -7,33 +7,44 @@ export default function AcheterBouton({
   licenceId,
   slug,
   label,
+  codePromo,
 }: {
   beatId: string
   licenceId: string
   slug: string
   label: string
+  codePromo?: string
 }) {
   const [chargement, setChargement] = useState(false)
+  const [erreur, setErreur] = useState<string | null>(null)
 
   async function acheter() {
     setChargement(true)
+    setErreur(null)
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug }),
+      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug, code_promo: codePromo }),
     })
     const data = await res.json()
-    if (data.url) window.location.href = data.url
-    else setChargement(false)
+    if (data.url) {
+      window.location.href = data.url
+    } else {
+      setErreur(data.erreur ?? 'Erreur lors du paiement')
+      setChargement(false)
+    }
   }
 
   return (
-    <button
-      onClick={acheter}
-      disabled={chargement}
-      className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors whitespace-nowrap"
-    >
-      {chargement ? '...' : label}
-    </button>
+    <div className="flex flex-col items-end gap-1">
+      <button
+        onClick={acheter}
+        disabled={chargement}
+        className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors whitespace-nowrap"
+      >
+        {chargement ? '...' : label}
+      </button>
+      {erreur && <p className="text-red-400 text-xs">{erreur}</p>}
+    </div>
   )
 }
