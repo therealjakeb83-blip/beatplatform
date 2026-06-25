@@ -113,14 +113,31 @@ export default function LicencesTable({
     setEmailAcheteur('')
   }
 
-  function confirmerEmail() {
+  async function confirmerEmail() {
     if (!emailAcheteur.trim()) {
       setErreurCode('Entrez votre adresse email')
       return
     }
-    setCodeApplique(codeEnAttente!)
-    setCodeEnAttente(null)
+    setChargementCode(true)
     setErreurCode(null)
+    try {
+      const res = await fetch('/api/stripe/valider-code-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeEnAttente!.code, beat_id: beatId, slug, email: emailAcheteur.trim() }),
+      })
+      const data = await res.json()
+      if (data.valide) {
+        setCodeApplique(codeEnAttente!)
+        setCodeEnAttente(null)
+      } else {
+        setErreurCode(data.erreur ?? 'Adresse email non autorisée')
+      }
+    } catch {
+      setErreurCode('Erreur réseau')
+    } finally {
+      setChargementCode(false)
+    }
   }
 
   return (
@@ -275,10 +292,10 @@ export default function LicencesTable({
               />
               <button
                 onClick={confirmerEmail}
-                disabled={!emailAcheteur.trim()}
+                disabled={!emailAcheteur.trim() || chargementCode}
                 className="px-4 py-2 rounded-lg border border-gray-700 text-sm text-gray-300 hover:bg-gray-800 disabled:opacity-40 transition-colors whitespace-nowrap"
               >
-                Confirmer
+                {chargementCode ? '...' : 'Confirmer'}
               </button>
             </div>
             {erreurCode && <p className="text-red-400 text-xs mt-2">{erreurCode}</p>}

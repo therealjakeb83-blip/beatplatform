@@ -2,7 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
-  const { code, beat_id, slug } = await request.json()
+  const { code, beat_id, slug, email } = await request.json()
 
   if (!code || !beat_id || !slug) {
     return NextResponse.json({ valide: false, erreur: 'Paramètres manquants' }, { status: 400 })
@@ -53,6 +53,16 @@ export async function POST(request: Request) {
 
   if (promo.limite_par_code !== null && promo.utilisations >= promo.limite_par_code) {
     return NextResponse.json({ valide: false, erreur: "Ce code a atteint sa limite d'utilisation" })
+  }
+
+  // Vérification email si fourni (étape "Confirmer" côté boutique)
+  if (email) {
+    if (promo.emails_autorises?.length > 0 && !promo.emails_autorises.includes(email as string)) {
+      return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
+    }
+    if (promo.emails_exclus?.includes(email as string)) {
+      return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
+    }
   }
 
   return NextResponse.json({
