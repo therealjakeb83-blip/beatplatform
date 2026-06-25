@@ -129,7 +129,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ erreur: 'Code non applicable à ce beat' }, { status: 400 })
     }
 
-    if (promo.licences_eligibles?.length > 0 && !promo.licences_eligibles.includes(licence.modele)) {
+    if (promo.licences_eligibles?.length > 0 && !promo.licences_eligibles.includes(licence.nom)) {
       return NextResponse.json({ erreur: 'Code non applicable à cette licence' }, { status: 400 })
     }
 

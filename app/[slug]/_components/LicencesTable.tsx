@@ -70,8 +70,23 @@ export default function LicencesTable({
       })
       const data = await res.json()
       if (data.valide) {
-        setCodeApplique({ code, ...data })
-        setCodeInput('')
+        // Vérifier que le code s'applique à au moins une licence sur cette page
+        const auMoinsUne = licencesTriees.some(l => {
+          if (l.modele === 'illimite' || l.modele === 'exclusive') return false
+          if (data.licences_eligibles?.length && !data.licences_eligibles.includes(l.nom)) return false
+          if (data.depense_min && l.prix < data.depense_min) return false
+          return true
+        })
+        if (auMoinsUne) {
+          setCodeApplique({ code, ...data })
+          setCodeInput('')
+        } else if (data.depense_min) {
+          setErreurCode(`Ce code requiert un achat minimum de ${data.depense_min}€`)
+        } else if (data.licences_eligibles?.length) {
+          setErreurCode("Ce code ne s'applique pas aux licences disponibles sur ce beat")
+        } else {
+          setErreurCode("Ce code ne s'applique pas à cet achat")
+        }
       } else {
         setErreurCode(data.erreur ?? 'Code invalide')
       }
@@ -100,7 +115,7 @@ export default function LicencesTable({
 
           const codeEstApplicable = !estIllimiteOuExclusive &&
             codeApplique !== null &&
-            (!codeApplique.licences_eligibles?.length || codeApplique.licences_eligibles.includes(l.modele)) &&
+            (!codeApplique.licences_eligibles?.length || codeApplique.licences_eligibles.includes(l.nom)) &&
             (!codeApplique.depense_min || prixApresMembre >= codeApplique.depense_min)
 
           const prixFinal = codeEstApplicable
