@@ -182,7 +182,7 @@ function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
             </div>
             <div className="flex justify-between text-sm font-semibold text-white pt-2 border-t border-gray-700">
               <span>Total TTC</span>
-              <span>{c.prix_paye}€</span>
+              <span>{Number(c.prix_paye).toFixed(2)}€</span>
             </div>
           </div>
         </div>
@@ -517,7 +517,7 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
 
                         {/* Total */}
                         <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
-                          {c.prix_paye}€
+                          {Number(c.prix_paye).toFixed(2)}€
                         </td>
                       </tr>
                     )

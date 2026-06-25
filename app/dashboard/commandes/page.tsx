@@ -100,7 +100,7 @@ export default async function CommandesPage() {
 
                   {/* Prix + statut */}
                   <div className="text-right flex-shrink-0">
-                    <p className="font-black text-white">{c.prix_paye}€</p>
+                    <p className="font-black text-white">{Number(c.prix_paye).toFixed(2)}€</p>
                     <p className="text-xs text-gray-500 mb-1">{date}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statut.couleur}`}>
                       {statut.label}

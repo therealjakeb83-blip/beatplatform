@@ -86,7 +86,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   const acheteurEmail = session.customer_details?.email ?? null
   const acheteurNom = session.customer_details?.name ?? null
   const totalCents = session.amount_total ?? 0
-  const prixPaye = Math.round(totalCents / 100)
+  const prixPaye = totalCents / 100
   const stripePaymentId = typeof session.payment_intent === 'string'
     ? session.payment_intent
     : (session.payment_intent?.id ?? null)
@@ -95,7 +95,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   // Code promo appliqué côté serveur avant checkout — lu depuis les métadonnées
   const promoCode = meta.code_promo ?? null
-  const reduction = meta.reduction_code_promo ? Math.round(Number(meta.reduction_code_promo) / 100) : 0
+  const reduction = meta.reduction_code_promo ? Number(meta.reduction_code_promo) / 100 : 0
 
   const supabase = createAdminClient()
 
@@ -412,7 +412,7 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
 
   const typeCommande = billing === 'subscription_create' ? 'CREATION_ABONNEMENT' : 'RENOUVELLEMENT'
   const montantCents = invoice.amount_paid ?? 0
-  const prixPaye = Math.round(montantCents / 100)
+  const prixPaye = montantCents / 100
   const invoiceId = invoice.id
 
   // Éviter les doublons si le webhook est rejoué (clé d'idempotence = invoice.id)

@@ -99,7 +99,7 @@ export default async function AchatsBoutiquePage({
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium text-sm truncate">{beat?.titre ?? 'Beat'}</p>
                     <p className="text-gray-500 text-xs">
-                      {licence?.nom ?? '—'} · {cmd.prix_paye}€ · {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
+                      {licence?.nom ?? '—'} · {Number(cmd.prix_paye).toFixed(2)}€ · {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
                   <Link

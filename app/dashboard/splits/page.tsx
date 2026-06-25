@@ -115,7 +115,7 @@ export default async function SplitsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white truncate">{c.beats?.titre ?? 'Beat supprimé'}</p>
-                      <p className="text-xs text-gray-500">{date} · {c.prix_paye}€ encaissé</p>
+                      <p className="text-xs text-gray-500">{date} · {Number(c.prix_paye).toFixed(2)}€ encaissé</p>
                     </div>
                     {hasEnAttente && (
                       <span className="text-xs text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded-full flex-shrink-0">

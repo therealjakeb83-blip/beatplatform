@@ -318,7 +318,7 @@ export default async function CommandeDetailPage({
                   <p className="text-[10px] text-gray-600 mb-0.5">Code promo</p>
                   <p className="font-mono text-sm text-indigo-400">{c.code_promo}</p>
                   {remiseTTC > 0 && (
-                    <p className="text-xs text-green-400">−{remiseTTC}€ appliqué</p>
+                    <p className="text-xs text-green-400">−{Number(remiseTTC).toFixed(2)}€ appliqué</p>
                   )}
                 </div>
               )}
