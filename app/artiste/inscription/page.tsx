@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function InscriptionArtistePage() {
-  const router = useRouter()
+function InscriptionArtisteForm() {
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') ?? '/mon-compte'
+
   const [prenom, setPrenom] = useState('')
   const [nom, setNom] = useState('')
   const [email, setEmail] = useState('')
@@ -33,11 +35,11 @@ export default function InscriptionArtistePage() {
       return
     }
 
-    // Créer la ligne clients + lier les abonnements/commandes existants par email
+    const slug = redirect.split('/').filter(Boolean)[0] ?? null
     const res = await fetch('/api/artiste/lier-compte', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom, prenom, newsletter_consent: newsletter }),
+      body: JSON.stringify({ nom, prenom, newsletter_consent: newsletter, slug }),
     })
 
     if (!res.ok) {
@@ -153,7 +155,7 @@ export default function InscriptionArtistePage() {
 
         <p className="text-gray-500 text-sm mt-6 text-center">
           Déjà un compte ?{' '}
-          <Link href="/artiste/connexion" className="text-indigo-400 hover:text-indigo-300">
+          <Link href={`/artiste/connexion?redirect=${encodeURIComponent(redirect)}`} className="text-indigo-400 hover:text-indigo-300">
             Se connecter
           </Link>
         </p>
@@ -166,5 +168,13 @@ export default function InscriptionArtistePage() {
         </p>
       </div>
     </main>
+  )
+}
+
+export default function InscriptionArtistePage() {
+  return (
+    <Suspense>
+      <InscriptionArtisteForm />
+    </Suspense>
   )
 }

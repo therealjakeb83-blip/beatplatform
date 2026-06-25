@@ -116,11 +116,12 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
       const parts = (acheteurNom ?? '').trim().split(' ')
       const prenom = parts[0] || null
       const nom = parts.slice(1).join(' ') || parts[0] || acheteurEmail.split('@')[0]
-      const { data: newClient } = await supabase
+      const { data: newClient, error: clientError } = await supabase
         .from('clients')
-        .insert({ email: acheteurEmail, nom, prenom })
+        .insert({ id: crypto.randomUUID(), email: acheteurEmail, nom, prenom })
         .select('id')
         .single()
+      if (clientError) console.error('[webhook] Erreur insert client invité:', JSON.stringify(clientError))
       clientId = newClient?.id ?? null
     }
   }
@@ -193,6 +194,26 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   }
 
   console.log('[webhook] Commande créée:', commande?.id)
+
+  // Créer un lead pour ce beatmaker si le client n'en a pas déjà un
+  if (clientId) {
+    const { data: existingLead } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('beatmaker_id', meta.beatmaker_id)
+      .maybeSingle()
+
+    if (!existingLead) {
+      const { error: leadError } = await supabase.from('leads').insert({
+        client_id:          clientId,
+        beatmaker_id:       meta.beatmaker_id,
+        source:             'visite',
+        newsletter_inscrit: false,
+      })
+      if (leadError) console.error('[webhook] Erreur insert lead:', JSON.stringify(leadError))
+    }
+  }
 
   // Distribuer les fonds entre collaborateurs (si le beat a des splits)
   if (hasSplits && transferGroup && splits && splits.length > 0 && commande) {

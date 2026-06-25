@@ -1,18 +1,15 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 
-// Crée la ligne `clients` si absente, fusionne le compte invité si existant,
-// puis lie les commandes et abonnements orphelins par email.
-// Appelé après connexion ou inscription d'un artiste acheteur.
 export async function lierCompteClient(
   userId: string,
   email: string,
   nom?: string | null,
   prenom?: string | null,
   newsletter_consent?: boolean,
+  slug?: string | null,
 ) {
   const admin = createAdminClient()
 
-  // Chercher si un compte invité (UUID différent) existe avec cet email
   const { data: guestClient } = await admin
     .from('clients')
     .select('id')
@@ -20,7 +17,6 @@ export async function lierCompteClient(
     .maybeSingle()
 
   if (guestClient && guestClient.id !== userId) {
-    // Fusionner : transférer les commandes et abonnements du compte invité
     await admin.from('commandes')
       .update({ client_id: userId })
       .eq('client_id', guestClient.id)
@@ -29,10 +25,8 @@ export async function lierCompteClient(
       .update({ client_id: userId })
       .eq('client_id', guestClient.id)
 
-    // Supprimer le compte invité — les leads/favoris/doublons cascadent (vides pour un invité)
     await admin.from('clients').delete().eq('id', guestClient.id)
 
-    // Créer le compte auth avec id = auth.uid()
     const { error } = await admin.from('clients').insert({
       id: userId,
       email,
@@ -43,7 +37,6 @@ export async function lierCompteClient(
     if (error) console.error('[lierCompteClient] Erreur insert post-fusion:', JSON.stringify(error))
 
   } else if (!guestClient) {
-    // Aucun compte existant — création simple
     const { error } = await admin.from('clients').insert({
       id: userId,
       email,
@@ -54,7 +47,6 @@ export async function lierCompteClient(
     if (error) console.error('[lierCompteClient] Erreur insert clients:', JSON.stringify(error))
 
   } else {
-    // Compte auth déjà existant — mettre à jour si besoin
     const updates: Record<string, unknown> = {}
     if (prenom) updates.prenom = prenom
     if (nom) updates.nom = nom
@@ -64,7 +56,6 @@ export async function lierCompteClient(
     }
   }
 
-  // Lier les commandes/abonnements orphelins (acheteur_email sans client_id)
   await admin
     .from('abonnements_boutique')
     .update({ client_id: userId })
@@ -76,4 +67,32 @@ export async function lierCompteClient(
     .update({ client_id: userId })
     .eq('acheteur_email', email)
     .is('client_id', null)
+
+  // Créer un lead pour le beatmaker de la boutique si on connaît le slug
+  if (slug) {
+    const { data: beatmaker } = await admin
+      .from('beatmakers')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (beatmaker) {
+      const { data: existingLead } = await admin
+        .from('leads')
+        .select('id')
+        .eq('client_id', userId)
+        .eq('beatmaker_id', beatmaker.id)
+        .maybeSingle()
+
+      if (!existingLead) {
+        const { error } = await admin.from('leads').insert({
+          client_id:          userId,
+          beatmaker_id:       beatmaker.id,
+          source:             'visite',
+          newsletter_inscrit: newsletter_consent ?? false,
+        })
+        if (error) console.error('[lierCompteClient] Erreur insert lead:', JSON.stringify(error))
+      }
+    }
+  }
 }

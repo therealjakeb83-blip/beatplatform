@@ -29,11 +29,11 @@ function ConnexionArtisteForm() {
       return
     }
 
-    // Lier les abonnements/commandes existants par email
+    const slug = redirect.split('/').filter(Boolean)[0] ?? null
     await fetch('/api/artiste/lier-compte', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ slug }),
     })
 
     window.location.href = redirect
@@ -92,7 +92,7 @@ function ConnexionArtisteForm() {
 
         <p className="text-gray-500 text-sm mt-6 text-center">
           Pas encore de compte ?{' '}
-          <Link href="/artiste/inscription" className="text-indigo-400 hover:text-indigo-300">
+          <Link href={`/artiste/inscription?redirect=${encodeURIComponent(redirect)}`} className="text-indigo-400 hover:text-indigo-300">
             Créer un compte artiste
           </Link>
         </p>
