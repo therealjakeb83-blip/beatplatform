@@ -35,16 +35,16 @@ function InscriptionArtisteForm() {
       return
     }
 
-    // Si une session est déjà établie (email auto-confirmé), on lie le compte maintenant.
-    // Sinon (confirmation email requise), lier-compte s'exécutera à la première connexion.
-    if (data.session) {
-      const slug = redirect.split('/').filter(Boolean)[0] ?? null
-      await fetch('/api/artiste/lier-compte', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom, prenom, newsletter_consent: newsletter, slug }),
-      })
-    }
+    const slug = redirect.split('/').filter(Boolean)[0] ?? null
+    await fetch('/api/artiste/lier-compte', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nom, prenom, newsletter_consent: newsletter, slug,
+        // Pas de session si email non confirmé — on passe userId+email pour que le serveur vérifie
+        ...(!data.session ? { userId: data.user.id, userEmail: data.user.email } : {}),
+      }),
+    })
 
     setSucces(true)
     setChargement(false)
