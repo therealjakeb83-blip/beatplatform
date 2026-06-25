@@ -31,9 +31,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const queueRef = useRef<BeatMin[]>([])
-  const currentBeatRef = useRef<BeatMin | null>(null)
+  const audioRef        = useRef<HTMLAudioElement | null>(null)
+  const queueRef        = useRef<BeatMin[]>([])
+  const currentBeatRef  = useRef<BeatMin | null>(null)
+  const playedBeatsRef  = useRef<Set<string>>(new Set())
+  const trackingRef     = useRef<{ beatId: string; accumulated: number; playedAt: number | null } | null>(null)
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { currentBeatRef.current = currentBeat }, [currentBeat])
@@ -42,12 +44,46 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = new Audio()
     audioRef.current = audio
 
+    function recordPlay(beatId: string) {
+      fetch('/api/boutique/plays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beat_id: beatId }),
+      }).catch(() => {})
+    }
+
+    function checkThreshold() {
+      const t = trackingRef.current
+      if (!t || playedBeatsRef.current.has(t.beatId)) return
+      const total = t.accumulated + (t.playedAt != null ? Date.now() - t.playedAt : 0)
+      if (total >= 30_000) {
+        playedBeatsRef.current.add(t.beatId)
+        recordPlay(t.beatId)
+      }
+    }
+
     audio.addEventListener('timeupdate', () => {
       if (audio.duration) setProgress(audio.currentTime / audio.duration)
+      checkThreshold()
     })
     audio.addEventListener('durationchange', () => setDuration(audio.duration || 0))
-    audio.addEventListener('play', () => setIsPlaying(true))
-    audio.addEventListener('pause', () => setIsPlaying(false))
+    audio.addEventListener('play', () => {
+      setIsPlaying(true)
+      const beatId = currentBeatRef.current?.id
+      if (!beatId || playedBeatsRef.current.has(beatId)) return
+      if (!trackingRef.current || trackingRef.current.beatId !== beatId) {
+        trackingRef.current = { beatId, accumulated: 0, playedAt: Date.now() }
+      } else {
+        trackingRef.current.playedAt = Date.now()
+      }
+    })
+    audio.addEventListener('pause', () => {
+      setIsPlaying(false)
+      if (trackingRef.current?.playedAt != null) {
+        trackingRef.current.accumulated += Date.now() - trackingRef.current.playedAt
+        trackingRef.current.playedAt = null
+      }
+    })
     audio.addEventListener('ended', () => {
       const q = queueRef.current
       const cur = currentBeatRef.current
