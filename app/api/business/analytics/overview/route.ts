@@ -59,14 +59,14 @@ export async function GET(request: Request) {
   const freeDl = (allFreeDl      ?? []).filter(f => inPeriod(f.downloaded_at, from, to))
   const collabs = (allCollabs    ?? []).filter(c => inPeriod(c.created_at,   from, to))
 
-  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0) / 100
-  const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
+  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net    = ca_brut - remises
   const beats_vendus = cmds.filter(c => c.type_commande === 'LICENCE').length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const ecoutes   = plays.length
   const free_dl   = freeDl.length
-  const collab_ca = collabs.reduce((s, c) => s + c.montant, 0) / 100
+  const collab_ca = collabs.reduce((s, c) => s + c.montant, 0)
 
   const mrr = (abonActifs ?? []).reduce((s, a) => {
     const mensuel = a.periode === 'annuel' ? a.prix / 12 : a.prix
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
   const top_beats = [...beatMap.values()]
     .sort((a, b) => b.ca - a.ca)
     .slice(0, 5)
-    .map(b => ({ ...b, ca: b.ca / 100 }))
+    .map(b => ({ ...b }))
 
   // Historique 12 mois
   const mois12 = getLast12Months()
@@ -102,8 +102,8 @@ export async function GET(request: Request) {
     const mFreeDl = (allFreeDl      ?? []).filter(f => f.downloaded_at >= start && f.downloaded_at < end)
     const mCollabs = (allCollabs    ?? []).filter(c => c.created_at   >= start && c.created_at   < end)
 
-    const mCa     = mCmds.reduce((s, c) => s + c.prix_paye, 0) / 100
-    const mRemise = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
+    const mCa     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const mRemise = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
 
     const monthEnd   = new Date(year, month + 1, 0, 23, 59, 59)
     const monthStart = new Date(year, month, 1)
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
       ventes:    mCmds.filter(c => c.type_commande === 'LICENCE').length,
       ecoutes:   mPlays.length,
       free_dl:   mFreeDl.length,
-      collab_ca: mCollabs.reduce((s, c) => s + c.montant, 0) / 100,
+      collab_ca: mCollabs.reduce((s, c) => s + c.montant, 0),
     }
   })
 

@@ -53,8 +53,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const plays  = (allPlays    ?? []).filter(p => inPeriod(p.played_at,      from, to))
   const freeDl = (allFreeDl   ?? []).filter(f => inPeriod(f.downloaded_at,  from, to))
 
-  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0) / 100
-  const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
+  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net    = ca_brut - remises
 
   // CA par licence
@@ -68,7 +68,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     licenceMap.set(nom, ex)
   }
   const ca_par_licence = [...licenceMap.entries()]
-    .map(([nom, v]) => ({ nom, ca: v.ca / 100, ventes: v.ventes }))
+    .map(([nom, v]) => ({ nom, ca: v.ca, ventes: v.ventes }))
     .sort((a, b) => b.ca - a.ca)
 
   // CA par source
@@ -78,7 +78,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     srcMap.set(src, (srcMap.get(src) ?? 0) + c.prix_paye)
   }
   const ca_par_source = [...srcMap.entries()]
-    .map(([source, ca]) => ({ source, ca: ca / 100 }))
+    .map(([source, ca]) => ({ source, ca }))
     .sort((a, b) => b.ca - a.ca)
 
   // Table ventes détaillée

@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   }
 
   const beatRows = beats.map(b => {
-    const ca      = (caMap.get(b.id) ?? 0) / 100
+    const ca      = caMap.get(b.id) ?? 0
     const ventes  = vMap.get(b.id) ?? 0
     const ecoutes = playsMap.get(b.id) ?? 0
     const free_dl = dlMap.get(b.id) ?? 0
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
     return {
       label,
       fullLabel,
-      ca:      mCmds.reduce((s, c) => s + c.prix_paye, 0) / 100,
+      ca:      mCmds.reduce((s, c) => s + c.prix_paye, 0),
       ventes:  mCmds.length,
       ecoutes: mPlays.length,
       free_dl: mFreeDl.length,

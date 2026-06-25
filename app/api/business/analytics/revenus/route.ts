@@ -28,9 +28,9 @@ export async function GET(request: Request) {
   const cmds = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
   const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
 
-  const ventes_brutes = cmds.reduce((s, c) => s + c.prix_paye, 0) / 100
-  const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
-  const ca_promo      = cmds.filter(c => c.code_promo).reduce((s, c) => s + c.prix_paye, 0) / 100
+  const ventes_brutes = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
+  const ca_promo      = cmds.filter(c => c.code_promo).reduce((s, c) => s + c.prix_paye, 0)
   const ventes_nettes = ventes_brutes - remises_total
   const tva           = tvaRate > 0 ? ventes_nettes - ventes_nettes / (1 + tvaRate) : 0
 
@@ -57,8 +57,8 @@ export async function GET(request: Request) {
   const jours = [...dayMap.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([date, v]) => {
-      const brut    = v.brut / 100
-      const remises = v.remises / 100
+      const brut    = v.brut
+      const remises = v.remises
       const net     = brut - remises
       return {
         date,
@@ -76,8 +76,8 @@ export async function GET(request: Request) {
     const start = new Date(year, month, 1).toISOString()
     const end   = new Date(year, month + 1, 1).toISOString()
     const mCmds = (allCommandes ?? []).filter(c => c.created_at >= start && c.created_at < end)
-    const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0) / 100
-    const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
+    const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     const net   = brut - rem
     return { label, fullLabel, brut, remises: rem, net, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
   })

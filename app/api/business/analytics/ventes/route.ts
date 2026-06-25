@@ -37,12 +37,12 @@ export async function GET(request: Request) {
   const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
   const collabs = (allCollabs   ?? []).filter(c => inPeriod(c.created_at, from, to))
 
-  const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye, 0) / 100
-  const remises    = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
+  const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  const remises    = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net     = ca_brut - remises
   const beats_vendus = cmds.filter(c => c.type_commande === 'LICENCE').length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
-  const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0) / 100
+  const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0)
 
   // Source top
   const srcMap: Record<string, number> = {}
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   }
   const srcEntries = Object.entries(srcMap).sort(([, a], [, b]) => b - a)
   const source_top = srcEntries.length
-    ? { nom: SOURCE_LABELS[srcEntries[0][0]] ?? srcEntries[0][0], ca: srcEntries[0][1] / 100, pct: ca_brut > 0 ? (srcEntries[0][1] / 100) / ca_brut * 100 : 0 }
+    ? { nom: SOURCE_LABELS[srcEntries[0][0]] ?? srcEntries[0][0], ca: srcEntries[0][1], pct: ca_brut > 0 ? srcEntries[0][1] / ca_brut * 100 : 0 }
     : null
 
   // Historique 12 mois (par source)
@@ -62,9 +62,9 @@ export async function GET(request: Request) {
     const end   = new Date(year, month + 1, 1).toISOString()
     const mCmds = (allCommandes ?? []).filter(c => c.created_at >= start && c.created_at < end)
 
-    const row: Record<string, unknown> = { label, fullLabel, ca: mCmds.reduce((s, c) => s + c.prix_paye, 0) / 100 }
+    const row: Record<string, unknown> = { label, fullLabel, ca: mCmds.reduce((s, c) => s + c.prix_paye, 0) }
     for (const src of SOURCES) {
-      row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye, 0) / 100
+      row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye, 0)
     }
     return row
   })

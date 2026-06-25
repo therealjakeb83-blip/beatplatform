@@ -29,8 +29,8 @@ export async function GET(_request: Request) {
 
   // KPIs
   const utilisations  = promos.reduce((s, c) => s + (c.utilisations ?? 0), 0)
-  const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100
-  const ca_genere     = cmds.reduce((s, c) => s + c.prix_paye, 0) / 100
+  const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
+  const ca_genere     = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const actifs        = promos.filter(c => c.statut === 'actif').length
 
   // Table enrichie par code
@@ -43,8 +43,8 @@ export async function GET(_request: Request) {
       type_valeur: code.type_valeur,
       valeur:      code.valeur,
       utilisations: code.utilisations ?? 0,
-      remise_total: cmdsCode.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100,
-      ca_genere:    cmdsCode.reduce((s, c) => s + c.prix_paye, 0) / 100,
+      remise_total: cmdsCode.reduce((s, c) => s + (c.reduction_montant ?? 0), 0),
+      ca_genere:    cmdsCode.reduce((s, c) => s + c.prix_paye, 0),
       statut:       code.statut,
     }
   })
@@ -59,8 +59,8 @@ export async function GET(_request: Request) {
       label,
       fullLabel,
       utilisations: mCmds.length,
-      remises:      mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0) / 100,
-      ca:           mCmds.reduce((s, c) => s + c.prix_paye, 0) / 100,
+      remises:      mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0),
+      ca:           mCmds.reduce((s, c) => s + c.prix_paye, 0),
       actifs:       promos.filter(p => p.statut === 'actif' && p.created_at <= end).length,
     }
   })

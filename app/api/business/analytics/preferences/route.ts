@@ -26,7 +26,7 @@ function buildGroups(
   return [...allLabels]
     .map(label => ({
       name:    label,
-      ca:      (map.get(label)?.ca ?? 0) / 100,
+      ca:      map.get(label)?.ca ?? 0,
       ventes:  map.get(label)?.ventes ?? 0,
       ecoutes: playsMap.get(label) ?? 0,
       free_dl: freeDlMap.get(label) ?? 0,
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
     licenceMap.set(nom, ex)
   }
   const licences: PrefRow[] = [...licenceMap.entries()]
-    .map(([name, v]) => ({ name, ca: v.ca / 100, ventes: v.ventes, ecoutes: 0, free_dl: 0 }))
+    .map(([name, v]) => ({ name, ca: v.ca, ventes: v.ventes, ecoutes: 0, free_dl: 0 }))
     .sort((a, b) => b.ca - a.ca)
 
   // Styles
