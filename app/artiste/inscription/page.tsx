@@ -24,9 +24,11 @@ function InscriptionArtisteForm() {
     setChargement(true)
 
     const supabase = createClient()
+    const callbackNext = `/artiste/connexion?redirect=${encodeURIComponent(redirect)}`
+    const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`
     const { data, error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { prenom, nom } },
+      options: { data: { prenom, nom }, emailRedirectTo },
     })
 
     if (error || !data.user) {
