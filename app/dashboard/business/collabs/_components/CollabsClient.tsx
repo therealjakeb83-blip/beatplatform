@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { SplitRow } from '../page'
+import type { SplitRow, SplitPaymentRow } from '../page'
 
 type Onglet = 'collabs' | 'demandes' | 'refusees'
 
@@ -29,18 +29,53 @@ function BeatCover({ beat }: { beat: SplitRow['beats'] }) {
   )
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function VentesDetail({ payments, pourcentage, titreBeat }: { payments: SplitPaymentRow[]; pourcentage: number; titreBeat: string }) {
+  const ventes = payments.filter(p => p.statut !== 'expire').sort((a, b) => b.created_at.localeCompare(a.created_at))
+  if (ventes.length === 0) return <p className="text-xs text-gray-600 py-2">Aucune vente pour ce beat.</p>
+
+  return (
+    <div className="mt-3 border-t border-gray-800 pt-3 flex flex-col gap-2">
+      <p className="text-xs text-gray-500 font-medium mb-1">Détail des ventes — {titreBeat} ({pourcentage}%)</p>
+      {ventes.map(p => (
+        <div key={p.id} className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-gray-400">{formatDate(p.created_at)}</span>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+            p.statut === 'transfere' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'
+          }`}>
+            {p.statut === 'transfere' ? 'Reçu' : 'En attente'}
+          </span>
+          <span className="font-semibold text-white">{(p.montant / 100).toFixed(2)}€</span>
+          {p.stripe_transfer_id && (
+            <span className="text-gray-700 font-mono truncate max-w-[120px]" title={p.stripe_transfer_id}>
+              {p.stripe_transfer_id.slice(0, 12)}…
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function CollabsClient({
   splits: initial,
   totalRecu,
   montantBloque,
+  nomArtiste,
 }: {
   splits: SplitRow[]
   totalRecu: number
   montantBloque: number
+  nomArtiste: string
 }) {
   const [splits, setSplits] = useState(initial)
   const [onglet, setOnglet] = useState<Onglet>('collabs')
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [telechargement, setTelechargement] = useState(false)
 
   const actives  = splits.filter(s => s.statut === 'actif')
   const demandes = splits.filter(s => s.statut === 'en_attente')
@@ -74,6 +109,22 @@ export default function CollabsClient({
     setLoadingId(null)
   }
 
+  async function telechargerReleve() {
+    setTelechargement(true)
+    const annee = new Date().getFullYear()
+    const res = await fetch(`/api/business/collabs/releve?annee=${annee}`)
+    if (res.ok) {
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `releve-collabs-${annee}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+    setTelechargement(false)
+  }
+
   return (
     <div className="px-8 py-8 max-w-3xl">
 
@@ -85,18 +136,29 @@ export default function CollabsClient({
             {actives.length} beat{actives.length !== 1 ? 's' : ''} en collab
           </p>
         </div>
-        <div className="text-right space-y-1">
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-right space-y-1">
+            {totalRecu > 0 && (
+              <div>
+                <p className="text-xs text-gray-500">Reçu</p>
+                <p className="text-xl font-black text-green-400">{totalRecu.toFixed(2)}€</p>
+              </div>
+            )}
+            {montantBloque > 0 && (
+              <div>
+                <p className="text-xs text-gray-500">Bloqué (demandes)</p>
+                <p className="text-lg font-bold text-amber-400">{montantBloque.toFixed(2)}€</p>
+              </div>
+            )}
+          </div>
           {totalRecu > 0 && (
-            <div>
-              <p className="text-xs text-gray-500">Reçu</p>
-              <p className="text-xl font-black text-green-400">{totalRecu.toFixed(2)}€</p>
-            </div>
-          )}
-          {montantBloque > 0 && (
-            <div>
-              <p className="text-xs text-gray-500">Bloqué (demandes)</p>
-              <p className="text-lg font-bold text-amber-400">{montantBloque.toFixed(2)}€</p>
-            </div>
+            <button
+              onClick={telechargerReleve}
+              disabled={telechargement}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
+            >
+              {telechargement ? 'Génération…' : `↓ Relevé ${new Date().getFullYear()}`}
+            </button>
           )}
         </div>
       </div>
@@ -139,37 +201,53 @@ export default function CollabsClient({
                   .filter(p => p.statut === 'transfere')
                   .reduce((sum, p) => sum + p.montant, 0) / 100
                 const nbVentes = s.split_payments.filter(p => p.statut !== 'expire').length
+                const isExpanded = expandedId === s.id
 
                 return (
-                  <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex gap-4 items-center">
-                    <BeatCover beat={beat} />
+                  <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                    <div className="flex gap-4 items-center">
+                      <BeatCover beat={beat} />
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-white truncate">{beat?.titre ?? 'Beat supprimé'}</p>
-                        {beat && beat.statut !== 'public' && (
-                          <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded flex-shrink-0">
-                            {beat.statut === 'prive' ? 'Privé' : 'Brouillon'}
-                          </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-white truncate">{beat?.titre ?? 'Beat supprimé'}</p>
+                          {beat && beat.statut !== 'public' && (
+                            <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded flex-shrink-0">
+                              {beat.statut === 'prive' ? 'Privé' : 'Brouillon'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Par {beat?.beatmakers?.nom_artiste ?? 'Beatmaker'} · Ta part : {s.pourcentage}%
+                        </p>
+                      </div>
+
+                      <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
+                        {recu > 0 ? (
+                          <p className="text-sm font-bold text-green-400">
+                            +{recu.toFixed(2)}€ <span className="text-xs font-normal text-gray-500">reçu</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-600">Pas encore vendu</p>
+                        )}
+                        {nbVentes > 0 && (
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                            className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                          >
+                            {isExpanded ? '▲ Masquer' : `▼ ${nbVentes} vente${nbVentes > 1 ? 's' : ''}`}
+                          </button>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Par {beat?.beatmakers?.nom_artiste ?? 'Beatmaker'} · Ta part : {s.pourcentage}%
-                      </p>
-                      {nbVentes > 0 && (
-                        <p className="text-xs text-gray-500">{nbVentes} vente{nbVentes > 1 ? 's' : ''}</p>
-                      )}
                     </div>
 
-                    <div className="text-right flex-shrink-0">
-                      {recu > 0 ? (
-                        <p className="text-sm font-bold text-green-400">
-                          +{recu.toFixed(2)}€ <span className="text-xs font-normal text-gray-500">reçu</span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-gray-600">Pas encore vendu</p>
-                      )}
-                    </div>
+                    {isExpanded && (
+                      <VentesDetail
+                        payments={s.split_payments}
+                        pourcentage={s.pourcentage}
+                        titreBeat={beat?.titre ?? 'Beat'}
+                      />
+                    )}
                   </div>
                 )
               })}

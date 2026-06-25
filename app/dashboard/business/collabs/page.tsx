@@ -3,6 +3,14 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import CollabsClient from './_components/CollabsClient'
 
+export type SplitPaymentRow = {
+  id: string
+  montant: number
+  statut: 'en_attente' | 'transfere' | 'expire'
+  stripe_transfer_id: string | null
+  created_at: string
+}
+
 export type SplitRow = {
   id: string
   pourcentage: number
@@ -16,7 +24,7 @@ export type SplitRow = {
     couleur: string | null
     beatmakers: { nom_artiste: string; slug: string } | null
   } | null
-  split_payments: { montant: number; statut: 'en_attente' | 'transfere' | 'expire' }[]
+  split_payments: SplitPaymentRow[]
 }
 
 const SELECT = `
@@ -25,7 +33,7 @@ const SELECT = `
     id, titre, image_url, statut, couleur,
     beatmakers(nom_artiste, slug)
   ),
-  split_payments(montant, statut)
+  split_payments(id, montant, statut, stripe_transfer_id, created_at)
 `
 
 export default async function CollabsPage() {
@@ -37,6 +45,13 @@ export default async function CollabsPage() {
 
   const { data: { user: fullUser } } = await admin.auth.admin.getUserById(user.id)
   const userEmail = fullUser?.email ?? null
+
+  const { data: beatmaker } = await admin
+    .from('beatmakers')
+    .select('nom_artiste')
+    .eq('id', user.id)
+    .single()
+  const nomArtiste = beatmaker?.nom_artiste ?? userEmail ?? 'Beatmaker'
 
   const [{ data: byId }, { data: byEmail }] = await Promise.all([
     admin.from('beat_splits').select(SELECT).eq('beatmaker_id', user.id).order('created_at', { ascending: false }),
@@ -66,6 +81,7 @@ export default async function CollabsPage() {
       splits={splits}
       totalRecu={totalRecu}
       montantBloque={montantBloque}
+      nomArtiste={nomArtiste}
     />
   )
 }
