@@ -52,6 +52,7 @@ export default function LicencesTable({
   userEmail?: string | null
 }) {
   const [codeInput, setCodeInput] = useState('')
+  const [codeEnAttente, setCodeEnAttente] = useState<CodeApplique | null>(null)
   const [codeApplique, setCodeApplique] = useState<CodeApplique | null>(null)
   const [erreurCode, setErreurCode] = useState<string | null>(null)
   const [chargementCode, setChargementCode] = useState(false)
@@ -82,7 +83,11 @@ export default function LicencesTable({
           return true
         })
         if (auMoinsUne) {
-          setCodeApplique({ code, ...data })
+          if (data.a_restriction_email && !userEmail) {
+            setCodeEnAttente({ code, ...data })
+          } else {
+            setCodeApplique({ code, ...data })
+          }
           setCodeInput('')
         } else if (data.depense_min) {
           setErreurCode(`Ce code requiert un achat minimum de ${data.depense_min}€`)
@@ -103,8 +108,19 @@ export default function LicencesTable({
 
   function supprimerCode() {
     setCodeApplique(null)
+    setCodeEnAttente(null)
     setErreurCode(null)
     setEmailAcheteur('')
+  }
+
+  function confirmerEmail() {
+    if (!emailAcheteur.trim()) {
+      setErreurCode('Entrez votre adresse email')
+      return
+    }
+    setCodeApplique(codeEnAttente!)
+    setCodeEnAttente(null)
+    setErreurCode(null)
   }
 
   return (
@@ -220,42 +236,58 @@ export default function LicencesTable({
       {/* Section code promo */}
       <div className="mt-6 pt-5 border-t border-gray-800">
         {codeApplique ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-sm text-green-400">
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>
-                  Code <strong>{codeApplique.code}</strong> appliqué —{' '}
-                  <span className="text-gray-400">
-                    {codeApplique.type_valeur === 'pourcentage'
-                      ? `-${codeApplique.valeur}%`
-                      : `-${codeApplique.valeur}€`}
-                  </span>
+          /* État 3 : code pleinement actif */
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-green-400">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>
+                Code <strong>{codeApplique.code}</strong> appliqué —{' '}
+                <span className="text-gray-400">
+                  {codeApplique.type_valeur === 'pourcentage'
+                    ? `-${codeApplique.valeur}%`
+                    : `-${codeApplique.valeur}€`}
                 </span>
-              </div>
+              </span>
+            </div>
+            <button
+              onClick={supprimerCode}
+              className="text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
+            >
+              Supprimer
+            </button>
+          </div>
+        ) : codeEnAttente ? (
+          /* État 2 : code validé mais email requis avant activation */
+          <div>
+            <p className="text-sm text-gray-400 mb-3">
+              Code <strong className="text-white">{codeEnAttente.code}</strong> — entrez votre adresse email pour l&apos;activer
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                value={emailAcheteur}
+                onChange={e => { setEmailAcheteur(e.target.value); setErreurCode(null) }}
+                onKeyDown={e => e.key === 'Enter' && confirmerEmail()}
+                placeholder="votre@email.com"
+                className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+              />
               <button
-                onClick={supprimerCode}
-                className="text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
+                onClick={confirmerEmail}
+                disabled={!emailAcheteur.trim()}
+                className="px-4 py-2 rounded-lg border border-gray-700 text-sm text-gray-300 hover:bg-gray-800 disabled:opacity-40 transition-colors whitespace-nowrap"
               >
-                Supprimer
+                Confirmer
               </button>
             </div>
-            {codeApplique.a_restriction_email && !userEmail && (
-              <div>
-                <input
-                  type="email"
-                  value={emailAcheteur}
-                  onChange={e => setEmailAcheteur(e.target.value)}
-                  placeholder="Votre adresse email pour valider le code"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
-                />
-                <p className="text-xs text-gray-500 mt-1">Ce code est réservé à une adresse email spécifique</p>
-              </div>
-            )}
+            {erreurCode && <p className="text-red-400 text-xs mt-2">{erreurCode}</p>}
+            <button onClick={supprimerCode} className="text-gray-600 hover:text-gray-400 text-xs mt-2 underline transition-colors">
+              Annuler
+            </button>
           </div>
         ) : (
+          /* État 1 : saisie du code */
           <div>
             <div className="flex items-center gap-2">
               <input
