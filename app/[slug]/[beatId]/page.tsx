@@ -212,6 +212,7 @@ export default async function BeatDetailPage({
         slug={slug}
         estAbonne={estAbonne}
         remisePct={beatmaker.abo_remise_pct ?? 0}
+        userEmail={user?.email ?? null}
       />
 
       {beat.free_download_actif && beat.mp3_tague_url && (

@@ -8,12 +8,14 @@ export default function AcheterBouton({
   slug,
   label,
   codePromo,
+  emailAcheteur,
 }: {
   beatId: string
   licenceId: string
   slug: string
   label: string
   codePromo?: string
+  emailAcheteur?: string
 }) {
   const [chargement, setChargement] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -24,7 +26,7 @@ export default function AcheterBouton({
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug, code_promo: codePromo }),
+      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug, code_promo: codePromo, email_acheteur: emailAcheteur }),
     })
     const data = await res.json()
     if (data.url) {

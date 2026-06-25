@@ -61,5 +61,6 @@ export async function POST(request: Request) {
     valeur: Number(promo.valeur),
     depense_min: promo.depense_min ? Number(promo.depense_min) : null,
     licences_eligibles: promo.licences_eligibles ?? null,
+    a_restriction_email: (promo.emails_autorises?.length ?? 0) > 0,
   })
 }

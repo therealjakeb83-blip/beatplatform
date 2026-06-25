@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
 export async function POST(request: Request) {
-  const { beat_id, licence_id, slug, code_promo } = await request.json()
+  const { beat_id, licence_id, slug, code_promo, email_acheteur } = await request.json()
 
   if (!beat_id || !licence_id || !slug) {
     return NextResponse.json({ erreur: 'Paramètres manquants' }, { status: 400 })
@@ -146,14 +146,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ erreur: "Ce code a atteint sa limite d'utilisation" }, { status: 400 })
     }
 
-    // Vérifications liées à l'utilisateur connecté
+    // Vérifications liées à l'email (utilisateur connecté ou email saisi manuellement)
+    const emailEffectif = user?.email ?? (email_acheteur as string | undefined) ?? null
+    if (promo.emails_autorises?.length > 0) {
+      if (!emailEffectif || !promo.emails_autorises.includes(emailEffectif)) {
+        return NextResponse.json({ erreur: 'Code non autorisé pour cette adresse email' }, { status: 400 })
+      }
+    }
+    if (emailEffectif && promo.emails_exclus?.includes(emailEffectif)) {
+      return NextResponse.json({ erreur: 'Code non autorisé pour cette adresse email' }, { status: 400 })
+    }
     if (user?.email) {
-      if (promo.emails_autorises?.length > 0 && !promo.emails_autorises.includes(user.email)) {
-        return NextResponse.json({ erreur: 'Code non autorisé pour votre compte' }, { status: 400 })
-      }
-      if (promo.emails_exclus?.includes(user.email)) {
-        return NextResponse.json({ erreur: 'Code non autorisé pour votre compte' }, { status: 400 })
-      }
 
       if (promo.premiere_commande) {
         const { data: commandeExistante } = await adminCode

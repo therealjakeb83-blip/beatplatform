@@ -25,6 +25,7 @@ type CodeApplique = {
   valeur: number
   depense_min: number | null
   licences_eligibles: string[] | null
+  a_restriction_email: boolean
 }
 
 export default function LicencesTable({
@@ -33,6 +34,7 @@ export default function LicencesTable({
   slug,
   estAbonne = false,
   remisePct = 0,
+  userEmail = null,
 }: {
   licences: (LicencePublic & {
     streams_limite: number | null
@@ -47,11 +49,13 @@ export default function LicencesTable({
   slug: string
   estAbonne?: boolean
   remisePct?: number
+  userEmail?: string | null
 }) {
   const [codeInput, setCodeInput] = useState('')
   const [codeApplique, setCodeApplique] = useState<CodeApplique | null>(null)
   const [erreurCode, setErreurCode] = useState<string | null>(null)
   const [chargementCode, setChargementCode] = useState(false)
+  const [emailAcheteur, setEmailAcheteur] = useState('')
 
   const licencesTriees = [...licences].sort((a, b) => a.prix - b.prix)
 
@@ -100,6 +104,7 @@ export default function LicencesTable({
   function supprimerCode() {
     setCodeApplique(null)
     setErreurCode(null)
+    setEmailAcheteur('')
   }
 
   return (
@@ -201,6 +206,7 @@ export default function LicencesTable({
                         slug={slug}
                         label="Acheter"
                         codePromo={codeEstApplicable ? codeApplique!.code : undefined}
+                        emailAcheteur={userEmail ?? (emailAcheteur || undefined)}
                       />
                     </>
                   )}
@@ -214,26 +220,40 @@ export default function LicencesTable({
       {/* Section code promo */}
       <div className="mt-6 pt-5 border-t border-gray-800">
         {codeApplique ? (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-green-400">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>
-                Code <strong>{codeApplique.code}</strong> appliqué —{' '}
-                <span className="text-gray-400">
-                  {codeApplique.type_valeur === 'pourcentage'
-                    ? `-${codeApplique.valeur}%`
-                    : `-${codeApplique.valeur}€`}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-green-400">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>
+                  Code <strong>{codeApplique.code}</strong> appliqué —{' '}
+                  <span className="text-gray-400">
+                    {codeApplique.type_valeur === 'pourcentage'
+                      ? `-${codeApplique.valeur}%`
+                      : `-${codeApplique.valeur}€`}
+                  </span>
                 </span>
-              </span>
+              </div>
+              <button
+                onClick={supprimerCode}
+                className="text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
+              >
+                Supprimer
+              </button>
             </div>
-            <button
-              onClick={supprimerCode}
-              className="text-gray-500 hover:text-gray-300 text-xs underline transition-colors"
-            >
-              Supprimer
-            </button>
+            {codeApplique.a_restriction_email && !userEmail && (
+              <div>
+                <input
+                  type="email"
+                  value={emailAcheteur}
+                  onChange={e => setEmailAcheteur(e.target.value)}
+                  placeholder="Votre adresse email pour valider le code"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Ce code est réservé à une adresse email spécifique</p>
+              </div>
+            )}
           </div>
         ) : (
           <div>
