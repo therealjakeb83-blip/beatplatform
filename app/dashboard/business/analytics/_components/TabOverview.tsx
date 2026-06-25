@@ -122,8 +122,8 @@ export default function TabOverview({ periode, debut, fin }: Props) {
                   <p className="text-[10px] text-gray-500">{l.licence_nom} · {fmtDate(l.created_at)}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-green-400">{fmtEuroDisplay(l.prix_paye / 100)}</p>
-                  {l.reduction_montant ? <p className="text-[10px] text-gray-600">−{fmtEuroDisplay(l.reduction_montant / 100)}</p> : null}
+                  <p className="text-sm font-bold text-green-400">{fmtEuroDisplay(l.prix_paye)}</p>
+                  {l.reduction_montant ? <p className="text-[10px] text-gray-600">−{fmtEuroDisplay(l.reduction_montant)}</p> : null}
                 </div>
               </div>
             ))}

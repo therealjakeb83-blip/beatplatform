@@ -90,8 +90,8 @@ export default function TabVentes({ periode, debut, fin }: Props) {
                   <td className="px-4 py-2.5 text-gray-400">{SOURCE_LABELS[c.source_marketing ?? 'direct'] ?? 'Direct'}</td>
                   <td className="px-4 py-2.5 text-gray-400">{fmtDate(c.created_at)}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <span className="text-green-400 font-medium">{fmtEuroDisplay(c.prix_paye / 100)}</span>
-                    {c.reduction_montant ? <span className="text-gray-600 ml-1 text-[10px]">−{fmtEuroDisplay(c.reduction_montant / 100)}</span> : null}
+                    <span className="text-green-400 font-medium">{fmtEuroDisplay(c.prix_paye)}</span>
+                    {c.reduction_montant ? <span className="text-gray-600 ml-1 text-[10px]">−{fmtEuroDisplay(c.reduction_montant)}</span> : null}
                   </td>
                 </tr>
               ))}
