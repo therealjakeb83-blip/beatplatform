@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const ecoutes   = plays.length
   const free_dl   = freeDl.length
-  const collab_ca = collabs.reduce((s, c) => s + c.montant, 0)
+  const collab_ca = collabs.reduce((s, c) => s + c.montant, 0) / 100
 
   const mrr = (abonActifs ?? []).reduce((s, a) => {
     const mensuel = a.periode === 'annuel' ? a.prix / 12 : a.prix
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
       ventes:    mCmds.filter(c => c.type_commande === 'LICENCE').length,
       ecoutes:   mPlays.length,
       free_dl:   mFreeDl.length,
-      collab_ca: mCollabs.reduce((s, c) => s + c.montant, 0),
+      collab_ca: mCollabs.reduce((s, c) => s + c.montant, 0) / 100,
     }
   })
 

@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const ca_net     = ca_brut - remises
   const beats_vendus = cmds.filter(c => c.type_commande === 'LICENCE').length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
-  const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0)
+  const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0) / 100
 
   // Source top
   const srcMap: Record<string, number> = {}
