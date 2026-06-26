@@ -10,19 +10,19 @@ import { fmtEuroDisplay, fmtDate, type Periode } from '../../_lib/periode'
 
 type Beat = { id: string; titre: string; couleur: string | null; styles: string[]; bpm: number; cle: string | null; statut: string }
 type Vente = {
-  id: string
-  created_at: string
-  licence_nom: string
-  source_marketing: string
-  prix_paye: number
-  reduction_montant: number | null
-  client_id: string | null
-  client_nom: string | null
+  id: string; created_at: string; licence_nom: string; source_marketing: string
+  prix_paye: number; reduction_montant: number | null; client_id: string | null; client_nom: string | null
 }
+type EcouteRow  = { played_at: string;    client_id: string | null; client_nom: string | null }
+type FavoriRow  = { created_at: string;   client_id: string | null; client_nom: string | null }
+type FreeDlRow  = { downloaded_at: string; client_id: string | null; client_nom: string | null }
 type Data = {
   beat: Beat
   kpis: { ca_brut: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number; favoris: number }
-  ventes_detail: Vente[]
+  ventes_detail:  Vente[]
+  ecoutes_detail: EcouteRow[]
+  favoris_detail: FavoriRow[]
+  free_dl_detail: FreeDlRow[]
   ca_par_licence: Array<{ nom: string; ca: number; ventes: number }>
   ca_par_source:  Array<{ source: string; ca: number }>
   collabs: Array<{ id: string; nom: string; pourcentage: number; statut: string }>
@@ -34,6 +34,134 @@ const SOURCE_LABELS: Record<string, string> = {
 }
 const STATUT_BEAT: Record<string, string> = {
   public: 'Public', prive: 'Privé', masque: 'Masqué', programme: 'Programmé', vendu: 'Exclusif vendu',
+}
+
+function ClientCell({ client_id, client_nom }: { client_id: string | null; client_nom: string | null }) {
+  if (client_id) {
+    return (
+      <Link href={`/dashboard/business/contacts/${client_id}`} className="text-white hover:text-indigo-300 transition-colors">
+        {client_nom ?? '—'}
+      </Link>
+    )
+  }
+  return <span className="text-gray-500 italic">{client_nom ?? 'Invité'}</span>
+}
+
+function TableVentes({ rows }: { rows: Vente[] }) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Achats ({rows.length})</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+            <th className="text-left px-4 py-2">N°</th>
+            <th className="text-left px-4 py-2">Client</th>
+            <th className="text-left px-4 py-2">Licence</th>
+            <th className="text-left px-4 py-2">Source</th>
+            <th className="text-left px-4 py-2">Date</th>
+            <th className="text-right px-4 py-2">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(v => (
+            <tr key={v.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+              <td className="px-4 py-2.5">
+                <Link href={`/dashboard/business/commandes/${v.id}`} className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors">
+                  #{v.id.slice(0, 8).toUpperCase()}
+                </Link>
+              </td>
+              <td className="px-4 py-2.5"><ClientCell client_id={v.client_id} client_nom={v.client_nom} /></td>
+              <td className="px-4 py-2.5">
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">{v.licence_nom}</span>
+              </td>
+              <td className="px-4 py-2.5 text-gray-400">{SOURCE_LABELS[v.source_marketing] ?? v.source_marketing}</td>
+              <td className="px-4 py-2.5 text-gray-400">{fmtDate(v.created_at)}</td>
+              <td className="px-4 py-2.5 text-right">
+                <span className="text-green-400 font-medium">{fmtEuroDisplay(v.prix_paye)}</span>
+                {v.reduction_montant ? <span className="text-gray-600 ml-1 text-[10px]">−{fmtEuroDisplay(v.reduction_montant)}</span> : null}
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune vente</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Écoutes ({rows.length})</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+            <th className="text-left px-4 py-2">Client / Lead</th>
+            <th className="text-left px-4 py-2">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+              <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
+              <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.played_at)}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-600">Aucune écoute</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function TableFavoris({ rows }: { rows: FavoriRow[] }) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Favoris ({rows.length})</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+            <th className="text-left px-4 py-2">Client / Lead</th>
+            <th className="text-left px-4 py-2">Ajouté le</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+              <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
+              <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.created_at)}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-600">Aucun favori</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function TableFreeDl({ rows }: { rows: FreeDlRow[] }) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Free Downloads ({rows.length})</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+            <th className="text-left px-4 py-2">Client / Lead</th>
+            <th className="text-left px-4 py-2">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+              <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
+              <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.downloaded_at)}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-600">Aucun téléchargement</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 type KpiKey = 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
@@ -215,64 +343,19 @@ export default function BeatDetailPage() {
               </div>
             )}
 
-            {/* Table ventes — toujours visible */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">
-                Ventes ({data.ventes_detail.length})
-              </p>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
-                    <th className="text-left px-4 py-2">N°</th>
-                    <th className="text-left px-4 py-2">Client</th>
-                    <th className="text-left px-4 py-2">Licence</th>
-                    <th className="text-left px-4 py-2">Source</th>
-                    <th className="text-left px-4 py-2">Date</th>
-                    <th className="text-right px-4 py-2">Montant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.ventes_detail.map(v => (
-                    <tr key={v.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                      <td className="px-4 py-2.5">
-                        <Link
-                          href={`/dashboard/business/commandes/${v.id}`}
-                          className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                        >
-                          #{v.id.slice(0, 8).toUpperCase()}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {v.client_id ? (
-                          <Link
-                            href={`/dashboard/business/contacts/${v.client_id}`}
-                            className="text-white hover:text-indigo-300 transition-colors"
-                          >
-                            {v.client_nom ?? '—'}
-                          </Link>
-                        ) : (
-                          <span className="text-gray-500">{v.client_nom ?? 'Guest'}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
-                          {v.licence_nom}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-400">{SOURCE_LABELS[v.source_marketing] ?? v.source_marketing}</td>
-                      <td className="px-4 py-2.5 text-gray-400">{fmtDate(v.created_at)}</td>
-                      <td className="px-4 py-2.5 text-right">
-                        <span className="text-green-400 font-medium">{fmtEuroDisplay(v.prix_paye)}</span>
-                        {v.reduction_montant ? <span className="text-gray-600 ml-1 text-[10px]">−{fmtEuroDisplay(v.reduction_montant)}</span> : null}
-                      </td>
-                    </tr>
-                  ))}
-                  {data.ventes_detail.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune vente</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {/* Table historique — change selon la KPI active */}
+            {kpiActif === 'ventes' && (
+              <TableVentes rows={data.ventes_detail} />
+            )}
+            {kpiActif === 'ecoutes' && (
+              <TableEcoutes rows={data.ecoutes_detail} />
+            )}
+            {kpiActif === 'favoris' && (
+              <TableFavoris rows={data.favoris_detail} />
+            )}
+            {kpiActif === 'free_dl' && (
+              <TableFreeDl rows={data.free_dl_detail} />
+            )}
           </div>
         )}
       </div>

@@ -5,6 +5,16 @@ import { getPeriodDates, inPeriod, getLast12Months } from '@/app/dashboard/busin
 
 export const runtime = 'nodejs'
 
+type ClientJoin = { id: string; prenom: string | null; nom: string | null } | null
+
+function clientInfo(raw: unknown): { client_id: string | null; client_nom: string | null } {
+  const cl = (Array.isArray(raw) ? raw[0] : raw) as ClientJoin
+  if (!cl) return { client_id: null, client_nom: null }
+  const prenom = cl.prenom ?? ''
+  const nom    = cl.nom    ?? ''
+  return { client_id: cl.id, client_nom: [prenom, nom].filter(Boolean).join(' ') || null }
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -37,24 +47,28 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq('statut', 'payee')
       .order('created_at', { ascending: false }),
     admin.from('beat_plays')
-      .select('played_at')
+      .select('id, played_at, client_id, clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
-      .eq('beat_id', id),
+      .eq('beat_id', id)
+      .order('played_at', { ascending: false }),
     admin.from('free_downloads')
-      .select('downloaded_at')
+      .select('id, downloaded_at, client_id, clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
-      .eq('beat_id', id),
+      .eq('beat_id', id)
+      .order('downloaded_at', { ascending: false }),
     admin.from('beat_splits')
       .select('id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
       .eq('beat_id', id),
     admin.from('favoris')
-      .select('created_at')
-      .eq('beat_id', id),
+      .select('id, created_at, client_id, clients(id, prenom, nom)')
+      .eq('beat_id', id)
+      .order('created_at', { ascending: false }),
   ])
 
-  const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at,     from, to))
-  const plays   = (allPlays    ?? []).filter(p => inPeriod(p.played_at,       from, to))
-  const freeDl  = (allFreeDl   ?? []).filter(f => inPeriod(f.downloaded_at,   from, to))
+  // Filtrer par période
+  const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at,    from, to))
+  const plays   = (allPlays    ?? []).filter(p => inPeriod(p.played_at,      from, to))
+  const freeDl  = (allFreeDl   ?? []).filter(f => inPeriod(f.downloaded_at,  from, to))
   const favoris = (allFavoris  ?? []).filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
 
   const ca_brut = cmds.reduce((s, c) => s + c.prix_paye, 0)
@@ -85,13 +99,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .map(([source, ca]) => ({ source, ca }))
     .sort((a, b) => b.ca - a.ca)
 
-  // Table ventes détaillée avec client
-  type Raw = typeof cmds[number]
-  const ventes_detail = cmds.map((c: Raw) => {
+  // Table ventes
+  type RawCmd = typeof cmds[number]
+  const ventes_detail = cmds.map((c: RawCmd) => {
     const l  = Array.isArray(c.licences) ? c.licences[0] : c.licences
-    const cl = Array.isArray(c.clients)  ? c.clients[0]  : c.clients
-    const prenom = (cl as { prenom: string | null } | null)?.prenom ?? ''
-    const nom    = (cl as { nom: string | null }    | null)?.nom    ?? ''
+    const { client_id, client_nom } = clientInfo(c.clients)
     return {
       id:                c.id,
       created_at:        c.created_at,
@@ -99,8 +111,39 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       source_marketing:  c.source_marketing ?? 'direct',
       prix_paye:         c.prix_paye,
       reduction_montant: c.reduction_montant,
-      client_id:         c.client_id ?? null,
-      client_nom:        [prenom, nom].filter(Boolean).join(' ') || null,
+      client_id:         client_id ?? c.client_id ?? null,
+      client_nom,
+    }
+  })
+
+  // Table écoutes
+  const ecoutes_detail = plays.map(p => {
+    const { client_id, client_nom } = clientInfo((p as Record<string, unknown>).clients)
+    return {
+      played_at:  p.played_at,
+      client_id:  client_id ?? (p as Record<string, unknown>).client_id as string | null ?? null,
+      client_nom,
+    }
+  })
+
+  // Table favoris
+  const favoris_detail = favoris.map(f => {
+    const fr = f as Record<string, unknown>
+    const { client_id, client_nom } = clientInfo(fr.clients)
+    return {
+      created_at: fr.created_at as string,
+      client_id:  client_id ?? fr.client_id as string | null ?? null,
+      client_nom,
+    }
+  })
+
+  // Table free downloads
+  const free_dl_detail = freeDl.map(f => {
+    const { client_id, client_nom } = clientInfo((f as Record<string, unknown>).clients)
+    return {
+      downloaded_at: f.downloaded_at,
+      client_id:     client_id ?? (f as Record<string, unknown>).client_id as string | null ?? null,
+      client_nom,
     }
   })
 
@@ -123,9 +166,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return {
       label,
       fullLabel,
-      ventes:  (allCommandes ?? []).filter(c => c.created_at    >= start && c.created_at    < end).length,
-      ecoutes: (allPlays    ?? []).filter(p => p.played_at      >= start && p.played_at      < end).length,
-      free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at  >= start && f.downloaded_at  < end).length,
+      ventes:  (allCommandes ?? []).filter(c => c.created_at   >= start && c.created_at   < end).length,
+      ecoutes: (allPlays    ?? []).filter(p => p.played_at     >= start && p.played_at     < end).length,
+      free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at >= start && f.downloaded_at < end).length,
       favoris: (allFavoris  ?? []).filter(f => (f as { created_at: string }).created_at >= start && (f as { created_at: string }).created_at < end).length,
     }
   })
@@ -134,6 +177,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     beat,
     kpis: { ca_brut, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length, favoris: favoris.length },
     ventes_detail,
+    ecoutes_detail,
+    favoris_detail,
+    free_dl_detail,
     ca_par_licence,
     ca_par_source,
     collabs,
