@@ -346,7 +346,7 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
                     {/* Total + méthode */}
                     <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-white">
-                        €{(a.prix / 100).toFixed(2)} / mois
+                        {(a.prix / 100).toFixed(2)}€ / mois
                       </span>
                       <p className="text-xs text-gray-500 mt-0.5">{methodLabel(a.methode_paiement)}</p>
                     </td>

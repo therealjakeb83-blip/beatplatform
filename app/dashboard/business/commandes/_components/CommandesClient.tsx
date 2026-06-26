@@ -164,11 +164,11 @@ function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
               <>
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>Sous-total</span>
-                  <span>{sousTotal}€</span>
+                  <span>{sousTotal.toFixed(2)}€</span>
                 </div>
                 <div className="flex justify-between text-xs text-green-400">
                   <span>Remise ({c.code_promo})</span>
-                  <span>−{remise}€</span>
+                  <span>−{remise.toFixed(2)}€</span>
                 </div>
               </>
             )}

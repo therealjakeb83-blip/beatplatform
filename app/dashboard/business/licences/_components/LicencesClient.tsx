@@ -68,7 +68,7 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
       setLicences(l => l.map(x => x.id === licence.id ? {
         ...x,
         nom: form.nom,
-        prix: parseInt(form.prix),
+        prix: parseFloat(form.prix),
         streams_limite: form.streams_limite ? parseInt(form.streams_limite) : null,
       } : x))
       setEditId(null)

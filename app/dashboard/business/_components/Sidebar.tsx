@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { initiales } from '../_lib/utils'
 
@@ -119,7 +119,9 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
     )
   }
 
-  const initiale = initiales(nomArtiste)
+  const searchParams = useSearchParams()
+  const tabActif     = searchParams.get('tab') ?? 'overview'
+  const initiale     = initiales(nomArtiste)
 
   return (
     <aside className="w-52 bg-gray-900 border-r border-gray-800 flex flex-col flex-shrink-0">
@@ -213,13 +215,13 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
         )}
         {analyticsOpen && (
           <>
-            {subItem(`${BASE}/analytics?tab=overview`,    "Vue d'ensemble", isAnalytics && pathname.includes('overview'))}
-            {subItem(`${BASE}/analytics?tab=beats`,       'Beats',          isAnalytics && pathname.includes('beats'))}
-            {subItem(`${BASE}/analytics?tab=commandes`,   'Ventes',         isAnalytics && pathname.includes('commandes'))}
-            {subItem(`${BASE}/analytics?tab=abonnements`, 'MRR / ARR',      isAnalytics && pathname.includes('abonnements'))}
-            {subItem(`${BASE}/analytics?tab=revenus`,     'Revenus',        isAnalytics && pathname.includes('revenus'))}
-            {subItem(`${BASE}/analytics?tab=preferences`, 'Préférences',    isAnalytics && pathname.includes('preferences'))}
-            {subItem(`${BASE}/analytics?tab=codes-promo`, 'Codes promo',    isAnalytics && pathname.includes('codes-promo'))}
+            {subItem(`${BASE}/analytics?tab=overview`,    "Vue d'ensemble", isAnalytics && tabActif === 'overview')}
+            {subItem(`${BASE}/analytics?tab=beats`,       'Beats',          isAnalytics && tabActif === 'beats')}
+            {subItem(`${BASE}/analytics?tab=commandes`,   'Ventes',         isAnalytics && tabActif === 'commandes')}
+            {subItem(`${BASE}/analytics?tab=abonnements`, 'MRR / ARR',      isAnalytics && tabActif === 'abonnements')}
+            {subItem(`${BASE}/analytics?tab=revenus`,     'Revenus',        isAnalytics && tabActif === 'revenus')}
+            {subItem(`${BASE}/analytics?tab=preferences`, 'Préférences',    isAnalytics && tabActif === 'preferences')}
+            {subItem(`${BASE}/analytics?tab=codes-promo`, 'Codes promo',    isAnalytics && tabActif === 'codes-promo')}
           </>
         )}
       </nav>
