@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     { data: abonActifs },
     { data: allAbonnements },
     { data: dernieres },
+    { data: allFavoris },
   ] = await Promise.all([
     admin.from('commandes')
       .select('id, prix_paye, reduction_montant, type_commande, created_at, beat_id, source_marketing, beats(id, titre, couleur)')
@@ -51,6 +52,9 @@ export async function GET(request: Request) {
       .eq('type_commande', 'LICENCE')
       .order('created_at', { ascending: false })
       .limit(5),
+    admin.from('favoris')
+      .select('created_at, beats!inner(beatmaker_id)')
+      .eq('beats.beatmaker_id', user.id),
   ])
 
   // Filtrer par période pour les KPIs
@@ -58,6 +62,8 @@ export async function GET(request: Request) {
   const plays  = (allPlays       ?? []).filter(p => inPeriod(p.played_at,    from, to))
   const freeDl = (allFreeDl      ?? []).filter(f => inPeriod(f.downloaded_at, from, to))
   const collabs = (allCollabs    ?? []).filter(c => inPeriod(c.created_at,   from, to))
+
+  const favorisInPeriod = (allFavoris ?? []).filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
 
   const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
@@ -67,6 +73,7 @@ export async function GET(request: Request) {
   const ecoutes   = plays.length
   const free_dl   = freeDl.length
   const collab_ca = collabs.reduce((s, c) => s + c.montant, 0) / 100
+  const favoris   = favorisInPeriod.length
 
   const mrr = (abonActifs ?? []).reduce((s, a) => {
     const mensuel = a.periode === 'annuel' ? a.prix / 12 : a.prix
@@ -102,8 +109,9 @@ export async function GET(request: Request) {
     const mFreeDl = (allFreeDl      ?? []).filter(f => f.downloaded_at >= start && f.downloaded_at < end)
     const mCollabs = (allCollabs    ?? []).filter(c => c.created_at   >= start && c.created_at   < end)
 
-    const mCa     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
-    const mRemise = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
+    const mCa      = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const mRemise  = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
+    const mFavoris = (allFavoris ?? []).filter(f => (f as { created_at: string }).created_at >= start && (f as { created_at: string }).created_at < end).length
 
     const monthEnd   = new Date(year, month + 1, 0, 23, 59, 59)
     const monthStart = new Date(year, month, 1)
@@ -125,6 +133,7 @@ export async function GET(request: Request) {
       ecoutes:   mPlays.length,
       free_dl:   mFreeDl.length,
       collab_ca: mCollabs.reduce((s, c) => s + c.montant, 0) / 100,
+      favoris:   mFavoris,
     }
   })
 
@@ -153,7 +162,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { ca: ca_brut, ca_brut, ca_net, mrr, arr, collab_ca, panier_moyen, beats_vendus, ecoutes, free_dl },
+    kpis: { ca: ca_brut, ca_brut, ca_net, mrr, arr, collab_ca, panier_moyen, beats_vendus, ecoutes, free_dl, favoris },
     historique,
     top_beats,
     dernieres_licences,

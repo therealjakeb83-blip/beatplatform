@@ -8,23 +8,24 @@ import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDate, type Periode } from '
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Data = {
-  kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; collab_ca: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number }
+  kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; collab_ca: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number; favoris: number }
   historique: Array<Record<string, unknown>>
   top_beats: Array<{ id: string; titre: string; couleur: string | null; ca: number; ventes: number }>
   dernieres_licences: Array<{ id: string; beat_titre: string; licence_nom: string; created_at: string; prix_paye: number; reduction_montant: number | null }>
   abonnes: { actifs: number; nouveaux: number; annules: number }
 }
 
-type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'collab_ca' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'free_dl'
+type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'collab_ca' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
 
 const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: number) => string }> = [
   { key: 'ca',          label: 'CA Brut',       color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
   { key: 'ca_net',      label: 'CA Net',         color: '#22d3ee', fmt: v => fmtEuroDisplay(v) },
-  { key: 'mrr',         label: 'MRR',            color: '#6366f1', fmt: v => fmtEuroDisplay(v) },
+  { key: 'mrr',         label: 'MRR / ARR',      color: '#6366f1', fmt: v => fmtEuroDisplay(v) },
   { key: 'collab_ca',   label: 'Ventes collab',  color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
   { key: 'panier_moyen',label: 'Panier moyen',   color: '#f59e0b', fmt: v => fmtEuroDisplay(v) },
   { key: 'ventes',      label: 'Beats vendus',   color: '#8b5cf6', fmt: v => String(v) },
   { key: 'ecoutes',     label: 'Écoutes',        color: '#818cf8', fmt: v => fmtNum(v) },
+  { key: 'favoris',     label: 'Favoris',        color: '#fbbf24', fmt: v => String(v) },
   { key: 'free_dl',     label: 'Free DL',        color: '#22d3ee', fmt: v => String(v) },
 ]
 
@@ -47,15 +48,13 @@ export default function TabOverview({ periode, debut, fin }: Props) {
   const { kpis, historique, top_beats, dernieres_licences, abonnes } = data
   const kpiConf = KPI_CONFIG.find(k => k.key === kpiActif) ?? KPI_CONFIG[0]
 
-  const maxTopCa = Math.max(...top_beats.map(b => b.ca), 1)
-
   return (
     <div className="space-y-6">
-      {/* KPI grid 4×2 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* KPI grid 3×3 */}
+      <div className="grid grid-cols-3 gap-3">
         {KPI_CONFIG.map(k => {
-          const val = k.key === 'ventes' || k.key === 'ecoutes' || k.key === 'free_dl'
-            ? (kpis as Record<string, number>)[k.key === 'ventes' ? 'beats_vendus' : k.key]
+          const val = k.key === 'ventes'
+            ? kpis.beats_vendus
             : (kpis as Record<string, number>)[k.key]
           return (
             <KpiCard
@@ -63,6 +62,7 @@ export default function TabOverview({ periode, debut, fin }: Props) {
               label={k.label}
               value={k.fmt(val)}
               color={k.color}
+              sub={k.key === 'mrr' ? `${fmtEuroDisplay(kpis.arr)}/an (ARR)` : undefined}
               active={kpiActif === k.key}
               onClick={() => setKpiActif(k.key)}
             />
@@ -156,8 +156,8 @@ export default function TabOverview({ periode, debut, fin }: Props) {
 function LoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-20 bg-gray-800 rounded-xl" />)}
+      <div className="grid grid-cols-3 gap-3">
+        {Array.from({ length: 9 }).map((_, i) => <div key={i} className="h-20 bg-gray-800 rounded-xl" />)}
       </div>
       <div className="h-52 bg-gray-800 rounded-xl" />
       <div className="grid grid-cols-2 gap-4">
