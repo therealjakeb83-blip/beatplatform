@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, LicenceInfo } from '@/app/dashboard/beats/BeatForm'
+import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, LicenceInfo } from '../../_components/BeatForm'
 
 export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, exclusifPrixOverride }: {
   beat: Record<string, unknown>

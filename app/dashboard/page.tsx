@@ -28,24 +28,6 @@ return (
             Business ↗
           </Link>
           <Link
-            href="/dashboard/business/beats"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Mes beats
-          </Link>
-          <Link
-            href="/dashboard/beats/nouveau"
-            className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
-          >
-            + Ajouter un beat
-          </Link>
-          <Link
-            href="/dashboard/licences"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Mes licences
-          </Link>
-          <Link
             href="/dashboard/profil"
             className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
           >
@@ -56,42 +38,6 @@ return (
             className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
           >
             Paiements
-          </Link>
-          <Link
-            href="/dashboard/codes-promo"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Codes promo
-          </Link>
-          <Link
-            href="/dashboard/commandes"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Mes commandes
-          </Link>
-          <Link
-            href="/dashboard/abonnements"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Abonnements membres
-          </Link>
-          <Link
-            href="/dashboard/crm"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Mon CRM
-          </Link>
-          <Link
-            href="/dashboard/splits"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Mes splits
-          </Link>
-          <Link
-            href="/dashboard/mes-collabs"
-            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
-          >
-            Mes collabs
           </Link>
           {beatmaker?.slug && (
             <Link

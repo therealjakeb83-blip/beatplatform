@@ -118,7 +118,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
           <p className="text-sm text-gray-500 mt-1">Catalogue et gestion des licences</p>
         </div>
         <Link
-          href="/dashboard/beats/nouveau"
+          href="/dashboard/business/beats/nouveau"
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors text-white text-sm font-medium px-4 py-2 rounded-lg"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -183,7 +183,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
           <div className="px-5 py-16 text-center">
             <p className="text-sm text-gray-600 mb-4">Aucun beat dans le catalogue.</p>
             <Link
-              href="/dashboard/beats/nouveau"
+              href="/dashboard/business/beats/nouveau"
               className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
             >
               Ajouter un premier beat →
