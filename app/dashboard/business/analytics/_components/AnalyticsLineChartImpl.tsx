@@ -19,10 +19,22 @@ type Props = {
   height?: number
 }
 
+function fmtTick(v: number, formatValue?: (v: number) => string): string {
+  if (!formatValue) {
+    if (v >= 1000) return `${(v / 1000).toFixed(0)}k`
+    return String(Math.round(v))
+  }
+  // Strip ",00 €" or ".00 €" for whole numbers (avoid "0,00 €" × 5)
+  return formatValue(v).replace(/,00 €$/, ' €').replace(/\.00 €$/, ' €')
+}
+
 export default function AnalyticsLineChart({ data, xKey, series, formatValue, height = 160 }: Props) {
+  const dataMax = Math.max(...data.flatMap(d => series.map(s => (d[s.key] as number) ?? 0)), 0)
+  const yMax: number | 'auto' = dataMax === 0 ? 10 : 'auto'
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+      <LineChart data={data} margin={{ top: 14, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
         <XAxis
           dataKey={xKey}
@@ -34,8 +46,10 @@ export default function AnalyticsLineChart({ data, xKey, series, formatValue, he
           tick={{ fontSize: 10, fill: '#6b7280' }}
           axisLine={false}
           tickLine={false}
-          tickFormatter={v => formatValue ? formatValue(v as number) : String(v)}
-          width={48}
+          tickCount={4}
+          domain={[0, yMax]}
+          tickFormatter={v => fmtTick(v as number, formatValue)}
+          width={52}
         />
         <Tooltip
           contentStyle={{
