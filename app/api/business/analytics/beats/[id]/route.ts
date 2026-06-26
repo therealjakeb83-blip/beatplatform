@@ -14,7 +14,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { from, to } = getPeriodDates(request)
   const admin = createAdminClient()
 
-  // Vérifier que le beat appartient bien à ce beatmaker
   const { data: beat } = await admin
     .from('beats')
     .select('id, titre, couleur, styles, ambiances, instruments, type_beat, bpm, cle, statut, date_sortie, free_download_actif')
@@ -29,9 +28,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     { data: allPlays },
     { data: allFreeDl },
     { data: allSplits },
+    { data: allFavoris },
   ] = await Promise.all([
     admin.from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, source_marketing, licences(nom)')
+      .select('id, created_at, prix_paye, reduction_montant, source_marketing, client_id, licences(nom), clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
       .eq('statut', 'payee')
@@ -47,22 +47,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     admin.from('beat_splits')
       .select('id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
       .eq('beat_id', id),
+    admin.from('favoris')
+      .select('created_at')
+      .eq('beat_id', id),
   ])
 
-  const cmds   = (allCommandes ?? []).filter(c => inPeriod(c.created_at,    from, to))
-  const plays  = (allPlays    ?? []).filter(p => inPeriod(p.played_at,      from, to))
-  const freeDl = (allFreeDl   ?? []).filter(f => inPeriod(f.downloaded_at,  from, to))
+  const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at,     from, to))
+  const plays   = (allPlays    ?? []).filter(p => inPeriod(p.played_at,       from, to))
+  const freeDl  = (allFreeDl   ?? []).filter(f => inPeriod(f.downloaded_at,   from, to))
+  const favoris = (allFavoris  ?? []).filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
 
-  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0)
-  const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ca_net    = ca_brut - remises
+  const ca_brut = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  const remises = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
+  const ca_net  = ca_brut - remises
 
   // CA par licence
   const licenceMap = new Map<string, { ca: number; ventes: number }>()
   for (const c of cmds) {
-    const l = Array.isArray(c.licences) ? c.licences[0] : c.licences
+    const l   = Array.isArray(c.licences) ? c.licences[0] : c.licences
     const nom = (l as { nom: string } | null)?.nom ?? 'Autre'
-    const ex = licenceMap.get(nom) ?? { ca: 0, ventes: 0 }
+    const ex  = licenceMap.get(nom) ?? { ca: 0, ventes: 0 }
     ex.ca     += c.prix_paye
     ex.ventes += 1
     licenceMap.set(nom, ex)
@@ -81,17 +85,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .map(([source, ca]) => ({ source, ca }))
     .sort((a, b) => b.ca - a.ca)
 
-  // Table ventes détaillée
+  // Table ventes détaillée avec client
   type Raw = typeof cmds[number]
   const ventes_detail = cmds.map((c: Raw) => {
-    const l = Array.isArray(c.licences) ? c.licences[0] : c.licences
+    const l  = Array.isArray(c.licences) ? c.licences[0] : c.licences
+    const cl = Array.isArray(c.clients)  ? c.clients[0]  : c.clients
+    const prenom = (cl as { prenom: string | null } | null)?.prenom ?? ''
+    const nom    = (cl as { nom: string | null }    | null)?.nom    ?? ''
     return {
-      id:               c.id,
-      created_at:       c.created_at,
-      licence_nom:      (l as { nom: string } | null)?.nom ?? '—',
-      source_marketing: c.source_marketing ?? 'direct',
-      prix_paye:        c.prix_paye,
+      id:                c.id,
+      created_at:        c.created_at,
+      licence_nom:       (l as { nom: string } | null)?.nom ?? '—',
+      source_marketing:  c.source_marketing ?? 'direct',
+      prix_paye:         c.prix_paye,
       reduction_montant: c.reduction_montant,
+      client_id:         c.client_id ?? null,
+      client_nom:        [prenom, nom].filter(Boolean).join(' ') || null,
     }
   })
 
@@ -114,15 +123,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return {
       label,
       fullLabel,
-      ventes:  (allCommandes ?? []).filter(c => c.created_at >= start && c.created_at < end).length,
-      ecoutes: (allPlays    ?? []).filter(p => p.played_at   >= start && p.played_at   < end).length,
-      free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at >= start && f.downloaded_at < end).length,
+      ventes:  (allCommandes ?? []).filter(c => c.created_at    >= start && c.created_at    < end).length,
+      ecoutes: (allPlays    ?? []).filter(p => p.played_at      >= start && p.played_at      < end).length,
+      free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at  >= start && f.downloaded_at  < end).length,
+      favoris: (allFavoris  ?? []).filter(f => (f as { created_at: string }).created_at >= start && (f as { created_at: string }).created_at < end).length,
     }
   })
 
   return NextResponse.json({
     beat,
-    kpis: { ca_brut, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length },
+    kpis: { ca_brut, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length, favoris: favoris.length },
     ventes_detail,
     ca_par_licence,
     ca_par_source,

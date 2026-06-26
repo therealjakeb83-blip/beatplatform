@@ -9,10 +9,19 @@ import PeriodSelector          from '../../_components/PeriodSelector'
 import { fmtEuroDisplay, fmtDate, type Periode } from '../../_lib/periode'
 
 type Beat = { id: string; titre: string; couleur: string | null; styles: string[]; bpm: number; cle: string | null; statut: string }
-type Vente = { id: string; created_at: string; licence_nom: string; source_marketing: string; prix_paye: number; reduction_montant: number | null }
+type Vente = {
+  id: string
+  created_at: string
+  licence_nom: string
+  source_marketing: string
+  prix_paye: number
+  reduction_montant: number | null
+  client_id: string | null
+  client_nom: string | null
+}
 type Data = {
   beat: Beat
-  kpis: { ca_brut: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number }
+  kpis: { ca_brut: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number; favoris: number }
   ventes_detail: Vente[]
   ca_par_licence: Array<{ nom: string; ca: number; ventes: number }>
   ca_par_source:  Array<{ source: string; ca: number }>
@@ -27,7 +36,14 @@ const STATUT_BEAT: Record<string, string> = {
   public: 'Public', prive: 'Privé', masque: 'Masqué', programme: 'Programmé', vendu: 'Exclusif vendu',
 }
 
-type KpiKey = 'ventes' | 'ecoutes' | 'free_dl'
+type KpiKey = 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
+
+const KPI_CFG: Record<KpiKey, { label: string; color: string }> = {
+  ventes:  { label: 'Ventes',  color: '#8b5cf6' },
+  ecoutes: { label: 'Écoutes', color: '#818cf8' },
+  favoris: { label: 'Favoris', color: '#fbbf24' },
+  free_dl: { label: 'Free DL', color: '#38bdf8' },
+}
 
 export default function BeatDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -60,6 +76,7 @@ export default function BeatDetailPage() {
   const hist   = data?.historique ?? []
   const maxLic = Math.max(...(data?.ca_par_licence ?? []).map(l => l.ca), 1)
   const maxSrc = Math.max(...(data?.ca_par_source  ?? []).map(s => s.ca), 1)
+  const cfg    = KPI_CFG[kpiActif]
 
   return (
     <div className="flex flex-col h-full">
@@ -111,64 +128,70 @@ export default function BeatDetailPage() {
               <KpiCard label="CA Net"  value={fmtEuroDisplay(kpis!.ca_net)}  color="#22d3ee" />
             </div>
 
-            {/* KPIs engagement */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* KPIs engagement — cliquables, pilotent le graphique */}
+            <div className="grid grid-cols-4 gap-3">
               <KpiCard label="Ventes"  value={String(kpis!.ventes)}  color="#8b5cf6" active={kpiActif === 'ventes'}  onClick={() => setKpiActif('ventes')} />
               <KpiCard label="Écoutes" value={String(kpis!.ecoutes)} color="#818cf8" active={kpiActif === 'ecoutes'} onClick={() => setKpiActif('ecoutes')} />
+              <KpiCard label="Favoris" value={String(kpis!.favoris)} color="#fbbf24" active={kpiActif === 'favoris'} onClick={() => setKpiActif('favoris')} />
               <KpiCard label="Free DL" value={String(kpis!.free_dl)} color="#38bdf8" active={kpiActif === 'free_dl'} onClick={() => setKpiActif('free_dl')} />
             </div>
 
-            {/* Chart */}
+            {/* Chart — réagit à la KPI sélectionnée */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <p className="text-xs text-gray-400 font-medium mb-3">
-                {kpiActif === 'ventes' ? 'Ventes' : kpiActif === 'ecoutes' ? 'Écoutes' : 'Free DL'} — 12 mois
+                {cfg.label} — 12 mois
               </p>
               <AnalyticsLineChart
                 data={hist}
                 xKey="label"
-                series={[{ key: kpiActif, color: kpiActif === 'ventes' ? '#8b5cf6' : kpiActif === 'ecoutes' ? '#818cf8' : '#38bdf8', label: kpiActif }]}
+                series={[{ key: kpiActif, color: cfg.color, label: cfg.label }]}
                 formatValue={v => String(Math.round(v))}
               />
             </div>
 
-            {/* 2 colonnes : CA par licence + CA par source */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <p className="text-xs font-semibold text-white mb-3">CA par licence</p>
-                <div className="space-y-2">
-                  {data.ca_par_licence.map(l => (
-                    <div key={l.nom}>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs text-gray-300">{l.nom}</span>
-                        <span className="text-xs text-green-400 font-medium">{fmtEuroDisplay(l.ca)}</span>
+            {/* CA par licence + CA par source — uniquement en mode Ventes */}
+            {kpiActif === 'ventes' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-white mb-3">CA par licence</p>
+                  <div className="space-y-2">
+                    {data.ca_par_licence.map(l => (
+                      <div key={l.nom}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-300">{l.nom}</span>
+                            <span className="text-[10px] text-gray-600">{l.ventes} vente{l.ventes > 1 ? 's' : ''}</span>
+                          </div>
+                          <span className="text-xs text-green-400 font-medium">{fmtEuroDisplay(l.ca)}</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-400 rounded-full" style={{ width: `${(l.ca / maxLic) * 100}%` }} />
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-400 rounded-full" style={{ width: `${(l.ca / maxLic) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                  {data.ca_par_licence.length === 0 && <p className="text-xs text-gray-600">Aucune vente</p>}
+                    ))}
+                    {data.ca_par_licence.length === 0 && <p className="text-xs text-gray-600">Aucune vente</p>}
+                  </div>
                 </div>
-              </div>
 
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <p className="text-xs font-semibold text-white mb-3">CA par source</p>
-                <div className="space-y-2">
-                  {data.ca_par_source.map(s => (
-                    <div key={s.source}>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs text-gray-300">{SOURCE_LABELS[s.source] ?? s.source}</span>
-                        <span className="text-xs text-green-400 font-medium">{fmtEuroDisplay(s.ca)}</span>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-white mb-3">CA par source</p>
+                  <div className="space-y-2">
+                    {data.ca_par_source.map(s => (
+                      <div key={s.source}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs text-gray-300">{SOURCE_LABELS[s.source] ?? s.source}</span>
+                          <span className="text-xs text-green-400 font-medium">{fmtEuroDisplay(s.ca)}</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${(s.ca / maxSrc) * 100}%` }} />
+                        </div>
                       </div>
-                      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${(s.ca / maxSrc) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                  {data.ca_par_source.length === 0 && <p className="text-xs text-gray-600">Aucune vente</p>}
+                    ))}
+                    {data.ca_par_source.length === 0 && <p className="text-xs text-gray-600">Aucune vente</p>}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Collabs */}
             {data.collabs.length > 0 && (
@@ -181,7 +204,7 @@ export default function BeatDetailPage() {
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-indigo-400 font-medium">{c.pourcentage}%</span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-                          c.statut === 'actif' ? 'bg-green-500/15 text-green-400 border border-green-500/20' :
+                          c.statut === 'actif'      ? 'bg-green-500/15 text-green-400 border border-green-500/20' :
                           c.statut === 'en_attente' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' :
                           'bg-gray-700 text-gray-400 border border-gray-600'
                         }`}>{c.statut}</span>
@@ -192,7 +215,7 @@ export default function BeatDetailPage() {
               </div>
             )}
 
-            {/* Table ventes */}
+            {/* Table ventes — toujours visible */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
               <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">
                 Ventes ({data.ventes_detail.length})
@@ -200,6 +223,8 @@ export default function BeatDetailPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+                    <th className="text-left px-4 py-2">N°</th>
+                    <th className="text-left px-4 py-2">Client</th>
                     <th className="text-left px-4 py-2">Licence</th>
                     <th className="text-left px-4 py-2">Source</th>
                     <th className="text-left px-4 py-2">Date</th>
@@ -209,6 +234,26 @@ export default function BeatDetailPage() {
                 <tbody>
                   {data.ventes_detail.map(v => (
                     <tr key={v.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={`/dashboard/business/commandes/${v.id}`}
+                          className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                          #{v.id.slice(0, 8).toUpperCase()}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {v.client_id ? (
+                          <Link
+                            href={`/dashboard/business/contacts/${v.client_id}`}
+                            className="text-white hover:text-indigo-300 transition-colors"
+                          >
+                            {v.client_nom ?? '—'}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-500">{v.client_nom ?? 'Guest'}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5">
                         <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
                           {v.licence_nom}
@@ -223,7 +268,7 @@ export default function BeatDetailPage() {
                     </tr>
                   ))}
                   {data.ventes_detail.length === 0 && (
-                    <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-600">Aucune vente</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune vente</td></tr>
                   )}
                 </tbody>
               </table>
