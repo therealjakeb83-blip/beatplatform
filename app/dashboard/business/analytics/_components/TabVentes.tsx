@@ -44,7 +44,8 @@ export default function TabVentes({ periode, debut, fin }: Props) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis.ca_brut)}      color="#4ade80" sub={`Net : ${fmtEuroDisplay(kpis.ca_net)}`} />
+        <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis.ca_brut)}      color="#4ade80" />
+        <KpiCard label="CA Net"        value={fmtEuroDisplay(kpis.ca_net)}       color="#22d3ee" />
         <KpiCard label="Panier moyen"  value={fmtEuroDisplay(kpis.panier_moyen)} color="#f59e0b" />
         <KpiCard label="Beats vendus"  value={String(kpis.beats_vendus)}         color="#8b5cf6" />
         <KpiCard label="Ventes collab" value={fmtEuroDisplay(kpis.collab_ca)}    color="#38bdf8" />
