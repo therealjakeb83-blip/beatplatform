@@ -11,7 +11,7 @@ type Props = { periode: Periode; debut: string; fin: string }
 
 type BeatRow = {
   id: string; titre: string; couleur: string | null; styles: string[]
-  ca: number; ventes: number; ecoutes: number; free_dl: number; conv: number
+  ca: number; ventes: number; ecoutes: number; free_dl: number
 }
 
 type Data = {
@@ -20,7 +20,7 @@ type Data = {
   beats: BeatRow[]
 }
 
-type SortKey = 'ca' | 'ventes' | 'ecoutes' | 'free_dl' | 'conv'
+type SortKey = 'ca' | 'ventes' | 'ecoutes' | 'free_dl'
 type KpiKey  = 'ca' | 'ventes' | 'ecoutes' | 'free_dl'
 
 const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: number) => string }> = [
@@ -106,7 +106,6 @@ export default function TabBeats({ periode, debut, fin }: Props) {
                 <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('ventes')}>Ventes <SortIcon k="ventes" /></th>
                 <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('ecoutes')}>Écoutes <SortIcon k="ecoutes" /></th>
                 <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('free_dl')}>Free DL <SortIcon k="free_dl" /></th>
-                <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('conv')}>Conv. <SortIcon k="conv" /></th>
               </tr>
             </thead>
             <tbody>
@@ -143,11 +142,10 @@ export default function TabBeats({ periode, debut, fin }: Props) {
                       <MiniBar value={b.free_dl} max={maxDl} color="#38bdf8" />
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-amber-400">{b.conv.toFixed(1)}%</td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucun beat</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Aucun beat</td></tr>
               )}
             </tbody>
           </table>

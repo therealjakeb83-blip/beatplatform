@@ -67,8 +67,7 @@ export async function GET(request: Request) {
     const ventes  = vMap.get(b.id) ?? 0
     const ecoutes = playsMap.get(b.id) ?? 0
     const free_dl = dlMap.get(b.id) ?? 0
-    const conv    = ecoutes > 0 ? (ventes / ecoutes) * 100 : 0
-    return { id: b.id, titre: b.titre, couleur: b.couleur, styles: b.styles ?? [], ca, ventes, ecoutes, free_dl, conv }
+    return { id: b.id, titre: b.titre, couleur: b.couleur, styles: b.styles ?? [], ca, ventes, ecoutes, free_dl }
   })
 
   // KPIs globaux
