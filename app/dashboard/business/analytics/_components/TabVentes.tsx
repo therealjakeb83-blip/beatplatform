@@ -13,7 +13,7 @@ type Data = {
   commandes: Array<{ id: string; created_at: string; client_nom: string; beat_titre: string; licence_nom: string; source_marketing: string | null; prix_paye: number; reduction_montant: number | null }>
 }
 
-type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'collab_ca'
+type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'collab_ca' | 'source_top'
 
 const KPI_CONFIG: Array<{ key: KpiKey; histKey: string; label: string; color: string; fmt: (v: number) => string }> = [
   { key: 'ca_brut',      histKey: 'ca',          label: 'CA Brut',       color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
@@ -50,9 +50,10 @@ export default function TabVentes({ periode, debut, fin }: Props) {
   const { kpis, historique, commandes } = data
   const kpiConf = KPI_CONFIG.find(k => k.key === kpiActif) ?? KPI_CONFIG[0]
 
-  const chartSeries = kpiActif === 'ca_brut' && parSource
+  const showParSource = (kpiActif === 'ca_brut' && parSource) || kpiActif === 'source_top'
+  const chartSeries = showParSource
     ? ['instagram', 'youtube', 'google', 'direct', 'autre'].map(s => ({ key: s, color: SOURCE_COLORS[s], label: SOURCE_LABELS[s] }))
-    : [{ key: kpiConf.histKey, color: kpiConf.color, label: kpiConf.label }]
+    : [{ key: kpiConf?.histKey ?? 'ca', color: kpiConf?.color ?? '#4ade80', label: kpiConf?.label ?? 'CA Brut' }]
 
   function handleKpiClick(key: KpiKey) {
     setKpiActif(key)
@@ -68,13 +69,13 @@ export default function TabVentes({ periode, debut, fin }: Props) {
         <KpiCard label="Beats vendus"  value={String(kpis.beats_vendus)}         color="#8b5cf6" active={kpiActif === 'ventes'}       onClick={() => handleKpiClick('ventes')} />
         <KpiCard label="Ventes collab" value={fmtEuroDisplay(kpis.collab_ca)}    color="#38bdf8" active={kpiActif === 'collab_ca'}    onClick={() => handleKpiClick('collab_ca')} />
         {kpis.source_top
-          ? <KpiCard label={`Source #1 — ${kpis.source_top.nom}`} value={fmtEuroDisplay(kpis.source_top.ca)} sub={`${kpis.source_top.pct.toFixed(0)}% du CA`} color="#a78bfa" />
+          ? <KpiCard label={`Source #1 — ${kpis.source_top.nom}`} value={fmtEuroDisplay(kpis.source_top.ca)} sub={`${kpis.source_top.pct.toFixed(0)}% du CA`} color="#a78bfa" active={kpiActif === 'source_top'} onClick={() => handleKpiClick('source_top')} />
           : <KpiCard label="Source #1" value="—" />}
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-gray-400 font-medium">{kpiConf.label} — 12 mois</p>
+          <p className="text-xs text-gray-400 font-medium">{kpiActif === 'source_top' ? 'Par source' : kpiConf?.label ?? 'CA Brut'} — 12 mois</p>
           {kpiActif === 'ca_brut' && (
             <div className="flex gap-1">
               <button onClick={() => setParSource(false)} className={`px-2 py-1 rounded text-[10px] ${!parSource ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}>CA global</button>
@@ -82,7 +83,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
             </div>
           )}
         </div>
-        <AnalyticsLineChart data={historique} xKey="label" series={chartSeries} formatValue={kpiConf.fmt} />
+        <AnalyticsLineChart data={historique} xKey="label" series={chartSeries} formatValue={kpiConf?.fmt ?? fmtEuroDisplay} />
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
