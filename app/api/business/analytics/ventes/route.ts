@@ -5,7 +5,7 @@ import { getPeriodDates, inPeriod, getLast12Months } from '@/app/dashboard/busin
 
 export const runtime = 'nodejs'
 
-const SOURCES = ['instagram', 'youtube', 'google', 'direct', 'autre'] as const
+const SOURCES = ['instagram', 'youtube', 'tiktok', 'whatsapp', 'google', 'direct', 'autre'] as const
 const SOURCE_LABELS: Record<string, string> = {
   instagram: 'Instagram', youtube: 'YouTube', google: 'Google',
   direct: 'Direct', autre: 'Autre',

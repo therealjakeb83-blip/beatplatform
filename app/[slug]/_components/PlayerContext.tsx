@@ -55,11 +55,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     function getSource(): string {
       const params = new URLSearchParams(window.location.search)
       const utm = params.get('utm_source')?.toLowerCase()
-      if (utm === 'youtube' || utm === 'instagram' || utm === 'google') return utm
+      if (utm === 'youtube' || utm === 'instagram' || utm === 'google' || utm === 'tiktok' || utm === 'whatsapp') return utm
       if (utm) return 'autre'
       const ref = document.referrer.toLowerCase()
       if (ref.includes('youtube.com') || ref.includes('youtu.be')) return 'youtube'
       if (ref.includes('instagram.com')) return 'instagram'
+      if (ref.includes('tiktok.com')) return 'tiktok'
       if (ref.includes('google.com')) return 'google'
       if (ref && !ref.includes(window.location.hostname)) return 'autre'
       return 'direct'
