@@ -73,6 +73,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return source
     }
 
+    // Capture la source dès l'arrivée sur la boutique, même sans écoute
+    getSource()
+
     async function recordPlay(beatId: string) {
       try {
         const res  = await fetch('/api/boutique/plays', {
