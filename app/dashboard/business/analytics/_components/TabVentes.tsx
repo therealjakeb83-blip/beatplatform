@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link                   from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, fmtDate, type Periode } from '../_lib/periode'
@@ -92,6 +93,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+                <th className="text-left px-4 py-2">N°</th>
                 <th className="text-left px-4 py-2">Client</th>
                 <th className="text-left px-4 py-2">Beat</th>
                 <th className="text-left px-4 py-2">Licence</th>
@@ -103,6 +105,11 @@ export default function TabVentes({ periode, debut, fin }: Props) {
             <tbody>
               {commandes.map(c => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                  <td className="px-4 py-2.5">
+                    <Link href={`/dashboard/business/commandes/${c.id}`} className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300">
+                      #{c.id.slice(0, 8).toUpperCase()}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2.5 text-white font-medium">{c.client_nom}</td>
                   <td className="px-4 py-2.5 text-gray-300 max-w-[140px] truncate">{c.beat_titre}</td>
                   <td className="px-4 py-2.5">
@@ -117,7 +124,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
                 </tr>
               ))}
               {commandes.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune vente sur cette période</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-600">Aucune vente sur cette période</td></tr>
               )}
             </tbody>
           </table>
