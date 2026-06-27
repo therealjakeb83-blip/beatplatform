@@ -57,15 +57,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (cached) return cached
       const params = new URLSearchParams(window.location.search)
       const utm = params.get('utm_source')?.toLowerCase()
+      const utmMedium = params.get('utm_medium')?.toLowerCase()
+      const gclid = params.get('gclid')
       let source: string
-      if (utm === 'youtube' || utm === 'instagram' || utm === 'google' || utm === 'tiktok' || utm === 'newsletter') source = utm
+      if (gclid || (utm === 'google' && utmMedium === 'cpc')) source = 'google_ads'
+      else if (utm === 'youtube' || utm === 'instagram' || utm === 'tiktok' || utm === 'newsletter' || utm === 'google') source = utm
       else if (utm) source = 'autre'
       else {
         const ref = document.referrer.toLowerCase()
         if (ref.includes('youtube.com') || ref.includes('youtu.be')) source = 'youtube'
         else if (ref.includes('instagram.com')) source = 'instagram'
         else if (ref.includes('tiktok.com')) source = 'tiktok'
-else if (ref.includes('google.com')) source = 'google'
+        else if (ref.includes('google.com')) source = 'google'
         else if (ref && !ref.includes(window.location.hostname)) source = 'autre'
         else source = 'direct'
       }
