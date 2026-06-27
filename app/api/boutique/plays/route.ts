@@ -44,14 +44,16 @@ export async function POST(req: NextRequest) {
   const rawSource       = String(body?.source_marketing ?? 'direct').toLowerCase()
   const source_marketing: Source = VALID_SOURCES.includes(rawSource as Source) ? rawSource as Source : 'autre'
 
-  const { error } = await admin
+  const { data: inserted, error } = await admin
     .from('beat_plays')
     .insert({ beat_id, beatmaker_id: beat.beatmaker_id, client_id, pays, device_type, source_marketing })
+    .select('id')
+    .single()
 
   if (error) {
     console.error('[boutique/plays]', error)
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, play_id: inserted?.id ?? null })
 }

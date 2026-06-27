@@ -47,7 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq('statut', 'payee')
       .order('created_at', { ascending: false }),
     admin.from('beat_plays')
-      .select('id, played_at, client_id, pays, device_type, source_marketing, clients(id, prenom, nom)')
+      .select('id, played_at, client_id, pays, device_type, source_marketing, duree_secondes, clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
       .order('played_at', { ascending: false }),
@@ -127,6 +127,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       pays:             pr.pays as string | null ?? null,
       device_type:      pr.device_type as string | null ?? null,
       source_marketing: pr.source_marketing as string | null ?? null,
+      duree_secondes:   pr.duree_secondes as number | null ?? null,
     }
   })
 

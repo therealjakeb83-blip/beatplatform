@@ -13,7 +13,7 @@ type Vente = {
   id: string; created_at: string; licence_nom: string; source_marketing: string
   prix_paye: number; reduction_montant: number | null; client_id: string | null; client_nom: string | null
 }
-type EcouteRow  = { played_at: string; client_id: string | null; client_nom: string | null; pays: string | null; device_type: string | null; source_marketing: string | null }
+type EcouteRow  = { played_at: string; client_id: string | null; client_nom: string | null; pays: string | null; device_type: string | null; source_marketing: string | null; duree_secondes: number | null }
 type FavoriRow  = { created_at: string;   client_id: string | null; client_nom: string | null }
 type FreeDlRow  = { downloaded_at: string; client_id: string | null; client_nom: string | null }
 type Data = {
@@ -92,6 +92,14 @@ function TableVentes({ rows }: { rows: Vente[] }) {
 const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📟', desktop: '💻' }
 const SOURCE_LABELS_SMALL: Record<string, string> = { instagram: 'IG', youtube: 'YT', google: 'Google', direct: 'Direct', autre: 'Autre' }
 
+function fmtDuree(s: number | null): string {
+  if (!s) return '—'
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return r > 0 ? `${m}m ${r}s` : `${m}m`
+}
+
 function countryFlag(code: string): string {
   if (!code || code.length !== 2) return ''
   return code.toUpperCase().split('').map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('')
@@ -108,6 +116,7 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
             <th className="text-left px-4 py-2">Pays</th>
             <th className="text-left px-4 py-2">Appareil</th>
             <th className="text-left px-4 py-2">Source</th>
+            <th className="text-left px-4 py-2">Durée</th>
             <th className="text-left px-4 py-2">Date</th>
           </tr>
         </thead>
@@ -124,10 +133,11 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
               <td className="px-4 py-2.5 text-gray-400">
                 {r.source_marketing ? SOURCE_LABELS_SMALL[r.source_marketing] ?? r.source_marketing : <span className="text-gray-700">—</span>}
               </td>
+              <td className="px-4 py-2.5 text-sky-400 font-medium">{fmtDuree(r.duree_secondes)}</td>
               <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.played_at)}</td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Aucune écoute</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune écoute</td></tr>}
         </tbody>
       </table>
     </div>

@@ -35,7 +35,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const queueRef        = useRef<BeatMin[]>([])
   const currentBeatRef  = useRef<BeatMin | null>(null)
   const playedBeatsRef  = useRef<Set<string>>(new Set())
-  const trackingRef     = useRef<{ beatId: string; accumulated: number; playedAt: number | null } | null>(null)
+  const trackingRef     = useRef<{ beatId: string; accumulated: number; playedAt: number | null; play_id: string | null } | null>(null)
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { currentBeatRef.current = currentBeat }, [currentBeat])
@@ -57,12 +57,35 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return 'direct'
     }
 
-    function recordPlay(beatId: string) {
-      fetch('/api/boutique/plays', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ beat_id: beatId, source_marketing: getSource() }),
-      }).catch(() => {})
+    async function recordPlay(beatId: string) {
+      try {
+        const res  = await fetch('/api/boutique/plays', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ beat_id: beatId, source_marketing: getSource() }),
+        })
+        const data = await res.json()
+        if (data.play_id && trackingRef.current?.beatId === beatId) {
+          trackingRef.current.play_id = data.play_id
+        }
+      } catch {}
+    }
+
+    function finalizeDuration(useBeacon: boolean) {
+      const t = trackingRef.current
+      if (!t?.play_id) return
+      const total = t.accumulated + (t.playedAt != null ? Date.now() - t.playedAt : 0)
+      const duree_secondes = Math.round(total / 1000)
+      const body = JSON.stringify({ play_id: t.play_id, duree_secondes })
+      if (useBeacon && navigator.sendBeacon) {
+        navigator.sendBeacon('/api/boutique/plays/duration', new Blob([body], { type: 'application/json' }))
+      } else {
+        fetch('/api/boutique/plays/duration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        }).catch(() => {})
+      }
     }
 
     function checkThreshold() {
@@ -75,6 +98,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    const handleBeforeUnload = () => finalizeDuration(true)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
     audio.addEventListener('timeupdate', () => {
       if (audio.duration) setProgress(audio.currentTime / audio.duration)
       checkThreshold()
@@ -83,9 +109,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     audio.addEventListener('play', () => {
       setIsPlaying(true)
       const beatId = currentBeatRef.current?.id
-      if (!beatId || playedBeatsRef.current.has(beatId)) return
+      if (!beatId) return
+      if (playedBeatsRef.current.has(beatId)) {
+        // Écoute déjà comptée — reprend le chrono pour la durée finale
+        if (trackingRef.current?.beatId === beatId && trackingRef.current.playedAt === null) {
+          trackingRef.current.playedAt = Date.now()
+        }
+        return
+      }
       if (!trackingRef.current || trackingRef.current.beatId !== beatId) {
-        trackingRef.current = { beatId, accumulated: 0, playedAt: Date.now() }
+        finalizeDuration(false) // envoie la durée du beat précédent
+        trackingRef.current = { beatId, accumulated: 0, playedAt: Date.now(), play_id: null }
       } else {
         trackingRef.current.playedAt = Date.now()
       }
@@ -113,6 +147,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      finalizeDuration(false)
       audio.pause()
       audio.src = ''
     }
