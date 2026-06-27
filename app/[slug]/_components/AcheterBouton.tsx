@@ -23,10 +23,11 @@ export default function AcheterBouton({
   async function acheter() {
     setChargement(true)
     setErreur(null)
+    const source_marketing = sessionStorage.getItem('source_marketing') ?? 'direct'
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug, code_promo: codePromo, email_acheteur: emailAcheteur }),
+      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug, code_promo: codePromo, email_acheteur: emailAcheteur, source_marketing }),
     })
     const data = await res.json()
     if (data.url) {

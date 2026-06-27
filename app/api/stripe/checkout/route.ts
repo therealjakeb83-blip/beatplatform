@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
 export async function POST(request: Request) {
-  const { beat_id, licence_id, slug, code_promo, email_acheteur } = await request.json()
+  const { beat_id, licence_id, slug, code_promo, email_acheteur, source_marketing } = await request.json()
 
   if (!beat_id || !licence_id || !slug) {
     return NextResponse.json({ erreur: 'Paramètres manquants' }, { status: 400 })
@@ -226,6 +226,7 @@ export async function POST(request: Request) {
       slug,
       prix_ht: String(prixBaseHT),
       remise_pct: String(remisePct),
+      source_marketing: source_marketing ?? 'direct',
       ...(codePromoValide ? {
         code_promo: codePromoValide,
         reduction_code_promo: String(reductionCodeCents),

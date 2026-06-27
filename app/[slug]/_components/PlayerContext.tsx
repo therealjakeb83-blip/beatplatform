@@ -53,17 +53,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     audioRef.current = audio
 
     function getSource(): string {
+      const cached = sessionStorage.getItem('source_marketing')
+      if (cached) return cached
       const params = new URLSearchParams(window.location.search)
       const utm = params.get('utm_source')?.toLowerCase()
-      if (utm === 'youtube' || utm === 'instagram' || utm === 'google' || utm === 'tiktok' || utm === 'whatsapp') return utm
-      if (utm) return 'autre'
-      const ref = document.referrer.toLowerCase()
-      if (ref.includes('youtube.com') || ref.includes('youtu.be')) return 'youtube'
-      if (ref.includes('instagram.com')) return 'instagram'
-      if (ref.includes('tiktok.com')) return 'tiktok'
-      if (ref.includes('google.com')) return 'google'
-      if (ref && !ref.includes(window.location.hostname)) return 'autre'
-      return 'direct'
+      let source: string
+      if (utm === 'youtube' || utm === 'instagram' || utm === 'google' || utm === 'tiktok' || utm === 'whatsapp') source = utm
+      else if (utm) source = 'autre'
+      else {
+        const ref = document.referrer.toLowerCase()
+        if (ref.includes('youtube.com') || ref.includes('youtu.be')) source = 'youtube'
+        else if (ref.includes('instagram.com')) source = 'instagram'
+        else if (ref.includes('tiktok.com')) source = 'tiktok'
+        else if (ref.includes('google.com')) source = 'google'
+        else if (ref && !ref.includes(window.location.hostname)) source = 'autre'
+        else source = 'direct'
+      }
+      sessionStorage.setItem('source_marketing', source)
+      return source
     }
 
     async function recordPlay(beatId: string) {

@@ -181,6 +181,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     reduction_montant: reduction,
     fichiers_livres: false,
     plateforme_source: 'my_producer',
+    source_marketing: meta.source_marketing ?? 'direct',
     type_commande: 'LICENCE',
     splits_snapshot: splitsSnapshot,
     stripe_transfer_group: hasSplits ? transferGroup : null,
