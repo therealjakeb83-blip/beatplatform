@@ -65,6 +65,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         if (ref.includes('youtube.com') || ref.includes('youtu.be')) source = 'youtube'
         else if (ref.includes('instagram.com')) source = 'instagram'
         else if (ref.includes('tiktok.com')) source = 'tiktok'
+        else if (ref.includes('whatsapp.com') || ref.includes('l.whatsapp.com')) source = 'whatsapp'
         else if (ref.includes('google.com')) source = 'google'
         else if (ref && !ref.includes(window.location.hostname)) source = 'autre'
         else source = 'direct'
