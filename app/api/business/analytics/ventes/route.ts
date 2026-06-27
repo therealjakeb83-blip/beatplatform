@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 
 const SOURCES = ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'youtube_ads', 'newsletter', 'direct', 'autre'] as const
 const SOURCE_LABELS: Record<string, string> = {
-  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
+  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
 }
 
 export async function GET(request: Request) {

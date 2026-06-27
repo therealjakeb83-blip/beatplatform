@@ -30,7 +30,7 @@ type Data = {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
+  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
 }
 const STATUT_BEAT: Record<string, string> = {
   public: 'Public', prive: 'Privé', masque: 'Masqué', programme: 'Programmé', vendu: 'Exclusif vendu',
