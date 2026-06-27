@@ -58,7 +58,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const params = new URLSearchParams(window.location.search)
       const utm = params.get('utm_source')?.toLowerCase()
       let source: string
-      if (utm === 'youtube' || utm === 'instagram' || utm === 'google' || utm === 'tiktok') source = utm
+      if (utm === 'youtube' || utm === 'instagram' || utm === 'google' || utm === 'tiktok' || utm === 'newsletter') source = utm
       else if (utm) source = 'autre'
       else {
         const ref = document.referrer.toLowerCase()
