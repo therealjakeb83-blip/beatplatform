@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 
 export type BeatMin = {
   id: string
@@ -31,14 +32,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  const audioRef        = useRef<HTMLAudioElement | null>(null)
-  const queueRef        = useRef<BeatMin[]>([])
-  const currentBeatRef  = useRef<BeatMin | null>(null)
-  const playedBeatsRef  = useRef<Set<string>>(new Set())
-  const trackingRef     = useRef<{ beatId: string; accumulated: number; playedAt: number | null; play_id: string | null } | null>(null)
+  const audioRef       = useRef<HTMLAudioElement | null>(null)
+  const queueRef       = useRef<BeatMin[]>([])
+  const currentBeatRef = useRef<BeatMin | null>(null)
+  const playedBeatsRef = useRef<Set<string>>(new Set())
+  const trackingRef    = useRef<{ beatId: string; accumulated: number; playedAt: number | null; play_id: string | null } | null>(null)
+  const finalizeRef    = useRef<(beacon: boolean) => void>(() => {})
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { currentBeatRef.current = currentBeat }, [currentBeat])
+
+  // Envoie la durée à chaque navigation Next.js (le PlayerProvider ne se démonte jamais)
+  const pathname = usePathname()
+  useEffect(() => {
+    return () => { finalizeRef.current(false) }
+  }, [pathname])
 
   useEffect(() => {
     const audio = new Audio()
@@ -77,6 +85,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const total = t.accumulated + (t.playedAt != null ? Date.now() - t.playedAt : 0)
       const duree_secondes = Math.round(total / 1000)
       const body = JSON.stringify({ play_id: t.play_id, duree_secondes })
+      // Effacer play_id pour ne pas envoyer deux fois
+      t.play_id = null
       if (useBeacon && navigator.sendBeacon) {
         navigator.sendBeacon('/api/boutique/plays/duration', new Blob([body], { type: 'application/json' }))
       } else {
@@ -88,6 +98,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Exposer finalizeDuration pour le watcher de pathname
+    finalizeRef.current = finalizeDuration
+
     function checkThreshold() {
       const t = trackingRef.current
       if (!t || playedBeatsRef.current.has(t.beatId)) return
@@ -98,8 +111,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const handleBeforeUnload = () => finalizeDuration(true)
+    const handleBeforeUnload    = () => finalizeDuration(true)
+    const handleVisibilityChange = () => { if (document.visibilityState === 'hidden') finalizeDuration(true) }
+
     window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     audio.addEventListener('timeupdate', () => {
       if (audio.duration) setProgress(audio.currentTime / audio.duration)
@@ -132,10 +148,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     })
     audio.addEventListener('ended', () => {
-      const q = queueRef.current
+      const q   = queueRef.current
       const cur = currentBeatRef.current
       if (!cur) return
-      const idx = q.findIndex(b => b.id === cur.id)
+      const idx      = q.findIndex(b => b.id === cur.id)
       const nextBeat = q[idx + 1]
       if (nextBeat) {
         setCurrentBeat(nextBeat)
@@ -148,6 +164,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       finalizeDuration(false)
       audio.pause()
       audio.src = ''
@@ -186,24 +203,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const next = useCallback(() => {
-    const q = queueRef.current
+    const q   = queueRef.current
     const cur = currentBeatRef.current
     if (!cur) return
-    const idx = q.findIndex(b => b.id === cur.id)
+    const idx      = q.findIndex(b => b.id === cur.id)
     const nextBeat = q[idx + 1]
     if (nextBeat) { setCurrentBeat(nextBeat); currentBeatRef.current = nextBeat }
   }, [])
 
   const prev = useCallback(() => {
     const audio = audioRef.current
-    if (audio && audio.currentTime > 3) {
-      audio.currentTime = 0
-      return
-    }
-    const q = queueRef.current
+    if (audio && audio.currentTime > 3) { audio.currentTime = 0; return }
+    const q   = queueRef.current
     const cur = currentBeatRef.current
     if (!cur) return
-    const idx = q.findIndex(b => b.id === cur.id)
+    const idx      = q.findIndex(b => b.id === cur.id)
     const prevBeat = q[idx - 1]
     if (prevBeat) { setCurrentBeat(prevBeat); currentBeatRef.current = prevBeat }
   }, [])
