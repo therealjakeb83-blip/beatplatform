@@ -53,7 +53,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
 
   const showParSource = (kpiActif === 'ca_brut' && parSource) || kpiActif === 'source_top'
   const chartSeries = showParSource
-    ? ['instagram', 'youtube', 'google', 'direct', 'autre'].map(s => ({ key: s, color: SOURCE_COLORS[s], label: SOURCE_LABELS[s] }))
+    ? ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'youtube_ads', 'newsletter', 'direct', 'autre'].map(s => ({ key: s, color: SOURCE_COLORS[s], label: SOURCE_LABELS[s] }))
     : [{ key: kpiConf?.histKey ?? 'ca', color: kpiConf?.color ?? '#4ade80', label: kpiConf?.label ?? 'CA Brut' }]
 
   function handleKpiClick(key: KpiKey) {
