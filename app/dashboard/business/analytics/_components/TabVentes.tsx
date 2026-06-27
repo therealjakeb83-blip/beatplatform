@@ -31,11 +31,14 @@ const SOURCE_LABELS: Record<string, string> = {
   instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
 }
 
+const ALL_SOURCES = ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'youtube_ads', 'newsletter', 'direct', 'autre'] as const
+
 export default function TabVentes({ periode, debut, fin }: Props) {
-  const [data,     setData]     = useState<Data | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [kpiActif, setKpiActif] = useState<KpiKey>('ca_brut')
-  const [parSource, setParSource] = useState(false)
+  const [data,           setData]           = useState<Data | null>(null)
+  const [loading,        setLoading]        = useState(true)
+  const [kpiActif,       setKpiActif]       = useState<KpiKey>('ca_brut')
+  const [parSource,      setParSource]      = useState(false)
+  const [sourcesActives, setSourcesActives] = useState<string[]>([...ALL_SOURCES])
 
   useEffect(() => {
     setLoading(true)
@@ -53,12 +56,20 @@ export default function TabVentes({ periode, debut, fin }: Props) {
 
   const showParSource = (kpiActif === 'ca_brut' && parSource) || kpiActif === 'source_top'
   const chartSeries = showParSource
-    ? ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'youtube_ads', 'newsletter', 'direct', 'autre'].map(s => ({ key: s, color: SOURCE_COLORS[s], label: SOURCE_LABELS[s] }))
+    ? ALL_SOURCES.filter(s => sourcesActives.includes(s)).map(s => ({ key: s, color: SOURCE_COLORS[s], label: SOURCE_LABELS[s] }))
     : [{ key: kpiConf?.histKey ?? 'ca', color: kpiConf?.color ?? '#4ade80', label: kpiConf?.label ?? 'CA Brut' }]
 
   function handleKpiClick(key: KpiKey) {
     setKpiActif(key)
     if (key !== 'ca_brut') setParSource(false)
+  }
+
+  function toggleSource(src: string) {
+    setSourcesActives(prev =>
+      prev.includes(src)
+        ? prev.length > 1 ? prev.filter(s => s !== src) : prev
+        : [...prev, src]
+    )
   }
 
   return (
@@ -84,7 +95,25 @@ export default function TabVentes({ periode, debut, fin }: Props) {
             </div>
           )}
         </div>
-        <AnalyticsLineChart data={historique} xKey="label" series={chartSeries} formatValue={kpiConf?.fmt ?? fmtEuroDisplay} />
+        <AnalyticsLineChart data={historique} xKey="label" series={chartSeries} formatValue={kpiConf?.fmt ?? fmtEuroDisplay} showLegend={!showParSource} />
+        {showParSource && (
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-800">
+            {ALL_SOURCES.map(src => {
+              const actif = sourcesActives.includes(src)
+              return (
+                <button
+                  key={src}
+                  onClick={() => toggleSource(src)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-opacity ${actif ? 'opacity-100' : 'opacity-30'}`}
+                  style={{ border: `1px solid ${SOURCE_COLORS[src]}22`, background: `${SOURCE_COLORS[src]}15` }}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: SOURCE_COLORS[src] }} />
+                  <span style={{ color: SOURCE_COLORS[src] }}>{SOURCE_LABELS[src]}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">

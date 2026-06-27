@@ -17,6 +17,7 @@ type Props = {
   series: ChartSeries[]
   formatValue?: (v: number) => string
   height?: number
+  showLegend?: boolean
 }
 
 function fmtTick(v: number, formatValue?: (v: number) => string): string {
@@ -28,7 +29,7 @@ function fmtTick(v: number, formatValue?: (v: number) => string): string {
   return formatValue(v).replace(/,00 €$/, ' €').replace(/\.00 €$/, ' €')
 }
 
-export default function AnalyticsLineChart({ data, xKey, series, formatValue, height = 160 }: Props) {
+export default function AnalyticsLineChart({ data, xKey, series, formatValue, height = 160, showLegend = true }: Props) {
   const dataMax = Math.max(...data.flatMap(d => series.map(s => (d[s.key] as number) ?? 0)), 0)
   const yMax: number | 'auto' = dataMax === 0 ? 10 : 'auto'
 
@@ -66,7 +67,7 @@ export default function AnalyticsLineChart({ data, xKey, series, formatValue, he
             return [formatValue ? formatValue(val) : val, serie?.label ?? nameStr]
           }}
         />
-        {series.length > 1 && (
+        {showLegend && series.length > 1 && (
           <Legend
             wrapperStyle={{ fontSize: 11, color: '#9ca3af', paddingTop: 8 }}
             formatter={(value) => series.find(s => s.key === value)?.label ?? value}
