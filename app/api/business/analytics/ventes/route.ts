@@ -27,6 +27,7 @@ export async function GET(request: Request) {
       .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, beats(titre), licences(nom), clients(prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'payee')
+      .or('type_commande.eq.LICENCE,type_commande.is.null')
       .order('created_at', { ascending: false }),
     admin.from('split_payments')
       .select('montant, created_at')
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
   const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises    = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net     = ca_brut - remises
-  const beats_vendus = cmds.filter(c => c.type_commande === 'LICENCE').length
+  const beats_vendus = cmds.length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0) / 100
 
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
 
     const ca_mois      = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const ca_net_mois  = mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0)
-    const ventes_mois  = mCmds.filter(c => c.type_commande === 'LICENCE').length
+    const ventes_mois  = mCmds.length
     const panier_mois  = mCmds.length ? ca_mois / mCmds.length : 0
     const collab_mois  = mCollabs.reduce((s, c) => s + c.montant, 0) / 100
 
