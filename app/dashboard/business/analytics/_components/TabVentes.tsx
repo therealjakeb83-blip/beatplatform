@@ -25,10 +25,10 @@ const KPI_CONFIG: Array<{ key: KpiKey; histKey: string; label: string; color: st
 ]
 
 const SOURCE_COLORS: Record<string, string> = {
-  instagram: '#6366f1', youtube: '#ef4444', tiktok: '#f472b6', google: '#f59e0b', google_ads: '#4285f4', newsletter: '#f97316', direct: '#4ade80', autre: '#6b7280',
+  instagram: '#6366f1', youtube: '#ef4444', tiktok: '#f472b6', google: '#f59e0b', google_ads: '#4285f4', youtube_ads: '#dc2626', newsletter: '#f97316', direct: '#4ade80', autre: '#6b7280',
 }
 const SOURCE_LABELS: Record<string, string> = {
-  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
+  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
 }
 
 export default function TabVentes({ periode, debut, fin }: Props) {

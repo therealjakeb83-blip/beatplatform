@@ -30,7 +30,7 @@ type Data = {
 }
 
 const SOURCE_LABELS: Record<string, string> = {
-  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
+  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
 }
 const STATUT_BEAT: Record<string, string> = {
   public: 'Public', prive: 'Privé', masque: 'Masqué', programme: 'Programmé', vendu: 'Exclusif vendu',
@@ -90,7 +90,7 @@ function TableVentes({ rows }: { rows: Vente[] }) {
 }
 
 const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📟', desktop: '💻' }
-const SOURCE_LABELS_SMALL: Record<string, string> = { instagram: 'IG', youtube: 'YT', tiktok: 'TT', google: 'Google', google_ads: 'GAds', newsletter: 'NL', direct: 'Direct', autre: 'Autre' }
+const SOURCE_LABELS_SMALL: Record<string, string> = { instagram: 'IG', youtube: 'YT', tiktok: 'TT', google: 'Google', google_ads: 'GAds', youtube_ads: 'YTAds', newsletter: 'NL', direct: 'Direct', autre: 'Autre' }
 
 
 const COUNTRY_NAMES: Record<string, string> = {

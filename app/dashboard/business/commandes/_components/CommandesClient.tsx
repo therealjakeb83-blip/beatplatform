@@ -15,7 +15,7 @@ const STATUT = {
 
 const SOURCE_LABEL: Record<string, string> = {
   youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', google: 'Google',
-  google_ads: 'Google Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
+  google_ads: 'Google Ads', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
 }
 
 const TABS = [

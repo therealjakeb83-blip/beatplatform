@@ -59,8 +59,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const utm = params.get('utm_source')?.toLowerCase()
       const utmMedium = params.get('utm_medium')?.toLowerCase()
       const gclid = params.get('gclid')
+      const gbraid = params.get('gbraid')
+      const gadSource = params.get('gad_source')
       let source: string
-      if (gclid || (utm === 'google' && utmMedium === 'cpc')) source = 'google_ads'
+      if (gclid || gbraid) source = gadSource === '2' ? 'youtube_ads' : 'google_ads'
+      else if (utm === 'google' && utmMedium === 'cpc') source = 'google_ads'
       else if (utm === 'youtube' || utm === 'instagram' || utm === 'tiktok' || utm === 'newsletter' || utm === 'google') source = utm
       else if (utm) source = 'autre'
       else {

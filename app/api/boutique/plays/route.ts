@@ -2,7 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient }       from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-const VALID_SOURCES = ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'newsletter', 'direct', 'autre'] as const
+const VALID_SOURCES = ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'youtube_ads', 'newsletter', 'direct', 'autre'] as const
 type Source = typeof VALID_SOURCES[number]
 
 function detectDevice(ua: string): 'mobile' | 'tablet' | 'desktop' {
