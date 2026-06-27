@@ -197,7 +197,7 @@ create table commandes (
   facture_pdf_url         text,
 
   -- Import externe (BeatStars CSV)
-  source_marketing        text check (source_marketing in ('youtube', 'instagram', 'google', 'direct', 'autre')),
+  source_marketing        text check (source_marketing in ('youtube', 'instagram', 'tiktok', 'google', 'newsletter', 'direct', 'autre')),
   plateforme_source       text not null default 'my_producer' check (plateforme_source in ('my_producer', 'beatstars')),
   external_order_id       text,
 
