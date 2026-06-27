@@ -44,11 +44,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = new Audio()
     audioRef.current = audio
 
+    function getSource(): string {
+      const params = new URLSearchParams(window.location.search)
+      const utm = params.get('utm_source')?.toLowerCase()
+      if (utm === 'youtube' || utm === 'instagram' || utm === 'google') return utm
+      if (utm) return 'autre'
+      const ref = document.referrer.toLowerCase()
+      if (ref.includes('youtube.com') || ref.includes('youtu.be')) return 'youtube'
+      if (ref.includes('instagram.com')) return 'instagram'
+      if (ref.includes('google.com')) return 'google'
+      if (ref && !ref.includes(window.location.hostname)) return 'autre'
+      return 'direct'
+    }
+
     function recordPlay(beatId: string) {
       fetch('/api/boutique/plays', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ beat_id: beatId }),
+        body: JSON.stringify({ beat_id: beatId, source_marketing: getSource() }),
       }).catch(() => {})
     }
 

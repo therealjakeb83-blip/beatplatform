@@ -13,7 +13,7 @@ type Vente = {
   id: string; created_at: string; licence_nom: string; source_marketing: string
   prix_paye: number; reduction_montant: number | null; client_id: string | null; client_nom: string | null
 }
-type EcouteRow  = { played_at: string;    client_id: string | null; client_nom: string | null }
+type EcouteRow  = { played_at: string; client_id: string | null; client_nom: string | null; pays: string | null; device_type: string | null; source_marketing: string | null }
 type FavoriRow  = { created_at: string;   client_id: string | null; client_nom: string | null }
 type FreeDlRow  = { downloaded_at: string; client_id: string | null; client_nom: string | null }
 type Data = {
@@ -89,6 +89,14 @@ function TableVentes({ rows }: { rows: Vente[] }) {
   )
 }
 
+const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📟', desktop: '💻' }
+const SOURCE_LABELS_SMALL: Record<string, string> = { instagram: 'IG', youtube: 'YT', google: 'Google', direct: 'Direct', autre: 'Autre' }
+
+function countryFlag(code: string): string {
+  if (!code || code.length !== 2) return ''
+  return code.toUpperCase().split('').map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('')
+}
+
 function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -97,6 +105,9 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
         <thead>
           <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
             <th className="text-left px-4 py-2">Client / Lead</th>
+            <th className="text-left px-4 py-2">Pays</th>
+            <th className="text-left px-4 py-2">Appareil</th>
+            <th className="text-left px-4 py-2">Source</th>
             <th className="text-left px-4 py-2">Date</th>
           </tr>
         </thead>
@@ -104,10 +115,19 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
           {rows.map((r, i) => (
             <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
               <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
+              <td className="px-4 py-2.5 text-gray-400">
+                {r.pays ? <span title={r.pays}>{countryFlag(r.pays)} {r.pays}</span> : <span className="text-gray-700">—</span>}
+              </td>
+              <td className="px-4 py-2.5 text-gray-400">
+                {r.device_type ? `${DEVICE_ICON[r.device_type] ?? ''} ${r.device_type}` : <span className="text-gray-700">—</span>}
+              </td>
+              <td className="px-4 py-2.5 text-gray-400">
+                {r.source_marketing ? SOURCE_LABELS_SMALL[r.source_marketing] ?? r.source_marketing : <span className="text-gray-700">—</span>}
+              </td>
               <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.played_at)}</td>
             </tr>
           ))}
-          {rows.length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-600">Aucune écoute</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Aucune écoute</td></tr>}
         </tbody>
       </table>
     </div>

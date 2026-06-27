@@ -47,7 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq('statut', 'payee')
       .order('created_at', { ascending: false }),
     admin.from('beat_plays')
-      .select('id, played_at, client_id, clients(id, prenom, nom)')
+      .select('id, played_at, client_id, pays, device_type, source_marketing, clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
       .order('played_at', { ascending: false }),
@@ -118,11 +118,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   // Table écoutes
   const ecoutes_detail = plays.map(p => {
-    const { client_id, client_nom } = clientInfo((p as Record<string, unknown>).clients)
+    const pr = p as Record<string, unknown>
+    const { client_id, client_nom } = clientInfo(pr.clients)
     return {
-      played_at:  p.played_at,
-      client_id:  client_id ?? (p as Record<string, unknown>).client_id as string | null ?? null,
+      played_at:        p.played_at,
+      client_id:        client_id ?? pr.client_id as string | null ?? null,
       client_nom,
+      pays:             pr.pays as string | null ?? null,
+      device_type:      pr.device_type as string | null ?? null,
+      source_marketing: pr.source_marketing as string | null ?? null,
     }
   })
 
