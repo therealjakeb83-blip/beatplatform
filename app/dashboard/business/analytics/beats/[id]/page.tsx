@@ -100,6 +100,14 @@ function fmtDuree(s: number | null): string {
   return r > 0 ? `${m}m ${r}s` : `${m}m`
 }
 
+const COUNTRY_NAMES: Record<string, string> = {
+  FR: 'France', BE: 'Belgique', CH: 'Suisse', CA: 'Canada', US: 'États-Unis',
+  GB: 'Royaume-Uni', DE: 'Allemagne', ES: 'Espagne', IT: 'Italie', NL: 'Pays-Bas',
+  PT: 'Portugal', MA: 'Maroc', DZ: 'Algérie', TN: 'Tunisie', SN: 'Sénégal',
+  CI: "Côte d'Ivoire", CM: 'Cameroun', CD: 'Congo (RDC)', MX: 'Mexique',
+  BR: 'Brésil', AR: 'Argentine', CO: 'Colombie', JP: 'Japon', AU: 'Australie',
+}
+
 function countryFlag(code: string): string {
   if (!code || code.length !== 2) return ''
   return code.toUpperCase().split('').map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('')
@@ -125,7 +133,9 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
             <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
               <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
               <td className="px-4 py-2.5 text-gray-400">
-                {r.pays ? <span title={r.pays}>{countryFlag(r.pays)} {r.pays}</span> : <span className="text-gray-700">—</span>}
+                {r.pays
+                  ? <span title={COUNTRY_NAMES[r.pays] ?? r.pays} className="cursor-default text-lg leading-none">{countryFlag(r.pays)}</span>
+                  : <span className="text-gray-700">—</span>}
               </td>
               <td className="px-4 py-2.5 text-gray-400">
                 {r.device_type ? `${DEVICE_ICON[r.device_type] ?? ''} ${r.device_type}` : <span className="text-gray-700">—</span>}
