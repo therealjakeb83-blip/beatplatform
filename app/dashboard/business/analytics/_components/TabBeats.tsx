@@ -5,22 +5,22 @@ import Link               from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import MiniBar            from './MiniBar'
-import { periodeToSearch, fmtEuroDisplay, fmtNum, type Periode } from '../_lib/periode'
+import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDuree, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
 type BeatRow = {
   id: string; titre: string; couleur: string | null; styles: string[]
-  ca: number; ventes: number; ecoutes: number; free_dl: number
+  ca: number; ventes: number; ecoutes: number; free_dl: number; duree_moy: number | null
 }
 
 type Data = {
-  kpis: { ca_moy_par_beat: number; cmdes_moy_par_beat: number; ecoutes: number; free_dl: number }
+  kpis: { ca_moy_par_beat: number; cmdes_moy_par_beat: number; ecoutes: number; free_dl: number; duree_moy_globale: number | null }
   historique: Array<Record<string, unknown>>
   beats: BeatRow[]
 }
 
-type SortKey = 'ca' | 'ventes' | 'ecoutes' | 'free_dl'
+type SortKey = 'ca' | 'ventes' | 'ecoutes' | 'free_dl' | 'duree_moy'
 type KpiKey  = 'ca' | 'ventes' | 'ecoutes' | 'free_dl'
 
 const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: number) => string }> = [
@@ -50,8 +50,9 @@ export default function TabBeats({ periode, debut, fin }: Props) {
     let r = data.beats
     if (search) r = r.filter(b => b.titre.toLowerCase().includes(search.toLowerCase()) || b.styles.some(s => s.toLowerCase().includes(search.toLowerCase())))
     return [...r].sort((a, b) => {
-      const diff = (a[sort.key] as number) - (b[sort.key] as number)
-      return sort.asc ? diff : -diff
+      const av = (a[sort.key] as number | null) ?? -1
+      const bv = (b[sort.key] as number | null) ?? -1
+      return sort.asc ? av - bv : bv - av
     })
   }, [data, sort, search])
 
@@ -75,11 +76,12 @@ export default function TabBeats({ periode, debut, fin }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard label="CA moy. / beat"    value={fmtEuroDisplay(kpis.ca_moy_par_beat)}     color="#4ade80" active={kpiActif === 'ca'}      onClick={() => setKpiActif('ca')} />
         <KpiCard label="Cmdes moy. / beat" value={kpis.cmdes_moy_par_beat.toFixed(1)}       color="#8b5cf6" active={kpiActif === 'ventes'}  onClick={() => setKpiActif('ventes')} />
         <KpiCard label="Écoutes"           value={fmtNum(kpis.ecoutes)}                     color="#818cf8" active={kpiActif === 'ecoutes'} onClick={() => setKpiActif('ecoutes')} />
         <KpiCard label="Free DL"           value={String(kpis.free_dl)}                     color="#38bdf8" active={kpiActif === 'free_dl'} onClick={() => setKpiActif('free_dl')} />
+        <KpiCard label="Durée moy. écoute" value={fmtDuree(kpis.duree_moy_globale)}        color="#f59e0b" />
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
@@ -106,6 +108,7 @@ export default function TabBeats({ periode, debut, fin }: Props) {
                 <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('ventes')}>Ventes <SortIcon k="ventes" /></th>
                 <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('ecoutes')}>Écoutes <SortIcon k="ecoutes" /></th>
                 <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('free_dl')}>Free DL <SortIcon k="free_dl" /></th>
+                <th className="text-right px-4 py-2 cursor-pointer select-none" onClick={() => toggleSort('duree_moy')}>Durée moy. <SortIcon k="duree_moy" /></th>
               </tr>
             </thead>
             <tbody>
@@ -142,10 +145,11 @@ export default function TabBeats({ periode, debut, fin }: Props) {
                       <MiniBar value={b.free_dl} max={maxDl} color="#38bdf8" />
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-right text-amber-400 font-medium">{fmtDuree(b.duree_moy)}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Aucun beat</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucun beat</td></tr>
               )}
             </tbody>
           </table>

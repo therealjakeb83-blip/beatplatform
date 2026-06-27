@@ -6,7 +6,7 @@ import Link                    from 'next/link'
 import KpiCard                 from '../../_components/KpiCard'
 import AnalyticsLineChart      from '../../_components/AnalyticsLineChart'
 import PeriodSelector          from '../../_components/PeriodSelector'
-import { fmtEuroDisplay, fmtDate, type Periode } from '../../_lib/periode'
+import { fmtEuroDisplay, fmtDate, fmtDuree, type Periode } from '../../_lib/periode'
 
 type Beat = { id: string; titre: string; couleur: string | null; styles: string[]; bpm: number; cle: string | null; statut: string }
 type Vente = {
@@ -18,7 +18,7 @@ type FavoriRow  = { created_at: string;   client_id: string | null; client_nom: 
 type FreeDlRow  = { downloaded_at: string; client_id: string | null; client_nom: string | null }
 type Data = {
   beat: Beat
-  kpis: { ca_brut: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number; favoris: number }
+  kpis: { ca_brut: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number; favoris: number; duree_moy: number | null }
   ventes_detail:  Vente[]
   ecoutes_detail: EcouteRow[]
   favoris_detail: FavoriRow[]
@@ -92,13 +92,6 @@ function TableVentes({ rows }: { rows: Vente[] }) {
 const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📟', desktop: '💻' }
 const SOURCE_LABELS_SMALL: Record<string, string> = { instagram: 'IG', youtube: 'YT', google: 'Google', direct: 'Direct', autre: 'Autre' }
 
-function fmtDuree(s: number | null): string {
-  if (!s) return '—'
-  if (s < 60) return `${s}s`
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return r > 0 ? `${m}m ${r}s` : `${m}m`
-}
 
 const COUNTRY_NAMES: Record<string, string> = {
   FR: 'France', BE: 'Belgique', CH: 'Suisse', CA: 'Canada', US: 'États-Unis',
@@ -290,10 +283,11 @@ export default function BeatDetailPage() {
           <p className="text-gray-500 text-sm">Erreur de chargement.</p>
         ) : (
           <div className="space-y-6">
-            {/* KPIs financiers */}
-            <div className="grid grid-cols-2 gap-3">
-              <KpiCard label="CA Brut" value={fmtEuroDisplay(kpis!.ca_brut)} sub={`Net : ${fmtEuroDisplay(kpis!.ca_net)}`} color="#4ade80" />
-              <KpiCard label="CA Net"  value={fmtEuroDisplay(kpis!.ca_net)}  color="#22d3ee" />
+            {/* KPIs financiers + durée moyenne */}
+            <div className="grid grid-cols-3 gap-3">
+              <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis!.ca_brut)} sub={`Net : ${fmtEuroDisplay(kpis!.ca_net)}`} color="#4ade80" />
+              <KpiCard label="CA Net"        value={fmtEuroDisplay(kpis!.ca_net)}  color="#22d3ee" />
+              <KpiCard label="Durée moy. écoute" value={fmtDuree(kpis!.duree_moy)} color="#f59e0b" />
             </div>
 
             {/* KPIs engagement — cliquables, pilotent le graphique */}

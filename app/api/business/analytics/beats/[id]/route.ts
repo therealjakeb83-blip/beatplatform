@@ -178,9 +178,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
   })
 
+  // Durée moyenne d'écoute (uniquement les plays avec duree_secondes non null)
+  const playsAvecDuree = plays.filter(p => (p as Record<string, unknown>).duree_secondes != null)
+  const duree_moy = playsAvecDuree.length > 0
+    ? Math.round(playsAvecDuree.reduce((s, p) => s + ((p as Record<string, unknown>).duree_secondes as number), 0) / playsAvecDuree.length)
+    : null
+
   return NextResponse.json({
     beat,
-    kpis: { ca_brut, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length, favoris: favoris.length },
+    kpis: { ca_brut, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length, favoris: favoris.length, duree_moy },
     ventes_detail,
     ecoutes_detail,
     favoris_detail,

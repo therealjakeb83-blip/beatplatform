@@ -119,3 +119,11 @@ export function fmtNum(n: number): string {
 export function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
+
+export function fmtDuree(s: number | null | undefined): string {
+  if (!s) return '—'
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return r > 0 ? `${m}m ${r}s` : `${m}m`
+}
