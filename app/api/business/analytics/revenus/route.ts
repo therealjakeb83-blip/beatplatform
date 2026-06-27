@@ -1,7 +1,7 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, inPeriod, getLast12Months } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to } = getPeriodDates(request)
+  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [{ data: allCommandes }, { data: beatmaker }] = await Promise.all([
@@ -70,16 +70,14 @@ export async function GET(request: Request) {
       }
     })
 
-  // Historique 12 mois
-  const mois12 = getLast12Months()
-  const historique = mois12.map(({ year, month, label, fullLabel }) => {
-    const start = new Date(year, month, 1).toISOString()
-    const end   = new Date(year, month + 1, 1).toISOString()
-    const mCmds = (allCommandes ?? []).filter(c => c.created_at >= start && c.created_at < end)
+  const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const historique = slots.map(slot => {
+    const mCmds = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     const net   = brut - rem
-    return { label, fullLabel, brut, remises: rem, net, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
+    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
   })
 
   return NextResponse.json({

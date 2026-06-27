@@ -1,7 +1,7 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getLast12Months } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
+  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [{ data: abonnements }, { data: commandes }] = await Promise.all([
@@ -92,18 +93,18 @@ export async function GET(request: Request) {
     }
   })
 
-  // Historique 12 mois (MRR approximé)
-  const mois12 = getLast12Months()
-  const historique = mois12.map(({ year, month, label, fullLabel }) => {
-    const monthStart = new Date(year, month, 1)
-    const monthEnd   = new Date(year, month + 1, 0, 23, 59, 59)
+  const dataFrom = periode === 'tout' ? abos.map(a => a.date_debut).sort()[0] : undefined
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const historique = slots.map(slot => {
+    const slotStart = new Date(slot.from)
+    const slotEnd   = new Date(slot.to)
     const mActifs = abos.filter(a => {
       const debut = new Date(a.date_debut)
       const fin   = a.date_fin ? new Date(a.date_fin) : null
-      return debut <= monthEnd && (fin === null || fin >= monthStart)
+      return debut < slotEnd && (fin === null || fin >= slotStart)
     })
     const mMrr = mActifs.reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100
-    return { label, fullLabel, mrr: mMrr, actifs: mActifs.length }
+    return { label: slot.label, fullLabel: slot.fullLabel, mrr: mMrr, actifs: mActifs.length }
   })
 
   return NextResponse.json({

@@ -32,6 +32,7 @@ function fmtTick(v: number, formatValue?: (v: number) => string): string {
 export default function AnalyticsLineChart({ data, xKey, series, formatValue, height = 160, showLegend = true }: Props) {
   const dataMax = Math.max(...data.flatMap(d => series.map(s => (d[s.key] as number) ?? 0)), 0)
   const yMax: number | 'auto' = dataMax === 0 ? 10 : 'auto'
+  const tickInterval = data.length > 12 ? Math.ceil(data.length / 8) - 1 : 0
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -42,6 +43,7 @@ export default function AnalyticsLineChart({ data, xKey, series, formatValue, he
           tick={{ fontSize: 10, fill: '#6b7280' }}
           axisLine={false}
           tickLine={false}
+          interval={tickInterval}
         />
         <YAxis
           tick={{ fontSize: 10, fill: '#6b7280' }}

@@ -1,7 +1,7 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, inPeriod, getLast12Months } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to } = getPeriodDates(request)
+  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [
@@ -98,34 +98,31 @@ export async function GET(request: Request) {
     .slice(0, 5)
     .map(b => ({ ...b }))
 
-  // Historique 12 mois
-  const mois12 = getLast12Months()
-  const historique = mois12.map(({ year, month, label, fullLabel }) => {
-    const start = new Date(year, month, 1).toISOString()
-    const end   = new Date(year, month + 1, 1).toISOString()
-
-    const mCmds   = (allCommandes   ?? []).filter(c => c.created_at   >= start && c.created_at   < end)
-    const mPlays  = (allPlays       ?? []).filter(p => p.played_at    >= start && p.played_at    < end)
-    const mFreeDl = (allFreeDl      ?? []).filter(f => f.downloaded_at >= start && f.downloaded_at < end)
-    const mCollabs = (allCollabs    ?? []).filter(c => c.created_at   >= start && c.created_at   < end)
+  const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const historique = slots.map(slot => {
+    const mCmds    = (allCommandes ?? []).filter(c => c.created_at    >= slot.from && c.created_at    < slot.to)
+    const mPlays   = (allPlays    ?? []).filter(p => p.played_at      >= slot.from && p.played_at      < slot.to)
+    const mFreeDl  = (allFreeDl   ?? []).filter(f => f.downloaded_at  >= slot.from && f.downloaded_at  < slot.to)
+    const mCollabs = (allCollabs  ?? []).filter(c => c.created_at     >= slot.from && c.created_at     < slot.to)
 
     const mCa      = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const mRemise  = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-    const mFavoris = (allFavoris ?? []).filter(f => (f as { created_at: string }).created_at >= start && (f as { created_at: string }).created_at < end).length
+    const mFavoris = (allFavoris ?? []).filter(f => (f as { created_at: string }).created_at >= slot.from && (f as { created_at: string }).created_at < slot.to).length
 
-    const monthEnd   = new Date(year, month + 1, 0, 23, 59, 59)
-    const monthStart = new Date(year, month, 1)
+    const slotStart = new Date(slot.from)
+    const slotEnd   = new Date(slot.to)
     const mMrr = (allAbonnements ?? [])
       .filter(a => {
         const debut = new Date(a.date_debut)
         const fin   = a.date_fin ? new Date(a.date_fin) : null
-        return debut <= monthEnd && (fin === null || fin >= monthStart)
+        return debut < slotEnd && (fin === null || fin >= slotStart)
       })
       .reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100
 
     return {
-      label,
-      fullLabel,
+      label:     slot.label,
+      fullLabel: slot.fullLabel,
       ca:        mCa,
       ca_net:    mCa - mRemise,
       mrr:       mMrr,

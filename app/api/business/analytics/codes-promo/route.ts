@@ -1,15 +1,16 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { inPeriod, getLast12Months } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
+  const { from: _from, to: _to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [{ data: codes }, { data: allCommandes }] = await Promise.all([
@@ -49,19 +50,17 @@ export async function GET(_request: Request) {
     }
   })
 
-  // Historique 12 mois (aggregé sur toutes les commandes avec promo)
-  const mois12 = getLast12Months()
-  const historique = mois12.map(({ year, month, label, fullLabel }) => {
-    const start = new Date(year, month, 1).toISOString()
-    const end   = new Date(year, month + 1, 1).toISOString()
-    const mCmds = cmds.filter(c => c.created_at >= start && c.created_at < end)
+  const dataFrom = periode === 'tout' ? cmds.map(c => c.created_at).sort()[0] : undefined
+  const slots = getHistoriqueSlots(periode, _from, _to, dataFrom)
+  const historique = slots.map(slot => {
+    const mCmds = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     return {
-      label,
-      fullLabel,
+      label:        slot.label,
+      fullLabel:    slot.fullLabel,
       utilisations: mCmds.length,
       remises:      mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0),
       ca:           mCmds.reduce((s, c) => s + c.prix_paye, 0),
-      actifs:       promos.filter(p => p.statut === 'actif' && p.created_at <= end).length,
+      actifs:       promos.filter(p => p.statut === 'actif' && p.created_at <= slot.to).length,
     }
   })
 

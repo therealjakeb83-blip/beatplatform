@@ -1,7 +1,7 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, inPeriod, getLast12Months } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to } = getPeriodDates(request)
+  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [
@@ -55,22 +55,20 @@ export async function GET(request: Request) {
     ? { nom: SOURCE_LABELS[srcEntries[0][0]] ?? srcEntries[0][0], ca: srcEntries[0][1], pct: ca_brut > 0 ? srcEntries[0][1] / ca_brut * 100 : 0 }
     : null
 
-  // Historique 12 mois (par source + KPIs)
-  const mois12 = getLast12Months()
-  const historique = mois12.map(({ year, month, label, fullLabel }) => {
-    const start    = new Date(year, month, 1).toISOString()
-    const end      = new Date(year, month + 1, 1).toISOString()
-    const mCmds    = (allCommandes ?? []).filter(c => c.created_at >= start && c.created_at < end)
-    const mCollabs = (allCollabs   ?? []).filter(c => c.created_at >= start && c.created_at < end)
+  const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const historique = slots.map(slot => {
+    const mCmds    = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
+    const mCollabs = (allCollabs   ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
 
-    const ca_mois      = mCmds.reduce((s, c) => s + c.prix_paye, 0)
-    const ca_net_mois  = mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0)
-    const ventes_mois  = mCmds.length
-    const panier_mois  = mCmds.length ? ca_mois / mCmds.length : 0
-    const collab_mois  = mCollabs.reduce((s, c) => s + c.montant, 0) / 100
+    const ca_mois     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const ca_net_mois = mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0)
+    const ventes_mois = mCmds.length
+    const panier_mois = mCmds.length ? ca_mois / mCmds.length : 0
+    const collab_mois = mCollabs.reduce((s, c) => s + c.montant, 0) / 100
 
     const row: Record<string, unknown> = {
-      label, fullLabel,
+      label: slot.label, fullLabel: slot.fullLabel,
       ca: ca_mois, ca_net: ca_net_mois, ventes: ventes_mois, panier_moyen: panier_mois, collab_ca: collab_mois,
     }
     for (const src of SOURCES) {

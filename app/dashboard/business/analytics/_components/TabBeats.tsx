@@ -5,7 +5,7 @@ import Link               from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import MiniBar            from './MiniBar'
-import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDuree, type Periode } from '../_lib/periode'
+import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDuree, getGranulariteLabel, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
@@ -85,7 +85,7 @@ export default function TabBeats({ periode, debut, fin }: Props) {
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <p className="text-xs text-gray-400 font-medium mb-3">{kpiConf.label} — 12 mois</p>
+        <p className="text-xs text-gray-400 font-medium mb-3">{kpiConf.label} — {getGranulariteLabel(periode, debut, fin)}</p>
         <AnalyticsLineChart data={historique} xKey="label" series={[{ key: kpiConf.key, color: kpiConf.color, label: kpiConf.label }]} formatValue={kpiConf.fmt} />
       </div>
 

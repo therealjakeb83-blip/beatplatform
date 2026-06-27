@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
-import { periodeToSearch, fmtEuroDisplay, fmtDate, type Periode } from '../_lib/periode'
+import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
@@ -64,7 +64,7 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
         <p className="text-xs text-gray-400 font-medium mb-3">
-          {kpiActif === 'mrr' ? 'MRR' : 'Abonnés actifs'} — 12 mois
+          {kpiActif === 'mrr' ? 'MRR' : 'Abonnés actifs'} — {getGranulariteLabel(periode, debut, fin)}
         </p>
         <AnalyticsLineChart
           data={historique}

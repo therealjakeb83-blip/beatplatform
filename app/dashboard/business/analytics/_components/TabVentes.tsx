@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link                   from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
-import { periodeToSearch, fmtEuroDisplay, fmtDate, type Periode } from '../_lib/periode'
+import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
@@ -87,7 +87,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-gray-400 font-medium">{kpiActif === 'source_top' ? 'Par source' : kpiConf?.label ?? 'CA Brut'} — 12 mois</p>
+          <p className="text-xs text-gray-400 font-medium">{kpiActif === 'source_top' ? 'Par source' : kpiConf?.label ?? 'CA Brut'} — {getGranulariteLabel(periode, debut, fin)}</p>
           {kpiActif === 'ca_brut' && (
             <div className="flex gap-1">
               <button onClick={() => setParSource(false)} className={`px-2 py-1 rounded text-[10px] ${!parSource ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}>CA global</button>
