@@ -115,7 +115,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { mrr, arr, actifs: actifs.length, en_annulation, total_vendus, retention_moy, churn_rate, achats_post_abo },
+    kpis: { mrr, arr, actifs: actifs.length, en_annulation, total_vendus, retention_moy, churn_rate, churn_count: annulesInPeriod.length, achats_post_abo },
     historique,
     abonnes,
   })

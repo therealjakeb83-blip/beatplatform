@@ -14,7 +14,7 @@ type Abonne = {
 }
 
 type Data = {
-  kpis: { mrr: number; arr: number; actifs: number; en_annulation: number; total_vendus: number; retention_moy: number; churn_rate: number; achats_post_abo: number }
+  kpis: { mrr: number; arr: number; actifs: number; en_annulation: number; total_vendus: number; retention_moy: number; churn_rate: number; churn_count: number; achats_post_abo: number }
   historique: Array<Record<string, unknown>>
   abonnes: Abonne[]
 }
@@ -59,7 +59,7 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
         <KpiCard label="Total vendus" value={String(kpis.total_vendus)} color="#8b5cf6" />
         <KpiCard label="Rétention moy." value={`${kpis.retention_moy.toFixed(1)} mois`} color="#f59e0b" />
         <KpiCard label="Achats post-abo" value={kpis.achats_post_abo.toFixed(1)} sub="licences / abonné" color="#38bdf8" />
-        <KpiCard label="Churn rate" value={`${kpis.churn_rate.toFixed(1)}%`} color="#f87171" />
+        <KpiCard label="Churn" value={String(kpis.churn_count)} sub={`${kpis.churn_rate.toFixed(1)}% churn rate`} color="#f87171" />
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
