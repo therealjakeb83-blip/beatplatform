@@ -62,6 +62,13 @@ export default function AnalyticsLineChart({ data, xKey, series, formatValue, he
             fontSize: 12,
           }}
           labelStyle={{ color: '#9ca3af', fontSize: 11, marginBottom: 4 }}
+          labelFormatter={(_, payload) => {
+            if (payload && payload.length > 0) {
+              const point = payload[0].payload as Record<string, unknown>
+              return String(point.fullLabel ?? point.label ?? '')
+            }
+            return ''
+          }}
           formatter={(v: unknown, name: string | number | undefined) => {
             const val = typeof v === 'number' ? v : 0
             const nameStr = String(name ?? '')

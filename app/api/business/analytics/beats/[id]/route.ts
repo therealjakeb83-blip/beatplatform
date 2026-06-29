@@ -1,7 +1,7 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, inPeriod, getLast12Months } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
   const { id } = await params
-  const { from, to } = getPeriodDates(request)
+  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const { data: beat } = await admin
@@ -163,20 +163,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
   })
 
-  // Historique 12 mois
-  const mois12 = getLast12Months()
-  const historique = mois12.map(({ year, month, label, fullLabel }) => {
-    const start = new Date(year, month, 1).toISOString()
-    const end   = new Date(year, month + 1, 1).toISOString()
-    return {
-      label,
-      fullLabel,
-      ventes:  (allCommandes ?? []).filter(c => c.created_at   >= start && c.created_at   < end).length,
-      ecoutes: (allPlays    ?? []).filter(p => p.played_at     >= start && p.played_at     < end).length,
-      free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at >= start && f.downloaded_at < end).length,
-      favoris: (allFavoris  ?? []).filter(f => (f as { created_at: string }).created_at >= start && (f as { created_at: string }).created_at < end).length,
-    }
-  })
+  // Historique adaptatif selon période
+  const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const historique = slots.map(slot => ({
+    label:    slot.label,
+    fullLabel: slot.fullLabel,
+    ventes:  (allCommandes ?? []).filter(c => c.created_at   >= slot.from && c.created_at   < slot.to).length,
+    ecoutes: (allPlays    ?? []).filter(p => p.played_at     >= slot.from && p.played_at     < slot.to).length,
+    free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at >= slot.from && f.downloaded_at < slot.to).length,
+    favoris: (allFavoris  ?? []).filter(f => (f as { created_at: string }).created_at >= slot.from && (f as { created_at: string }).created_at < slot.to).length,
+  }))
 
   // Durée moyenne d'écoute (uniquement les plays avec duree_secondes non null)
   const playsAvecDuree = plays.filter(p => (p as Record<string, unknown>).duree_secondes != null)

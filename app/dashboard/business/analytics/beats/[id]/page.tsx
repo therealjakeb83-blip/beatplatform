@@ -6,7 +6,7 @@ import Link                    from 'next/link'
 import KpiCard                 from '../../_components/KpiCard'
 import AnalyticsLineChart      from '../../_components/AnalyticsLineChart'
 import PeriodSelector          from '../../_components/PeriodSelector'
-import { fmtEuroDisplay, fmtDate, fmtDuree, type Periode } from '../../_lib/periode'
+import { fmtEuroDisplay, fmtDate, fmtDuree, getGranulariteLabel, type Periode } from '../../_lib/periode'
 
 type Beat = { id: string; titre: string; couleur: string | null; styles: string[]; bpm: number; cle: string | null; statut: string }
 type Vente = {
@@ -301,7 +301,7 @@ export default function BeatDetailPage() {
             {/* Chart — réagit à la KPI sélectionnée */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <p className="text-xs text-gray-400 font-medium mb-3">
-                {cfg.label} — 12 mois
+                {cfg.label} — {getGranulariteLabel(periode, debut, fin)}
               </p>
               <AnalyticsLineChart
                 data={hist}

@@ -123,14 +123,15 @@ export async function GET(request: Request) {
     return {
       label:     slot.label,
       fullLabel: slot.fullLabel,
-      ca:        mCa,
-      ca_net:    mCa - mRemise,
-      mrr:       mMrr,
-      ventes:    mCmds.filter(c => c.type_commande === 'LICENCE').length,
-      ecoutes:   mPlays.length,
-      free_dl:   mFreeDl.length,
-      collab_ca: mCollabs.reduce((s, c) => s + c.montant, 0) / 100,
-      favoris:   mFavoris,
+      ca:           mCa,
+      ca_net:       mCa - mRemise,
+      mrr:          mMrr,
+      panier_moyen: mCmds.length ? mCa / mCmds.length : 0,
+      ventes:       mCmds.filter(c => c.type_commande === 'LICENCE').length,
+      ecoutes:      mPlays.length,
+      free_dl:      mFreeDl.length,
+      collab_ca:    mCollabs.reduce((s, c) => s + c.montant, 0) / 100,
+      favoris:      mFavoris,
     }
   })
 
