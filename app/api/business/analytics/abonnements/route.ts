@@ -1,7 +1,7 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 
 export const runtime = 'nodejs'
 
@@ -25,49 +25,56 @@ export async function GET(request: Request) {
       .eq('type_commande', 'LICENCE'),
   ])
 
-  const abos = abonnements ?? []
+  const abos    = abonnements ?? []
+  const now     = new Date()
+  const endDate = to ? new Date(to) : now
 
-  // KPIs globaux
-  const actifs = abos.filter(a => a.statut === 'actif')
-  const mrr    = actifs.reduce((s, a) => {
+  // Snapshot à la fin de la période : actifs, MRR, ARR
+  const actifs = abos.filter(a => {
+    const debut = new Date(a.date_debut)
+    const fin   = a.date_fin ? new Date(a.date_fin) : null
+    return debut <= endDate && (fin === null || fin > endDate)
+  })
+  const mrr = actifs.reduce((s, a) => {
     const mensuel = a.periode === 'annuel' ? a.prix / 12 : a.prix
     return s + mensuel
   }, 0) / 100
-  const arr = mrr * 12
+  const arr           = mrr * 12
+  const en_annulation = actifs.filter(a => a.annulation_en_cours).length
 
-  const en_annulation = abos.filter(a => a.annulation_en_cours).length
-  const total_vendus  = abos.length
-  const annules       = abos.filter(a => a.statut === 'annule')
+  // Abonnements commencés pendant la période
+  const abosInPeriod    = abos.filter(a => inPeriod(a.date_debut, from, to))
+  const annulesInPeriod = abos.filter(a => a.statut === 'annule' && a.date_fin && inPeriod(a.date_fin, from, to))
+  const total_vendus    = abosInPeriod.length
 
-  // Rétention moyenne (en mois)
-  const now = new Date()
-  const durees = abos.map(a => {
+  // Rétention moyenne (mois) sur les abonnements de la période
+  const durees = abosInPeriod.map(a => {
     const debut = new Date(a.date_debut)
     const fin   = a.date_fin ? new Date(a.date_fin) : now
     return (fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
   })
   const retention_moy = durees.length ? durees.reduce((s, d) => s + d, 0) / durees.length : 0
 
-  const churn_rate = total_vendus > 0 ? (annules.length / total_vendus) * 100 : 0
+  const churn_rate = total_vendus > 0 ? (annulesInPeriod.length / total_vendus) * 100 : 0
 
-  // Achats post-abo moyens
+  // Achats post-abo — map par id d'abonnement (pour la table) + moyenne KPI (sur la période)
   const cmds = commandes ?? []
-  const achatsParAbo = abos.map(a => {
-    const cl = Array.isArray(a.clients) ? a.clients[0] : a.clients
+  const achatsMap = new Map<string, number>()
+  for (const a of abos) {
+    const cl    = Array.isArray(a.clients) ? a.clients[0] : a.clients
     const email = (cl as { email: string } | null)?.email ?? a.acheteur_email
-    const debut = a.date_debut
-    return cmds.filter(c =>
-      c.created_at > debut &&
+    achatsMap.set(a.id, cmds.filter(c =>
+      c.created_at > a.date_debut &&
       (c.client_id === (cl as { id?: string } | null)?.id || c.acheteur_email === email)
-    ).length
-  })
-  const achats_post_abo = achatsParAbo.length
-    ? achatsParAbo.reduce((s, n) => s + n, 0) / achatsParAbo.length
+    ).length)
+  }
+  const achats_post_abo = abosInPeriod.length
+    ? abosInPeriod.reduce((s, a) => s + (achatsMap.get(a.id) ?? 0), 0) / abosInPeriod.length
     : 0
 
   // Table abonnés
   type Raw = typeof abos[number]
-  const abonnes = abos.map((a: Raw, i: number) => {
+  const abonnes = abos.map((a: Raw) => {
     const cl = Array.isArray(a.clients) ? a.clients[0] : a.clients
     const nom = cl
       ? [(cl as { prenom: string | null }).prenom, (cl as { nom: string }).nom].filter(Boolean).join(' ')
@@ -89,7 +96,7 @@ export async function GET(request: Request) {
       statut:           a.annulation_en_cours ? 'annulation' : a.statut,
       prix:             a.prix / 100,
       ltv,
-      achats_post_abo:  achatsParAbo[i] ?? 0,
+      achats_post_abo:  achatsMap.get(a.id) ?? 0,
     }
   })
 
