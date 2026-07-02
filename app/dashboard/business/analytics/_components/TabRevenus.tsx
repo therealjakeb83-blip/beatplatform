@@ -204,7 +204,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
                 <th className="text-left px-4 py-2">Date</th>
                 <th className="text-right px-4 py-2">Commandes</th>
                 <th className="text-right px-4 py-2">Ventes brutes</th>
-                <th className="text-right px-4 py-2">Codes promo</th>
+                <th className="text-right px-4 py-2">Remises</th>
                 <th className="text-right px-4 py-2">Ventes nettes</th>
                 <th className="text-right px-4 py-2">TVA (20%)</th>
               </tr>
