@@ -29,6 +29,12 @@ const licenceLabels = (c: RawCmd): string[] => {
   return nom ? [nom] : []
 }
 
+// target = null → total toutes catégories confondues (un item multi-label compte pour chaque label)
+// target = string → occurrences de cette seule catégorie (0 ou 1 par item)
+function occ(labels: string[], target: string | null): number {
+  return target === null ? labels.length : (labels.includes(target) ? 1 : 0)
+}
+
 function buildLicenceGroups(cmds: RawCmd[]): LicenceRow[] {
   const map = new Map<string, { ca: number; ventes: number }>()
   for (const c of cmds) {
@@ -42,12 +48,12 @@ function buildLicenceGroups(cmds: RawCmd[]): LicenceRow[] {
   return [...map.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.ca - a.ca)
 }
 
-function sumLicenceBySlot(cmds: RawCmd[], slots: HistoriqueSlot[]): LicenceHisto[] {
+function sumLicenceBySlot(cmds: RawCmd[], slots: HistoriqueSlot[], target: string | null): LicenceHisto[] {
   return slots.map(slot => {
     const mCmds = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     let ca = 0, ventes = 0
     for (const c of mCmds) {
-      const n = licenceLabels(c).length
+      const n = occ(licenceLabels(c), target)
       ca += c.prix_paye * n
       ventes += n
     }
@@ -74,7 +80,7 @@ function buildBeatGroups(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favo
   return [...map.values()].sort((a, b) => b.ca - a.ca)
 }
 
-function sumBeatBySlot(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favoris: RawEvt[], key: string, slots: HistoriqueSlot[]): HistoPoint[] {
+function sumBeatBySlot(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favoris: RawEvt[], key: string, slots: HistoriqueSlot[], target: string | null): HistoPoint[] {
   return slots.map(slot => {
     const inSlot = (dateIso: string) => dateIso >= slot.from && dateIso < slot.to
     const mCmds    = cmds.filter(c => inSlot(c.created_at))
@@ -83,10 +89,10 @@ function sumBeatBySlot(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favori
     const mFavoris = favoris.filter(f => inSlot(f.created_at))
 
     let ca = 0, ventes = 0
-    for (const c of mCmds) { const n = beatLabels(key)(c.beats).length; ca += c.prix_paye * n; ventes += n }
-    const ecoutes = mPlays.reduce((s, p) => s + beatLabels(key)(p.beats).length, 0)
-    const free_dl = mFreeDl.reduce((s, f) => s + beatLabels(key)(f.beats).length, 0)
-    const favorisCount = mFavoris.reduce((s, f) => s + beatLabels(key)(f.beats).length, 0)
+    for (const c of mCmds) { const n = occ(beatLabels(key)(c.beats), target); ca += c.prix_paye * n; ventes += n }
+    const ecoutes = mPlays.reduce((s, p) => s + occ(beatLabels(key)(p.beats), target), 0)
+    const free_dl = mFreeDl.reduce((s, f) => s + occ(beatLabels(key)(f.beats), target), 0)
+    const favorisCount = mFavoris.reduce((s, f) => s + occ(beatLabels(key)(f.beats), target), 0)
 
     return { label: slot.label, fullLabel: slot.fullLabel, ca, ventes, ecoutes, free_dl, favoris: favorisCount }
   })
@@ -141,12 +147,22 @@ export async function GET(request: Request) {
   const dataFrom = periode === 'tout' ? allCmds.map(c => c.created_at).sort()[0] : undefined
   const slots = getHistoriqueSlots(periode, from, to, dataFrom)
 
+  // Historique par vue : total agrégé + une série par catégorie (pour l'analyse ciblée dans le graphique)
+  const licenceHisto = {
+    total:        sumLicenceBySlot(allCmds, slots, null),
+    parCategorie: Object.fromEntries(licences.map(r => [r.name, sumLicenceBySlot(allCmds, slots, r.name)])),
+  }
+  const beatHisto = (rows: PrefRow[], key: string) => ({
+    total:        sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, key, slots, null),
+    parCategorie: Object.fromEntries(rows.map(r => [r.name, sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, key, slots, r.name)])),
+  })
+
   const historique = {
-    licences:    sumLicenceBySlot(allCmds, slots),
-    styles:      sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, 'styles', slots),
-    ambiances:   sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, 'ambiances', slots),
-    instruments: sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, 'instruments', slots),
-    type_beat:   sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, 'type_beat', slots),
+    licences:    licenceHisto,
+    styles:      beatHisto(styles, 'styles'),
+    ambiances:   beatHisto(ambiances, 'ambiances'),
+    instruments: beatHisto(instruments, 'instruments'),
+    type_beat:   beatHisto(type_beat, 'type_beat'),
   }
 
   return NextResponse.json({ licences, styles, ambiances, instruments, type_beat, historique })
