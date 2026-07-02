@@ -47,8 +47,8 @@ export async function GET(request: Request) {
   const annulesInPeriod = abos.filter(a => a.statut === 'annule' && a.date_fin && inPeriod(a.date_fin, from, to))
   const total_vendus    = abosInPeriod.length
 
-  // Rétention moyenne (mois) sur les abonnements de la période
-  const durees = abosInPeriod.map(a => {
+  // Rétention moyenne (mois) — all-time, indépendante de la période sélectionnée
+  const durees = abos.map(a => {
     const debut = new Date(a.date_debut)
     const fin   = a.date_fin ? new Date(a.date_fin) : now
     return (fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24 * 30.44)

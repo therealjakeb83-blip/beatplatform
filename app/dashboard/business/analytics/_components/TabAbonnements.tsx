@@ -54,12 +54,12 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <KpiCard label="MRR" value={fmtEuroDisplay(kpis.mrr)} sub={`ARR : ${fmtEuroDisplay(kpis.arr)}`} color="#6366f1" active={kpiActif === 'mrr'} onClick={() => setKpiActif('mrr')} />
-        <KpiCard label="Abonnés actifs" value={String(kpis.actifs)} sub={kpis.en_annulation > 0 ? `${kpis.en_annulation} en annulation` : undefined} color="#4ade80" active={kpiActif === 'actifs'} onClick={() => setKpiActif('actifs')} />
-        <KpiCard label="Total vendus" value={String(kpis.total_vendus)} color="#8b5cf6" />
-        <KpiCard label="Rétention moy." value={`${kpis.retention_moy.toFixed(1)} mois`} color="#f59e0b" />
-        <KpiCard label="Achats post-abo" value={kpis.achats_post_abo.toFixed(1)} sub="licences / abonné" color="#38bdf8" />
-        <KpiCard label="Churn" value={String(kpis.churn_count)} sub={`${kpis.churn_rate.toFixed(1)}% churn rate`} color="#f87171" />
+        <KpiCard label="MRR" value={fmtEuroDisplay(kpis.mrr)} sub={`ARR : ${fmtEuroDisplay(kpis.arr)}`} color="#6366f1" active={kpiActif === 'mrr'} onClick={() => setKpiActif('mrr')} badge="actuel" />
+        <KpiCard label="Abonnés actifs" value={String(kpis.actifs)} sub={kpis.en_annulation > 0 ? `${kpis.en_annulation} en annulation` : undefined} color="#4ade80" active={kpiActif === 'actifs'} onClick={() => setKpiActif('actifs')} badge="actuel" />
+        <KpiCard label="Total vendus" value={String(kpis.total_vendus)} color="#8b5cf6" badge="periode" />
+        <KpiCard label="Rétention moy." value={`${kpis.retention_moy.toFixed(1)} mois`} color="#f59e0b" badge="tous-temps" />
+        <KpiCard label="Achats post-abo" value={kpis.achats_post_abo.toFixed(1)} sub="licences / abonné" color="#38bdf8" badge="periode" />
+        <KpiCard label="Churn" value={String(kpis.churn_count)} sub={`${kpis.churn_rate.toFixed(1)}% churn rate`} color="#f87171" badge="periode" />
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
