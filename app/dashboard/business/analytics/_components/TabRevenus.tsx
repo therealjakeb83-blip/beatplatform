@@ -7,11 +7,15 @@ import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } fr
 
 type Props = { periode: Periode; debut: string; fin: string }
 
+type MoyValues = { jour: number; semaine: number; mois: number; trimestre: number; an: number }
+
 type Data = {
-  kpis: { ventes_brutes: number; remises_total: number; ventes_nettes: number; tva: number; avg_par_jour: number; avg_par_semaine: number; avg_par_mois: number; avg_par_trimestre: number; avg_par_an: number }
+  kpis: { ventes_brutes: number; remises_total: number; ventes_nettes: number; tva: number; moy_brut: MoyValues; moy_net: MoyValues }
   jours: Array<{ date: string; nb: number; brut: number; remises: number; net: number; tva: number }>
   historique: Array<Record<string, unknown>>
 }
+
+type MoyBase = 'net' | 'brut'
 
 type KpiKey = 'brut' | 'remises' | 'net' | 'tva' | 'moy'
 const KPI_CONFIG: Array<{ key: 'brut' | 'remises' | 'net' | 'tva'; label: string; color: string }> = [
@@ -43,6 +47,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
   const [loading,  setLoading] = useState(true)
   const [kpiActif, setKpiActif] = useState<KpiKey>('brut')
   const [moyGran,  setMoyGran]  = useState<MoyGran>('jour')
+  const [moyBase,  setMoyBase]  = useState<MoyBase>('net')
 
   useEffect(() => {
     setLoading(true)
@@ -59,9 +64,10 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
   const kpiConf   = KPI_CONFIG.find(k => k.key === kpiActif) ?? KPI_CONFIG[0]
   const totCmds   = jours.reduce((s, j) => s + j.nb, 0)
   const moyConf   = MOY_GRAN.find(g => g.key === moyGran)!
+  const moyValues = moyBase === 'net' ? kpis.moy_net : kpis.moy_brut
 
   const moyChartData = [...jours].reverse().reduce<Array<{ label: string; fullLabel: string; valeur: number; cum: number }>>((acc, j) => {
-    const cum = (acc.length > 0 ? acc[acc.length - 1].cum : 0) + j.net
+    const cum = (acc.length > 0 ? acc[acc.length - 1].cum : 0) + (moyBase === 'net' ? j.net : j.brut)
     acc.push({
       label:     fmtJourShort(j.date),
       fullLabel: fmtJourDate(j.date),
@@ -107,28 +113,44 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
           onClick={() => setKpiActif('tva')}
         />
         {/* Carte CA moyen */}
-        <button
-          onClick={() => setKpiActif('moy')}
-          className={`col-span-2 text-left bg-gray-900 border rounded-xl p-4 transition-colors ${
-            kpiActif === 'moy' ? 'border-indigo-500' : 'border-gray-800 hover:border-gray-700'
+        <div
+          className={`col-span-2 bg-gray-900 border rounded-xl p-4 transition-colors ${
+            kpiActif === 'moy' ? 'border-indigo-500' : 'border-gray-800'
           }`}
         >
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">CA Moyen</p>
-          <div className="grid grid-cols-5 gap-2 text-center">
+          <div className="flex items-center justify-between mb-2">
+            <button onClick={() => setKpiActif('moy')} className="text-[10px] uppercase tracking-wider text-gray-500 hover:text-gray-300 transition-colors">
+              CA Moyen ({moyBase === 'net' ? 'net' : 'brut'})
+            </button>
+            <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg p-0.5">
+              {(['net', 'brut'] as MoyBase[]).map(b => (
+                <button
+                  key={b}
+                  onClick={() => { setMoyBase(b); setKpiActif('moy') }}
+                  className={`text-[9px] px-1.5 py-0.5 rounded font-medium transition-colors ${
+                    moyBase === b ? 'bg-rose-500/80 text-white' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {b === 'net' ? 'Net' : 'Brut'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button onClick={() => setKpiActif('moy')} className="grid grid-cols-5 gap-2 text-center w-full">
             {[
-              { label: 'Par jour',      val: kpis.avg_par_jour },
-              { label: 'Par semaine',   val: kpis.avg_par_semaine },
-              { label: 'Par mois',      val: kpis.avg_par_mois },
-              { label: 'Par trimestre', val: kpis.avg_par_trimestre },
-              { label: 'Par an',        val: kpis.avg_par_an },
+              { label: 'Par jour',      val: moyValues.jour },
+              { label: 'Par semaine',   val: moyValues.semaine },
+              { label: 'Par mois',      val: moyValues.mois },
+              { label: 'Par trimestre', val: moyValues.trimestre },
+              { label: 'Par an',        val: moyValues.an },
             ].map(item => (
               <div key={item.label}>
                 <p className="text-sm font-bold text-rose-400">{fmtEuroDisplay(item.val)}</p>
                 <p className="text-[10px] text-gray-600 mt-0.5">{item.label}</p>
               </div>
             ))}
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Chart */}
@@ -136,7 +158,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-gray-400 font-medium">
             {kpiActif === 'moy'
-              ? `CA moyen ${moyConf.label.toLowerCase()} — évolution`
+              ? `CA moyen (${moyBase === 'net' ? 'net' : 'brut'}) ${moyConf.label.toLowerCase()} — évolution`
               : `${kpiConf.label} — ${getGranulariteLabel(periode, debut, fin)}`}
           </p>
           {kpiActif === 'moy' && (
@@ -159,7 +181,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
           <AnalyticsLineChart
             data={moyChartData}
             xKey="label"
-            series={[{ key: 'valeur', color: '#fb7185', label: 'CA moyen' }]}
+            series={[{ key: 'valeur', color: '#fb7185', label: `CA moyen (${moyBase === 'net' ? 'net' : 'brut'})` }]}
             formatValue={v => fmtEuroDisplay(v)}
           />
         ) : (

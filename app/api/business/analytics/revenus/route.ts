@@ -37,11 +37,16 @@ export async function GET(request: Request) {
   const nbJours = cmds.length
     ? Math.max(1, Math.round((new Date(cmds[0].created_at).getTime() - new Date(cmds[cmds.length - 1].created_at).getTime()) / 86_400_000) + 1)
     : 1
-  const avg_par_jour      = ventes_brutes / nbJours
-  const avg_par_semaine   = avg_par_jour * 7
-  const avg_par_mois      = avg_par_jour * 30.44
-  const avg_par_trimestre = avg_par_jour * 91.31
-  const avg_par_an        = avg_par_jour * 365
+  const avg_brut_jour = ventes_brutes / nbJours
+  const avg_net_jour  = ventes_nettes / nbJours
+  const moy_brut = {
+    jour: avg_brut_jour, semaine: avg_brut_jour * 7, mois: avg_brut_jour * 30.44,
+    trimestre: avg_brut_jour * 91.31, an: avg_brut_jour * 365,
+  }
+  const moy_net = {
+    jour: avg_net_jour, semaine: avg_net_jour * 7, mois: avg_net_jour * 30.44,
+    trimestre: avg_net_jour * 91.31, an: avg_net_jour * 365,
+  }
 
   // Table journalière (regrouper par date)
   const dayMap = new Map<string, { nb: number; brut: number; remises: number }>()
@@ -80,7 +85,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, avg_par_jour, avg_par_semaine, avg_par_mois, avg_par_trimestre, avg_par_an },
+    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, moy_brut, moy_net },
     jours,
     historique,
   })
