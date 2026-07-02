@@ -108,21 +108,28 @@ export function verifierTokenDesinscription(token: string): { clientId: string; 
 export type ResultatEnvoi = { envoyes: number; echecs: number; raison?: 'sans_ciblage' | 'aucun_destinataire' }
 
 export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi> {
+  console.log('[mailing] envoyerCampagne démarré pour', campagneId)
   const admin = createAdminClient()
 
-  const { data: campagne } = await admin
+  const { data: campagne, error: campagneError } = await admin
     .from('campagnes')
     .select('id, beatmaker_id, nom, objet, contenu, cible_mode, cible_id, cible_emails, statut')
     .eq('id', campagneId)
     .single()
-  if (!campagne || campagne.statut === 'envoyee') return { envoyes: 0, echecs: 0 }
+  if (campagneError) console.error('[mailing] Erreur lecture campagne', campagneId, ':', campagneError)
+  if (!campagne || campagne.statut === 'envoyee') {
+    console.log('[mailing] Arrêt : campagne introuvable ou déjà envoyée', { campagneId, trouvee: !!campagne, statut: campagne?.statut })
+    return { envoyes: 0, echecs: 0 }
+  }
+  console.log('[mailing] Campagne chargée', { cible_mode: campagne.cible_mode, cible_id: campagne.cible_id, nbBlocs: Array.isArray(campagne.contenu) ? campagne.contenu.length : 'non-array' })
   if (!campagne.cible_mode) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
 
-  const { data: beatmaker } = await admin
+  const { data: beatmaker, error: beatmakerError } = await admin
     .from('beatmakers')
     .select('nom_artiste, slug, logo_url, instagram_url')
     .eq('id', campagne.beatmaker_id)
     .single()
+  if (beatmakerError) console.error('[mailing] Erreur lecture beatmaker', campagne.beatmaker_id, ':', beatmakerError)
   if (!beatmaker) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
 
   const branding: BrandingBoutique = beatmaker
@@ -132,6 +139,7 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
     : { mode: campagne.cible_mode as 'segment' | 'liste', id: campagne.cible_id as string }
 
   const destinataires = await resolveDestinataires(campagne.beatmaker_id, cible)
+  console.log('[mailing] Destinataires résolus :', destinataires.length)
   if (destinataires.length === 0) {
     // Pas de destinataire valide (segment/liste vide, ou personne inscrit à la newsletter) —
     // on ne touche pas au statut pour que le beatmaker puisse corriger le ciblage et réessayer.
