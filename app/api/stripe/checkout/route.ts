@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { verifierTokenCampagne, COOKIE_CLIC } from '@/lib/mailing'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -202,6 +203,12 @@ export async function POST(request: Request) {
 
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
+  // Attribution campagne marketing : posée par /api/marketing/clic lors du clic sur
+  // un lien de campagne, valable seulement si elle correspond au beatmaker de ce beat
+  const cookieClic = (await cookies()).get(COOKIE_CLIC)?.value
+  const verifClic = cookieClic ? verifierTokenCampagne(cookieClic) : null
+  const attributionCampagne = verifClic && verifClic.beatmakerId === String(beat.beatmaker_id) ? verifClic : null
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     payment_method_types: ['card'],
@@ -230,6 +237,10 @@ export async function POST(request: Request) {
       ...(codePromoValide ? {
         code_promo: codePromoValide,
         reduction_code_promo: String(reductionCodeCents),
+      } : {}),
+      ...(attributionCampagne ? {
+        campagne_id: attributionCampagne.campagneId,
+        campagne_client_id: attributionCampagne.clientId,
       } : {}),
     },
   }

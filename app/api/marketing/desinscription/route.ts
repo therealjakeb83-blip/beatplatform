@@ -1,4 +1,4 @@
-import { verifierTokenDesinscription, incrementerCompteurCampagne } from '@/lib/mailing'
+import { verifierTokenCampagne, incrementerCompteurCampagne } from '@/lib/mailing'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -18,7 +18,7 @@ function pageHtml(titre: string, message: string): string {
 
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get('token')
-  const verif = token ? verifierTokenDesinscription(token) : null
+  const verif = token ? verifierTokenCampagne(token) : null
 
   if (!verif) {
     return new NextResponse(pageHtml('Lien invalide', 'Ce lien de désinscription est invalide ou expiré.'), {

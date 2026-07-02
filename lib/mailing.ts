@@ -76,32 +76,62 @@ export function remplacerTokens(
     .replace(/\{\{\s*lien_desinscription\s*\}\}/gi, lienDesinscription ?? '')
 }
 
-// ── Désinscription (lien signé, pas de dépendance à un service tiers) ────────
+// ── Jeton signé (clientId.beatmakerId.campagneId) ────────────────────────────
+// Partagé par la désinscription et le suivi de clic — pas de dépendance à un
+// service tiers, seule cette clé permet de générer un jeton valide.
 
-function secretDesinscription(): string {
+function secretToken(): string {
   const secret = process.env.UNSUBSCRIBE_SECRET
   if (!secret) throw new Error('UNSUBSCRIBE_SECRET manquant dans les variables d\'environnement')
   return secret
 }
 
-export function genererLienDesinscription(clientId: string, beatmakerId: string, campagneId: string): string {
+export function genererToken(clientId: string, beatmakerId: string, campagneId: string): string {
   const payload = `${clientId}.${beatmakerId}.${campagneId}`
-  const sig = crypto.createHmac('sha256', secretDesinscription()).update(payload).digest('hex')
-  const token = Buffer.from(`${payload}.${sig}`).toString('base64url')
-  return `${APP_URL}/api/marketing/desinscription?token=${token}`
+  const sig = crypto.createHmac('sha256', secretToken()).update(payload).digest('hex')
+  return Buffer.from(`${payload}.${sig}`).toString('base64url')
 }
 
-export function verifierTokenDesinscription(token: string): { clientId: string; beatmakerId: string; campagneId: string } | null {
+export function verifierTokenCampagne(token: string): { clientId: string; beatmakerId: string; campagneId: string } | null {
   try {
     const [clientId, beatmakerId, campagneId, sig] = Buffer.from(token, 'base64url').toString('utf8').split('.')
     if (!clientId || !beatmakerId || !campagneId || !sig) return null
-    const attendu = crypto.createHmac('sha256', secretDesinscription()).update(`${clientId}.${beatmakerId}.${campagneId}`).digest('hex')
+    const attendu = crypto.createHmac('sha256', secretToken()).update(`${clientId}.${beatmakerId}.${campagneId}`).digest('hex')
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(attendu))) return null
     return { clientId, beatmakerId, campagneId }
   } catch {
     return null
   }
 }
+
+export function genererLienDesinscription(clientId: string, beatmakerId: string, campagneId: string): string {
+  const token = genererToken(clientId, beatmakerId, campagneId)
+  return `${APP_URL}/api/marketing/desinscription?token=${token}`
+}
+
+// Lien de suivi de clic : fait transiter le destinataire par notre propre redirection
+// avant la vraie destination, pour savoir précisément qui a cliqué depuis quelle
+// campagne — indépendamment de l'email utilisé plus tard au paiement.
+export function genererLienClic(clientId: string, beatmakerId: string, campagneId: string, urlCible: string): string {
+  const token = genererToken(clientId, beatmakerId, campagneId)
+  return `${APP_URL}/api/marketing/clic?token=${token}&url=${encodeURIComponent(urlCible)}`
+}
+
+// Enveloppe tous les liens absolus vers l'app (sauf ceux déjà routés vers /api/marketing/)
+// dans le lien de suivi de clic — appelé une fois par destinataire après remplacerTokens().
+export function envelopperLiensSuivi(html: string, clientId: string, beatmakerId: string, campagneId: string): string {
+  const prefixe = `href="${APP_URL}`
+  return html.split(prefixe).map((segment, i) => {
+    if (i === 0) return segment
+    const finGuillemet = segment.indexOf('"')
+    if (finGuillemet === -1) return prefixe + segment
+    const urlCible = APP_URL + segment.slice(0, finGuillemet)
+    if (urlCible.includes('/api/marketing/')) return prefixe + segment
+    return `href="${genererLienClic(clientId, beatmakerId, campagneId, urlCible)}"` + segment.slice(finGuillemet + 1)
+  }).join('')
+}
+
+export const COOKIE_CLIC = 'mp_click'
 
 // ── Compteurs agrégés sur `campagnes` (ouvertures/clics/desinscrits/conversions) ─
 
@@ -116,31 +146,26 @@ export async function incrementerCompteurCampagne(
   await admin.from('campagnes').update({ [champ]: valeur + 1 }).eq('id', campagneId)
 }
 
-// Attribution "dernier contact" : si ce client a reçu une campagne de ce beatmaker
-// dans les 30 derniers jours et n'a pas encore été compté comme conversion pour
-// elle, on marque l'achat comme provenant de cette campagne.
-const FENETRE_CONVERSION_JOURS = 30
+// Durée de vie du cookie de suivi de clic — au-delà, un achat n'est plus attribué
+export const FENETRE_CONVERSION_JOURS = 30
 
-export async function enregistrerConversion(clientId: string, beatmakerId: string): Promise<void> {
+// Attribution par clic : appelée uniquement si l'acheteur a un cookie de suivi
+// valide (posé lors du clic sur un lien de la campagne) — jamais par simple
+// correspondance d'email, pour éviter de créditer un achat direct sans rapport.
+export async function enregistrerConversionParClic(campagneId: string, clientId: string): Promise<void> {
   const admin = createAdminClient()
 
-  const depuis = new Date(Date.now() - FENETRE_CONVERSION_JOURS * 86_400_000).toISOString()
-
-  const { data: envois } = await admin
+  const { data: envoi } = await admin
     .from('campagne_envois')
-    .select('id, campagne_id, envoye_at, campagnes!inner(beatmaker_id)')
+    .select('id, converti_at')
+    .eq('campagne_id', campagneId)
     .eq('client_id', clientId)
-    .is('converti_at', null)
-    .gte('envoye_at', depuis)
-    .eq('campagnes.beatmaker_id', beatmakerId)
-    .order('envoye_at', { ascending: false })
-    .limit(1)
+    .maybeSingle()
 
-  const envoi = envois?.[0]
-  if (!envoi) return
+  if (!envoi || envoi.converti_at) return
 
   await admin.from('campagne_envois').update({ converti_at: new Date().toISOString() }).eq('id', envoi.id)
-  await incrementerCompteurCampagne(envoi.campagne_id, 'conversions')
+  await incrementerCompteurCampagne(campagneId, 'conversions')
 }
 
 // ── Envoi d'une campagne ──────────────────────────────────────────────────────
@@ -203,11 +228,12 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
     try {
       const payloads = lot.map(contact => {
         const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id, campagneId)
+        const htmlPersonnalise = remplacerTokens(htmlBase, contact, branding, lien)
         return {
           from,
           to: contact.email,
           subject: remplacerTokens(campagne.objet ?? campagne.nom, contact, branding, lien),
-          html: remplacerTokens(htmlBase, contact, branding, lien),
+          html: envelopperLiensSuivi(htmlPersonnalise, contact.id, campagne.beatmaker_id, campagneId),
         }
       })
 

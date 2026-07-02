@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
 import { envoyerFondsEnAttente } from '@/lib/emails'
-import { enregistrerConversion } from '@/lib/mailing'
+import { enregistrerConversionParClic } from '@/lib/mailing'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -195,9 +195,11 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   console.log('[webhook] Commande créée:', commande?.id)
 
-  // Attribution marketing : purement statistique, ne doit jamais faire échouer le paiement
-  if (clientId) {
-    enregistrerConversion(clientId, meta.beatmaker_id).catch(err =>
+  // Attribution marketing : uniquement si l'achat provient d'un clic sur une campagne
+  // (cookie posé par /api/marketing/clic) — purement statistique, ne doit jamais
+  // faire échouer le paiement
+  if (meta.campagne_id && meta.campagne_client_id) {
+    enregistrerConversionParClic(meta.campagne_id, meta.campagne_client_id).catch(err =>
       console.error('[webhook] Erreur enregistrement conversion campagne:', err)
     )
   }
