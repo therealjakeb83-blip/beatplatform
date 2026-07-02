@@ -26,12 +26,18 @@ export async function GET(request: Request) {
   ])
 
   const cmds = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
-  const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
+  const tvaTaux = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) : 0
+  const tvaRate = tvaTaux / 100
+
+  // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
+  const splitTva = (ttc: number) => {
+    const tva = tvaRate > 0 ? ttc - ttc / (1 + tvaRate) : 0
+    return { tva, net: ttc - tva }
+  }
 
   const ventes_brutes = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ventes_nettes = ventes_brutes - remises_total
-  const tva           = tvaRate > 0 ? ventes_nettes - ventes_nettes / (1 + tvaRate) : 0
+  const { tva, net: ventes_nettes } = splitTva(ventes_brutes - remises_total)
 
   // Moyennes par période
   const nbJours = cmds.length
@@ -63,15 +69,8 @@ export async function GET(request: Request) {
     .map(([date, v]) => {
       const brut    = v.brut
       const remises = v.remises
-      const net     = brut - remises
-      return {
-        date,
-        nb:      v.nb,
-        brut,
-        remises,
-        net,
-        tva:     tvaRate > 0 ? net - net / (1 + tvaRate) : 0,
-      }
+      const { tva, net } = splitTva(brut - remises)
+      return { date, nb: v.nb, brut, remises, net, tva }
     })
 
   const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
@@ -80,12 +79,12 @@ export async function GET(request: Request) {
     const mCmds = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-    const net   = brut - rem
-    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
+    const { tva, net } = splitTva(brut - rem)
+    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva }
   })
 
   return NextResponse.json({
-    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, moy_brut, moy_net },
+    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, tva_taux: tvaTaux, moy_brut, moy_net },
     jours,
     historique,
   })

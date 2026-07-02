@@ -18,8 +18,8 @@ type Data = {
 type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'collab_ca' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
 
 const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: number) => string }> = [
-  { key: 'ca',          label: 'CA Brut',       color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
-  { key: 'ca_net',      label: 'CA Net',         color: '#22d3ee', fmt: v => fmtEuroDisplay(v) },
+  { key: 'ca',          label: 'CA Brut (TTC)', color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
+  { key: 'ca_net',      label: 'CA Net (HT)',    color: '#22d3ee', fmt: v => fmtEuroDisplay(v) },
   { key: 'mrr',         label: 'MRR / ARR',      color: '#6366f1', fmt: v => fmtEuroDisplay(v) },
   { key: 'collab_ca',   label: 'Ventes collab',  color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
   { key: 'panier_moyen',label: 'Panier moyen',   color: '#f59e0b', fmt: v => fmtEuroDisplay(v) },

@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   const [
     { data: allCommandes },
     { data: allCollabs },
+    { data: beatmaker },
   ] = await Promise.all([
     admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, beats(titre), licences(nom), clients(prenom, nom)')
@@ -32,14 +33,22 @@ export async function GET(request: Request) {
       .select('montant, created_at')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'transfere'),
+    admin.from('beatmakers')
+      .select('tva_active, tva_taux')
+      .eq('id', user.id)
+      .single(),
   ])
 
   const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
   const collabs = (allCollabs   ?? []).filter(c => inPeriod(c.created_at, from, to))
 
+  const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
+  // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
+  const netHt = (ttc: number) => tvaRate > 0 ? ttc / (1 + tvaRate) : ttc
+
   const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises    = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ca_net     = ca_brut - remises
+  const ca_net     = netHt(ca_brut - remises)
   const beats_vendus = cmds.length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0) / 100
@@ -62,7 +71,7 @@ export async function GET(request: Request) {
     const mCollabs = (allCollabs   ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
 
     const ca_mois     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
-    const ca_net_mois = mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0)
+    const ca_net_mois = netHt(mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0))
     const ventes_mois = mCmds.length
     const panier_mois = mCmds.length ? ca_mois / mCmds.length : 0
     const collab_mois = mCollabs.reduce((s, c) => s + c.montant, 0) / 100

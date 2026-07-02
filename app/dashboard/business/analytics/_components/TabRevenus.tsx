@@ -10,7 +10,7 @@ type Props = { periode: Periode; debut: string; fin: string }
 type MoyValues = { jour: number; semaine: number; mois: number; trimestre: number; an: number }
 
 type Data = {
-  kpis: { ventes_brutes: number; remises_total: number; ventes_nettes: number; tva: number; moy_brut: MoyValues; moy_net: MoyValues }
+  kpis: { ventes_brutes: number; remises_total: number; ventes_nettes: number; tva: number; tva_taux: number; moy_brut: MoyValues; moy_net: MoyValues }
   jours: Array<{ date: string; nb: number; brut: number; remises: number; net: number; tva: number }>
   historique: Array<Record<string, unknown>>
 }
@@ -19,10 +19,10 @@ type MoyBase = 'net' | 'brut'
 
 type KpiKey = 'brut' | 'remises' | 'net' | 'tva' | 'moy'
 const KPI_CONFIG: Array<{ key: 'brut' | 'remises' | 'net' | 'tva'; label: string; color: string }> = [
-  { key: 'brut',    label: 'Ventes brutes', color: '#4ade80' },
-  { key: 'remises', label: 'Remises',       color: '#f87171' },
-  { key: 'net',     label: 'Ventes nettes', color: '#22d3ee' },
-  { key: 'tva',     label: 'TVA',           color: '#f59e0b' },
+  { key: 'brut',    label: 'Ventes brutes (TTC)', color: '#4ade80' },
+  { key: 'remises', label: 'Remises',              color: '#f87171' },
+  { key: 'net',     label: 'CA net (HT)',          color: '#22d3ee' },
+  { key: 'tva',     label: 'TVA',                  color: '#f59e0b' },
 ]
 
 type MoyGran = 'jour' | 'semaine' | 'mois' | 'trimestre' | 'an'
@@ -82,7 +82,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <KpiCard
-          label="Ventes brutes"
+          label="Ventes brutes (TTC)"
           value={fmtEuroDisplay(kpis.ventes_brutes)}
           color="#4ade80"
           active={kpiActif === 'brut'}
@@ -97,9 +97,9 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
           onClick={() => setKpiActif('remises')}
         />
         <KpiCard
-          label="Ventes nettes"
+          label="CA net (HT)"
           value={fmtEuroDisplay(kpis.ventes_nettes)}
-          sub={kpis.ventes_brutes > 0 ? `${((kpis.ventes_nettes / kpis.ventes_brutes) * 100).toFixed(0)}% du brut` : undefined}
+          sub={kpis.ventes_brutes > 0 ? `${((kpis.ventes_nettes / kpis.ventes_brutes) * 100).toFixed(0)}% du brut TTC` : undefined}
           color="#22d3ee"
           active={kpiActif === 'net'}
           onClick={() => setKpiActif('net')}
@@ -107,7 +107,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         <KpiCard
           label="TVA collectée"
           value={fmtEuroDisplay(kpis.tva)}
-          sub="20% TTC inclus"
+          sub={kpis.tva_taux > 0 ? `Taux : ${kpis.tva_taux}% — à reverser, hors CA net` : 'Non assujetti'}
           color="#f59e0b"
           active={kpiActif === 'tva'}
           onClick={() => setKpiActif('tva')}
@@ -120,7 +120,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         >
           <div className="flex items-center justify-between mb-2">
             <button onClick={() => setKpiActif('moy')} className="text-[10px] uppercase tracking-wider text-gray-500 hover:text-gray-300 transition-colors">
-              CA Moyen ({moyBase === 'net' ? 'net' : 'brut'})
+              CA Moyen ({moyBase === 'net' ? 'net, HT' : 'brut, TTC'})
             </button>
             <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg p-0.5">
               {(['net', 'brut'] as MoyBase[]).map(b => (
@@ -131,7 +131,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
                     moyBase === b ? 'bg-rose-500/80 text-white' : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                  {b === 'net' ? 'Net' : 'Brut'}
+                  {b === 'net' ? 'HT' : 'TTC'}
                 </button>
               ))}
             </div>
@@ -158,7 +158,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-gray-400 font-medium">
             {kpiActif === 'moy'
-              ? `CA moyen (${moyBase === 'net' ? 'net' : 'brut'}) ${moyConf.label.toLowerCase()} — évolution`
+              ? `CA moyen (${moyBase === 'net' ? 'net, HT' : 'brut, TTC'}) ${moyConf.label.toLowerCase()} — évolution`
               : `${kpiConf.label} — ${getGranulariteLabel(periode, debut, fin)}`}
           </p>
           {kpiActif === 'moy' && (
@@ -181,7 +181,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
           <AnalyticsLineChart
             data={moyChartData}
             xKey="label"
-            series={[{ key: 'valeur', color: '#fb7185', label: `CA moyen (${moyBase === 'net' ? 'net' : 'brut'})` }]}
+            series={[{ key: 'valeur', color: '#fb7185', label: `CA moyen (${moyBase === 'net' ? 'net, HT' : 'brut, TTC'})` }]}
             formatValue={v => fmtEuroDisplay(v)}
           />
         ) : (
@@ -203,10 +203,10 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
               <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
                 <th className="text-left px-4 py-2">Date</th>
                 <th className="text-right px-4 py-2">Commandes</th>
-                <th className="text-right px-4 py-2">Ventes brutes</th>
+                <th className="text-right px-4 py-2">Ventes brutes (TTC)</th>
                 <th className="text-right px-4 py-2">Remises</th>
-                <th className="text-right px-4 py-2">Ventes nettes</th>
-                <th className="text-right px-4 py-2">TVA (20%)</th>
+                <th className="text-right px-4 py-2">CA net (HT)</th>
+                <th className="text-right px-4 py-2">TVA{kpis.tva_taux > 0 ? ` (${kpis.tva_taux}%)` : ''}</th>
               </tr>
             </thead>
             <tbody>

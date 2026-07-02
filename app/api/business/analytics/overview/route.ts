@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     { data: allAbonnements },
     { data: dernieres },
     { data: allFavoris },
+    { data: beatmaker },
   ] = await Promise.all([
     admin.from('commandes')
       .select('id, prix_paye, reduction_montant, type_commande, created_at, beat_id, source_marketing, beats(id, titre, couleur)')
@@ -55,6 +56,10 @@ export async function GET(request: Request) {
     admin.from('favoris')
       .select('created_at, beats!inner(beatmaker_id)')
       .eq('beats.beatmaker_id', user.id),
+    admin.from('beatmakers')
+      .select('tva_active, tva_taux')
+      .eq('id', user.id)
+      .single(),
   ])
 
   // Filtrer par période pour les KPIs
@@ -65,9 +70,13 @@ export async function GET(request: Request) {
 
   const favorisInPeriod = (allFavoris ?? []).filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
 
+  const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
+  // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
+  const netHt = (ttc: number) => tvaRate > 0 ? ttc / (1 + tvaRate) : ttc
+
   const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ca_net    = ca_brut - remises
+  const ca_net    = netHt(ca_brut - remises)
   const beats_vendus = cmds.filter(c => c.type_commande === 'LICENCE').length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const ecoutes   = plays.length
@@ -124,7 +133,7 @@ export async function GET(request: Request) {
       label:     slot.label,
       fullLabel: slot.fullLabel,
       ca:           mCa,
-      ca_net:       mCa - mRemise,
+      ca_net:       netHt(mCa - mRemise),
       mrr:          mMrr,
       panier_moyen: mCmds.length ? mCa / mCmds.length : 0,
       ventes:       mCmds.filter(c => c.type_commande === 'LICENCE').length,
