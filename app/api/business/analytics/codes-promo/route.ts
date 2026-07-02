@@ -28,11 +28,13 @@ export async function GET(request: Request) {
 
   const promos = codes ?? []
 
-  // commandes.prix_paye est déjà le montant TTC réellement encaissé (remise déjà appliquée côté serveur avant Stripe) —
-  // le CA net (HT) retire seulement la TVA, sans re-soustraire reduction_montant (déjà reflété dans prix_paye)
-  const tvaTaux    = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) : 0
-  const tvaRate    = tvaTaux / 100
-  const netFromTtc = (ttc: number) => (tvaRate > 0 ? ttc / (1 + tvaRate) : ttc)
+  // CA net (HT) = brut − remises − TVA, cohérent avec les onglets Revenus/Overview/Ventes
+  const tvaTaux = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) : 0
+  const tvaRate = tvaTaux / 100
+  const netHt   = (brut: number, remises: number) => {
+    const apresRemise = brut - remises
+    return tvaRate > 0 ? apresRemise / (1 + tvaRate) : apresRemise
+  }
 
   // Toutes les données de la page sont scopées à la période sélectionnée
   const cmds = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
@@ -41,14 +43,15 @@ export async function GET(request: Request) {
   const utilisations  = cmds.length
   const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_brut       = cmds.reduce((s, c) => s + c.prix_paye, 0)
-  const ca_net        = netFromTtc(ca_brut)
+  const ca_net        = netHt(ca_brut, remises_total)
   const actifs        = promos.filter(c => c.statut === 'actif' && (!to || c.created_at <= to)).length
 
   // Table enrichie par code — masque les codes sans utilisation sur la période
   const codesEnrichis = promos
     .map(code => {
       const cmdsCode = cmds.filter(c => c.code_promo === code.code)
-      const brut = cmdsCode.reduce((s, c) => s + c.prix_paye, 0)
+      const brut    = cmdsCode.reduce((s, c) => s + c.prix_paye, 0)
+      const remises = cmdsCode.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
       return {
         id:           code.id,
         code:         code.code,
@@ -57,9 +60,9 @@ export async function GET(request: Request) {
         type_valeur:  code.type_valeur,
         valeur:       code.valeur,
         utilisations: cmdsCode.length,
-        remise_total: cmdsCode.reduce((s, c) => s + (c.reduction_montant ?? 0), 0),
+        remise_total: remises,
         ca_brut:      brut,
-        ca_net:       netFromTtc(brut),
+        ca_net:       netHt(brut, remises),
         statut:       code.statut,
       }
     })
@@ -68,15 +71,16 @@ export async function GET(request: Request) {
   const dataFrom = periode === 'tout' ? cmds.map(c => c.created_at).sort()[0] : undefined
   const slots = getHistoriqueSlots(periode, from, to, dataFrom)
   const historique = slots.map(slot => {
-    const mCmds = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
-    const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const mCmds  = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
+    const brut   = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const remises = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     return {
       label:        slot.label,
       fullLabel:    slot.fullLabel,
       utilisations: mCmds.length,
-      remises:      mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0),
+      remises,
       ca_brut:      brut,
-      ca_net:       netFromTtc(brut),
+      ca_net:       netHt(brut, remises),
       actifs:       promos.filter(p => p.statut === 'actif' && p.created_at <= slot.to).length,
     }
   })
