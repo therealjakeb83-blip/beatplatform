@@ -84,23 +84,36 @@ function secretDesinscription(): string {
   return secret
 }
 
-export function genererLienDesinscription(clientId: string, beatmakerId: string): string {
-  const payload = `${clientId}.${beatmakerId}`
+export function genererLienDesinscription(clientId: string, beatmakerId: string, campagneId: string): string {
+  const payload = `${clientId}.${beatmakerId}.${campagneId}`
   const sig = crypto.createHmac('sha256', secretDesinscription()).update(payload).digest('hex')
   const token = Buffer.from(`${payload}.${sig}`).toString('base64url')
   return `${APP_URL}/api/marketing/desinscription?token=${token}`
 }
 
-export function verifierTokenDesinscription(token: string): { clientId: string; beatmakerId: string } | null {
+export function verifierTokenDesinscription(token: string): { clientId: string; beatmakerId: string; campagneId: string } | null {
   try {
-    const [clientId, beatmakerId, sig] = Buffer.from(token, 'base64url').toString('utf8').split('.')
-    if (!clientId || !beatmakerId || !sig) return null
-    const attendu = crypto.createHmac('sha256', secretDesinscription()).update(`${clientId}.${beatmakerId}`).digest('hex')
+    const [clientId, beatmakerId, campagneId, sig] = Buffer.from(token, 'base64url').toString('utf8').split('.')
+    if (!clientId || !beatmakerId || !campagneId || !sig) return null
+    const attendu = crypto.createHmac('sha256', secretDesinscription()).update(`${clientId}.${beatmakerId}.${campagneId}`).digest('hex')
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(attendu))) return null
-    return { clientId, beatmakerId }
+    return { clientId, beatmakerId, campagneId }
   } catch {
     return null
   }
+}
+
+// ── Compteurs agrégés sur `campagnes` (ouvertures/clics/desinscrits) ─────────
+
+export async function incrementerCompteurCampagne(
+  campagneId: string,
+  champ: 'ouvertures' | 'clics' | 'desinscrits',
+): Promise<void> {
+  const admin = createAdminClient()
+  const { data: campagne } = await admin.from('campagnes').select(champ).eq('id', campagneId).single()
+  if (!campagne) return
+  const valeur = (campagne as Record<string, number>)[champ]
+  await admin.from('campagnes').update({ [champ]: valeur + 1 }).eq('id', campagneId)
 }
 
 // ── Envoi d'une campagne ──────────────────────────────────────────────────────
@@ -162,7 +175,7 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
 
     try {
       const payloads = lot.map(contact => {
-        const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id)
+        const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id, campagneId)
         return {
           from,
           to: contact.email,
