@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const [{ data: codes }, { data: allCommandes }, { data: beatmaker }] = await Promise.all([
     admin.from('codes_promo')
-      .select('id, code, description, type_valeur, valeur, statut, created_at')
+      .select('id, code, description, type_remise, type_valeur, valeur, statut, created_at')
       .eq('beatmaker_id', user.id)
       .order('created_at', { ascending: false }),
     admin.from('commandes')
@@ -53,6 +53,7 @@ export async function GET(request: Request) {
         id:           code.id,
         code:         code.code,
         description:  code.description ?? null,
+        type_remise:  code.type_remise,
         type_valeur:  code.type_valeur,
         valeur:       code.valeur,
         utilisations: cmdsCode.length,

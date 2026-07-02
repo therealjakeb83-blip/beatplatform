@@ -10,7 +10,7 @@ import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } fr
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Code = {
-  id: string; code: string; description: string | null; type_valeur: string; valeur: number
+  id: string; code: string; description: string | null; type_remise: string; type_valeur: string; valeur: number
   utilisations: number; remise_total: number; ca_brut: number; ca_net: number; statut: string
 }
 
@@ -27,8 +27,10 @@ const STATUT_STYLE: Record<string, string> = {
   expire:  'bg-red-500/15   text-red-400   border border-red-500/20',
 }
 
-function labelTypeValeur(t: string): string {
-  return t === 'pourcentage' ? 'Pourcentage' : 'Montant fixe'
+const LABEL_TYPE_REMISE: Record<string, string> = {
+  panier:     'Panier',
+  produit:    'Produit',
+  abonnement: 'Abonnement',
 }
 
 export default function TabCodesPromo({ periode, debut, fin }: Props) {
@@ -114,7 +116,7 @@ export default function TabCodesPromo({ periode, debut, fin }: Props) {
                     {c.description && <p className="text-[10px] text-gray-500">{c.description}</p>}
                   </td>
                   <td className="px-4 py-2.5 text-gray-400">
-                    {labelTypeValeur(c.type_valeur)}
+                    {LABEL_TYPE_REMISE[c.type_remise] ?? c.type_remise}
                   </td>
                   <td className="px-4 py-2.5 text-amber-400">
                     {c.type_valeur === 'pourcentage' ? `${c.valeur}%` : fmtEuroDisplay(c.valeur)}
