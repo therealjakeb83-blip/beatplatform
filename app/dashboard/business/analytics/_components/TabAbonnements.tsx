@@ -20,7 +20,16 @@ type Data = {
   abonnes: Abonne[]
 }
 
-type KpiKey = 'mrr' | 'actifs'
+type KpiKey = 'mrr' | 'actifs' | 'total_vendus' | 'churn_count' | 'achats_post_abo'
+
+const CHART_CONFIG: Record<KpiKey, { key: string; color: string; label: string; format: (v: number) => string }> = {
+  mrr:             { key: 'mrr',             color: '#6366f1', label: 'MRR',            format: v => fmtEuroDisplay(v) },
+  actifs:          { key: 'actifs',          color: '#4ade80', label: 'Abonnés actifs',  format: v => String(Math.round(v)) },
+  total_vendus:    { key: 'total_vendus',    color: '#8b5cf6', label: 'Nouveaux abos',   format: v => String(Math.round(v)) },
+  churn_count:     { key: 'churn_count',     color: '#f87171', label: 'Churn',           format: v => String(Math.round(v)) },
+  achats_post_abo: { key: 'achats_post_abo', color: '#38bdf8', label: 'Achats post-abo', format: v => String(Math.round(v)) },
+}
+
 const STATUT_STYLE: Record<string, string> = {
   actif:      'bg-green-500/15 text-green-400 border border-green-500/20',
   annulation: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
@@ -56,23 +65,21 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <KpiCard label="MRR" value={fmtEuroDisplay(kpis.mrr)} sub={`ARR : ${fmtEuroDisplay(kpis.arr)}`} color="#6366f1" active={kpiActif === 'mrr'} onClick={() => setKpiActif('mrr')} badge="actuel" />
         <KpiCard label="Abonnés actifs" value={String(kpis.actifs)} sub={kpis.en_annulation > 0 ? `${kpis.en_annulation} en annulation` : undefined} color="#4ade80" active={kpiActif === 'actifs'} onClick={() => setKpiActif('actifs')} badge="actuel" />
-        <KpiCard label="Total vendus" value={String(kpis.total_vendus)} color="#8b5cf6" badge="periode" />
+        <KpiCard label="Total vendus" value={String(kpis.total_vendus)} color="#8b5cf6" active={kpiActif === 'total_vendus'} onClick={() => setKpiActif('total_vendus')} badge="periode" />
         <KpiCard label="Rétention moy." value={`${kpis.retention_moy.toFixed(1)} mois`} color="#f59e0b" badge="tous-temps" />
-        <KpiCard label="Achats post-abo" value={kpis.achats_post_abo.toFixed(1)} sub="licences / abonné" color="#38bdf8" badge="periode" />
-        <KpiCard label="Churn" value={String(kpis.churn_count)} sub={`${kpis.churn_rate.toFixed(1)}% churn rate`} color="#f87171" badge="periode" />
+        <KpiCard label="Achats post-abo" value={kpis.achats_post_abo.toFixed(1)} sub="licences / abonné" color="#38bdf8" active={kpiActif === 'achats_post_abo'} onClick={() => setKpiActif('achats_post_abo')} badge="periode" />
+        <KpiCard label="Churn" value={String(kpis.churn_count)} sub={`${kpis.churn_rate.toFixed(1)}% churn rate`} color="#f87171" active={kpiActif === 'churn_count'} onClick={() => setKpiActif('churn_count')} badge="periode" />
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
         <p className="text-xs text-gray-400 font-medium mb-3">
-          {kpiActif === 'mrr' ? 'MRR' : 'Abonnés actifs'} — {getGranulariteLabel(periode, debut, fin)}
+          {CHART_CONFIG[kpiActif].label} — {getGranulariteLabel(periode, debut, fin)}
         </p>
         <AnalyticsLineChart
           data={historique}
           xKey="label"
-          series={[kpiActif === 'mrr'
-            ? { key: 'mrr',    color: '#6366f1', label: 'MRR' }
-            : { key: 'actifs', color: '#4ade80', label: 'Abonnés actifs' }]}
-          formatValue={kpiActif === 'mrr' ? v => fmtEuroDisplay(v) : v => String(Math.round(v))}
+          series={[{ key: CHART_CONFIG[kpiActif].key, color: CHART_CONFIG[kpiActif].color, label: CHART_CONFIG[kpiActif].label }]}
+          formatValue={CHART_CONFIG[kpiActif].format}
         />
       </div>
 

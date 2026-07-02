@@ -116,8 +116,25 @@ export async function GET(request: Request) {
       const fin   = a.date_fin ? new Date(a.date_fin) : null
       return debut < slotEnd && (fin === null || fin >= slotStart)
     })
-    const mMrr = mActifs.reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100
-    return { label: slot.label, fullLabel: slot.fullLabel, mrr: mMrr, actifs: mActifs.length }
+    const mMrr          = mActifs.reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100
+    const mTotalVendus  = abos.filter(a => a.date_debut >= slot.from && a.date_debut < slot.to).length
+    const mChurnCount   = abos.filter(a => a.statut === 'annule' && a.date_fin && a.date_fin >= slot.from && a.date_fin < slot.to).length
+    const mAchatsPostAbo = cmds.filter(c => {
+      if (c.created_at < slot.from || c.created_at >= slot.to) return false
+      return abos.some(a => {
+        const cl       = Array.isArray(a.clients) ? a.clients[0] : a.clients
+        const email    = (cl as { email: string } | null)?.email ?? a.acheteur_email
+        const clientId = (cl as { id?: string } | null)?.id
+        const finAbo   = a.date_fin ?? now.toISOString()
+        return c.created_at > a.date_debut && c.created_at <= finAbo &&
+               (c.client_id === clientId || c.acheteur_email === email)
+      })
+    }).length
+    return {
+      label: slot.label, fullLabel: slot.fullLabel,
+      mrr: mMrr, actifs: mActifs.length,
+      total_vendus: mTotalVendus, churn_count: mChurnCount, achats_post_abo: mAchatsPostAbo,
+    }
   })
 
   return NextResponse.json({
