@@ -144,19 +144,20 @@ export async function envoyerCampagne(campagneId: string): Promise<{ envoyes: nu
   for (let i = 0; i < destinataires.length; i += LOT_TAILLE) {
     const lot = destinataires.slice(i, i + LOT_TAILLE)
 
-    const payloads = lot.map(contact => {
-      const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id)
-      return {
-        from,
-        to: contact.email,
-        subject: remplacerTokens(campagne.objet ?? campagne.nom, contact, branding, lien),
-        html: remplacerTokens(htmlBase, contact, branding, lien),
-      }
-    })
-
     try {
+      const payloads = lot.map(contact => {
+        const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id)
+        return {
+          from,
+          to: contact.email,
+          subject: remplacerTokens(campagne.objet ?? campagne.nom, contact, branding, lien),
+          html: remplacerTokens(htmlBase, contact, branding, lien),
+        }
+      })
+
       const { data, error } = await getResend().batch.send(payloads)
       if (error || !data) {
+        console.error('[mailing] Échec envoi Resend pour la campagne', campagneId, ':', error)
         echecs += lot.length
         continue
       }
@@ -167,7 +168,8 @@ export async function envoyerCampagne(campagneId: string): Promise<{ envoyes: nu
       }))
       await admin.from('campagne_envois').insert(envoisRows)
       envoyes += lot.length
-    } catch {
+    } catch (err) {
+      console.error('[mailing] Exception envoi campagne', campagneId, ':', err)
       echecs += lot.length
     }
   }

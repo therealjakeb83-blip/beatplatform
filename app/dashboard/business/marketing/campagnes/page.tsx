@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { envoyerCampagne } from '@/lib/mailing'
+
+const URL_CAMPAGNES = '/dashboard/business/marketing/campagnes'
 import { evaluerFiltres, type Condition } from '../../_lib/segments'
 import { chargerContactsEnrichis } from '../../_lib/contacts'
 import CampagnesClient from './_components/CampagnesClient'
@@ -140,8 +142,19 @@ async function envoyerMaintenant(formData: FormData) {
     .single()
   if (!campagne) return
 
-  await envoyerCampagne(id)
-  revalidatePath('/dashboard/business/marketing/campagnes')
+  let resultat: { envoyes: number; echecs: number }
+  try {
+    resultat = await envoyerCampagne(id)
+  } catch (err) {
+    console.error('[campagnes] Échec envoyerMaintenant', id, ':', err)
+    redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent('Erreur inattendue à l\'envoi — vérifie la config Resend (variables d\'environnement, domaine).')}`)
+  }
+
+  if (resultat.envoyes === 0 && resultat.echecs > 0) {
+    redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent(`Échec de l'envoi pour les ${resultat.echecs} destinataire(s) — vérifie la config Resend (variables d'environnement, domaine d'envoi).`)}`)
+  }
+
+  revalidatePath(URL_CAMPAGNES)
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -149,9 +162,9 @@ async function envoyerMaintenant(formData: FormData) {
 export default async function CampagnesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ segment?: string }>
+  searchParams: Promise<{ segment?: string; erreur?: string }>
 }) {
-  const { segment: segmentPreselectionne } = await searchParams
+  const { segment: segmentPreselectionne, erreur } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
@@ -210,6 +223,7 @@ export default async function CampagnesPage({
       listes={listes}
       templates={templates}
       segmentPreselectionne={segmentPreselectionne ?? null}
+      erreur={erreur ?? null}
       creerCampagne={creerCampagne}
       dupliquerCampagne={dupliquerCampagne}
       supprimerCampagne={supprimerCampagne}

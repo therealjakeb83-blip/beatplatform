@@ -10,6 +10,7 @@ type Props = {
   listes: CibleOption[]
   templates: TemplateOption[]
   segmentPreselectionne: string | null
+  erreur: string | null
   creerCampagne:     (fd: FormData) => Promise<void>
   dupliquerCampagne: (fd: FormData) => Promise<void>
   supprimerCampagne: (fd: FormData) => Promise<void>
@@ -39,7 +40,7 @@ const STATUT_LABEL: Record<CampagneRow['statut'], string> = {
 }
 
 export default function CampagnesClient({
-  campagnes, segments, listes, templates, segmentPreselectionne,
+  campagnes, segments, listes, templates, segmentPreselectionne, erreur,
   creerCampagne, dupliquerCampagne, supprimerCampagne, planifierCampagne, envoyerMaintenant,
 }: Props) {
   const [showWizard, setShowWizard] = useState(!!segmentPreselectionne)
@@ -83,6 +84,12 @@ export default function CampagnesClient({
       </div>
 
       <div className="flex-1 overflow-auto px-6 py-6">
+        {erreur && (
+          <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+            {erreur}
+          </div>
+        )}
+
         {/* KPIs */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           <div className="p-4 rounded-xl border border-gray-800 bg-gray-900">
