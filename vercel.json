@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/splits-expiration",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/campagnes",
+      "schedule": "0 8 * * *"
     }
   ]
 }

@@ -1,35 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
-import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import {
-  evaluerFiltres, couleurCls,
-  computeScoreRF, computeScoreChaleur,
-  type Condition, type ContactFiltre,
-} from '../../_lib/segments'
-
-const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
-
-function topPref(vals: string[]): string | null {
-  if (!vals.length) return null
-  const counts: Record<string, number> = {}
-  for (const v of vals) counts[v] = (counts[v] ?? 0) + 1
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-}
-
-type SegmentContact = {
-  id: string
-  prenom: string | null
-  nom: string
-  email: string
-  pays: string | null
-  newsletter_consent: boolean
-  statut: ContactFiltre['statut']
-  ltv: number
-  dernier_achat_iso: string | null
-  pref_style: string | null
-  pref_type_beat: string | null
-}
+import { evaluerFiltres, couleurCls, type Condition } from '../../_lib/segments'
+import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '../../_lib/contacts'
 
 export default async function SegmentDetailPage({
   params,
@@ -38,7 +11,6 @@ export default async function SegmentDetailPage({
 }) {
   const { id: segmentId } = await params
   const supabase = await createClient()
-  const admin    = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
@@ -55,199 +27,14 @@ export default async function SegmentDetailPage({
 
   const filtres = segment.filtres as Condition[]
 
-  // Fusions
-  const { data: fusions } = await supabase
-    .from('fusions_crm')
-    .select('client_id_conserve, client_id_archive')
-    .eq('beatmaker_id', beatmakerId)
+  const { contacts: tousLesContacts } = await chargerContactsEnrichis(beatmakerId)
 
-  const archiveIds       = new Set((fusions ?? []).map(f => f.client_id_archive))
-  const conserveArchives = new Map<string, string[]>()
-  for (const f of fusions ?? []) {
-    const arr = conserveArchives.get(f.client_id_conserve) ?? []
-    arr.push(f.client_id_archive)
-    conserveArchives.set(f.client_id_conserve, arr)
-  }
-
-  // Leads
-  const { data: leadsRaw } = await supabase
-    .from('leads')
-    .select('client_id, source, newsletter_inscrit')
-    .eq('beatmaker_id', beatmakerId)
-
-  const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
-
-  // Commandes + abos en parallèle
-  const [commandesRes, aboRes] = await Promise.all([
-    supabase
-      .from('commandes')
-      .select('client_id, beat_id, licence_id, created_at, prix_paye, statut, type_commande')
-      .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
-    supabase
-      .from('abonnements_boutique')
-      .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
-      .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
-  ])
-
-  const commandes = commandesRes.data ?? []
-  const abos      = aboRes.data      ?? []
-
-  const clientIds = [...new Set([
-    ...commandes.map(c => c.client_id as string),
-    ...abos.map(a => a.client_id as string),
-    ...(leadsRaw ?? []).map(l => l.client_id),
-  ])]
-
-  if (clientIds.length === 0) {
+  if (tousLesContacts.length === 0) {
     return <EmptyState segment={segment} />
   }
 
-  // Beats (pour préférences)
-  const licenceBeatIds = [...new Set(
-    commandes.filter(c => c.type_commande === 'LICENCE' && c.beat_id).map(c => c.beat_id as string)
-  )]
-  const licenceIds = [...new Set(
-    commandes.filter(c => c.licence_id).map(c => c.licence_id as string)
-  )]
-
-  const [clientsRes, beatsRes, licencesRes, favorisRes, freeDLRes] = await Promise.all([
-    admin.from('clients')
-      .select('id, prenom, surnom, nom, email, pays, langue, newsletter_consent, instagram, spotify, youtube, tiktok, tags')
-      .in('id', clientIds),
-    licenceBeatIds.length
-      ? supabase.from('beats').select('id, styles, type_beat, ambiances, instruments').in('id', licenceBeatIds)
-      : Promise.resolve({ data: [] as { id: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null; instruments: string[] | null }[] }),
-    licenceIds.length
-      ? supabase.from('licences').select('id, modele').in('id', licenceIds)
-      : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
-    admin.from('favoris').select('client_id').in('client_id', clientIds),
-    admin.from('free_downloads').select('client_id').eq('beatmaker_id', beatmakerId).in('client_id', clientIds),
-  ])
-
-  const beatMap    = new Map((beatsRes.data    ?? []).map(b => [b.id, b]))
-  const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
-
-  // Maps
-  const commandesParClient = new Map<string, typeof commandes>()
-  for (const cmd of commandes) {
-    const id  = cmd.client_id as string
-    const arr = commandesParClient.get(id) ?? []
-    arr.push(cmd)
-    commandesParClient.set(id, arr)
-  }
-
-  const aboParClient = new Map<string, (typeof abos)[0]>()
-  for (const abo of abos) {
-    const id = abo.client_id as string
-    const ex = aboParClient.get(id)
-    if (!ex || new Date(abo.date_fin ?? abo.created_at) > new Date(ex.date_fin ?? ex.created_at)) {
-      aboParClient.set(id, abo)
-    }
-  }
-
-  const favorisCount = new Map<string, number>()
-  const freeDLCount  = new Map<string, number>()
-  for (const f of favorisRes.data ?? []) favorisCount.set(f.client_id, (favorisCount.get(f.client_id) ?? 0) + 1)
-  for (const d of freeDLRes.data  ?? []) freeDLCount.set(d.client_id,  (freeDLCount.get(d.client_id)  ?? 0) + 1)
-
-  // Construire contacts enrichis + filtrer
-  const contacts: SegmentContact[] = (clientsRes.data ?? [])
-    .filter(c => !archiveIds.has(c.id))
-    .flatMap(c => {
-      const cmdsBase     = commandesParClient.get(c.id) ?? []
-      const cmdsArchives = (conserveArchives.get(c.id) ?? []).flatMap(aid => commandesParClient.get(aid) ?? [])
-      const cmds         = [...cmdsBase, ...cmdsArchives]
-      const abo          = aboParClient.get(c.id)
-      const lead         = leadMap.get(c.id)
-
-      const licenceCmds  = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
-      const nbAchats     = licenceCmds.length
-      const payees       = cmds.filter(cmd => cmd.statut === 'payee')
-      const ltv          = payees.reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
-      const licenceLtv   = licenceCmds.filter(c => c.statut === 'payee').reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
-      const panierMoyen  = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
-      const dernierAchat = licenceCmds.length
-        ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-        : null
-      const premierContact = cmds.length
-        ? new Date(Math.min(...cmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-        : new Date().toISOString()
-
-      let statut: ContactFiltre['statut']
-      if (abo && (abo.statut === 'actif' || abo.statut === 'impaye')) statut = 'abonne'
-      else if (abo && abo.statut === 'annule') statut = 'ancien'
-      else if (nbAchats > 0) statut = 'client'
-      else statut = 'lead'
-
-      const langueEffective: 'FR' | 'EN' = ((c as Record<string, unknown>).langue as 'FR' | 'EN' | null)
-        ?? (PAYS_FR.has((c.pays ?? '').toUpperCase()) ? 'FR' : 'EN')
-
-      const stylesArr: string[]      = []
-      const typeBeatArr: string[]    = []
-      const ambiancesArr: string[]   = []
-      const instrumentsArr: string[] = []
-      const licenceArr: string[]     = []
-      for (const cmd of licenceCmds) {
-        const beat = cmd.beat_id ? beatMap.get(cmd.beat_id) : null
-        if (beat?.styles)      stylesArr.push(...beat.styles)
-        if (beat?.type_beat)   typeBeatArr.push(...beat.type_beat)
-        if (beat?.ambiances)   ambiancesArr.push(...beat.ambiances)
-        if (beat?.instruments) instrumentsArr.push(...beat.instruments)
-        const lic = cmd.licence_id ? licenceMap.get(cmd.licence_id) : null
-        if (lic?.modele) licenceArr.push(lic.modele)
-      }
-
-      const nbFavoris        = favorisCount.get(c.id) ?? 0
-      const nbFreeDL         = freeDLCount.get(c.id)  ?? 0
-      const newsletterConsent = (c.newsletter_consent ?? false) || (lead?.newsletter_inscrit ?? false)
-
-      const contactFiltre: ContactFiltre = {
-        statut,
-        ltv,
-        nb_achats:          nbAchats,
-        panier_moyen:       panierMoyen,
-        mensualites_payees: abo?.mensualites_payees ?? 0,
-        dernier_achat_iso:  dernierAchat,
-        premierContactISO:  premierContact,
-        newsletter_consent: newsletterConsent,
-        langue:             langueEffective,
-        pays:               c.pays ?? null,
-        instagram:          c.instagram ?? null,
-        spotify:            c.spotify   ?? null,
-        youtube:            c.youtube   ?? null,
-        tiktok:             c.tiktok    ?? null,
-        pref_style:         topPref(stylesArr),
-        pref_type_beat:     topPref(typeBeatArr),
-        pref_ambiance:      topPref(ambiancesArr),
-        pref_instruments:   topPref(instrumentsArr),
-        pref_licence:       topPref(licenceArr),
-        tags:               ((c as Record<string, unknown>).tags as string[]) ?? [],
-        source:             lead?.source ?? null,
-        nb_favoris:         nbFavoris,
-        nb_free_downloads:  nbFreeDL,
-        score_rf:           computeScoreRF(nbAchats, dernierAchat),
-        score_chaleur:      computeScoreChaleur(lead?.source ?? null, nbFavoris, nbFreeDL, newsletterConsent),
-      }
-
-      if (!evaluerFiltres(contactFiltre, filtres)) return []
-
-      const surnom = (c as Record<string, unknown>).surnom as string | null
-      return [{
-        id:                 c.id,
-        prenom:             surnom ?? c.prenom,
-        nom:                c.nom,
-        email:              c.email,
-        pays:               c.pays,
-        newsletter_consent: newsletterConsent,
-        statut,
-        ltv,
-        dernier_achat_iso:  dernierAchat,
-        pref_style:         topPref(stylesArr),
-        pref_type_beat:     topPref(typeBeatArr),
-      }]
-    })
+  const contacts: ContactEnrichi[] = tousLesContacts
+    .filter(c => evaluerFiltres(c, filtres))
     .sort((a, b) => b.ltv - a.ltv)
 
   const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
@@ -285,13 +72,12 @@ export default async function SegmentDetailPage({
               </span>
             </p>
           </div>
-          <button
-            disabled
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600/40 rounded-xl text-sm font-semibold text-indigo-400 cursor-not-allowed opacity-60"
-            title="Disponible dans le sprint Marketing"
+          <Link
+            href={`/dashboard/business/marketing/campagnes?segment=${segment.id}`}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-semibold text-white transition-colors"
           >
             ✉ Lancer une campagne
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -315,7 +101,9 @@ export default async function SegmentDetailPage({
               </tr>
             </thead>
             <tbody>
-              {contacts.map((c, i) => (
+              {contacts.map((c, i) => {
+                const prenomAffiche = nomAffichage(c)
+                return (
                 <tr
                   key={c.id}
                   className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors ${i % 2 !== 0 ? 'bg-gray-950/40' : ''}`}
@@ -333,13 +121,13 @@ export default async function SegmentDetailPage({
                           <img src={`https://flagcdn.com/w40/${c.pays.toLowerCase()}.png`} alt={c.pays} className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-indigo-300 font-bold text-xs">
-                            {[c.prenom?.[0], c.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'}
+                            {[prenomAffiche?.[0], c.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'}
                           </span>
                         )}
                       </div>
                       <div>
                         <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors text-xs block">
-                          {[c.prenom, c.nom].filter(Boolean).join(' ') || '–'}
+                          {[prenomAffiche, c.nom].filter(Boolean).join(' ') || '–'}
                         </span>
                         <span className="text-xs text-gray-500">{c.email}</span>
                       </div>
@@ -364,7 +152,8 @@ export default async function SegmentDetailPage({
                     <Link href={`/dashboard/business/contacts/${c.id}`} className="text-gray-600 hover:text-indigo-400 transition-colors">→</Link>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         )}

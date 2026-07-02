@@ -7,19 +7,21 @@ import { initiales } from '../_lib/utils'
 
 const BASE = '/dashboard/business'
 
-const CRM_ROUTES      = [`${BASE}/contacts`, `${BASE}/doublons`, `${BASE}/listes`, `${BASE}/segments`]
-const COMMERCE_ROUTES = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/licences`, `${BASE}/collabs`]
-const ANALYTICS_ROUTE = `${BASE}/analytics`
+const CRM_ROUTES       = [`${BASE}/contacts`, `${BASE}/doublons`, `${BASE}/listes`, `${BASE}/segments`]
+const MARKETING_ROUTES = [`${BASE}/marketing`]
+const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/licences`, `${BASE}/collabs`]
+const ANALYTICS_ROUTE  = `${BASE}/analytics`
 
 export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
   const pathname = usePathname()
 
   const isCrm       = CRM_ROUTES.some(r => pathname.startsWith(r))
+  const isMarketing = MARKETING_ROUTES.some(r => pathname.startsWith(r))
   const isCommerce  = COMMERCE_ROUTES.some(r => pathname.startsWith(r))
   const isAnalytics = pathname.startsWith(ANALYTICS_ROUTE)
 
   const [crmOpen,       setCrmOpen]       = useState(isCrm)
-  const [marketingOpen, setMarketingOpen] = useState(false)
+  const [marketingOpen, setMarketingOpen] = useState(isMarketing)
   const [commerceOpen,  setCommerceOpen]  = useState(isCommerce)
   const [analyticsOpen, setAnalyticsOpen] = useState(isAnalytics)
 
@@ -65,34 +67,12 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
     open: boolean,
     onToggle: () => void,
     onNavigate: () => void,
-    locked = false,
   ) {
     const base = `flex items-center rounded-lg text-sm transition-colors ${
       active
         ? 'bg-indigo-600 text-white'
         : 'text-gray-400 hover:text-white hover:bg-gray-800/60'
     }`
-
-    if (locked) {
-      return (
-        <div className={`${base} opacity-50 cursor-default`}>
-          <span className={`flex-1 px-3 py-2 ${active ? 'font-semibold' : ''}`}>
-            {label} <span className="text-[10px] ml-1">🔒</span>
-          </span>
-          <button
-            onClick={() => setMarketingOpen(o => !o)}
-            className="px-2.5 py-2 opacity-60 hover:opacity-100 transition-opacity"
-          >
-            <span
-              className="inline-block text-[10px] transition-transform duration-150"
-              style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-            >
-              ▾
-            </span>
-          </button>
-        </div>
-      )
-    }
 
     return (
       <div className={base}>
@@ -166,16 +146,19 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
 
         <div className="my-3 border-t border-gray-800" />
 
-        {/* Marketing (locked) */}
-        {sectionHeader('', 'Marketing', false, marketingOpen, () => {}, () => {}, true)}
+        {/* Marketing */}
+        {sectionHeader(
+          `${BASE}/marketing/campagnes`,
+          'Marketing',
+          isMarketing,
+          marketingOpen,
+          () => setMarketingOpen(o => !o),
+          () => setMarketingOpen(true),
+        )}
         {marketingOpen && (
           <>
-            <span className="flex pl-8 pr-3 py-1.5 text-xs text-gray-600 cursor-default">
-              Campagnes 🔒
-            </span>
-            <span className="flex pl-8 pr-3 py-1.5 text-xs text-gray-600 cursor-default">
-              Templates 🔒
-            </span>
+            {subItem(`${BASE}/marketing/campagnes`, 'Campagnes', pathname.startsWith(`${BASE}/marketing/campagnes`))}
+            {subItem(`${BASE}/marketing/templates`, 'Templates', pathname.startsWith(`${BASE}/marketing/templates`))}
           </>
         )}
 
