@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { envoyerCampagne } from '@/lib/mailing'
+import { envoyerCampagne, type ResultatEnvoi } from '@/lib/mailing'
 
 const URL_CAMPAGNES = '/dashboard/business/marketing/campagnes'
 import { evaluerFiltres, type Condition } from '../../_lib/segments'
@@ -144,7 +144,7 @@ async function envoyerMaintenant(formData: FormData) {
     redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent("Cette campagne est introuvable ou a déjà été envoyée.")}`)
   }
 
-  let resultat: { envoyes: number; echecs: number }
+  let resultat: ResultatEnvoi
   try {
     resultat = await envoyerCampagne(id)
   } catch (err) {
@@ -152,7 +152,11 @@ async function envoyerMaintenant(formData: FormData) {
     redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent('Erreur inattendue à l\'envoi — vérifie la config Resend (variables d\'environnement, domaine).')}`)
   }
 
-  if (resultat.envoyes === 0 && resultat.echecs === 0) {
+  if (resultat.raison === 'sans_ciblage') {
+    redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent("Cette campagne n'a pas de ciblage valide (créée avant l'assistant, ou beatmaker introuvable) — supprime-la et recrée-la via \"+ Nouvelle campagne\".")}`)
+  }
+
+  if (resultat.raison === 'aucun_destinataire') {
     redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent("Aucun destinataire trouvé — vérifie que le segment/la liste/les emails ciblés contiennent des contacts inscrits à la newsletter.")}`)
   }
 

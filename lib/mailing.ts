@@ -105,7 +105,9 @@ export function verifierTokenDesinscription(token: string): { clientId: string; 
 
 // ── Envoi d'une campagne ──────────────────────────────────────────────────────
 
-export async function envoyerCampagne(campagneId: string): Promise<{ envoyes: number; echecs: number }> {
+export type ResultatEnvoi = { envoyes: number; echecs: number; raison?: 'sans_ciblage' | 'aucun_destinataire' }
+
+export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi> {
   const admin = createAdminClient()
 
   const { data: campagne } = await admin
@@ -113,14 +115,15 @@ export async function envoyerCampagne(campagneId: string): Promise<{ envoyes: nu
     .select('id, beatmaker_id, nom, objet, contenu, cible_mode, cible_id, cible_emails, statut')
     .eq('id', campagneId)
     .single()
-  if (!campagne || campagne.statut === 'envoyee' || !campagne.cible_mode) return { envoyes: 0, echecs: 0 }
+  if (!campagne || campagne.statut === 'envoyee') return { envoyes: 0, echecs: 0 }
+  if (!campagne.cible_mode) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
     .select('nom_artiste, slug, logo_url, instagram_url')
     .eq('id', campagne.beatmaker_id)
     .single()
-  if (!beatmaker) return { envoyes: 0, echecs: 0 }
+  if (!beatmaker) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
 
   const branding: BrandingBoutique = beatmaker
 
@@ -132,7 +135,7 @@ export async function envoyerCampagne(campagneId: string): Promise<{ envoyes: nu
   if (destinataires.length === 0) {
     // Pas de destinataire valide (segment/liste vide, ou personne inscrit à la newsletter) —
     // on ne touche pas au statut pour que le beatmaker puisse corriger le ciblage et réessayer.
-    return { envoyes: 0, echecs: 0 }
+    return { envoyes: 0, echecs: 0, raison: 'aucun_destinataire' }
   }
 
   // Un seul rendu HTML pour toute la campagne (les tokens restent en placeholders)
