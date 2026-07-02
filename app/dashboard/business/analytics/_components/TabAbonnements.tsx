@@ -1,16 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link              from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
-import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Periode } from '../_lib/periode'
+import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Abonne = {
-  id: string; client_nom: string; pays: string | null; plan: string
+  id: string; client_id: string | null; client_nom: string; pays: string | null
   date_debut: string; date_fin: string | null; mois_anciennete: number
-  statut: string; prix: number; ltv: number; achats_post_abo: number
+  beats_offerts: number; statut: string; prix: number; ltv: number; achats_post_abo: number
 }
 
 type Data = {
@@ -49,7 +50,6 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
 
   const { kpis, historique, abonnes } = data
   const filtered = abonnes.filter(a => !search || a.client_nom.toLowerCase().includes(search.toLowerCase()))
-  const maxLtv = Math.max(...abonnes.map(a => a.ltv), 1)
 
   return (
     <div className="space-y-6">
@@ -90,21 +90,37 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
+                <th className="text-left px-4 py-2">N° Abo</th>
                 <th className="text-left px-4 py-2">Abonné</th>
-                <th className="text-left px-4 py-2">Plan</th>
                 <th className="text-right px-4 py-2">Ancienneté</th>
                 <th className="text-right px-4 py-2">Achats post-abo</th>
-                <th className="text-right px-4 py-2">LTV</th>
+                <th className="text-right px-4 py-2">Beats offerts</th>
+                <th className="text-right px-4 py-2">LTV abo</th>
                 <th className="text-left px-4 py-2">Statut</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(a => (
                 <tr key={a.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                  <td className="px-4 py-2.5 text-white font-medium">{a.client_nom}</td>
-                  <td className="px-4 py-2.5 text-gray-400">{a.plan}</td>
+                  <td className="px-4 py-2.5">
+                    <Link href={`/dashboard/business/abonnements/${a.id}`} className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors">
+                      #{a.id.slice(0, 8).toUpperCase()}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2.5 font-medium">
+                    {a.client_id
+                      ? <Link href={`/dashboard/business/contacts/${a.client_id}`} className="text-white hover:text-indigo-300 transition-colors">{a.client_nom}</Link>
+                      : <span className="text-gray-400">{a.client_nom}</span>
+                    }
+                  </td>
                   <td className="px-4 py-2.5 text-right text-gray-300">{a.mois_anciennete} mois</td>
                   <td className="px-4 py-2.5 text-right text-indigo-400">{a.achats_post_abo}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {a.beats_offerts > 0
+                      ? <span className="text-violet-400 font-medium">{a.beats_offerts}</span>
+                      : <span className="text-gray-700">—</span>
+                    }
+                  </td>
                   <td className="px-4 py-2.5 text-right text-green-400 font-medium">{fmtEuroDisplay(a.ltv)}</td>
                   <td className="px-4 py-2.5">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] ${STATUT_STYLE[a.statut] ?? STATUT_STYLE.annule}`}>
@@ -114,16 +130,16 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucun abonné</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-600">Aucun abonné</td></tr>
               )}
             </tbody>
             {abonnes.length > 0 && (
               <tfoot>
                 <tr className="bg-gray-900/50 border-t border-gray-800">
-                  <td className="px-4 py-2 text-gray-500 text-[10px]">Total / Moyenne</td>
-                  <td />
+                  <td className="px-4 py-2 text-gray-500 text-[10px]" colSpan={2}>Total / Moyenne</td>
                   <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{kpis.retention_moy.toFixed(1)} mois</td>
                   <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{kpis.achats_post_abo.toFixed(1)}</td>
+                  <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{abonnes.reduce((s, a) => s + a.beats_offerts, 0)}</td>
                   <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{fmtEuroDisplay(abonnes.reduce((s, a) => s + a.ltv, 0))}</td>
                   <td />
                 </tr>

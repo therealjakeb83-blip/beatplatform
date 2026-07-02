@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const [{ data: abonnements }, { data: commandes }] = await Promise.all([
     admin.from('abonnements_boutique')
-      .select('id, created_at, prix, statut, periode, date_debut, date_fin, annulation_en_cours, mois_consecutifs, mensualites_payees, acheteur_nom, acheteur_email, clients(prenom, nom, email, pays)')
+      .select('id, created_at, prix, statut, periode, date_debut, date_fin, annulation_en_cours, mois_consecutifs, mensualites_payees, acheteur_nom, acheteur_email, clients(id, prenom, nom, email, pays)')
       .eq('beatmaker_id', user.id)
       .order('date_debut', { ascending: false }),
     admin.from('commandes')
@@ -61,11 +61,14 @@ export async function GET(request: Request) {
   const cmds = commandes ?? []
   const achatsMap = new Map<string, number>()
   for (const a of abos) {
-    const cl    = Array.isArray(a.clients) ? a.clients[0] : a.clients
-    const email = (cl as { email: string } | null)?.email ?? a.acheteur_email
+    const cl      = Array.isArray(a.clients) ? a.clients[0] : a.clients
+    const email   = (cl as { email: string } | null)?.email ?? a.acheteur_email
+    const clientId = (cl as { id?: string } | null)?.id
+    const finAbo  = a.date_fin ?? now.toISOString()
     achatsMap.set(a.id, cmds.filter(c =>
       c.created_at > a.date_debut &&
-      (c.client_id === (cl as { id?: string } | null)?.id || c.acheteur_email === email)
+      c.created_at <= finAbo &&
+      (c.client_id === clientId || c.acheteur_email === email)
     ).length)
   }
   const achats_post_abo = abosInPeriod.length
@@ -75,24 +78,27 @@ export async function GET(request: Request) {
   // Table abonnés
   type Raw = typeof abos[number]
   const abonnes = abos.map((a: Raw) => {
-    const cl = Array.isArray(a.clients) ? a.clients[0] : a.clients
-    const nom = cl
+    const cl        = Array.isArray(a.clients) ? a.clients[0] : a.clients
+    const client_id = (cl as { id?: string } | null)?.id ?? null
+    const nom       = cl
       ? [(cl as { prenom: string | null }).prenom, (cl as { nom: string }).nom].filter(Boolean).join(' ')
       : (a.acheteur_nom ?? a.acheteur_email ?? '—')
     const pays = (cl as { pays: string | null } | null)?.pays ?? null
     const debut = new Date(a.date_debut)
     const fin   = a.date_fin ? new Date(a.date_fin) : now
     const mois  = (fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+    const mois_anciennete = Math.max(1, Math.floor(mois))
     const ltv   = (a.mensualites_payees ?? 0) * a.prix / 100
 
     return {
       id:               a.id,
+      client_id,
       client_nom:       nom,
       pays,
-      plan:             a.periode === 'annuel' ? 'Annuel' : 'Mensuel',
       date_debut:       a.date_debut,
       date_fin:         a.date_fin,
-      mois_anciennete:  Math.max(1, Math.floor(mois)),
+      mois_anciennete,
+      beats_offerts:    Math.floor(mois_anciennete / 4),
       statut:           a.annulation_en_cours ? 'annulation' : a.statut,
       prix:             a.prix / 100,
       ltv,
