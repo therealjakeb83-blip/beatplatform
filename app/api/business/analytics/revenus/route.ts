@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const [{ data: allCommandes }, { data: beatmaker }] = await Promise.all([
     admin.from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, code_promo')
+      .select('id, created_at, prix_paye, reduction_montant')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'payee')
       .order('created_at', { ascending: false }),
@@ -30,7 +30,6 @@ export async function GET(request: Request) {
 
   const ventes_brutes = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ca_promo      = cmds.filter(c => c.code_promo).reduce((s, c) => s + c.prix_paye, 0)
   const ventes_nettes = ventes_brutes - remises_total
   const tva           = tvaRate > 0 ? ventes_nettes - ventes_nettes / (1 + tvaRate) : 0
 
@@ -77,12 +76,11 @@ export async function GET(request: Request) {
     const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     const net   = brut - rem
-    const promo = mCmds.filter(c => c.code_promo).reduce((s, c) => s + c.prix_paye, 0)
-    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, promo, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
+    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
   })
 
   return NextResponse.json({
-    kpis: { ventes_brutes, ca_promo, remises_total, ventes_nettes, tva, avg_par_jour, avg_par_semaine, avg_par_mois, avg_par_trimestre, avg_par_an },
+    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, avg_par_jour, avg_par_semaine, avg_par_mois, avg_par_trimestre, avg_par_an },
     jours,
     historique,
   })

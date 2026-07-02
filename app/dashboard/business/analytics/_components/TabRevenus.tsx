@@ -8,17 +8,17 @@ import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } fr
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Data = {
-  kpis: { ventes_brutes: number; ca_promo: number; remises_total: number; ventes_nettes: number; tva: number; avg_par_jour: number; avg_par_semaine: number; avg_par_mois: number; avg_par_trimestre: number; avg_par_an: number }
+  kpis: { ventes_brutes: number; remises_total: number; ventes_nettes: number; tva: number; avg_par_jour: number; avg_par_semaine: number; avg_par_mois: number; avg_par_trimestre: number; avg_par_an: number }
   jours: Array<{ date: string; nb: number; brut: number; remises: number; net: number; tva: number }>
   historique: Array<Record<string, unknown>>
 }
 
-type KpiKey = 'brut' | 'promo' | 'net' | 'tva' | 'moy'
-const KPI_CONFIG: Array<{ key: 'brut' | 'promo' | 'net' | 'tva'; label: string; color: string }> = [
-  { key: 'brut',  label: 'Ventes brutes',      color: '#4ade80' },
-  { key: 'promo', label: 'CA via codes promo', color: '#f87171' },
-  { key: 'net',   label: 'Ventes nettes',      color: '#22d3ee' },
-  { key: 'tva',   label: 'TVA',                color: '#f59e0b' },
+type KpiKey = 'brut' | 'remises' | 'net' | 'tva' | 'moy'
+const KPI_CONFIG: Array<{ key: 'brut' | 'remises' | 'net' | 'tva'; label: string; color: string }> = [
+  { key: 'brut',    label: 'Ventes brutes', color: '#4ade80' },
+  { key: 'remises', label: 'Remises',       color: '#f87171' },
+  { key: 'net',     label: 'Ventes nettes', color: '#22d3ee' },
+  { key: 'tva',     label: 'TVA',           color: '#f59e0b' },
 ]
 
 type MoyGran = 'jour' | 'semaine' | 'mois' | 'trimestre' | 'an'
@@ -83,12 +83,12 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
           onClick={() => setKpiActif('brut')}
         />
         <KpiCard
-          label="CA via codes promo"
-          value={kpis.ca_promo > 0 ? fmtEuroDisplay(kpis.ca_promo) : '—'}
-          sub={kpis.remises_total > 0 ? `Remises : −${fmtEuroDisplay(kpis.remises_total)}` : 'Aucun code utilisé'}
+          label="Remises"
+          value={kpis.remises_total > 0 ? `−${fmtEuroDisplay(kpis.remises_total)}` : '—'}
+          sub={kpis.ventes_brutes > 0 && kpis.remises_total > 0 ? `${((kpis.remises_total / kpis.ventes_brutes) * 100).toFixed(1)}% du brut` : 'Aucune remise appliquée'}
           color="#f87171"
-          active={kpiActif === 'promo'}
-          onClick={() => setKpiActif('promo')}
+          active={kpiActif === 'remises'}
+          onClick={() => setKpiActif('remises')}
         />
         <KpiCard
           label="Ventes nettes"
