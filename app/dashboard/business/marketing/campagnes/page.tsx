@@ -140,7 +140,9 @@ async function envoyerMaintenant(formData: FormData) {
     .eq('beatmaker_id', user.id)
     .neq('statut', 'envoyee')
     .single()
-  if (!campagne) return
+  if (!campagne) {
+    redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent("Cette campagne est introuvable ou a déjà été envoyée.")}`)
+  }
 
   let resultat: { envoyes: number; echecs: number }
   try {
@@ -148,6 +150,10 @@ async function envoyerMaintenant(formData: FormData) {
   } catch (err) {
     console.error('[campagnes] Échec envoyerMaintenant', id, ':', err)
     redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent('Erreur inattendue à l\'envoi — vérifie la config Resend (variables d\'environnement, domaine).')}`)
+  }
+
+  if (resultat.envoyes === 0 && resultat.echecs === 0) {
+    redirect(`${URL_CAMPAGNES}?erreur=${encodeURIComponent("Aucun destinataire trouvé — vérifie que le segment/la liste/les emails ciblés contiennent des contacts inscrits à la newsletter.")}`)
   }
 
   if (resultat.envoyes === 0 && resultat.echecs > 0) {

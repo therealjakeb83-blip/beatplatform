@@ -130,7 +130,8 @@ export async function envoyerCampagne(campagneId: string): Promise<{ envoyes: nu
 
   const destinataires = await resolveDestinataires(campagne.beatmaker_id, cible)
   if (destinataires.length === 0) {
-    await admin.from('campagnes').update({ statut: 'envoyee', sent_at: new Date().toISOString(), destinataires: 0 }).eq('id', campagneId)
+    // Pas de destinataire valide (segment/liste vide, ou personne inscrit à la newsletter) —
+    // on ne touche pas au statut pour que le beatmaker puisse corriger le ciblage et réessayer.
     return { envoyes: 0, echecs: 0 }
   }
 
