@@ -82,10 +82,19 @@ export default function BeatCatalogue({
               Tout voir →
             </a>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {beatsPrives.slice(0, 4).map(beat => (
-              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} clientId={clientId} />
-            ))}
+          <div className="relative overflow-hidden -mx-6 px-6 [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]">
+            <div className="flex gap-4 w-max animate-marquee hover:[animation-play-state:paused]">
+              {[...beatsPrives, ...beatsPrives].map((beat, i) => (
+                <div
+                  key={`${beat.id}-${i}`}
+                  className={`w-40 sm:w-48 shrink-0 transition-all duration-300 ${
+                    estAbonne ? '' : 'grayscale-[35%] brightness-[0.85] saturate-75 hover:grayscale-0 hover:brightness-100 hover:saturate-100'
+                  }`}
+                >
+                  <BeatCard beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} clientId={clientId} />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
