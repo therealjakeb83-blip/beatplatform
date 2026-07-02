@@ -24,9 +24,12 @@ export default function BoutiqueHeader({
   clientUser,
 }: BoutiqueHeaderProps) {
   return (
-    <header className="border-b border-gray-800 bg-gray-950">
+    <header className="relative overflow-hidden border-b border-gray-800 bg-black">
+      {/* Lueur de marque en fond */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-brand-600/25 rounded-full blur-[120px]" />
+
       {/* Barre de nav artiste */}
-      <div className="max-w-5xl mx-auto px-6 pt-4 flex justify-end">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-4 flex justify-end">
         {clientUser ? (
           <Link
             href={`/${slug}/mon-compte`}
@@ -47,7 +50,7 @@ export default function BoutiqueHeader({
         )}
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
           {/* Logo / initiales */}
           <div className="w-20 h-20 rounded-2xl bg-gray-800 flex-shrink-0 overflow-hidden">

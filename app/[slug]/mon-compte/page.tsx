@@ -143,7 +143,7 @@ export default async function MonCompteBoutiquePage({
   const essaiFin = abo?.essai_fin_le ? new Date(abo.essai_fin_le).toLocaleDateString('fr-FR') : null
 
   return (
-    <div className="min-h-screen bg-gray-950 px-6 py-16">
+    <div className="min-h-screen bg-black px-6 py-16">
       <div className="max-w-lg mx-auto">
         <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Boutique de {beatmaker.nom_artiste}

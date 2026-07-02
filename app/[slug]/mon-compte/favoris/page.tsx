@@ -48,7 +48,7 @@ export default async function FavorisBoutiquePage({
   const beats = favoris.map(f => f.beats).filter((b): b is FavorisBeat => b !== null)
 
   return (
-    <div className="min-h-screen bg-gray-950 px-6 py-16">
+    <div className="min-h-screen bg-black px-6 py-16">
       <div className="max-w-lg mx-auto">
         <Link href={`/${slug}/mon-compte`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Mon compte

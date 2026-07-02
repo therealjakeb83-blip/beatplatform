@@ -60,7 +60,7 @@ export default async function MonAbonnementPage({
 
   if (!emailAbonne) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-black flex items-center justify-center px-6">
         <div className="text-center">
           <h1 className="text-2xl font-black text-white mb-3">Non connecté</h1>
           <p className="text-gray-400 text-sm mb-6">Tu n&apos;as pas de session membre active.</p>
@@ -82,7 +82,7 @@ export default async function MonAbonnementPage({
   const essaiFin = abo?.essai_fin_le ? new Date(abo.essai_fin_le).toLocaleDateString('fr-FR') : null
 
   return (
-    <div className="min-h-screen bg-gray-950 px-6 py-16">
+    <div className="min-h-screen bg-black px-6 py-16">
       <div className="max-w-lg mx-auto">
         <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Boutique de {beatmaker.nom_artiste}

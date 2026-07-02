@@ -56,7 +56,7 @@ export default async function AbonnementPage({
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-6 py-16">
+    <div className="min-h-screen bg-black flex items-center justify-center px-6 py-16">
       <div className="max-w-lg w-full">
         <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Boutique de {beatmaker.nom_artiste}
