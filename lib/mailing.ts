@@ -103,17 +103,44 @@ export function verifierTokenDesinscription(token: string): { clientId: string; 
   }
 }
 
-// ── Compteurs agrégés sur `campagnes` (ouvertures/clics/desinscrits) ─────────
+// ── Compteurs agrégés sur `campagnes` (ouvertures/clics/desinscrits/conversions) ─
 
 export async function incrementerCompteurCampagne(
   campagneId: string,
-  champ: 'ouvertures' | 'clics' | 'desinscrits',
+  champ: 'ouvertures' | 'clics' | 'desinscrits' | 'conversions',
 ): Promise<void> {
   const admin = createAdminClient()
   const { data: campagne } = await admin.from('campagnes').select(champ).eq('id', campagneId).single()
   if (!campagne) return
   const valeur = (campagne as Record<string, number>)[champ]
   await admin.from('campagnes').update({ [champ]: valeur + 1 }).eq('id', campagneId)
+}
+
+// Attribution "dernier contact" : si ce client a reçu une campagne de ce beatmaker
+// dans les 30 derniers jours et n'a pas encore été compté comme conversion pour
+// elle, on marque l'achat comme provenant de cette campagne.
+const FENETRE_CONVERSION_JOURS = 30
+
+export async function enregistrerConversion(clientId: string, beatmakerId: string): Promise<void> {
+  const admin = createAdminClient()
+
+  const depuis = new Date(Date.now() - FENETRE_CONVERSION_JOURS * 86_400_000).toISOString()
+
+  const { data: envois } = await admin
+    .from('campagne_envois')
+    .select('id, campagne_id, envoye_at, campagnes!inner(beatmaker_id)')
+    .eq('client_id', clientId)
+    .is('converti_at', null)
+    .gte('envoye_at', depuis)
+    .eq('campagnes.beatmaker_id', beatmakerId)
+    .order('envoye_at', { ascending: false })
+    .limit(1)
+
+  const envoi = envois?.[0]
+  if (!envoi) return
+
+  await admin.from('campagne_envois').update({ converti_at: new Date().toISOString() }).eq('id', envoi.id)
+  await incrementerCompteurCampagne(envoi.campagne_id, 'conversions')
 }
 
 // ── Envoi d'une campagne ──────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
 import { envoyerFondsEnAttente } from '@/lib/emails'
+import { enregistrerConversion } from '@/lib/mailing'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -193,6 +194,13 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   }
 
   console.log('[webhook] Commande créée:', commande?.id)
+
+  // Attribution marketing : purement statistique, ne doit jamais faire échouer le paiement
+  if (clientId) {
+    enregistrerConversion(clientId, meta.beatmaker_id).catch(err =>
+      console.error('[webhook] Erreur enregistrement conversion campagne:', err)
+    )
+  }
 
   // Incrémenter le compteur d'utilisations du code promo
   if (promoCode) {

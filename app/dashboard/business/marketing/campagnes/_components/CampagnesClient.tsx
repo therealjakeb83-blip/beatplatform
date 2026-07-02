@@ -24,8 +24,8 @@ function formatDate(iso: string | null): string {
 }
 
 function pct(n: number, total: number): string {
-  if (total === 0) return '–'
-  return `${Math.round((n / total) * 100)}%`
+  if (total === 0) return `${n}`
+  return `${n} (${Math.round((n / total) * 100)}%)`
 }
 
 const STATUT_BADGE: Record<CampagneRow['statut'], string> = {
