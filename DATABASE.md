@@ -1,6 +1,6 @@
 # My Producer — Architecture de la base de données
 
-> Dernière mise à jour : 2026-05-14
+> Dernière mise à jour : 2026-07-02 — corrections d'unités (`prix_paye`, `licences.prix`) + ajout des tables créées depuis (module Business/11d). Ce document reste la référence de conception initiale (étapes 1-9) ; il n'a pas été réécrit intégralement — voir `ROADMAP.md` pour l'état d'avancement à jour et le détail des tables les plus récentes dans les fichiers `supabase/*.sql` correspondants.
 
 ---
 
@@ -130,7 +130,7 @@ Licences proposées par chaque beatmaker sur sa boutique. 5 modèles fixes (MP3,
 | Champ | Type | Description |
 |---|---|---|
 | `nom` | text | Titre affiché (ex: "MP3", "WAV", "STEMS"...) |
-| `prix` | integer | Prix en centimes (ex: 4995 = 49,95€) |
+| `prix` | integer | Prix en **euros entiers** (ex: 45 = 45€) — ⚠️ pas en centimes, contrairement à `abonnements_boutique.prix` |
 | `streams_limite` | integer | Limite d'écoutes monétisées — `null` = illimité |
 
 #### Droits fixes (définis par le modèle, non modifiables)
@@ -224,18 +224,20 @@ Historique de tous les achats de licences sur la plateforme. Une ligne = un acha
 #### Paiement
 | Champ | Type | Description |
 |---|---|---|
-| `prix_paye` | integer | Prix en centimes au moment de l'achat (conservé même si le prix change après) |
+| `prix_paye` | numeric(10,2) | Montant TTC réellement encaissé, en **euros décimaux** (ex: 44.95) — ⚠️ pas en centimes. C'est le prix final après remise (le code promo est appliqué côté serveur avant Stripe) |
 | `devise` | text | `EUR` ou `USD` |
 | `methode_paiement` | text | `stripe` / `paypal` / `apple_pay` / `google_pay` |
 | `stripe_payment_id` | text | Référence du paiement Stripe |
 | `statut` | text | `en_attente` / `payee` / `remboursee` / `litige` |
-| `montant_rembourse` | integer | Montant remboursé en centimes (0 par défaut — permet les remboursements partiels) |
+| `montant_rembourse` | numeric(10,2) | Montant remboursé en euros décimaux (0 par défaut — permet les remboursements partiels) |
 
 #### Codes promo
 | Champ | Type | Description |
 |---|---|---|
 | `code_promo` | text | Code utilisé — `null` si aucun |
-| `reduction_montant` | integer | Montant de la réduction en centimes |
+| `reduction_montant` | numeric(10,2) | Montant de la réduction en euros décimaux — informatif, déjà reflété dans `prix_paye` |
+
+> **Règle d'unités (feedback session 2026-06-26) :** `commandes.prix_paye`/`reduction_montant` sont en euros décimaux. `split_payments.montant`, `abonnements_boutique.prix`, `beatmakers.abo_prix` restent en **centimes**. Toujours vérifier la table source avant un calcul financier dans une route analytics.
 
 #### Livraison
 | Champ | Type | Description |
@@ -366,3 +368,24 @@ Abonnements des artistes aux boutiques des beatmakers. 1 seul plan en V1, que ch
 > **Crédit fidélité :** 1 crédit tous les 4 mois consécutifs. Le crédit vaut le prix de la licence WAV du beat choisi — l'artiste peut l'utiliser tel quel (WAV gratuit) ou payer la différence pour upgrader en STEMS ou ILLIMITÉ.
 >
 > **V2 :** Permettre aux beatmakers de créer des plans personnalisés avec leurs propres noms et contenus.
+
+---
+
+## Tables ajoutées depuis (module Business / étape 11d)
+
+Non détaillées colonne par colonne ici — voir le fichier `supabase/*.sql` cité pour le schéma exact.
+
+| Table | Rôle | Fichier SQL |
+|-------|------|-------------|
+| `codes_promo` | Codes promo par beatmaker : `type_remise` (panier/produit/abonnement), `type_valeur` (pourcentage/montant), restrictions (dates, licences, beats, emails, limites) | `business_migration.sql`, `codes_promo_ajustements.sql` |
+| `beat_splits` | Collaborateurs par beat (pourcentage, email_invite ou beatmaker_id, statut) | `schema.sql` (déjà présent étape 4), câblage Stripe en `etape10_split_payments.sql` |
+| `split_payments` | Paiements de splits — `montant` en **centimes** (contrairement à `commandes`), statut `transfere`/`en_attente`, `expire_le` | `etape10_split_payments.sql` |
+| `beat_plays` | Écoutes trackées (30s min) : `client_id` nullable, puis enrichi `pays`, `device_type`, `source_marketing`, `duree_secondes` | `beat_plays.sql`, `beat_plays_enrichissement.sql` |
+| `leads` | (déjà existante étape 9, réutilisée comme colonne vertébrale du CRM 11d) `source` visite/newsletter/free_download/achat, `converti` | `schema.sql` |
+| `segments_crm` | Segments CRM : `filtres` jsonb (conditions ET/OU) | `segments_crm.sql` |
+| `listes_crm` / `listes_crm_contacts` | Listes de contacts manuelles + table de liaison | `listes_crm.sql` |
+| `doublons_ignores` | (déjà existante) paires de clients ignorées lors de la détection de doublons | `schema.sql` |
+| `fusions_crm` | Historique des fusions de doublons (défusion possible) | `fusions_crm.sql` |
+| `listes_contacts` / `liste_membres` / `campagnes` / `free_downloads` / `morceaux_clients` | Tables créées upfront pour Marketing/Free Download — UI pas encore construite (sauf `free_downloads`, prévu étape 12 dédiée) | `business_migration.sql` |
+
+**Colonnes ajoutées sur des tables existantes :** `clients` (spotify, youtube, tiktok, notes, tags, instagram, newsletter_consent), `beats` (couleur, free_download_actif), `commandes` (notes, type_commande LICENCE/CREATION_ABONNEMENT/RENOUVELLEMENT, stripe_session_id, source_marketing élargi à 9 valeurs, acheteur_email/acheteur_nom pour les invités), `abonnements_boutique` (fin_essai, annulation_en_cours, mensualites_payees).

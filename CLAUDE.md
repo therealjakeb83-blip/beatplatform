@@ -6,16 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Règle de début de session
 
-Au début de chaque session (sauf si Jake dit explicitement de ne pas le faire), lire en profondeur les deux projets suivants avant de répondre :
+Au début de chaque session (sauf si Jake dit explicitement de ne pas le faire), lire en profondeur avant de répondre :
 
 - `C:\Users\nicoj\beatplatform` — le projet principal Next.js + Supabase
-- `C:\Users\nicoj\crm-proto` — le prototype UX (mock data, zéro backend) qui sert de référence UI
-
-Lire notamment :
-- La structure des dossiers (`app/dashboard/business/` dans beatplatform, `app/` dans crm-proto)
+- `ROADMAP.md` — état d'avancement à jour, journal des sessions
 - Les fichiers récemment modifiés (git log dans beatplatform)
-- Les pages ComingSoon dans beatplatform → c'est là que se trouve le travail restant
-- Les pages correspondantes dans crm-proto → c'est le design de référence à migrer
+
+Le module Business (`/dashboard/business/`) est entièrement migré (CRM, Commerce, Analytics) — il ne reste que la page d'accueil business et Marketing. `C:\Users\nicoj\crm-proto` (prototype UX mock data) ne sert plus de référence que pour ces deux morceaux restants ; ne pas y aller par défaut, seulement si le travail en cours concerne l'accueil business ou Marketing.
 
 ---
 
@@ -50,7 +47,7 @@ Deux espaces utilisateur distincts :
 |--------|--------|-------------|
 | Boutique publique | `/[slug]/**` | Artistes (acheteurs) |
 | Dashboard | `/dashboard/**` | Beatmakers (vendeurs) |
-| Business | `/dashboard/business/**` | Beatmakers — module en cours |
+| Business | `/dashboard/business/**` | Beatmakers — CRM/Commerce/Analytics migrés, reste accueil + Marketing |
 
 Le dashboard se protège via `proxy.ts` (pas un vrai `middleware.ts` Next.js) — redirige `/dashboard` vers `/connexion` si non authentifié, et vérifie que l'user a une ligne dans `beatmakers`.
 
@@ -95,19 +92,22 @@ Tables principales :
 
 | Table | Rôle |
 |-------|------|
-| `beatmakers` | Comptes beatmakers (slug, stripe_account_id, tva_numero) |
+| `beatmakers` | Comptes beatmakers (slug, stripe_account_id, tva_active/tva_taux) |
 | `beats` | Catalogue (mp3/wav URLs, tags styles/ambiances, statut) |
-| `clients` | Comptes artistes/acheteurs globaux |
-| `licences` | Modèles de licence par beatmaker |
-| `commandes` | Achats (montant HT/TTC/TVA, splits_snapshot) |
-| `beat_splits` | Splits de collab (pourcentage, statut actif/en_attente, expire_le) |
-| `abonnements_boutique` | Plans d'abo par boutique (stripe_price_id) |
-| `abonnements_clients` | Souscriptions artistes (stripe_subscription_id) |
-| `licence_downloads` | Audit des téléchargements |
-| `crm_clients` | Contacts CRM par beatmaker (statut prospect/client/lead) |
-| `crm_segments` | Segments (criteria_json) |
-| `crm_listes` / `crm_listes_contacts` | Listes de contacts |
-| `crm_fusions` | Historique fusions doublons |
+| `clients` | Comptes artistes/acheteurs globaux (partagés entre boutiques) |
+| `licences` | Modèles de licence par beatmaker (mp3/wav/stems/illimite/exclusive) |
+| `leads` | Relation client↔boutique (source, conversion) — base du CRM |
+| `commandes` | Achats (`prix_paye`/`reduction_montant` en **euros décimaux**, pas centimes) |
+| `beat_splits` | Splits de collab par beat (pourcentage, email_invite) |
+| `split_payments` | Paiements de splits (montant en **centimes**, statut transfere/en_attente) |
+| `abonnements_boutique` | Abonnements artistes → boutique (prix en centimes, Stripe subscription) |
+| `abonnements_plateforme` | Abonnements beatmaker → My Producer |
+| `codes_promo` | Codes promo (type_remise panier/produit/abonnement, restrictions) |
+| `licence_downloads` | Audit des téléchargements de licence |
+| `beat_plays` | Écoutes trackées (seuil 30s, durée, pays, device, source) |
+| `doublons_ignores` / `fusions_crm` | Détection doublons CRM — paires ignorées / historique fusions |
+| `segments_crm` | Segments CRM (filtres ET/OU) |
+| `listes_crm` / `listes_crm_contacts` | Listes de contacts CRM |
 
 **RLS critique** : toutes les tables protégées. Utiliser `createAdminClient()` uniquement dans les Route Handlers qui valident manuellement l'identité. Voir `supabase/rls_policies.sql` et `supabase/boutique_rls.sql`.
 
@@ -117,11 +117,11 @@ Tables principales :
 
 ## Module Business (`/dashboard/business/`)
 
-Pages **terminées** : contacts, segments, listes, doublons, commandes, abonnements.
+Pages **terminées** : contacts, segments, listes, doublons, commandes, abonnements, plans, beats, licences, codes-promo, collabs, analytics (7 onglets : ventes, abonnements, revenus, préférences, codes-promo, beats + page détail, vue d'ensemble).
 
-Pages **ComingSoon** (travail restant) : `beats/`, `codes-promo/`, `licences/`, `plans/`, `collabs/`, `analytics/`.
+Reste **à faire** : page d'accueil `/dashboard/business/` (actuellement un placeholder statique — voir Phase 4 dans `ROADMAP.md`) et le module Marketing (sidebar en 🔒, tables DB déjà créées, UI jamais commencée).
 
-Le design de référence pour ces pages est dans `C:\Users\nicoj\crm-proto`.
+Détail de l'historique et des décisions d'architecture : `ROADMAP.md` (étape 11d).
 
 ---
 

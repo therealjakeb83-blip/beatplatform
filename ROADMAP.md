@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-06-12 — Outil Business (11d) : plan de migration crm-proto → /dashboard/business validé
+> Dernière mise à jour : 2026-07-02 — Outil Business (11d) : Phase 2 Commerce ✅ + Phase 3 Analytics ✅ complètes
 
 ## Légende
 | Statut | Signification |
@@ -11,7 +11,7 @@
 
 ---
 
-## Progression globale : 11 / 17 étapes validées (+ 3 bonus)
+## Progression globale : 12 / 17 étapes validées (+ 4 bonus, dont 2 en cours)
 
 | # | Étape | Description | Durée est. | Statut |
 |---|-------|-------------|-----------|--------|
@@ -31,7 +31,7 @@
 | 11c | **Optimisation CRM** *(bonus)* | 5 sprints : enrichissement liste/fiche (S1), BDD+LTV réelle (S2), RFM+Dashboard (S3), Email marketing intégré Resend (S4), Écoutes (S5 après étape 13) | — | 🔄 En cours |
 | 11d | **Outil Business** *(bonus)* | Migration crm-proto → /dashboard/business. Back-office complet : CRM, Commerce, Analytics, Marketing (sprint dédié). Remplace et absorbe les étapes 12 (emails) et 13 (analytics). | — | 🔄 En cours |
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation *(partiellement couvert par 11d Marketing)* | 4-6h | ⬜ À faire |
-| 13 | **Analytics** | Compteur d'écoutes sur les cartes beat et page détail *(analytics back-office couvert par 11d)* | 2-3h | ⬜ À faire |
+| 13 | **Analytics** | Compteur d'écoutes sur les cartes beat et page détail *(analytics back-office couvert par 11d)* | 2-3h | ✅ Validé |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
 | 15 | **Admin** | Dashboard de gestion de la plateforme + outil interne d'import BeatStars (script scraping concierge) | 7-10h | ⬜ À faire |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
@@ -476,33 +476,41 @@ Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimente
 
 **Suppressions après Phase 1 :** `/dashboard/crm/` (liste, fiche, doublons, email/[encodedEmail])
 
-### Phase 2 — Commerce (en cours)
+### Phase 2 — Commerce ✅ Complète
 
 | # | Page | Route cible | Remplace | Statut |
 |---|------|-------------|----------|--------|
 | 2.1 | Commandes + fiche | `/dashboard/business/commandes/` + `/[id]/` | `/dashboard/commandes/` | ✅ |
-| 2.2 | Abonnements | `/dashboard/business/abonnements/` | liste de `/dashboard/abonnements/` | ⬜ |
-| 2.3 | Plans | `/dashboard/business/plans/` | config de `/dashboard/abonnements/` | ⬜ |
-| 2.4 | Beats (CRUD) | `/dashboard/business/beats/` | `/dashboard/beats/` (+ sous-routes) | ⬜ |
-| 2.5 | Licences | `/dashboard/business/licences/` | `/dashboard/licences/` | ⬜ |
-| 2.6 | Codes promo + fiche | `/dashboard/business/codes-promo/` + `/[id]/` | `/dashboard/codes-promo/` | ⬜ |
-| 2.7 | Collabs | `/dashboard/business/collabs/` | `/dashboard/mes-collabs/` | ⬜ |
+| 2.2 | Abonnements | `/dashboard/business/abonnements/` | liste de `/dashboard/abonnements/` | ✅ |
+| 2.3 | Plans | `/dashboard/business/plans/` | config de `/dashboard/abonnements/` | ✅ |
+| 2.4 | Beats (CRUD) | `/dashboard/business/beats/` | `/dashboard/beats/` (+ sous-routes) | ✅ |
+| 2.5 | Licences | `/dashboard/business/licences/` | `/dashboard/licences/` | ✅ |
+| 2.6 | Codes promo + fiche | `/dashboard/business/codes-promo/` + `/[id]/` | `/dashboard/codes-promo/` | ✅ |
+| 2.7 | Collabs | `/dashboard/business/collabs/` | `/dashboard/mes-collabs/` | ✅ |
 
-**Suppressions après Phase 2 :** `/dashboard/commandes/` · `/dashboard/abonnements/` · `/dashboard/beats/` · `/dashboard/licences/` · `/dashboard/codes-promo/` · `/dashboard/mes-collabs/` · `/dashboard/splits/`
+**Suppressions après Phase 2 :** ✅ effectuées (`refactor(dashboard): supprimer les pages en double avec business`, 2026-06-26). Il ne reste sous `app/dashboard/` que `business/`, `paiements/`, `profil/` (hors racine et déconnexion).
 
-### Phase 3 — Analytics ⬜ À faire
+### Phase 3 — Analytics ✅ Complète
 
-Composants communs d'abord : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx`
+Composants communs : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx` · `AnalyticsLineChart.tsx` · `MiniBar.tsx`
 
 | # | Onglet | Source SQL | Statut |
 |---|--------|------------|--------|
-| 3.1 | Ventes | `commandes` | ⬜ |
-| 3.2 | MRR/ARR | `abonnements_boutique` | ⬜ |
-| 3.3 | Revenus | `commandes` + `abonnements_boutique` | ⬜ |
-| 3.4 | Préférences | `commandes → beats.styles[]` | ⬜ |
-| 3.5 | Codes promo | `codes_promo` + `commandes` | ⬜ |
-| 3.6 | Beats | `commandes` + `beats` (sans écoutes — étape 13) | ⬜ |
-| 3.7 | Vue d'ensemble | Agrégation de tout — en dernier | ⬜ |
+| 3.1 | Ventes | `commandes` | ✅ |
+| 3.2 | MRR/ARR (Abonnements) | `abonnements_boutique` | ✅ |
+| 3.3 | Revenus | `commandes` + `abonnements_boutique` | ✅ |
+| 3.4 | Préférences | `commandes → beats.styles[]` | ✅ |
+| 3.5 | Codes promo | `codes_promo` + `commandes` | ✅ |
+| 3.6 | Beats (+ page détail par beat) | `commandes` + `beats` + `beat_plays` | ✅ |
+| 3.7 | Vue d'ensemble | Agrégation de tout | ✅ |
+
+**Livré au-delà du périmètre initial :**
+- Tracking écoutes (`beat_plays`) : seuil 30s, durée d'écoute, pays (RGPD-safe), device
+- Tracking source marketing (9 sources : YouTube, Instagram, TikTok, Google, Google Ads, YouTube Ads, Newsletter, Direct, Autre) de la visite jusqu'à la commande
+- Page détail beat : KPIs favoris/CA par licence/source, tables dynamiques par KPI
+- Granularité adaptative des graphiques (jour/semaine/mois selon la période) + périodes semaine
+- Décision **CA net = CA HT** (`brut − remises − TVA`, pas juste `brut − TVA`) appliquée uniformément sur Overview/Ventes/Revenus/Codes promo
+- KPIs cliquables pilotant le graphique sur la plupart des onglets (Ventes, Revenus, Abonnements, Codes promo)
 
 ### Phase 4 — Dashboard business ⬜ À faire
 
@@ -580,3 +588,9 @@ Composants communs d'abord : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCar
 | 2026-06-17 | Outil Business (11d) — Fiche client + Phase 1.4 Segments ✅ | Fiche client : surnom CRM, nom_artiste, téléphone et langue éditables (bouton save inline). Segments : filter builder ET/OU custom, badge statut intégré comme condition (est/n'est pas/est parmi), compteurs dynamiques, edit mode, dropdowns catalogue. |
 | 2026-06-19 | Outil Business (11d) — Phase 1.5 Listes + Phase 2.1 Commandes ✅ | Listes CRM : création/modification/suppression + détail liste, ajout/retrait contacts depuis modale, sélecteur de colonnes dynamique (15 colonnes, localStorage), drag & drop sur les headers. Commandes : liste complète + fiche détail (Articles HT/TVA, Historique téléchargements, Liens, Timeline auto, Remboursement, Renvoyer email). Fix fiche commande : admin client pour join clients. |
 | 2026-06-20 | Bug fix — Historique téléchargements ✅ | `licence_downloads` manquait d'un `GRANT INSERT TO service_role`. Ajout `supabase/licence_downloads_grants.sql`. Historique téléchargements fonctionnel (date, fichier, IP). Comportement confirmé : les DL depuis le dashboard beatmaker ne sont pas loggués (correct). |
+| 2026-06-24 | Outil Business (11d) — Phase 2 Commerce ✅ | 6 pages migrées vers `/dashboard/business/` : Abonnements (liste + fiche + actions Stripe annuler/réactiver), Plans, Beats (catalogue avec CA/ventes/licences actives via `beat_licences`), Codes promo (module complet : création/édition/duplication/statut), Licences, Collabs. Anciennes routes dashboard supprimées en fin de phase. |
+| 2026-06-25 | Codes promo checkout + lancement Analytics (Phase 3, 11d) | Codes promo appliqués **côté serveur avant Stripe** (restriction email vérifiée au "Confirmer", licences éligibles). Collabs : détail des ventes par beat + relevé PDF annuel. Module Analytics lancé : tracking écoutes (seuil 30s), 7 onglets. Fix unités critique : `commandes.prix_paye`/`reduction_montant` sont en **euros décimaux**, pas en centimes (contrairement à `split_payments.montant` qui reste en centimes). |
+| 2026-06-26 | Analytics — enrichissements + nettoyage dashboard | KPI favoris + ARR sur Vue d'ensemble, CA net isolé en KPI indépendante (Ventes), page détail beat (favoris, CA par licence/source, tables dynamiques par KPI, colonnes N° commande + client cliquables), fix graphiques (marge, axe Y). Suppression des dernières pages `/dashboard/*` dupliquées avec `business/`. |
+| 2026-06-27 | Analytics — tracking sources marketing + durée d'écoute | 9 sources trackées de la visite à la commande (YouTube, Instagram, TikTok, Google, Google Ads, YouTube Ads, Newsletter, Direct, Autre) — détection via UTM/gclid/gbraid/referrer. Durée d'écoute (`PlayerContext` + endpoint dédié, envoi sur navigation + `visibilitychange`). Ventes : KPIs cliquables pilotent le graphique, légende source interactive. Granularité adaptative des graphiques + périodes semaine. Nouvelle mise en page catalogue boutique (membres en premier). |
+| 2026-06-29 | Analytics — page détail beat + Abonnements | Granularité adaptive + tooltip `fullLabel` sur le détail beat, panier moyen sur Overview. KPIs Abonnements réactifs à la période sélectionnée. Churn : nombre d'annulations affiché en plus du taux. |
+| 2026-07-02 | Analytics — Abonnements, Revenus, Préférences, Codes promo | **Abonnements** : 5 KPIs cliquables, badges Actuel/Tous temps/Cette période, rétention moyenne cliquable avec snapshot par slot. **Décision CA net = CA HT** (`brut − remises − TVA`) actée et appliquée à tout le module (Overview/Ventes/Revenus, puis Codes promo). **Revenus** : CA moyen net/brut sélectionnable, colonne "Remises" (remplace "Codes promo"). **Préférences** : sélecteur de catégorie pour le graphique, fix ligne "Autre" et KPIs. **Codes promo** : colonne Type (panier/produit/abonnement), code cliquable vers la fiche Commerce, CA brut (TTC)/net (HT) distingués en KPI + colonnes tableau, toutes les données scopées à la période sélectionnée, codes sans utilisation sur la période masqués du tableau. Jeu de données de test ajouté : 10 codes promo + 30 commandes sur la boutique test (`supabase/seed_codes_promo.sql`) pour valider visuellement les changements. |
