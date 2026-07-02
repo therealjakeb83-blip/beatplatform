@@ -41,7 +41,7 @@ export default function SAbonnerButton({
       <button
         onClick={handleClick}
         disabled={loading}
-        className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold transition-colors text-lg"
+        className="w-full py-4 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white font-semibold transition-colors text-lg shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
       >
         {loading
           ? 'Redirection...'

@@ -35,7 +35,7 @@ export default function FavorisPlaylist({
             key={beat.id}
             className={`flex items-center gap-3 rounded-xl p-3 border transition-colors ${
               isActive
-                ? 'bg-indigo-950/40 border-indigo-500/30'
+                ? 'bg-brand-950/40 border-brand-500/30'
                 : 'bg-gray-900 border-gray-800 hover:border-gray-700'
             }`}
           >
@@ -46,8 +46,8 @@ export default function FavorisPlaylist({
               className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors text-sm ${
                 hasAudio
                   ? isActive
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                    : 'bg-gray-800 hover:bg-indigo-600 text-gray-400 hover:text-white'
+                    ? 'bg-brand-600 hover:bg-brand-500 text-white'
+                    : 'bg-gray-800 hover:bg-brand-600 text-gray-400 hover:text-white'
                   : 'bg-gray-800 text-gray-600 cursor-not-allowed'
               }`}
               aria-label={isActive && isPlaying ? 'Pause' : 'Écouter'}
@@ -66,7 +66,7 @@ export default function FavorisPlaylist({
 
             {/* Titre + infos */}
             <Link href={`/${slug}/${beat.id}`} className="flex-1 min-w-0">
-              <p className={`text-sm font-medium truncate ${isActive ? 'text-indigo-300' : 'text-white'}`}>
+              <p className={`text-sm font-medium truncate ${isActive ? 'text-brand-300' : 'text-white'}`}>
                 {beat.titre}
               </p>
               {(beat.bpm || beat.cle) && (

@@ -78,7 +78,7 @@ export default async function AchatsBoutiquePage({
         {commandes.length === 0 ? (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
             <p className="text-gray-500 text-sm mb-4">Aucun achat sur cette boutique.</p>
-            <Link href={`/${slug}`} className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors">
+            <Link href={`/${slug}`} className="text-brand-400 hover:text-brand-300 text-sm transition-colors">
               Découvrir les beats →
             </Link>
           </div>

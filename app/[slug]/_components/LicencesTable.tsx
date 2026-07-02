@@ -210,7 +210,7 @@ export default function LicencesTable({
 
                 <div className="flex-shrink-0 text-right flex flex-col items-end gap-2">
                   {l.sur_demande ? (
-                    <span className="text-indigo-400 font-semibold">Sur demande</span>
+                    <span className="text-brand-400 font-semibold">Sur demande</span>
                   ) : (
                     <>
                       <div className="flex flex-col items-end">
@@ -222,7 +222,7 @@ export default function LicencesTable({
                         </span>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {aRemiseMembre && (
-                            <span className="text-xs text-indigo-400 font-medium">-{remisePct}% membre</span>
+                            <span className="text-xs text-brand-400 font-medium">-{remisePct}% membre</span>
                           )}
                           {codeEstApplicable && (
                             <span className="text-xs text-green-500 font-medium">

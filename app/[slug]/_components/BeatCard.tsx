@@ -91,7 +91,7 @@ export default function BeatCard({
               onClick={handlePlay}
               className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center text-xl transition-transform hover:scale-110 ${
                 hasAudio
-                  ? 'bg-indigo-600 hover:bg-indigo-500'
+                  ? 'bg-brand-600 hover:bg-brand-500'
                   : 'bg-gray-700 cursor-not-allowed'
               }`}
               aria-label={isActive && isPlaying ? 'Pause' : 'Écouter'}
@@ -103,7 +103,7 @@ export default function BeatCard({
 
         {/* Badge "En lecture" */}
         {isActive && isPlaying && (
-          <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+          <div className="absolute top-2 left-2 bg-brand-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
             ▶ En lecture
           </div>
         )}
@@ -144,7 +144,7 @@ export default function BeatCard({
         {(beat.styles?.length || beat.type_beat?.length) ? (
           <div className="flex flex-wrap gap-1 mt-2">
             {beat.type_beat?.slice(0, 2).map(t => (
-              <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-indigo-900/50 text-indigo-300">
+              <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-brand-900/50 text-brand-300">
                 {t}
               </span>
             ))}
@@ -158,7 +158,7 @@ export default function BeatCard({
 
         {/* Prix licences */}
         {estVerrouille ? (
-          <p className="text-xs text-indigo-400 mt-3 font-medium">Réservé aux membres</p>
+          <p className="text-xs text-brand-400 mt-3 font-medium">Réservé aux membres</p>
         ) : licencesTriees.length > 0 ? (
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             {licencesTriees.map(l => (

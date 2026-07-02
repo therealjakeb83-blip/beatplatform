@@ -32,7 +32,7 @@ export default function BoutiqueHeader({
             href={`/${slug}/mon-compte`}
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold">
               {(clientUser.prenom || clientUser.nom || '?').slice(0, 1).toUpperCase()}
             </div>
             <span>Mon compte</span>
@@ -40,7 +40,7 @@ export default function BoutiqueHeader({
         ) : (
           <Link
             href={`/artiste/connexion?redirect=/${slug}`}
-            className="text-sm text-gray-500 hover:text-indigo-400 transition-colors"
+            className="text-sm text-gray-500 hover:text-brand-400 transition-colors"
           >
             Se connecter
           </Link>

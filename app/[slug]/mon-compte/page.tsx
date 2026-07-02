@@ -180,7 +180,7 @@ export default async function MonCompteBoutiquePage({
                     estActif
                       ? enEssai
                         ? 'bg-green-900/40 text-green-400 border border-green-500/30'
-                        : 'bg-indigo-900/40 text-indigo-300 border border-indigo-500/30'
+                        : 'bg-brand-900/40 text-brand-300 border border-brand-500/30'
                       : 'bg-red-900/40 text-red-400 border border-red-500/30'
                   }`}>
                     {!estActif ? 'Annulé' : enEssai ? 'Essai' : 'Actif'}
@@ -193,7 +193,7 @@ export default async function MonCompteBoutiquePage({
             ) : (
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
                 <p className="text-gray-500 text-sm">Aucun abonnement actif.</p>
-                <Link href={`/${slug}/abonnement`} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                <Link href={`/${slug}/abonnement`} className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
                   S&apos;abonner →
                 </Link>
               </div>
@@ -208,7 +208,7 @@ export default async function MonCompteBoutiquePage({
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Mes favoris ({totalFavoris})
               </h2>
-              <Link href={`/${slug}/mon-compte/favoris`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+              <Link href={`/${slug}/mon-compte/favoris`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
                 Voir tout →
               </Link>
             </div>
@@ -249,7 +249,7 @@ export default async function MonCompteBoutiquePage({
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
               Mes achats ({totalCommandes})
             </h2>
-            <Link href={`/${slug}/mon-compte/achats`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+            <Link href={`/${slug}/mon-compte/achats`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
               Voir tout →
             </Link>
           </div>
@@ -305,7 +305,7 @@ export default async function MonCompteBoutiquePage({
                   <button
                     type="submit"
                     className={`relative w-11 h-6 rounded-full transition-colors ${
-                      newsletterConsent ? 'bg-indigo-600' : 'bg-gray-700'
+                      newsletterConsent ? 'bg-brand-600' : 'bg-gray-700'
                     }`}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${

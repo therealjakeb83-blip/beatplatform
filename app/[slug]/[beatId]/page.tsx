@@ -169,7 +169,7 @@ export default async function BeatDetailPage({
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-4">
               {(beat.type_beat ?? []).map((t: string) => (
-                <span key={t} className="text-xs px-2.5 py-1 rounded-full bg-indigo-900/50 text-indigo-300">
+                <span key={t} className="text-xs px-2.5 py-1 rounded-full bg-brand-900/50 text-brand-300">
                   {t}
                 </span>
               ))}

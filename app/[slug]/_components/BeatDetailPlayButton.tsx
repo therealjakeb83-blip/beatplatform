@@ -24,7 +24,7 @@ export default function BeatDetailPlayButton({ beat }: { beat: BeatMin }) {
   return (
     <button
       onClick={handleClick}
-      className="flex items-center gap-3 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+      className="flex items-center gap-3 px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
     >
       <span className="text-xl">{isActive && isPlaying ? '⏸' : '▶'}</span>
       <span>{isActive && isPlaying ? 'Pause' : 'Écouter le preview'}</span>

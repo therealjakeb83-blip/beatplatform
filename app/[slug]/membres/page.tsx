@@ -106,7 +106,7 @@ export default async function MembresPage({
           Réservés aux membres <span className="text-gray-500 font-normal text-lg">({beats.length})</span>
         </h1>
         {estAbonne && (
-          <Link href={`/${slug}/mon-abonnement`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+          <Link href={`/${slug}/mon-abonnement`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
             Mon abonnement →
           </Link>
         )}
@@ -114,7 +114,7 @@ export default async function MembresPage({
 
       {/* Paywall pour non-abonnés */}
       {!estAbonne && beatmaker.abo_actif && (
-        <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-2xl p-8 mb-10 text-center">
+        <div className="bg-brand-900/20 border border-brand-500/30 rounded-2xl p-8 mb-10 text-center">
           <div className="text-4xl mb-3">🔒</div>
           <h2 className="text-xl font-black text-white mb-2">Ces beats sont réservés aux membres</h2>
           {beatmaker.abo_description && (
@@ -135,7 +135,7 @@ export default async function MembresPage({
           </div>
           <Link
             href={`/${slug}/abonnement`}
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
           >
             {beatmaker.abo_essai_jours > 0 ? `Essayer ${beatmaker.abo_essai_jours} jours gratuitement` : `S'abonner pour ${prixAffiche}€/mois`}
           </Link>

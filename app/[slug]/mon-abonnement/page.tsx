@@ -64,7 +64,7 @@ export default async function MonAbonnementPage({
         <div className="text-center">
           <h1 className="text-2xl font-black text-white mb-3">Non connecté</h1>
           <p className="text-gray-400 text-sm mb-6">Tu n&apos;as pas de session membre active.</p>
-          <Link href={`/${slug}/abonnement`} className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors">
+          <Link href={`/${slug}/abonnement`} className="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]">
             S&apos;abonner
           </Link>
         </div>
@@ -100,7 +100,7 @@ export default async function MonAbonnementPage({
               estActif
                 ? enEssai
                   ? 'bg-green-900/40 text-green-400 border border-green-500/30'
-                  : 'bg-indigo-900/40 text-indigo-300 border border-indigo-500/30'
+                  : 'bg-brand-900/40 text-brand-300 border border-brand-500/30'
                 : 'bg-red-900/40 text-red-400 border border-red-500/30'
             }`}>
               {!estActif ? 'Annulé' : enEssai ? 'Essai gratuit' : 'Actif'}
@@ -131,7 +131,7 @@ export default async function MonAbonnementPage({
           <div className="flex flex-col gap-3">
             <Link
               href={`/${slug}/membres`}
-              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors text-center"
+              className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
             >
               Accéder aux beats membres
             </Link>
@@ -144,7 +144,7 @@ export default async function MonAbonnementPage({
         {!estActif && (
           <Link
             href={`/${slug}/abonnement`}
-            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors text-center block"
+            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center block shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
           >
             Se réabonner
           </Link>

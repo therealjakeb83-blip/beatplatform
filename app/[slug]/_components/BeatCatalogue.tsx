@@ -77,7 +77,7 @@ export default function BeatCatalogue({
             </h2>
             <a
               href={`/${slug}/membres`}
-              className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="text-sm text-brand-400 hover:text-brand-300 transition-colors"
             >
               Tout voir →
             </a>
@@ -109,7 +109,7 @@ export default function BeatCatalogue({
             {!voirTout && beats.length > 4 && (
               <button
                 onClick={() => setVoirTout(true)}
-                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="text-sm text-brand-400 hover:text-brand-300 transition-colors"
               >
                 Tout voir →
               </button>
@@ -125,7 +125,7 @@ export default function BeatCatalogue({
                   value={recherche}
                   onChange={e => setRecherche(e.target.value)}
                   placeholder="Rechercher un beat..."
-                  className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-800 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-800 text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition-colors"
                 />
               </div>
 
@@ -138,7 +138,7 @@ export default function BeatCatalogue({
                       onClick={() => toggleStyle(style)}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                         stylesActifs.includes(style)
-                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          ? 'bg-brand-600 border-brand-600 text-white'
                           : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-300'
                       }`}
                     >
@@ -157,7 +157,7 @@ export default function BeatCatalogue({
                       onClick={() => toggleTypeBeat(type)}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                         typeBeatsActifs.includes(type)
-                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          ? 'bg-brand-600 border-brand-600 text-white'
                           : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-300'
                       }`}
                     >
@@ -179,7 +179,7 @@ export default function BeatCatalogue({
                   {aFiltres && (
                     <button
                       onClick={() => { setRecherche(''); setStylesActifs([]); setTypeBeatsActifs([]) }}
-                      className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm transition-colors"
+                      className="mt-4 text-brand-400 hover:text-brand-300 text-sm transition-colors"
                     >
                       Effacer les filtres
                     </button>

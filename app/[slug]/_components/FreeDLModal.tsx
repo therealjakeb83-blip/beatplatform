@@ -105,7 +105,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="font-bold text-base text-white">Téléchargement gratuit</h2>
-            <p className="text-xs text-indigo-400 mt-0.5">{beatTitre}</p>
+            <p className="text-xs text-brand-400 mt-0.5">{beatTitre}</p>
           </div>
           <button
             onClick={handleClose}
@@ -132,7 +132,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
             </p>
             <a
               href={downloadUrl}
-              className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+              className="text-xs text-brand-400 hover:text-brand-300 underline underline-offset-2"
             >
               Cliquer ici si le téléchargement ne démarre pas
             </a>
@@ -158,7 +158,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="ton@email.com *"
-              className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-brand-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
             />
             <div className="grid grid-cols-2 gap-2">
               <input
@@ -166,14 +166,14 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
                 value={prenom}
                 onChange={e => setPrenom(e.target.value)}
                 placeholder="Prénom *"
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-brand-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
               />
               <input
                 type="text"
                 value={nom}
                 onChange={e => setNom(e.target.value)}
                 placeholder="Nom"
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-brand-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
               />
             </div>
             <input
@@ -181,14 +181,14 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
               value={nomArtiste}
               onChange={e => setNomArtiste(e.target.value)}
               placeholder="Nom d'artiste"
-              className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-brand-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
             />
             <div>
               <p className="text-[10px] text-gray-500 mb-1 pl-1">Pays <span className="text-red-400">*</span></p>
               <select
                 value={pays}
                 onChange={e => setPays(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-indigo-500 text-sm outline-none transition-colors cursor-pointer text-gray-500"
+                className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-brand-500 text-sm outline-none transition-colors cursor-pointer text-gray-500"
                 style={{ color: pays ? 'white' : undefined }}
               >
                 <option value="" disabled>Sélectionner…</option>
@@ -200,7 +200,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
                 type="checkbox"
                 checked={newsletter}
                 onChange={e => setNewsletter(e.target.checked)}
-                className="mt-0.5 flex-shrink-0 accent-indigo-600 cursor-pointer"
+                className="mt-0.5 flex-shrink-0 accent-brand-600 cursor-pointer"
               />
               <span className="text-xs text-gray-400 leading-relaxed">
                 Je m&apos;inscris à la newsletter pour recevoir les prochains beats et nouveautés{' '}
@@ -212,7 +212,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
                 type="checkbox"
                 checked={compte}
                 onChange={e => setCompte(e.target.checked)}
-                className="mt-0.5 flex-shrink-0 accent-indigo-600 cursor-pointer"
+                className="mt-0.5 flex-shrink-0 accent-brand-600 cursor-pointer"
               />
               <span className="text-xs text-gray-400 leading-relaxed">
                 J&apos;accepte de créer un compte et je confirme avoir lu les conditions ci-dessus{' '}

@@ -30,7 +30,7 @@ export default function PlayerBar() {
         onClick={handleProgressClick}
       >
         <div
-          className="h-full bg-indigo-500 group-hover:bg-indigo-400 transition-colors relative"
+          className="h-full bg-brand-500 group-hover:bg-brand-400 transition-colors relative"
           style={{ width: `${progress * 100}%` }}
         >
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -69,7 +69,7 @@ export default function PlayerBar() {
 
           <button
             onClick={togglePlay}
-            className="w-11 h-11 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition-colors text-lg"
+            className="w-11 h-11 rounded-full bg-brand-600 hover:bg-brand-500 flex items-center justify-center transition-colors text-lg"
             aria-label={isPlaying ? 'Pause' : 'Lecture'}
           >
             {isPlaying ? '⏸' : '▶'}

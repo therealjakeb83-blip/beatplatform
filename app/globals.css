@@ -19,6 +19,17 @@
   }
 }
 
+/* Bleu de marque — repris de jakebmusic.com (--wp--preset--color--bleu).
+   Couleur unique pour toutes les boutiques en attendant les thèmes par beatmaker. */
+@theme {
+  --color-brand-300: color-mix(in oklch, #0029ff 45%, white);
+  --color-brand-400: color-mix(in oklch, #0029ff 68%, white);
+  --color-brand-500: color-mix(in oklch, #0029ff 85%, white);
+  --color-brand-600: #0029ff;
+  --color-brand-900: color-mix(in oklch, #0029ff 55%, black);
+  --color-brand-950: color-mix(in oklch, #0029ff 35%, black);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
