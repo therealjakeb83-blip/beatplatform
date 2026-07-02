@@ -117,7 +117,15 @@ export async function GET(request: Request) {
       return debut < slotEnd && (fin === null || fin >= slotStart)
     })
     const mMrr          = mActifs.reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100
-    const mTotalVendus  = abos.filter(a => a.date_debut >= slot.from && a.date_debut < slot.to).length
+    const abosDebutSlot = abos.filter(a => a.date_debut >= slot.from && a.date_debut < slot.to)
+    const mTotalVendus  = abosDebutSlot.length
+    const mRetentionMoy = abosDebutSlot.length
+      ? abosDebutSlot.reduce((s, a) => {
+          const debut = new Date(a.date_debut)
+          const fin   = a.date_fin ? new Date(a.date_fin) : now
+          return s + (fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+        }, 0) / abosDebutSlot.length
+      : 0
     const mChurnCount   = abos.filter(a => a.statut === 'annule' && a.date_fin && a.date_fin >= slot.from && a.date_fin < slot.to).length
     const mAchatsPostAbo = cmds.filter(c => {
       if (c.created_at < slot.from || c.created_at >= slot.to) return false
@@ -133,7 +141,7 @@ export async function GET(request: Request) {
     return {
       label: slot.label, fullLabel: slot.fullLabel,
       mrr: mMrr, actifs: mActifs.length,
-      total_vendus: mTotalVendus, churn_count: mChurnCount, achats_post_abo: mAchatsPostAbo,
+      total_vendus: mTotalVendus, retention_moy: mRetentionMoy, churn_count: mChurnCount, achats_post_abo: mAchatsPostAbo,
     }
   })
 

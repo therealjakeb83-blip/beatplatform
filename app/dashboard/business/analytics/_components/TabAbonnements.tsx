@@ -20,14 +20,15 @@ type Data = {
   abonnes: Abonne[]
 }
 
-type KpiKey = 'mrr' | 'actifs' | 'total_vendus' | 'churn_count' | 'achats_post_abo'
+type KpiKey = 'mrr' | 'actifs' | 'total_vendus' | 'retention_moy' | 'churn_count' | 'achats_post_abo'
 
 const CHART_CONFIG: Record<KpiKey, { key: string; color: string; label: string; format: (v: number) => string }> = {
-  mrr:             { key: 'mrr',             color: '#6366f1', label: 'MRR',            format: v => fmtEuroDisplay(v) },
-  actifs:          { key: 'actifs',          color: '#4ade80', label: 'Abonnés actifs',  format: v => String(Math.round(v)) },
-  total_vendus:    { key: 'total_vendus',    color: '#8b5cf6', label: 'Nouveaux abos',   format: v => String(Math.round(v)) },
-  churn_count:     { key: 'churn_count',     color: '#f87171', label: 'Churn',           format: v => String(Math.round(v)) },
-  achats_post_abo: { key: 'achats_post_abo', color: '#38bdf8', label: 'Achats post-abo', format: v => String(Math.round(v)) },
+  mrr:             { key: 'mrr',             color: '#6366f1', label: 'MRR',             format: v => fmtEuroDisplay(v) },
+  actifs:          { key: 'actifs',          color: '#4ade80', label: 'Abonnés actifs',   format: v => String(Math.round(v)) },
+  total_vendus:    { key: 'total_vendus',    color: '#8b5cf6', label: 'Nouveaux abos',    format: v => String(Math.round(v)) },
+  retention_moy:   { key: 'retention_moy',   color: '#f59e0b', label: 'Rétention moy.',   format: v => `${v.toFixed(1)} mois` },
+  churn_count:     { key: 'churn_count',     color: '#f87171', label: 'Churn',            format: v => String(Math.round(v)) },
+  achats_post_abo: { key: 'achats_post_abo', color: '#38bdf8', label: 'Achats post-abo',  format: v => String(Math.round(v)) },
 }
 
 const STATUT_STYLE: Record<string, string> = {
@@ -66,7 +67,7 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
         <KpiCard label="MRR" value={fmtEuroDisplay(kpis.mrr)} sub={`ARR : ${fmtEuroDisplay(kpis.arr)}`} color="#6366f1" active={kpiActif === 'mrr'} onClick={() => setKpiActif('mrr')} badge="actuel" />
         <KpiCard label="Abonnés actifs" value={String(kpis.actifs)} sub={kpis.en_annulation > 0 ? `${kpis.en_annulation} en annulation` : undefined} color="#4ade80" active={kpiActif === 'actifs'} onClick={() => setKpiActif('actifs')} badge="actuel" />
         <KpiCard label="Total vendus" value={String(kpis.total_vendus)} color="#8b5cf6" active={kpiActif === 'total_vendus'} onClick={() => setKpiActif('total_vendus')} badge="periode" />
-        <KpiCard label="Rétention moy." value={`${kpis.retention_moy.toFixed(1)} mois`} color="#f59e0b" badge="tous-temps" />
+        <KpiCard label="Rétention moy." value={`${kpis.retention_moy.toFixed(1)} mois`} color="#f59e0b" active={kpiActif === 'retention_moy'} onClick={() => setKpiActif('retention_moy')} badge="tous-temps" />
         <KpiCard label="Achats post-abo" value={kpis.achats_post_abo.toFixed(1)} sub="licences / abonné" color="#38bdf8" active={kpiActif === 'achats_post_abo'} onClick={() => setKpiActif('achats_post_abo')} badge="periode" />
         <KpiCard label="Churn" value={String(kpis.churn_count)} sub={`${kpis.churn_rate.toFixed(1)}% churn rate`} color="#f87171" active={kpiActif === 'churn_count'} onClick={() => setKpiActif('churn_count')} badge="periode" />
       </div>
