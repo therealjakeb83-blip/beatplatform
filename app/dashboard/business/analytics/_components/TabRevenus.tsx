@@ -13,21 +13,36 @@ type Data = {
   historique: Array<Record<string, unknown>>
 }
 
-type KpiKey = 'brut' | 'net' | 'tva'
-const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string }> = [
-  { key: 'brut', label: 'Ventes brutes', color: '#4ade80' },
-  { key: 'net',  label: 'Ventes nettes', color: '#22d3ee' },
-  { key: 'tva',  label: 'TVA',           color: '#f59e0b' },
+type KpiKey = 'brut' | 'promo' | 'net' | 'tva' | 'moy'
+const KPI_CONFIG: Array<{ key: 'brut' | 'promo' | 'net' | 'tva'; label: string; color: string }> = [
+  { key: 'brut',  label: 'Ventes brutes',      color: '#4ade80' },
+  { key: 'promo', label: 'CA via codes promo', color: '#f87171' },
+  { key: 'net',   label: 'Ventes nettes',      color: '#22d3ee' },
+  { key: 'tva',   label: 'TVA',                color: '#f59e0b' },
+]
+
+type MoyGran = 'jour' | 'semaine' | 'mois' | 'trimestre' | 'an'
+const MOY_GRAN: { key: MoyGran; label: string; mult: number }[] = [
+  { key: 'jour',      label: 'Par jour',      mult: 1      },
+  { key: 'semaine',   label: 'Par semaine',   mult: 7      },
+  { key: 'mois',      label: 'Par mois',      mult: 30.44  },
+  { key: 'trimestre', label: 'Par trimestre', mult: 91.31  },
+  { key: 'an',        label: 'Par an',        mult: 365    },
 ]
 
 function fmtJourDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function fmtJourShort(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
 export default function TabRevenus({ periode, debut, fin }: Props) {
   const [data,     setData]    = useState<Data | null>(null)
   const [loading,  setLoading] = useState(true)
   const [kpiActif, setKpiActif] = useState<KpiKey>('brut')
+  const [moyGran,  setMoyGran]  = useState<MoyGran>('jour')
 
   useEffect(() => {
     setLoading(true)
@@ -41,7 +56,20 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
   if (!data)   return <p className="text-gray-500 text-sm">Erreur de chargement.</p>
 
   const { kpis, jours, historique } = data
-  const kpiConf = KPI_CONFIG.find(k => k.key === kpiActif) ?? KPI_CONFIG[0]
+  const kpiConf   = KPI_CONFIG.find(k => k.key === kpiActif) ?? KPI_CONFIG[0]
+  const totCmds   = jours.reduce((s, j) => s + j.nb, 0)
+  const moyConf   = MOY_GRAN.find(g => g.key === moyGran)!
+
+  const moyChartData = [...jours].reverse().reduce<Array<{ label: string; fullLabel: string; valeur: number; cum: number }>>((acc, j) => {
+    const cum = (acc.length > 0 ? acc[acc.length - 1].cum : 0) + j.net
+    acc.push({
+      label:     fmtJourShort(j.date),
+      fullLabel: fmtJourDate(j.date),
+      valeur:    parseFloat(((cum / (acc.length + 1)) * moyConf.mult).toFixed(2)),
+      cum,
+    })
+    return acc
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -56,9 +84,11 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         />
         <KpiCard
           label="CA via codes promo"
-          value={fmtEuroDisplay(kpis.ca_promo)}
-          sub={`Remises : −${fmtEuroDisplay(kpis.remises_total)}`}
+          value={kpis.ca_promo > 0 ? fmtEuroDisplay(kpis.ca_promo) : '—'}
+          sub={kpis.remises_total > 0 ? `Remises : −${fmtEuroDisplay(kpis.remises_total)}` : 'Aucun code utilisé'}
           color="#f87171"
+          active={kpiActif === 'promo'}
+          onClick={() => setKpiActif('promo')}
         />
         <KpiCard
           label="Ventes nettes"
@@ -77,7 +107,12 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
           onClick={() => setKpiActif('tva')}
         />
         {/* Carte CA moyen */}
-        <div className="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <button
+          onClick={() => setKpiActif('moy')}
+          className={`col-span-2 text-left bg-gray-900 border rounded-xl p-4 transition-colors ${
+            kpiActif === 'moy' ? 'border-indigo-500' : 'border-gray-800 hover:border-gray-700'
+          }`}
+        >
           <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">CA Moyen</p>
           <div className="grid grid-cols-5 gap-2 text-center">
             {[
@@ -88,23 +123,53 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
               { label: 'Par an',        val: kpis.avg_par_an },
             ].map(item => (
               <div key={item.label}>
-                <p className="text-sm font-bold text-white">{fmtEuroDisplay(item.val)}</p>
+                <p className="text-sm font-bold text-rose-400">{fmtEuroDisplay(item.val)}</p>
                 <p className="text-[10px] text-gray-600 mt-0.5">{item.label}</p>
               </div>
             ))}
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Chart */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <p className="text-xs text-gray-400 font-medium mb-3">{kpiConf.label} — {getGranulariteLabel(periode, debut, fin)}</p>
-        <AnalyticsLineChart
-          data={historique}
-          xKey="label"
-          series={[{ key: kpiConf.key, color: kpiConf.color, label: kpiConf.label }]}
-          formatValue={v => fmtEuroDisplay(v)}
-        />
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-400 font-medium">
+            {kpiActif === 'moy'
+              ? `CA moyen ${moyConf.label.toLowerCase()} — évolution`
+              : `${kpiConf.label} — ${getGranulariteLabel(periode, debut, fin)}`}
+          </p>
+          {kpiActif === 'moy' && (
+            <div className="flex items-center gap-0.5 bg-gray-800 rounded-lg p-0.5">
+              {MOY_GRAN.map(g => (
+                <button
+                  key={g.key}
+                  onClick={() => setMoyGran(g.key)}
+                  className={`text-[10px] px-2 py-1 rounded-md font-medium transition-colors ${
+                    moyGran === g.key ? 'bg-rose-500/80 text-white' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {kpiActif === 'moy' ? (
+          <AnalyticsLineChart
+            data={moyChartData}
+            xKey="label"
+            series={[{ key: 'valeur', color: '#fb7185', label: 'CA moyen' }]}
+            formatValue={v => fmtEuroDisplay(v)}
+          />
+        ) : (
+          <AnalyticsLineChart
+            data={historique}
+            xKey="label"
+            series={[{ key: kpiConf.key, color: kpiConf.color, label: kpiConf.label }]}
+            formatValue={v => fmtEuroDisplay(v)}
+          />
+        )}
       </div>
 
       {/* Table journalière */}
@@ -137,6 +202,18 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune vente sur cette période</td></tr>
               )}
             </tbody>
+            {jours.length > 0 && (
+              <tfoot>
+                <tr className="bg-gray-900/50 border-t border-gray-800">
+                  <td className="px-4 py-2 text-gray-500 text-[10px]">Total</td>
+                  <td className="px-4 py-2 text-center text-gray-500 text-[10px]">{totCmds}</td>
+                  <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{fmtEuroDisplay(kpis.ventes_brutes)}</td>
+                  <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{kpis.remises_total > 0 ? `−${fmtEuroDisplay(kpis.remises_total)}` : '—'}</td>
+                  <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{fmtEuroDisplay(kpis.ventes_nettes)}</td>
+                  <td className="px-4 py-2 text-right text-gray-500 text-[10px]">{kpis.tva > 0 ? fmtEuroDisplay(kpis.tva) : '—'}</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

@@ -77,7 +77,8 @@ export async function GET(request: Request) {
     const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     const net   = brut - rem
-    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
+    const promo = mCmds.filter(c => c.code_promo).reduce((s, c) => s + c.prix_paye, 0)
+    return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, promo, tva: tvaRate > 0 ? net - net / (1 + tvaRate) : 0 }
   })
 
   return NextResponse.json({
