@@ -195,10 +195,12 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   console.log('[webhook] Commande créée:', commande?.id)
 
-  // Attribution marketing : uniquement si l'achat provient d'un clic sur une campagne
-  // (cookie posé par /api/marketing/clic) — purement statistique, ne doit jamais
-  // faire échouer le paiement
-  if (meta.campagne_id && meta.campagne_client_id) {
+  // Attribution marketing : exige à la fois un clic récent sur la campagne (cookie posé
+  // par /api/marketing/clic) ET que l'achat soit fait avec le même client que le
+  // destinataire — pour que la conversion reste cohérente avec la fiche client
+  // (sinon la commande et la conversion se retrouvent sur deux clients différents).
+  // Purement statistique, ne doit jamais faire échouer le paiement.
+  if (meta.campagne_id && meta.campagne_client_id && meta.campagne_client_id === clientId) {
     enregistrerConversionParClic(meta.campagne_id, meta.campagne_client_id).catch(err =>
       console.error('[webhook] Erreur enregistrement conversion campagne:', err)
     )
