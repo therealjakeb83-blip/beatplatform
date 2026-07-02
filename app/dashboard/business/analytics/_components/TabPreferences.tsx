@@ -2,21 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import KpiCard            from './KpiCard'
-import { periodeToSearch, fmtEuroDisplay, fmtNum, type Periode } from '../_lib/periode'
+import AnalyticsLineChart from './AnalyticsLineChart'
+import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
-type PrefRow = { name: string; ca: number; ventes: number; ecoutes: number; free_dl: number }
+type PrefRow   = { name: string; ca: number; ventes: number }
+type HistoPoint = { label: string; fullLabel: string; ca: number; ventes: number }
 type Data = {
   licences:    PrefRow[]
   styles:      PrefRow[]
   ambiances:   PrefRow[]
   instruments: PrefRow[]
   type_beat:   PrefRow[]
+  historique: {
+    licences:    HistoPoint[]
+    styles:      HistoPoint[]
+    ambiances:   HistoPoint[]
+    instruments: HistoPoint[]
+    type_beat:   HistoPoint[]
+  }
 }
 
 type Vue = 'licences' | 'styles' | 'ambiances' | 'instruments' | 'type_beat'
-type Metrique = 'ca' | 'ventes' | 'ecoutes' | 'free_dl'
+type Metrique = 'ca' | 'ventes'
 
 const VUES: { key: Vue; label: string }[] = [
   { key: 'licences',    label: 'Licence' },
@@ -27,10 +36,8 @@ const VUES: { key: Vue; label: string }[] = [
 ]
 
 const METRIQUES: { key: Metrique; label: string; color: string; fmt: (v: number) => string }[] = [
-  { key: 'ca',      label: 'CA',       color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
-  { key: 'ventes',  label: 'Ventes',   color: '#8b5cf6', fmt: v => String(v) },
-  { key: 'ecoutes', label: 'Écoutes',  color: '#818cf8', fmt: v => fmtNum(v) },
-  { key: 'free_dl', label: 'Free DL',  color: '#38bdf8', fmt: v => String(v) },
+  { key: 'ca',      label: 'CA (brut, TTC)', color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
+  { key: 'ventes',  label: 'Ventes',         color: '#8b5cf6', fmt: v => String(v) },
 ]
 
 export default function TabPreferences({ periode, debut, fin }: Props) {
@@ -51,15 +58,11 @@ export default function TabPreferences({ periode, debut, fin }: Props) {
   if (!data)   return <p className="text-gray-500 text-sm">Erreur de chargement.</p>
 
   const rows = data[vue]
+  const hist = data.historique[vue]
   const metConf = METRIQUES.find(m => m.key === metrique) ?? METRIQUES[0]
-  const maxVal  = Math.max(...rows.map(r => r[metrique] as number), 1)
+  const maxVal  = Math.max(...rows.map(r => r[metrique]), 1)
 
-  const totals = rows.reduce((s, r) => ({
-    ca:      s.ca      + r.ca,
-    ventes:  s.ventes  + r.ventes,
-    ecoutes: s.ecoutes + r.ecoutes,
-    free_dl: s.free_dl + r.free_dl,
-  }), { ca: 0, ventes: 0, ecoutes: 0, free_dl: 0 })
+  const totals = rows.reduce((s, r) => ({ ca: s.ca + r.ca, ventes: s.ventes + r.ventes }), { ca: 0, ventes: 0 })
 
   return (
     <div className="space-y-6">
@@ -74,7 +77,7 @@ export default function TabPreferences({ periode, debut, fin }: Props) {
       </div>
 
       {/* KPIs totaux */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {METRIQUES.map(m => (
           <KpiCard
             key={m.key}
@@ -87,6 +90,19 @@ export default function TabPreferences({ periode, debut, fin }: Props) {
         ))}
       </div>
 
+      {/* Chart */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <p className="text-xs text-gray-400 font-medium mb-3">
+          {metConf.label} — {VUES.find(v => v.key === vue)?.label.toLowerCase()} — {getGranulariteLabel(periode, debut, fin)}
+        </p>
+        <AnalyticsLineChart
+          data={hist}
+          xKey="label"
+          series={[{ key: metrique, color: metConf.color, label: metConf.label }]}
+          formatValue={metConf.fmt}
+        />
+      </div>
+
       {/* Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">
@@ -97,15 +113,13 @@ export default function TabPreferences({ periode, debut, fin }: Props) {
             <thead>
               <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
                 <th className="text-left px-4 py-2">Catégorie</th>
-                <th className="text-right px-4 py-2">CA</th>
+                <th className="text-right px-4 py-2">CA (TTC)</th>
                 <th className="text-right px-4 py-2">Ventes</th>
-                <th className="text-right px-4 py-2">Écoutes</th>
-                <th className="text-right px-4 py-2">Free DL</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => {
-                const pct = maxVal > 0 ? ((r[metrique] as number) / maxVal) * 100 : 0
+                const pct = maxVal > 0 ? (r[metrique] / maxVal) * 100 : 0
                 return (
                   <tr key={r.name} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                     <td className="px-4 py-3">
@@ -120,13 +134,11 @@ export default function TabPreferences({ periode, debut, fin }: Props) {
                     </td>
                     <td className="px-4 py-3 text-right text-green-400">{fmtEuroDisplay(r.ca)}</td>
                     <td className="px-4 py-3 text-right text-violet-400">{r.ventes}</td>
-                    <td className="px-4 py-3 text-right text-indigo-300">{fmtNum(r.ecoutes)}</td>
-                    <td className="px-4 py-3 text-right text-sky-400">{r.free_dl}</td>
                   </tr>
                 )
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Aucune donnée</td></tr>
+                <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-600">Aucune donnée</td></tr>
               )}
             </tbody>
           </table>
@@ -140,7 +152,8 @@ function Skeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="flex gap-1">{Array.from({length:5}).map((_,i)=><div key={i} className="h-8 w-24 bg-gray-800 rounded-lg"/>)}</div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{Array.from({length:4}).map((_,i)=><div key={i} className="h-20 bg-gray-800 rounded-xl"/>)}</div>
+      <div className="grid grid-cols-2 gap-3">{Array.from({length:2}).map((_,i)=><div key={i} className="h-20 bg-gray-800 rounded-xl"/>)}</div>
+      <div className="h-48 bg-gray-800 rounded-xl"/>
       <div className="h-64 bg-gray-800 rounded-xl"/>
     </div>
   )
