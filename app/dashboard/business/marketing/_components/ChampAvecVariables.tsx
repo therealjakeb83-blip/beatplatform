@@ -95,21 +95,24 @@ type Props = {
   multiline?: boolean
   placeholder?: string
   className?: string
+  // false = aperçu lecture seule (bloc non sélectionné) : pastilles affichées mais
+  // ni éditables ni cliquables, le clic doit remonter pour sélectionner le bloc.
+  editable?: boolean
 }
 
-function creerChip(interieur: string, onClicChip: (span: HTMLElement) => void): HTMLElement {
+function creerChip(interieur: string, onClicChip?: (span: HTMLElement) => void): HTMLElement {
   const { principal, etapes } = parserToken(interieur)
   const span = document.createElement('span')
   span.contentEditable = 'false'
   span.dataset.varToken = `{{${interieur}}}`
-  span.className = 'inline-flex items-center px-1.5 rounded bg-indigo-100 text-indigo-700 font-medium cursor-pointer select-none hover:bg-indigo-200 transition-colors'
+  span.className = `inline-flex items-center px-1.5 rounded bg-indigo-100 text-indigo-700 font-medium select-none transition-colors ${onClicChip ? 'cursor-pointer hover:bg-indigo-200' : ''}`
   span.style.fontSize = '0.9em'
   span.textContent = (LABEL_PAR_TOKEN[principal] ?? principal) + (etapes.length > 0 ? ' •' : '')
-  span.addEventListener('click', e => { e.stopPropagation(); onClicChip(span) })
+  if (onClicChip) span.addEventListener('click', e => { e.stopPropagation(); onClicChip(span) })
   return span
 }
 
-function construireDOM(texte: string, onClicChip: (span: HTMLElement) => void): DocumentFragment {
+function construireDOM(texte: string, onClicChip?: (span: HTMLElement) => void): DocumentFragment {
   const frag = document.createDocumentFragment()
   const regex = /\{\{([^{}]+)\}\}/g
   let dernierIndex = 0
@@ -132,7 +135,7 @@ function construireDOM(texte: string, onClicChip: (span: HTMLElement) => void): 
   return frag
 }
 
-export default function ChampAvecVariables({ value, onChange, onFocusChamp, multiline, placeholder, className }: Props) {
+export default function ChampAvecVariables({ value, onChange, onFocusChamp, multiline, placeholder, className, editable = true }: Props) {
   const ref            = useRef<HTMLDivElement>(null)
   const lastValueRef   = useRef<string>(value)
   const savedRangeRef  = useRef<Range | null>(null)
@@ -170,20 +173,23 @@ export default function ChampAvecVariables({ value, onChange, onFocusChamp, mult
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    el.appendChild(construireDOM(value, ouvrirModaleChip))
+    el.appendChild(construireDOM(value, editable ? ouvrirModaleChip : undefined))
+    el.dataset.editable = String(editable)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Re-synchronise le DOM si la valeur change depuis l'extérieur (changement de bloc sélectionné, etc.)
+  // Re-synchronise le DOM si la valeur change depuis l'extérieur (changement de bloc
+  // sélectionné, etc.) ou si on bascule entre lecture seule et édition.
   useEffect(() => {
-    if (value === lastValueRef.current) return
     const el = ref.current
     if (!el) return
+    if (value === lastValueRef.current && el.dataset.editable === String(editable)) return
     el.innerHTML = ''
-    el.appendChild(construireDOM(value, ouvrirModaleChip))
+    el.appendChild(construireDOM(value, editable ? ouvrirModaleChip : undefined))
+    el.dataset.editable = String(editable)
     lastValueRef.current = value
     setEstVide(value === '')
-  }, [value, ouvrirModaleChip])
+  }, [value, ouvrirModaleChip, editable])
 
   function handleInput() {
     const v = serialiser()
@@ -271,24 +277,24 @@ export default function ChampAvecVariables({ value, onChange, onFocusChamp, mult
   }
 
   return (
-    <div className="relative" onClick={e => e.stopPropagation()}>
-      {estVide && placeholder && (
+    <div className="relative" onClick={editable ? e => e.stopPropagation() : undefined}>
+      {editable && estVide && placeholder && (
         <span className="absolute inset-0 pointer-events-none opacity-40" style={{ font: 'inherit', color: 'inherit' }}>
           {placeholder}
         </span>
       )}
       <div
         ref={ref}
-        contentEditable
+        contentEditable={editable}
         suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        onInput={editable ? handleInput : undefined}
+        onKeyDown={editable ? handleKeyDown : undefined}
+        onFocus={editable ? handleFocus : undefined}
+        onBlur={editable ? handleBlur : undefined}
         className={`${className ?? ''} outline-none`}
         style={{ whiteSpace: 'pre-wrap', minHeight: '1.2em' }}
       />
-      {configModale && (
+      {editable && configModale && (
         <ModaleConfigVariable
           principal={configModale.principal}
           etapesInitiales={configModale.etapes}

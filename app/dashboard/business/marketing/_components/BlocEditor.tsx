@@ -121,13 +121,15 @@ export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, par
   // Insère la variable dans le champ actuellement (ou dernièrement) actif du
   // canvas. Si aucun champ n'a encore été utilisé, copie dans le presse-papiers
   // (utile par ex. pour coller dans le champ "Objet" de l'assistant de campagne,
-  // qui n'est pas un champ à variables).
-  function insererOuCopierVariable(token: string) {
+  // qui n'est pas un champ à variables) — le retour permet à la palette d'afficher
+  // le bon message ("inséré" vs "copié").
+  function insererOuCopierVariable(token: string): 'insere' | 'copie' {
     if (champActifRef.current) {
       champActifRef.current(token)
-    } else {
-      navigator.clipboard.writeText(token).catch(() => {})
+      return 'insere'
     }
+    navigator.clipboard.writeText(token).catch(() => {})
+    return 'copie'
   }
 
   function registrerChampActif(inserer: (token: string) => void) {
@@ -260,15 +262,15 @@ export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, par
 
 function PanneauPalette({ onAjouter, onInsererVariable, parametresSupplementaires }: {
   onAjouter: (t: BlocEmail['type']) => void
-  onInsererVariable: (token: string) => void
+  onInsererVariable: (token: string) => 'insere' | 'copie'
   parametresSupplementaires?: React.ReactNode
 }) {
-  const [clique, setClique] = useState<string | null>(null)
+  const [clique, setClique] = useState<{ token: string; resultat: 'insere' | 'copie' } | null>(null)
 
   function handleClic(token: string) {
-    onInsererVariable(token)
-    setClique(token)
-    setTimeout(() => setClique(prev => prev === token ? null : prev), 900)
+    const resultat = onInsererVariable(token)
+    setClique({ token, resultat })
+    setTimeout(() => setClique(prev => prev?.token === token ? null : prev), resultat === 'insere' ? 900 : 2000)
   }
 
   return (
@@ -302,15 +304,19 @@ function PanneauPalette({ onAjouter, onInsererVariable, parametresSupplementaire
           <div className="flex flex-wrap gap-1">
             {g.vars.map(v => {
               const token = `{{${v.token}}}`
+              const etat = clique?.token === token ? clique.resultat : null
               return (
                 <button
                   key={v.token}
                   onClick={() => handleClic(token)}
+                  title={etat === 'copie' ? 'Copié — clique d\'abord dans un champ de texte du canvas pour insérer directement' : undefined}
                   className={`text-[10px] px-1.5 py-0.5 rounded transition-all ${
-                    clique === token ? 'bg-green-500/20 text-green-400' : 'bg-gray-800 hover:bg-indigo-600/20 text-gray-400 hover:text-indigo-400'
+                    etat === 'insere' ? 'bg-green-500/20 text-green-400' :
+                    etat === 'copie'  ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-gray-800 hover:bg-indigo-600/20 text-gray-400 hover:text-indigo-400'
                   }`}
                 >
-                  {clique === token ? '✓ inséré' : v.label}
+                  {etat === 'insere' ? '✓ inséré' : etat === 'copie' ? 'copié (sélectionne un champ)' : v.label}
                 </button>
               )
             })}
@@ -494,53 +500,37 @@ function BlocCanvas({ blocAvecCle, selected, onSelect, onUpdate, onSupprimer, on
 
       {bloc.type === 'header' && (
         <div className="text-center py-8 px-6" style={{ backgroundColor: bloc.couleur_fond }}>
-          {selected ? (
-            <ChampAvecVariables
-              value={bloc.titre} onChange={v => onUpdate({ titre: v })} onFocusChamp={onRegistrerChampActif}
-              placeholder="Titre de l'email…" className={`${inlineInput} text-white font-black text-xl text-center`}
-            />
-          ) : (
-            <h1 className="text-white font-black text-xl">{bloc.titre || 'Titre'}</h1>
-          )}
+          <ChampAvecVariables
+            value={bloc.titre} onChange={v => onUpdate({ titre: v })} onFocusChamp={onRegistrerChampActif}
+            editable={selected}
+            placeholder="Titre de l'email…" className={`${inlineInput} text-white font-black text-xl text-center`}
+          />
         </div>
       )}
 
       {bloc.type === 'texte' && (
         <div className="px-6 py-4">
-          {selected ? (
-            <ChampAvecVariables
-              value={bloc.contenu} onChange={v => onUpdate({ contenu: v })} onFocusChamp={onRegistrerChampActif}
-              multiline
-              className="w-full bg-transparent text-[#1f2937] text-sm leading-relaxed border border-transparent focus:border-gray-200 rounded px-1 -mx-1 transition-colors"
-              placeholder="Ton texte ici…"
-            />
-          ) : (
-            bloc.contenu.split('\n').map((line, i) => (
-              <p key={i} className="text-[#1f2937] text-sm leading-relaxed min-h-[1.4rem]">{line || ' '}</p>
-            ))
-          )}
+          <ChampAvecVariables
+            value={bloc.contenu} onChange={v => onUpdate({ contenu: v })} onFocusChamp={onRegistrerChampActif}
+            editable={selected} multiline
+            className="w-full bg-transparent text-[#1f2937] text-sm leading-relaxed border border-transparent focus:border-gray-200 rounded px-1 -mx-1 transition-colors"
+            placeholder="Ton texte ici…"
+          />
         </div>
       )}
 
       {bloc.type === 'section_beats' && (
         <div className="px-6 py-4">
-          {selected ? (
-            <>
-              <ChampAvecVariables
-                value={bloc.titre} onChange={v => onUpdate({ titre: v })} onFocusChamp={onRegistrerChampActif}
-                placeholder="Titre de section…" className={`${inlineInput} text-[#111827] font-bold text-base mb-1`}
-              />
-              <ChampAvecVariables
-                value={bloc.sous_titre ?? ''} onChange={v => onUpdate({ sous_titre: v })} onFocusChamp={onRegistrerChampActif}
-                placeholder="Sous-titre (optionnel)…" className={`${inlineInput} text-[#6b7280] text-xs mb-3`}
-              />
-            </>
-          ) : (
-            <>
-              {bloc.titre && <h2 className="text-[#111827] font-bold text-base mb-0.5">{bloc.titre}</h2>}
-              {bloc.sous_titre && <p className="text-[#6b7280] text-xs mb-3">{bloc.sous_titre}</p>}
-            </>
-          )}
+          <ChampAvecVariables
+            value={bloc.titre} onChange={v => onUpdate({ titre: v })} onFocusChamp={onRegistrerChampActif}
+            editable={selected}
+            placeholder="Titre de section…" className={`${inlineInput} text-[#111827] font-bold text-base mb-1`}
+          />
+          <ChampAvecVariables
+            value={bloc.sous_titre ?? ''} onChange={v => onUpdate({ sous_titre: v })} onFocusChamp={onRegistrerChampActif}
+            editable={selected}
+            placeholder="Sous-titre (optionnel)…" className={`${inlineInput} text-[#6b7280] text-xs mb-3`}
+          />
           <div className={`grid gap-2 ${bloc.colonnes === 2 ? 'grid-cols-2' : 'grid-cols-1 max-w-[180px]'}`}>
             {Array.from({ length: bloc.colonnes === 2 ? 2 : 1 }).map((_, i) => (
               <div key={i} className="aspect-square rounded-lg bg-gray-200 flex items-center justify-center">
@@ -555,14 +545,11 @@ function BlocCanvas({ blocAvecCle, selected, onSelect, onUpdate, onSupprimer, on
 
       {bloc.type === 'code_promo' && (
         <div className="px-6 py-4 text-center">
-          {selected ? (
-            <ChampAvecVariables
-              value={bloc.description} onChange={v => onUpdate({ description: v })} onFocusChamp={onRegistrerChampActif}
-              placeholder="Description…" className={`${inlineInput} text-[#4b5563] text-xs text-center mb-2`}
-            />
-          ) : (
-            bloc.description && <p className="text-[#4b5563] text-xs mb-2">{bloc.description}</p>
-          )}
+          <ChampAvecVariables
+            value={bloc.description} onChange={v => onUpdate({ description: v })} onFocusChamp={onRegistrerChampActif}
+            editable={selected}
+            placeholder="Description…" className={`${inlineInput} text-[#4b5563] text-xs text-center mb-2`}
+          />
           <div className="inline-block bg-gray-100 border-2 border-dashed border-gray-400 rounded-lg px-6 py-3">
             {selected ? (
               <input value={bloc.code} onChange={e => onUpdate({ code: e.target.value.toUpperCase() })} onClick={e => e.stopPropagation()}
@@ -576,16 +563,13 @@ function BlocCanvas({ blocAvecCle, selected, onSelect, onUpdate, onSupprimer, on
 
       {bloc.type === 'cta' && (
         <div className="px-6 py-4 text-center">
-          {selected ? (
-            <div className="inline-block px-8 py-2.5 rounded-lg" style={{ backgroundColor: bloc.couleur }}>
-              <ChampAvecVariables
-                value={bloc.texte} onChange={v => onUpdate({ texte: v })} onFocusChamp={onRegistrerChampActif}
-                className="text-white text-sm font-semibold text-center min-w-[3rem]"
-              />
-            </div>
-          ) : (
-            <button className="px-8 py-2.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: bloc.couleur }}>{bloc.texte}</button>
-          )}
+          <div className="inline-block px-8 py-2.5 rounded-lg" style={{ backgroundColor: bloc.couleur }}>
+            <ChampAvecVariables
+              value={bloc.texte} onChange={v => onUpdate({ texte: v })} onFocusChamp={onRegistrerChampActif}
+              editable={selected}
+              className="text-white text-sm font-semibold text-center min-w-[3rem]"
+            />
+          </div>
         </div>
       )}
 
