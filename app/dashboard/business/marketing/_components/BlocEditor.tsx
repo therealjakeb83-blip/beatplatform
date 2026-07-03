@@ -261,6 +261,26 @@ function PanneauPalette({ onAjouter, copieVar, onCopierVar, parametresSupplement
   onCopierVar: (v: string) => void
   parametresSupplementaires?: React.ReactNode
 }) {
+  const [varSelectionnee, setVarSelectionnee] = useState<string | null>(null)
+  const [varDefaut,       setVarDefaut]       = useState('')
+  const [confirmeDefaut,  setConfirmeDefaut]  = useState(false)
+
+  function handleClicVariable(v: string) {
+    onCopierVar(v)
+    setVarSelectionnee(prev => prev === v ? null : v)
+    setVarDefaut('')
+    setConfirmeDefaut(false)
+  }
+
+  function copierAvecDefaut() {
+    if (!varSelectionnee) return
+    const nom = varSelectionnee.replace(/[{}]/g, '')
+    const texte = varDefaut.trim() ? `{{${nom}|${varDefaut.trim()}}}` : varSelectionnee
+    onCopierVar(texte)
+    setConfirmeDefaut(true)
+    setTimeout(() => setConfirmeDefaut(false), 1200)
+  }
+
   return (
     <div className="p-4">
       {parametresSupplementaires && (
@@ -283,7 +303,7 @@ function PanneauPalette({ onAjouter, copieVar, onCopierVar, parametresSupplement
       </div>
 
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1">Variables</p>
-      <p className="text-[10px] text-gray-700 mb-3">Clique pour copier, colle dans un bloc.</p>
+      <p className="text-[10px] text-gray-700 mb-3">Clique pour copier, colle dans un bloc. Re-clique pour ajouter une valeur de secours.</p>
       {VARIABLES.map(g => (
         <div key={g.groupe} className="mb-3">
           <p className="text-[10px] text-gray-500 mb-1.5">{g.groupe}</p>
@@ -291,17 +311,40 @@ function PanneauPalette({ onAjouter, copieVar, onCopierVar, parametresSupplement
             {g.vars.map(v => (
               <button
                 key={v}
-                onClick={() => onCopierVar(v)}
+                onClick={() => handleClicVariable(v)}
                 className={`text-[10px] px-1.5 py-0.5 rounded font-mono transition-all ${
+                  varSelectionnee === v ? 'bg-indigo-600/30 text-indigo-300 ring-1 ring-indigo-500' :
                   copieVar === v ? 'bg-green-500/20 text-green-400' : 'bg-gray-800 hover:bg-indigo-600/20 text-gray-400 hover:text-indigo-400'
                 }`}
               >
-                {copieVar === v ? '✓ copié' : v}
+                {copieVar === v && varSelectionnee !== v ? '✓ copié' : v}
               </button>
             ))}
           </div>
         </div>
       ))}
+
+      {varSelectionnee && (
+        <div className="mb-4 p-2.5 bg-gray-800/60 border border-gray-700 rounded-lg">
+          <p className="text-[10px] text-gray-500 mb-1.5">
+            Valeur de secours si <span className="font-mono text-gray-400">{varSelectionnee}</span> est vide (optionnel)
+          </p>
+          <div className="flex gap-1.5">
+            <input
+              value={varDefaut}
+              onChange={e => setVarDefaut(e.target.value)}
+              placeholder="ex: frérot, mec…"
+              className="flex-1 min-w-0 text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 focus:border-indigo-500 text-white outline-none"
+            />
+            <button
+              onClick={copierAvecDefaut}
+              className="text-[10px] px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex-shrink-0 transition-colors"
+            >
+              {confirmeDefaut ? '✓ copié' : 'Copier'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

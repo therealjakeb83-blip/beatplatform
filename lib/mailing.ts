@@ -70,51 +70,76 @@ function formatDateFr(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
 }
 
+// Valeur brute de chaque token, sans se soucier du fallback (géré une seule fois
+// dans remplacerTokens). Clés en minuscules — la recherche est insensible à la casse.
+function valeursTokens(
+  contact: Destinataire,
+  branding: BrandingBoutique,
+  lienDesinscription: string | undefined,
+): Record<string, string> {
+  const maintenant = new Date()
+  return {
+    // Identité
+    'prénom':       nomAffichage(contact),
+    'nom':          contact.nom ?? '',
+    'nom_artiste':  contact.nom_artiste ?? '',
+    'email':        contact.email,
+    'pays':         contact.pays ?? '',
+    'langue':       LANGUE_LABEL[contact.langue] ?? contact.langue,
+    // Achats & fidélité
+    'statut_client':       STATUT_LABEL[contact.statut] ?? '',
+    'nb_achats':           String(contact.nb_achats),
+    'ltv':                 formatEuros(contact.ltv),
+    'panier_moyen':        contact.panier_moyen != null ? formatEuros(contact.panier_moyen) : '',
+    'dernier_achat':       formatDateFr(contact.dernier_achat_iso),
+    'score_fidelite':      contact.score_rf,
+    'mensualites_payees':  String(contact.mensualites_payees),
+    // Préférences musicales
+    'style_préféré':       contact.pref_style ?? '',
+    'type_beat_préféré':   contact.pref_type_beat ?? '',
+    'ambiance_préférée':   contact.pref_ambiance ?? '',
+    'instrument_préféré':  contact.pref_instruments ?? '',
+    'licence_préférée':    contact.pref_licence ?? '',
+    // Réseaux sociaux (renseignés sur la fiche contact)
+    'instagram': contact.instagram ?? '',
+    'spotify':   contact.spotify ?? '',
+    'youtube':   contact.youtube ?? '',
+    'tiktok':    contact.tiktok ?? '',
+    // Engagement
+    'nb_favoris':                  String(contact.nb_favoris),
+    'nb_telechargements_gratuits': String(contact.nb_free_downloads),
+    // Date d'envoi
+    'date_du_jour': formatDateFr(maintenant.toISOString()),
+    'annee':        String(maintenant.getFullYear()),
+    // Boutique
+    'nom_boutique':        branding.nom_artiste,
+    'url_boutique':        `${APP_URL}/${branding.slug}`,
+    'slug_boutique':       branding.slug,
+    'lien_desinscription': lienDesinscription ?? '',
+  }
+}
+
+// Tokens au format {{variable}} ou {{variable|valeur de secours}} — la valeur de
+// secours s'applique uniquement si la variable est vide pour ce contact (ex: pas
+// de style préféré connu). Sans valeur de secours fournie, {{prénom}} retombe sur
+// "là" par cohérence avec l'historique ; les autres tokens deviennent une chaîne vide.
 export function remplacerTokens(
   texte: string,
   contact: Destinataire,
   branding: BrandingBoutique,
   lienDesinscription?: string,
 ): string {
-  const maintenant = new Date()
-  return texte
-    // Identité
-    .replace(/\{\{\s*prénom\s*\}\}/gi, nomAffichage(contact) || 'là')
-    .replace(/\{\{\s*nom\s*\}\}/gi, contact.nom ?? '')
-    .replace(/\{\{\s*nom_artiste\s*\}\}/gi, contact.nom_artiste ?? '')
-    .replace(/\{\{\s*email\s*\}\}/gi, contact.email)
-    .replace(/\{\{\s*pays\s*\}\}/gi, contact.pays ?? '')
-    .replace(/\{\{\s*langue\s*\}\}/gi, LANGUE_LABEL[contact.langue] ?? contact.langue)
-    // Achats & fidélité
-    .replace(/\{\{\s*statut_client\s*\}\}/gi, STATUT_LABEL[contact.statut] ?? '')
-    .replace(/\{\{\s*nb_achats\s*\}\}/gi, String(contact.nb_achats))
-    .replace(/\{\{\s*ltv\s*\}\}/gi, formatEuros(contact.ltv))
-    .replace(/\{\{\s*panier_moyen\s*\}\}/gi, contact.panier_moyen != null ? formatEuros(contact.panier_moyen) : '')
-    .replace(/\{\{\s*dernier_achat\s*\}\}/gi, formatDateFr(contact.dernier_achat_iso))
-    .replace(/\{\{\s*score_fidelite\s*\}\}/gi, contact.score_rf)
-    .replace(/\{\{\s*mensualites_payees\s*\}\}/gi, String(contact.mensualites_payees))
-    // Préférences musicales
-    .replace(/\{\{\s*style_préféré\s*\}\}/gi, contact.pref_style ?? '')
-    .replace(/\{\{\s*type_beat_préféré\s*\}\}/gi, contact.pref_type_beat ?? '')
-    .replace(/\{\{\s*ambiance_préférée\s*\}\}/gi, contact.pref_ambiance ?? '')
-    .replace(/\{\{\s*instrument_préféré\s*\}\}/gi, contact.pref_instruments ?? '')
-    .replace(/\{\{\s*licence_préférée\s*\}\}/gi, contact.pref_licence ?? '')
-    // Réseaux sociaux (renseignés sur la fiche contact)
-    .replace(/\{\{\s*instagram\s*\}\}/gi, contact.instagram ?? '')
-    .replace(/\{\{\s*spotify\s*\}\}/gi, contact.spotify ?? '')
-    .replace(/\{\{\s*youtube\s*\}\}/gi, contact.youtube ?? '')
-    .replace(/\{\{\s*tiktok\s*\}\}/gi, contact.tiktok ?? '')
-    // Engagement
-    .replace(/\{\{\s*nb_favoris\s*\}\}/gi, String(contact.nb_favoris))
-    .replace(/\{\{\s*nb_telechargements_gratuits\s*\}\}/gi, String(contact.nb_free_downloads))
-    // Date d'envoi
-    .replace(/\{\{\s*date_du_jour\s*\}\}/gi, formatDateFr(maintenant.toISOString()))
-    .replace(/\{\{\s*annee\s*\}\}/gi, String(maintenant.getFullYear()))
-    // Boutique
-    .replace(/\{\{\s*nom_boutique\s*\}\}/gi, branding.nom_artiste)
-    .replace(/\{\{\s*url_boutique\s*\}\}/gi, `${APP_URL}/${branding.slug}`)
-    .replace(/\{\{\s*slug_boutique\s*\}\}/gi, branding.slug)
-    .replace(/\{\{\s*lien_desinscription\s*\}\}/gi, lienDesinscription ?? '')
+  const valeurs = valeursTokens(contact, branding, lienDesinscription)
+  return texte.replace(/\{\{([^{}]+)\}\}/g, (match, interieur: string) => {
+    const [nomBrut, ...defautParts] = interieur.split('|')
+    const nom     = nomBrut.trim().toLowerCase()
+    const defaut  = defautParts.length > 0 ? defautParts.join('|').trim() : undefined
+    const valeur  = valeurs[nom]
+    if (valeur) return valeur
+    if (defaut !== undefined) return defaut
+    if (nom === 'prénom') return 'là'
+    return valeur !== undefined ? '' : match
+  })
 }
 
 // ── Jeton signé (clientId.beatmakerId.campagneId) ────────────────────────────
