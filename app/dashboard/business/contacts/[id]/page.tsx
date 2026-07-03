@@ -170,6 +170,7 @@ export default async function FicheClientPage({
     { data: morceauxRaw },
     { data: freeDLRaw },
     { data: archivesDateRaw },
+    { data: leadsRaw },
   ] = await Promise.all([
     supabase
       .from('commandes')
@@ -208,6 +209,11 @@ export default async function FicheClientPage({
     archiveIds.length > 0
       ? admin.from('clients').select('created_at').in('id', archiveIds)
       : Promise.resolve({ data: [] as { created_at: string }[] }),
+    admin
+      .from('leads')
+      .select('newsletter_inscrit')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', allClientIds),
   ])
 
   type FreeDL = { beat_id: string; downloaded_at: string; beats: { titre: string } | null }
@@ -216,6 +222,10 @@ export default async function FicheClientPage({
   const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: { titre?: string; image_url?: string } | null }>
   const morceaux  = morceauxRaw ?? []
   const freeDLs   = (freeDLRaw   ?? []) as unknown as FreeDL[]
+
+  // Inscrit newsletter = consentement global (clients) OU inscription spécifique à cette boutique (leads)
+  // — même logique que le ciblage des campagnes (app/dashboard/business/_lib/contacts.ts)
+  const inscritNewsletter = client.newsletter_consent || (leadsRaw ?? []).some(l => l.newsletter_inscrit)
 
   // "Client depuis" = date la plus ancienne parmi conservé + archivés
   const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at)]
@@ -284,6 +294,15 @@ export default async function FicheClientPage({
       delete champs.telephone
       await a.from('fusions_crm').update({ champs_conserves: champs }).eq('id', f.id)
     }
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
+  async function toggleNewsletter(formData: FormData) {
+    'use server'
+    const a       = createAdminClient()
+    const inscrit = (formData.get('action') as string) === 'inscrire'
+    await a.from('clients').update({ newsletter_consent: inscrit }).eq('id', clientId)
+    await a.from('leads').update({ newsletter_inscrit: inscrit }).eq('client_id', clientId).eq('beatmaker_id', beatmakerId)
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -449,7 +468,7 @@ export default async function FicheClientPage({
                       Annulation en cours
                     </span>
                   )}
-                  {client.newsletter_consent ? (
+                  {inscritNewsletter ? (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
                       NWT ✓
                     </span>
@@ -848,13 +867,31 @@ export default async function FicheClientPage({
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-bold text-sm">Engagement newsletter</h2>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                client.newsletter_consent ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-800 text-gray-500'
-              }`}>
-                {client.newsletter_consent ? 'Inscrit' : 'Non inscrit'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                  inscritNewsletter ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-800 text-gray-500'
+                }`}>
+                  {inscritNewsletter ? 'Inscrit' : 'Non inscrit'}
+                </span>
+                <form action={toggleNewsletter}>
+                  <input type="hidden" name="action" value={inscritNewsletter ? 'desinscrire' : 'inscrire'} />
+                  <button
+                    type="submit"
+                    className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
+                      inscritNewsletter
+                        ? 'bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                    }`}
+                  >
+                    {inscritNewsletter ? 'Désinscrire' : 'Inscrire'}
+                  </button>
+                </form>
+              </div>
             </div>
-            {client.newsletter_consent ? (
+            <p className="text-[11px] text-gray-600 mb-4">
+              Bascule manuelle — équivalente au lien de désinscription reçu par email (pratique pour tester sans attendre un vrai envoi).
+            </p>
+            {inscritNewsletter ? (
               <>
                 <div className="h-1.5 rounded-full bg-gray-800 mb-5 overflow-hidden">
                   <div className="h-full rounded-full bg-gray-700 w-0" />
