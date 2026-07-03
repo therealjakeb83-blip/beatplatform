@@ -67,9 +67,14 @@ const PALETTE: { type: BlocEmail['type']; label: string; desc: string; icone: Re
 ]
 
 const VARIABLES: { groupe: string; vars: string[] }[] = [
-  { groupe: 'Contact',  vars: ['{{prénom}}', '{{nom}}', '{{email}}'] },
-  { groupe: 'Boutique', vars: ['{{nom_boutique}}', '{{url_boutique}}'] },
-  { groupe: 'Préférences', vars: ['{{style_préféré}}', '{{type_beat_préféré}}'] },
+  { groupe: 'Identité',        vars: ['{{prénom}}', '{{nom}}', '{{nom_artiste}}', '{{email}}', '{{pays}}', '{{langue}}'] },
+  { groupe: 'Boutique',        vars: ['{{nom_boutique}}', '{{url_boutique}}', '{{slug_boutique}}'] },
+  { groupe: 'Achats & fidélité', vars: ['{{statut_client}}', '{{nb_achats}}', '{{ltv}}', '{{panier_moyen}}', '{{dernier_achat}}', '{{score_fidelite}}'] },
+  { groupe: 'Abonnement',      vars: ['{{mensualites_payees}}'] },
+  { groupe: 'Préférences musicales', vars: ['{{style_préféré}}', '{{type_beat_préféré}}', '{{ambiance_préférée}}', '{{instrument_préféré}}', '{{licence_préférée}}'] },
+  { groupe: 'Réseaux sociaux', vars: ['{{instagram}}', '{{spotify}}', '{{youtube}}', '{{tiktok}}'] },
+  { groupe: 'Engagement',      vars: ['{{nb_favoris}}', '{{nb_telechargements_gratuits}}'] },
+  { groupe: 'Date',            vars: ['{{date_du_jour}}', '{{annee}}'] },
 ]
 
 const champ = 'w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none transition-colors'

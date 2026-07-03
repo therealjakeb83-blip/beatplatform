@@ -161,7 +161,7 @@ export default function NouvelleCampagneWizard({ segments, listes, templates, se
                   className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm"
                 />
                 <p className="text-[11px] text-gray-600 mt-1.5">
-                  Tokens disponibles : {'{{prénom}}'}, {'{{style_préféré}}'}, {'{{type_beat_préféré}}'}
+                  Tokens disponibles : {'{{prénom}}'}, {'{{style_préféré}}'}, {'{{type_beat_préféré}}'}… (liste complète dans l&apos;éditeur de contenu à l&apos;étape suivante)
                 </p>
               </div>
             </div>
