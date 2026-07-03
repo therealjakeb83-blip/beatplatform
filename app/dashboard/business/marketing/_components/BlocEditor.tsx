@@ -80,8 +80,9 @@ export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, par
   const [selectedCle, setSelectedCle] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [copieVar, setCopieVar] = useState<string | null>(null)
+  const [apercuOuvert, setApercuOuvert] = useState(false)
+  const [apercuHtml, setApercuHtml] = useState('')
   const [chargementApercu, setChargementApercu] = useState(false)
-  const [apercu, setApercu] = useState<string | null>(null)
   const [clientApercu, setClientApercu] = useState('')
 
   const selectedIndex = blocs.findIndex(b => b.cle === selectedCle)
@@ -131,14 +132,25 @@ export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, par
     setPending(false)
   }
 
-  async function handleApercu() {
+  async function chargerApercu(clientId: string) {
     setChargementApercu(true)
     try {
-      const html = await genererApercu(blocs.map(b => b.bloc), clientApercu || undefined)
-      setApercu(html)
+      const html = await genererApercu(blocs.map(b => b.bloc), clientId || undefined)
+      setApercuHtml(html)
     } finally {
       setChargementApercu(false)
     }
+  }
+
+  async function handleOuvrirApercu() {
+    setApercuOuvert(true)
+    setClientApercu('')
+    await chargerApercu('')
+  }
+
+  async function handleChangerClientApercu(clientId: string) {
+    setClientApercu(clientId)
+    await chargerApercu(clientId)
   }
 
   return (
@@ -147,17 +159,8 @@ export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, par
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 flex-shrink-0 gap-4">
         <div className="flex items-center gap-3 min-w-0">{entete}</div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <select
-            value={clientApercu}
-            onChange={e => setClientApercu(e.target.value)}
-            title="Client utilisé pour remplacer les variables dans l'aperçu"
-            className="text-xs px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 outline-none max-w-[180px]"
-          >
-            <option value="">Aperçu générique</option>
-            {contacts.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
           <button
-            onClick={handleApercu}
+            onClick={handleOuvrirApercu}
             disabled={chargementApercu}
             className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-300 font-medium transition-colors"
           >
@@ -231,7 +234,16 @@ export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, par
         </div>
       </div>
 
-      {apercu !== null && <ModaleApercu html={apercu} onClose={() => setApercu(null)} />}
+      {apercuOuvert && (
+        <ModaleApercu
+          html={apercuHtml}
+          chargement={chargementApercu}
+          contacts={contacts}
+          clientSelectionne={clientApercu}
+          onChangerClient={handleChangerClientApercu}
+          onClose={() => setApercuOuvert(false)}
+        />
+      )}
     </div>
   )
 }
@@ -557,16 +569,24 @@ function BlocCanvas({ blocAvecCle, selected, onSelect, onUpdate, onSupprimer, on
 
 // ── Modale aperçu HTML final (rendu réel via lib/email-blocs.ts) ──────────
 
-function ModaleApercu({ html, onClose }: { html: string; onClose: () => void }) {
+function ModaleApercu({ html, chargement, contacts, clientSelectionne, onChangerClient, onClose }: {
+  html: string
+  chargement: boolean
+  contacts: ContactOption[]
+  clientSelectionne: string
+  onChangerClient: (clientId: string) => void
+  onClose: () => void
+}) {
   const [vue, setVue] = useState<'bureau' | 'mobile'>('bureau')
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
-          <p className="text-sm font-bold text-white">Aperçu</p>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-0.5">
+        <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0 gap-3">
+          <p className="text-sm font-bold text-white flex-shrink-0">Aperçu</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <SelecteurClientApercu contacts={contacts} clientSelectionne={clientSelectionne} onChangerClient={onChangerClient} />
+            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-0.5 flex-shrink-0">
               {(['bureau', 'mobile'] as const).map(v => (
                 <button
                   key={v}
@@ -579,18 +599,82 @@ function ModaleApercu({ html, onClose }: { html: string; onClose: () => void }) 
                 </button>
               ))}
             </div>
-            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">×</button>
+            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-lg leading-none flex-shrink-0">×</button>
           </div>
         </div>
         <div className="flex-1 overflow-auto bg-gray-950 flex justify-center py-4">
-          <iframe
-            srcDoc={html}
-            title="Aperçu de l'email"
-            className="bg-white transition-all"
-            style={{ width: vue === 'mobile' ? 375 : 640, height: '100%', minHeight: '65vh' }}
-          />
+          {chargement ? (
+            <p className="text-xs text-gray-500 self-center">Génération…</p>
+          ) : (
+            <iframe
+              srcDoc={html}
+              title="Aperçu de l'email"
+              className="bg-white transition-all"
+              style={{ width: vue === 'mobile' ? 375 : 640, height: '100%', minHeight: '65vh' }}
+            />
+          )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Sélecteur de client avec recherche (nom ou email), pour l'aperçu personnalisé ──
+
+function SelecteurClientApercu({ contacts, clientSelectionne, onChangerClient }: {
+  contacts: ContactOption[]
+  clientSelectionne: string
+  onChangerClient: (clientId: string) => void
+}) {
+  const [recherche, setRecherche] = useState('')
+  const [ouvert, setOuvert] = useState(false)
+
+  const labelSelectionne = contacts.find(c => c.id === clientSelectionne)?.label ?? ''
+  const filtres = recherche.trim() === ''
+    ? contacts.slice(0, 50)
+    : contacts.filter(c => c.label.toLowerCase().includes(recherche.trim().toLowerCase())).slice(0, 50)
+
+  function selectionner(clientId: string) {
+    onChangerClient(clientId)
+    setRecherche('')
+    setOuvert(false)
+  }
+
+  return (
+    <div className="relative min-w-0 w-56">
+      <input
+        value={ouvert ? recherche : labelSelectionne}
+        onChange={e => { setRecherche(e.target.value); setOuvert(true) }}
+        onFocus={() => { setRecherche(''); setOuvert(true) }}
+        onBlur={() => setTimeout(() => setOuvert(false), 150)}
+        placeholder="Aperçu générique — rechercher un client…"
+        className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 focus:border-indigo-500 text-gray-200 placeholder-gray-500 outline-none transition-colors"
+      />
+      {ouvert && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-h-56 overflow-y-auto z-30">
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => selectionner('')}
+            className={`w-full text-left text-xs px-3 py-2 hover:bg-gray-800 transition-colors ${clientSelectionne === '' ? 'text-indigo-400 font-medium' : 'text-gray-300'}`}
+          >
+            Aperçu générique (tokens visibles)
+          </button>
+          {filtres.length === 0 ? (
+            <p className="text-xs text-gray-600 px-3 py-2">Aucun client trouvé.</p>
+          ) : (
+            filtres.map(c => (
+              <button
+                key={c.id}
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => selectionner(c.id)}
+                className={`w-full text-left text-xs px-3 py-2 hover:bg-gray-800 transition-colors truncate ${clientSelectionne === c.id ? 'text-indigo-400 font-medium' : 'text-gray-300'}`}
+              >
+                {c.label}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }
