@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import type { BlocEmail } from '@/lib/email-blocs'
 import { construireApercu } from '../../_lib/apercu'
+import { chargerContactsPourApercu } from '../../_lib/contactsApercu'
 import EditerTemplateClient from './_components/EditerTemplateClient'
 
 export default async function EditerTemplatePage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,12 +24,15 @@ export default async function EditerTemplatePage({ params }: { params: Promise<{
     redirect('/dashboard/business/marketing/templates')
   }
 
-  const { data: beatsRaw } = await supabase
-    .from('beats')
-    .select('id, titre, image_url')
-    .eq('beatmaker_id', user.id)
-    .in('statut', ['public', 'prive'])
-    .order('created_at', { ascending: false })
+  const [{ data: beatsRaw }, contacts] = await Promise.all([
+    supabase
+      .from('beats')
+      .select('id, titre, image_url')
+      .eq('beatmaker_id', user.id)
+      .in('statut', ['public', 'prive'])
+      .order('created_at', { ascending: false }),
+    chargerContactsPourApercu(user.id),
+  ])
 
   async function modifierTemplate(nom: string, categorie: string, objetDefaut: string, contenu: BlocEmail[]) {
     'use server'
@@ -49,12 +53,12 @@ export default async function EditerTemplatePage({ params }: { params: Promise<{
     redirect('/dashboard/business/marketing/templates')
   }
 
-  async function genererApercu(blocs: BlocEmail[]) {
+  async function genererApercu(blocs: BlocEmail[], clientId?: string) {
     'use server'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return ''
-    return construireApercu(user.id, blocs)
+    return construireApercu(user.id, blocs, clientId)
   }
 
   return (
@@ -64,6 +68,7 @@ export default async function EditerTemplatePage({ params }: { params: Promise<{
       objetDefautInitial={template.objet_defaut ?? ''}
       blocsInitiaux={(template.contenu as BlocEmail[]) ?? []}
       beats={beatsRaw ?? []}
+      contacts={contacts}
       modifierTemplate={modifierTemplate}
       genererApercu={genererApercu}
     />

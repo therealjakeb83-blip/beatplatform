@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { BlocEmail } from '@/lib/email-blocs'
-import BlocEditor, { type BeatOption } from '../../../_components/BlocEditor'
+import BlocEditor, { type BeatOption, type ContactOption } from '../../../_components/BlocEditor'
 import { CATEGORIE_LABEL } from '../../../_lib/categories'
 
 type Props = {
@@ -12,15 +12,16 @@ type Props = {
   objetDefautInitial: string
   blocsInitiaux: BlocEmail[]
   beats: BeatOption[]
+  contacts: ContactOption[]
   modifierTemplate: (nom: string, categorie: string, objetDefaut: string, contenu: BlocEmail[]) => Promise<void>
-  genererApercu: (blocs: BlocEmail[]) => Promise<string>
+  genererApercu: (blocs: BlocEmail[], clientId?: string) => Promise<string>
 }
 
 const champ = 'w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none transition-colors'
 const label = 'text-[11px] text-gray-500 mb-1 block'
 
 export default function EditerTemplateClient({
-  nomInitial, categorieInitiale, objetDefautInitial, blocsInitiaux, beats, modifierTemplate, genererApercu,
+  nomInitial, categorieInitiale, objetDefautInitial, blocsInitiaux, beats, contacts, modifierTemplate, genererApercu,
 }: Props) {
   const [nom, setNom] = useState(nomInitial)
   const [categorie, setCategorie] = useState(categorieInitiale)
@@ -30,6 +31,7 @@ export default function EditerTemplateClient({
     <BlocEditor
       blocsInitiaux={blocsInitiaux}
       beats={beats}
+      contacts={contacts}
       labelEnregistrer="Enregistrer"
       entete={
         <>

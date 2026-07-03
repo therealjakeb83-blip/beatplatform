@@ -3,19 +3,20 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { BlocEmail } from '@/lib/email-blocs'
-import BlocEditor, { type BeatOption } from '../../../_components/BlocEditor'
+import BlocEditor, { type BeatOption, type ContactOption } from '../../../_components/BlocEditor'
 import { CATEGORIE_LABEL } from '../../../_lib/categories'
 
 type Props = {
   beats: BeatOption[]
+  contacts: ContactOption[]
   creerTemplate: (nom: string, categorie: string, objetDefaut: string, contenu: BlocEmail[]) => Promise<void>
-  genererApercu: (blocs: BlocEmail[]) => Promise<string>
+  genererApercu: (blocs: BlocEmail[], clientId?: string) => Promise<string>
 }
 
 const champ = 'w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none transition-colors'
 const label = 'text-[11px] text-gray-500 mb-1 block'
 
-export default function NouveauTemplateClient({ beats, creerTemplate, genererApercu }: Props) {
+export default function NouveauTemplateClient({ beats, contacts, creerTemplate, genererApercu }: Props) {
   const [nom, setNom] = useState('Nouveau template')
   const [categorie, setCategorie] = useState('newsletter')
   const [objetDefaut, setObjetDefaut] = useState('')
@@ -24,6 +25,7 @@ export default function NouveauTemplateClient({ beats, creerTemplate, genererApe
     <BlocEditor
       blocsInitiaux={[]}
       beats={beats}
+      contacts={contacts}
       labelEnregistrer="Créer le template"
       entete={
         <>

@@ -4,17 +4,19 @@ import { useState } from 'react'
 import type { BlocEmail } from '@/lib/email-blocs'
 
 export type BeatOption = { id: string; titre: string; image_url: string | null }
+export type ContactOption = { id: string; label: string }
 
 type BlocAvecCle = { cle: string; bloc: BlocEmail }
 
 type Props = {
   blocsInitiaux: BlocEmail[]
   beats: BeatOption[]
+  contacts: ContactOption[]
   entete: React.ReactNode
   parametresSupplementaires?: React.ReactNode
   labelEnregistrer?: string
   onEnregistrer: (blocs: BlocEmail[]) => Promise<void>
-  genererApercu: (blocs: BlocEmail[]) => Promise<string>
+  genererApercu: (blocs: BlocEmail[], clientId?: string) => Promise<string>
 }
 
 let compteurCle = 0
@@ -73,13 +75,14 @@ const VARIABLES: { groupe: string; vars: string[] }[] = [
 const champ = 'w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-white outline-none transition-colors'
 const label = 'text-[11px] text-gray-500 mb-1 block'
 
-export default function BlocEditor({ blocsInitiaux, beats, entete, parametresSupplementaires, labelEnregistrer = 'Enregistrer', onEnregistrer, genererApercu }: Props) {
+export default function BlocEditor({ blocsInitiaux, beats, contacts, entete, parametresSupplementaires, labelEnregistrer = 'Enregistrer', onEnregistrer, genererApercu }: Props) {
   const [blocs, setBlocs] = useState<BlocAvecCle[]>(() => blocsInitiaux.map(bloc => ({ cle: nouvelleCle(), bloc })))
   const [selectedCle, setSelectedCle] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [copieVar, setCopieVar] = useState<string | null>(null)
   const [chargementApercu, setChargementApercu] = useState(false)
   const [apercu, setApercu] = useState<string | null>(null)
+  const [clientApercu, setClientApercu] = useState('')
 
   const selectedIndex = blocs.findIndex(b => b.cle === selectedCle)
   const selected = selectedIndex === -1 ? null : blocs[selectedIndex]
@@ -131,7 +134,7 @@ export default function BlocEditor({ blocsInitiaux, beats, entete, parametresSup
   async function handleApercu() {
     setChargementApercu(true)
     try {
-      const html = await genererApercu(blocs.map(b => b.bloc))
+      const html = await genererApercu(blocs.map(b => b.bloc), clientApercu || undefined)
       setApercu(html)
     } finally {
       setChargementApercu(false)
@@ -144,6 +147,15 @@ export default function BlocEditor({ blocsInitiaux, beats, entete, parametresSup
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 flex-shrink-0 gap-4">
         <div className="flex items-center gap-3 min-w-0">{entete}</div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <select
+            value={clientApercu}
+            onChange={e => setClientApercu(e.target.value)}
+            title="Client utilisé pour remplacer les variables dans l'aperçu"
+            className="text-xs px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 outline-none max-w-[180px]"
+          >
+            <option value="">Aperçu générique</option>
+            {contacts.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
           <button
             onClick={handleApercu}
             disabled={chargementApercu}
@@ -546,15 +558,37 @@ function BlocCanvas({ blocAvecCle, selected, onSelect, onUpdate, onSupprimer, on
 // ── Modale aperçu HTML final (rendu réel via lib/email-blocs.ts) ──────────
 
 function ModaleApercu({ html, onClose }: { html: string; onClose: () => void }) {
+  const [vue, setVue] = useState<'bureau' | 'mobile'>('bureau')
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
           <p className="text-sm font-bold text-white">Aperçu</p>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">×</button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-0.5">
+              {(['bureau', 'mobile'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setVue(v)}
+                  className={`text-xs px-3 py-1 rounded-md font-medium transition-colors ${
+                    vue === v ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {v === 'bureau' ? 'Bureau' : 'Mobile'}
+                </button>
+              ))}
+            </div>
+            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">×</button>
+          </div>
         </div>
-        <div className="flex-1 overflow-hidden bg-gray-950">
-          <iframe srcDoc={html} title="Aperçu de l'email" className="w-full h-[70vh] bg-white" />
+        <div className="flex-1 overflow-auto bg-gray-950 flex justify-center py-4">
+          <iframe
+            srcDoc={html}
+            title="Aperçu de l'email"
+            className="bg-white transition-all"
+            style={{ width: vue === 'mobile' ? 375 : 640, height: '100%', minHeight: '65vh' }}
+          />
         </div>
       </div>
     </div>

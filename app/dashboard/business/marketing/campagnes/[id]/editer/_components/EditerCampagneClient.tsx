@@ -2,22 +2,24 @@
 
 import Link from 'next/link'
 import type { BlocEmail } from '@/lib/email-blocs'
-import BlocEditor, { type BeatOption } from '../../../../_components/BlocEditor'
+import BlocEditor, { type BeatOption, type ContactOption } from '../../../../_components/BlocEditor'
 
 type Props = {
   nom: string
   objet: string
   blocsInitiaux: BlocEmail[]
   beats: BeatOption[]
+  contacts: ContactOption[]
   enregistrerContenuCampagne: (contenu: BlocEmail[]) => Promise<void>
-  genererApercu: (blocs: BlocEmail[]) => Promise<string>
+  genererApercu: (blocs: BlocEmail[], clientId?: string) => Promise<string>
 }
 
-export default function EditerCampagneClient({ nom, objet, blocsInitiaux, beats, enregistrerContenuCampagne, genererApercu }: Props) {
+export default function EditerCampagneClient({ nom, objet, blocsInitiaux, beats, contacts, enregistrerContenuCampagne, genererApercu }: Props) {
   return (
     <BlocEditor
       blocsInitiaux={blocsInitiaux}
       beats={beats}
+      contacts={contacts}
       labelEnregistrer="Enregistrer le contenu"
       entete={
         <>
