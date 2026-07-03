@@ -12,7 +12,7 @@ Au début de chaque session (sauf si Jake dit explicitement de ne pas le faire),
 - `ROADMAP.md` — état d'avancement à jour, journal des sessions
 - Les fichiers récemment modifiés (git log dans beatplatform)
 
-Le module Business (`/dashboard/business/`) est entièrement migré (CRM, Commerce, Analytics). Marketing (Campagnes) est fonctionnel de bout en bout (envoi, ciblage, tracking, désinscription, conversions) — reste l'éditeur de templates, le vrai domaine d'envoi par boutique, et les tests formels (voir Phase 4 dans `ROADMAP.md`). Il ne reste sinon que la page d'accueil business. `C:\Users\nicoj\crm-proto` (prototype UX mock data) ne sert plus de référence que pour ces morceaux restants ; ne pas y aller par défaut, seulement si le travail en cours concerne l'accueil business ou l'éditeur de templates Marketing.
+Le module Business (`/dashboard/business/`) est entièrement migré (CRM, Commerce, Analytics). Marketing (Campagnes + éditeur de templates par blocs) est fonctionnel de bout en bout (envoi, ciblage, tracking, désinscription, conversions, éditeur de contenu avec variables de personnalisation) — reste le vrai domaine d'envoi par boutique et les tests formels (voir Phase 4 dans `ROADMAP.md`). Il ne reste sinon que la page d'accueil business. `C:\Users\nicoj\crm-proto` (prototype UX mock data) ne sert plus de référence que pour ces morceaux restants ; ne pas y aller par défaut, seulement si le travail en cours concerne l'accueil business.
 
 ---
 
@@ -47,7 +47,7 @@ Deux espaces utilisateur distincts :
 |--------|--------|-------------|
 | Boutique publique | `/[slug]/**` | Artistes (acheteurs) |
 | Dashboard | `/dashboard/**` | Beatmakers (vendeurs) |
-| Business | `/dashboard/business/**` | Beatmakers — CRM/Commerce/Analytics/Marketing (Campagnes) fonctionnels, reste accueil + éditeur de templates |
+| Business | `/dashboard/business/**` | Beatmakers — CRM/Commerce/Analytics/Marketing (Campagnes + éditeur de templates) fonctionnels, reste accueil |
 
 Le dashboard se protège via `proxy.ts` (pas un vrai `middleware.ts` Next.js) — redirige `/dashboard` vers `/connexion` si non authentifié, et vérifie que l'user a une ligne dans `beatmakers`.
 
@@ -77,8 +77,9 @@ Ne jamais utiliser `lib/supabase.ts` (déprecié).
 
 - `lib/resend.ts` — singleton Resend
 - `lib/emails.ts` — fonctions : `envoyerInvitationCollab()`, `envoyerFondsEnAttente()`, `envoyerRappelFonds()`
-- `lib/mailing.ts` — moteur des campagnes marketing : ciblage segment/liste/manuel, tokens, jeton signé (désinscription + suivi de clic), envoi par lots
+- `lib/mailing.ts` — moteur des campagnes marketing : ciblage segment/liste/manuel, ~25 tokens de personnalisation avec secours en chaîne (`{{variable|variable2|texte fixe}}`, résolus par `remplacerTokens()`), jeton signé (désinscription + suivi de clic), envoi par lots
 - `lib/email-blocs.ts` — rendu HTML des blocs d'un template de campagne (en-tête, texte, beats, code promo, CTA, espace)
+- `app/dashboard/business/marketing/_components/BlocEditor.tsx` + `ChampAvecVariables.tsx` — éditeur de blocs partagé (templates + contenu de campagne) ; les variables s'insèrent comme des pastilles cliquables dans le texte (édition `contentEditable`, jamais de démontage du champ à la désélection — voir mémoire `feedback_isolated_test_server`/session du 2026-07-03 si un bug similaire réapparaît)
 
 ### Contrats PDF
 
@@ -119,9 +120,9 @@ Tables principales :
 
 ## Module Business (`/dashboard/business/`)
 
-Pages **terminées** : contacts, segments, listes, doublons, commandes, abonnements, plans, beats, licences, codes-promo, collabs, analytics (7 onglets : ventes, abonnements, revenus, préférences, codes-promo, beats + page détail, vue d'ensemble), marketing/campagnes (envoi, ciblage, tracking ouvertures/clics, désinscription, conversions — sidebar déverrouillée).
+Pages **terminées** : contacts (Tous/Clients/Leads/Newsletter — 4 onglets), segments, listes, doublons, commandes, abonnements, plans, beats, licences, codes-promo, collabs, analytics (7 onglets : ventes, abonnements, revenus, préférences, codes-promo, beats + page détail, vue d'ensemble), marketing/campagnes + marketing/templates (envoi, ciblage, tracking ouvertures/clics, désinscription, conversions, éditeur de blocs par variables — sidebar déverrouillée).
 
-Reste **à faire** : marketing/templates (éditeur de blocs simplifié, voir Phase 4.4 dans `ROADMAP.md`), le vrai domaine d'envoi par boutique (Phase 4.5 — actuellement un domaine fixe codé en dur dans `lib/mailing.ts`), et la page d'accueil `/dashboard/business/` (Phase 8, placeholder statique, volontairement en dernier).
+Reste **à faire** : le vrai domaine d'envoi par boutique (Phase 4.5 — actuellement un domaine fixe codé en dur dans `lib/mailing.ts`), les tests bout en bout formels (Phase 4.8), et la page d'accueil `/dashboard/business/` (Phase 8, placeholder statique, volontairement en dernier).
 
 Détail de l'historique et des décisions d'architecture : `ROADMAP.md` (étape 11d).
 
