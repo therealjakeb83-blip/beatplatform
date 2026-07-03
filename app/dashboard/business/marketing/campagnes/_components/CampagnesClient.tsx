@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { CampagneRow, CibleOption, TemplateOption } from '../page'
 import NouvelleCampagneWizard from './NouvelleCampagneWizard'
 
@@ -117,6 +118,12 @@ export default function CampagnesClient({
               {planifiees.map(c => (
                 <CarteCampagne key={c.id} c={c} supprimerCampagne={supprimerCampagne} dupliquerCampagne={dupliquerCampagne}>
                   <p className="text-xs text-amber-400 mt-2">Envoi prévu le {formatDate(c.scheduled_at)}</p>
+                  <Link
+                    href={`/dashboard/business/marketing/campagnes/${c.id}/editer`}
+                    className="inline-block text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium transition-colors mt-2"
+                  >
+                    Éditer le contenu
+                  </Link>
                 </CarteCampagne>
               ))}
             </div>
@@ -130,6 +137,12 @@ export default function CampagnesClient({
               {brouillons.map(c => (
                 <CarteCampagne key={c.id} c={c} supprimerCampagne={supprimerCampagne} dupliquerCampagne={dupliquerCampagne}>
                   <div className="flex items-center gap-2 mt-3">
+                    <Link
+                      href={`/dashboard/business/marketing/campagnes/${c.id}/editer`}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium transition-colors"
+                    >
+                      Éditer le contenu
+                    </Link>
                     <button
                       onClick={() => setPlanifId(c.id)}
                       className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium transition-colors"
