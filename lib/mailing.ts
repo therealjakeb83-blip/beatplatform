@@ -119,10 +119,28 @@ function valeursTokens(
   }
 }
 
-// Tokens au format {{variable}} ou {{variable|valeur de secours}} — la valeur de
-// secours s'applique uniquement si la variable est vide pour ce contact (ex: pas
-// de style préféré connu). Sans valeur de secours fournie, {{prénom}} retombe sur
-// "là" par cohérence avec l'historique ; les autres tokens deviennent une chaîne vide.
+// Résout une chaîne de secours : chaque segment est essayé comme nom de variable
+// tant qu'il en est un connu (et non vide) ; dès qu'un segment ne correspond à
+// aucune variable connue, lui et tout le reste de la chaîne deviennent un texte
+// fixe final (permet une valeur de secours contenant elle-même un "|").
+function resoudreChaine(segments: string[], valeurs: Record<string, string>): string {
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i].trim()
+    const val = valeurs[seg.toLowerCase()]
+    if (val !== undefined) {
+      if (val) return val
+      continue
+    }
+    return segments.slice(i).join('|').trim()
+  }
+  return ''
+}
+
+// Tokens au format {{variable}}, {{variable|secours}} ou en chaîne
+// {{variable|variable2|variable3|texte fixe}} — construits via le constructeur
+// visuel de l'éditeur (ChampAvecVariables), jamais tapés à la main par le
+// beatmaker. Sans secours fourni, {{prénom}} retombe sur "là" par cohérence
+// avec l'historique ; les autres tokens deviennent une chaîne vide.
 export function remplacerTokens(
   texte: string,
   contact: Destinataire,
@@ -131,12 +149,11 @@ export function remplacerTokens(
 ): string {
   const valeurs = valeursTokens(contact, branding, lienDesinscription)
   return texte.replace(/\{\{([^{}]+)\}\}/g, (match, interieur: string) => {
-    const [nomBrut, ...defautParts] = interieur.split('|')
-    const nom     = nomBrut.trim().toLowerCase()
-    const defaut  = defautParts.length > 0 ? defautParts.join('|').trim() : undefined
-    const valeur  = valeurs[nom]
+    const segments = interieur.split('|')
+    const nom      = segments[0].trim().toLowerCase()
+    const valeur   = valeurs[nom]
     if (valeur) return valeur
-    if (defaut !== undefined) return defaut
+    if (segments.length > 1) return resoudreChaine(segments.slice(1), valeurs)
     if (nom === 'prénom') return 'là'
     return valeur !== undefined ? '' : match
   })
