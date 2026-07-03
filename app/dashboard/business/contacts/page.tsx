@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import ContactsClient, { ContactRow } from './_components/ContactsClient'
 import type { LeadRow } from './_components/LeadsView'
+import type { NewsletterRow } from './_components/NewsletterView'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -178,7 +179,7 @@ export default async function ContactsPage({
   ])]
 
   if (clientIds.length === 0) {
-    return <ContactsClient contacts={[]} listes={listes} leadsData={leadsData} vue={vue} />
+    return <ContactsClient contacts={[]} listes={listes} leadsData={leadsData} newsletterData={[]} vue={vue} />
   }
 
   // Beat IDs & Licence IDs from LICENCE commandes
@@ -186,7 +187,7 @@ export default async function ContactsPage({
   const beatIds    = [...new Set(licenceCmdsAll.map(c => c.beat_id).filter(Boolean) as string[])]
   const licenceIds = [...new Set(licenceCmdsAll.map(c => c.licence_id).filter(Boolean) as string[])]
 
-  const [clientsRes, beatsRes, licencesRes, favorisClientsRes, freeDLsClientsRes] = await Promise.all([
+  const [clientsRes, beatsRes, licencesRes, favorisClientsRes, freeDLsClientsRes, envoisNewsletterRes] = await Promise.all([
     admin
       .from('clients')
       .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
@@ -204,11 +205,25 @@ export default async function ContactsPage({
       .select('client_id, downloaded_at')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', clientIds),
+    // RLS : visible seulement pour les campagnes de ce beatmaker — inclut les archivés (fusion)
+    // pour rattacher l'historique newsletter d'avant-fusion au contact conservé
+    supabase
+      .from('campagne_envois')
+      .select('client_id, envoye_at, ouvert_at, clique_at, converti_at')
+      .in('client_id', [...clientIds, ...archiveIds]),
   ])
 
   const clientsRaw = clientsRes.data ?? []
   const beatMap    = new Map((beatsRes.data ?? []).map(b => [b.id, b]))
   const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
+
+  type EnvoiNwt = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
+  const envoisParClient = new Map<string, EnvoiNwt[]>()
+  for (const e of (envoisNewsletterRes.data ?? []) as EnvoiNwt[]) {
+    const arr = envoisParClient.get(e.client_id) ?? []
+    arr.push(e)
+    envoisParClient.set(e.client_id, arr)
+  }
 
   const commandesParClient = new Map<string, typeof commandes>()
   for (const cmd of commandes) {
@@ -344,5 +359,53 @@ export default async function ContactsPage({
     }
   })
 
-  return <ContactsClient contacts={contacts} listes={listes} leadsData={leadsData} vue={vue} />
+  // ── Newsletter — historique conservé même après désinscription ────────────
+  const newsletterData: NewsletterRow[] = contacts.flatMap(c => {
+    const lead = leadParClient.get(c.id)
+    const envois = [
+      ...(envoisParClient.get(c.id) ?? []),
+      ...(conserveToArchives.get(c.id) ?? []).flatMap(aid => envoisParClient.get(aid) ?? []),
+    ]
+    const inscriptionISO = lead?.source === 'newsletter' ? lead.created_at : null
+
+    if (!c.newsletter_consent && envois.length === 0 && !inscriptionISO) return []
+
+    const envoyes     = envois.length
+    const ouverts     = envois.filter(e => e.ouvert_at).length
+    const clics       = envois.filter(e => e.clique_at).length
+    const conversions = envois.filter(e => e.converti_at).length
+
+    const premiers: { at: string; type: string }[] = []
+    if (inscriptionISO) premiers.push({ at: inscriptionISO, type: 'Inscription' })
+    for (const e of envois) premiers.push({ at: e.envoye_at, type: 'Envoyée' })
+    premiers.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+    const premier = premiers[0] ?? { at: c.premierContactISO, type: 'Inscription' }
+
+    const derniers: { at: string; type: string }[] = []
+    if (inscriptionISO) derniers.push({ at: inscriptionISO, type: 'Inscription' })
+    for (const e of envois) {
+      derniers.push({ at: e.envoye_at, type: 'Envoyée' })
+      if (e.ouvert_at)   derniers.push({ at: e.ouvert_at,   type: 'Ouverture' })
+      if (e.clique_at)   derniers.push({ at: e.clique_at,   type: 'Clic' })
+      if (e.converti_at) derniers.push({ at: e.converti_at, type: 'Conversion' })
+    }
+    derniers.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    const dernier = derniers[0] ?? premier
+
+    return [{
+      id:                 c.id,
+      prenom:             c.prenom,
+      nom:                c.nom,
+      nom_artiste:        c.nom_artiste,
+      pays:               c.pays,
+      newsletter_consent: c.newsletter_consent,
+      premier_nwt_iso:    premier.at,
+      premier_nwt_type:   premier.type,
+      dernier_nwt_iso:    dernier.at,
+      dernier_nwt_type:   dernier.type,
+      envoyes, ouverts, clics, conversions,
+    }]
+  })
+
+  return <ContactsClient contacts={contacts} listes={listes} leadsData={leadsData} newsletterData={newsletterData} vue={vue} />
 }

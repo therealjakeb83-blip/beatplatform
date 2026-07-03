@@ -6,6 +6,7 @@ import SocialIcon from '../../_components/SocialIcon'
 import { joursDepuis } from '../../_lib/utils'
 import ClientsView from './ClientsView'
 import LeadsView, { type LeadRow } from './LeadsView'
+import NewsletterView, { type NewsletterRow } from './NewsletterView'
 
 export type ContactRow = {
   id: string
@@ -667,11 +668,13 @@ export default function ContactsClient({
   contacts,
   listes,
   leadsData,
+  newsletterData,
   vue,
 }: {
   contacts: ContactRow[]
   listes: { id: string; nom: string; nb: number }[]
   leadsData: LeadRow[]
+  newsletterData: NewsletterRow[]
   vue: string
 }) {
   const clients = contacts.filter(c => c.statut === 'abonne' || c.statut === 'ancien' || c.statut === 'client')
@@ -680,7 +683,7 @@ export default function ContactsClient({
     { key: '',           label: 'Tous'         },
     { key: 'clients',    label: 'Clients'      },
     { key: 'leads',      label: 'Leads'        },
-    { key: 'newsletter', label: '🔒 Newsletter' },
+    { key: 'newsletter', label: 'Newsletter'   },
   ]
 
   const tabNav = (
@@ -707,17 +710,7 @@ export default function ContactsClient({
           </div>
           {tabNav}
         </div>
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center text-3xl mb-5">
-            🔒
-          </div>
-          <h2 className="text-white font-bold text-lg mb-2">Newsletter — bientôt disponible</h2>
-          <p className="text-gray-500 text-sm max-w-md leading-relaxed">
-            Cette section affichera les statistiques de tes campagnes email : taux d&apos;ouverture,
-            clics, réponses et conversions. Elle sera disponible une fois l&apos;intégration
-            newsletter en place.
-          </p>
-        </div>
+        <NewsletterView contacts={newsletterData} listes={listes} />
       </div>
     )
   }
