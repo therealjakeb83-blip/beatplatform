@@ -171,6 +171,7 @@ export default async function FicheClientPage({
     { data: freeDLRaw },
     { data: archivesDateRaw },
     { data: leadsRaw },
+    { data: envoisNewsletterRaw },
   ] = await Promise.all([
     supabase
       .from('commandes')
@@ -214,6 +215,12 @@ export default async function FicheClientPage({
       .select('newsletter_inscrit')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', allClientIds),
+    // RLS : visible seulement si la campagne appartient à ce beatmaker — conservé même après désinscription
+    supabase
+      .from('campagne_envois')
+      .select('envoye_at, ouvert_at, clique_at, converti_at, campagnes(nom, sent_at)')
+      .in('client_id', allClientIds)
+      .order('envoye_at', { ascending: false }),
   ])
 
   type FreeDL = { beat_id: string; downloaded_at: string; beats: { titre: string } | null }
@@ -226,6 +233,21 @@ export default async function FicheClientPage({
   // Inscrit newsletter = consentement global (clients) OU inscription spécifique à cette boutique (leads)
   // — même logique que le ciblage des campagnes (app/dashboard/business/_lib/contacts.ts)
   const inscritNewsletter = client.newsletter_consent || (leadsRaw ?? []).some(l => l.newsletter_inscrit)
+
+  // Historique d'engagement newsletter — conservé même après désinscription (statut ≠ historique)
+  type EnvoiNewsletter = {
+    envoye_at: string
+    ouvert_at: string | null
+    clique_at: string | null
+    converti_at: string | null
+    campagnes: { nom: string; sent_at: string | null } | null
+  }
+  const envoisNewsletter = (envoisNewsletterRaw ?? []) as unknown as EnvoiNewsletter[]
+  const nbRecues     = envoisNewsletter.length
+  const nbOuvertes   = envoisNewsletter.filter(e => e.ouvert_at).length
+  const nbCliquees   = envoisNewsletter.filter(e => e.clique_at).length
+  const nbConverties = envoisNewsletter.filter(e => e.converti_at).length
+  const pctNewsletter = (n: number) => nbRecues > 0 ? `${Math.round((n / nbRecues) * 100)}%` : '–'
 
   // "Client depuis" = date la plus ancienne parmi conservé + archivés
   const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at)]
@@ -891,17 +913,18 @@ export default async function FicheClientPage({
             <p className="text-[11px] text-gray-600 mb-4">
               Bascule manuelle — équivalente au lien de désinscription reçu par email (pratique pour tester sans attendre un vrai envoi).
             </p>
-            {inscritNewsletter ? (
+            {nbRecues === 0 ? (
+              <div className="py-6 text-center text-gray-600 text-sm">
+                Ce contact n&apos;a encore reçu aucune campagne.
+              </div>
+            ) : (
               <>
-                <div className="h-1.5 rounded-full bg-gray-800 mb-5 overflow-hidden">
-                  <div className="h-full rounded-full bg-gray-700 w-0" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-2 mb-5">
                   {[
-                    { label: 'Ouverture',  val: '–', sub: 'Non disponible' },
-                    { label: 'Clics',      val: '–', sub: 'Non disponible' },
-                    { label: 'Conversion', val: '–', sub: 'Non disponible' },
-                    { label: 'Réponses',   val: '–', sub: 'Non disponible' },
+                    { label: 'Reçues',     val: String(nbRecues), sub: 'au total' },
+                    { label: 'Ouvertes',   val: String(nbOuvertes),   sub: pctNewsletter(nbOuvertes) },
+                    { label: 'Cliquées',   val: String(nbCliquees),   sub: pctNewsletter(nbCliquees) },
+                    { label: 'Converties', val: String(nbConverties), sub: pctNewsletter(nbConverties) },
                   ].map(m => (
                     <div key={m.label} className="bg-gray-800/60 rounded-xl p-3">
                       <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">{m.label}</p>
@@ -910,14 +933,25 @@ export default async function FicheClientPage({
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-600 mt-4">
-                  Les statistiques d&apos;engagement seront disponibles dans Analytics — Marketing.
+                <p className="text-[11px] text-gray-600 mb-2">
+                  Historique conservé même après une désinscription.
                 </p>
+                <div className="divide-y divide-gray-800">
+                  {envoisNewsletter.map((e, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs text-gray-200 truncate">{e.campagnes?.nom ?? 'Campagne supprimée'}</p>
+                        <p className="text-[10px] text-gray-600">{fmtDateRel(e.envoye_at)}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${e.ouvert_at ? 'bg-blue-500/15 text-blue-400' : 'bg-gray-800 text-gray-700'}`}>Ouvert</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${e.clique_at ? 'bg-indigo-500/15 text-indigo-400' : 'bg-gray-800 text-gray-700'}`}>Cliqué</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${e.converti_at ? 'bg-green-500/15 text-green-400' : 'bg-gray-800 text-gray-700'}`}>Converti</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </>
-            ) : (
-              <div className="py-6 text-center text-gray-600 text-sm">
-                Ce contact n&apos;est pas inscrit à la newsletter.
-              </div>
             )}
           </div>
         )}
