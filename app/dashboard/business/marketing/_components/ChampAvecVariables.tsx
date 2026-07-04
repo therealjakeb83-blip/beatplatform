@@ -279,7 +279,7 @@ export default function ChampAvecVariables({ value, onChange, onFocusChamp, mult
   return (
     <div className="relative" onClick={editable ? e => e.stopPropagation() : undefined}>
       {editable && estVide && placeholder && (
-        <span className="absolute inset-0 pointer-events-none opacity-40" style={{ font: 'inherit', color: 'inherit' }}>
+        <span className={`${className ?? ''} absolute inset-0 pointer-events-none opacity-40`}>
           {placeholder}
         </span>
       )}

@@ -97,12 +97,12 @@ function RecetteCard({ recette, existante, sauvegarder }: {
           <p className="text-sm font-semibold text-white">{recette.label}</p>
           <p className="text-xs text-gray-500 mt-0.5">{recette.description}</p>
         </div>
-        <button
+        <div
           onClick={() => setActif(a => !a)}
-          className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative ${actif ? 'bg-indigo-600' : 'bg-gray-700'}`}
+          className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${actif ? 'bg-indigo-600' : 'bg-gray-700'}`}
         >
           <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${actif ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
+        </div>
       </div>
 
       <div className="p-5 grid grid-cols-[1fr_220px] gap-5">
