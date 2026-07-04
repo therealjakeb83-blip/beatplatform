@@ -519,7 +519,7 @@ Extension future prévue si un vrai panier multi-articles voit le jour : table e
 | 2b.1 | Migration SQL : table `tentatives_paiement` + RLS + GRANT authenticated/service_role (`supabase/phase2b_tentatives_paiement.sql`) | ✅ |
 | 2b.2 | Modifier `/api/stripe/checkout/route.ts` : insérer une ligne `tentatives_paiement` (statut `creee`) juste après `stripe.checkout.sessions.create()` (l'id de session est requis pour la ligne) | ✅ |
 | 2b.3 | Nouveaux hooks webhook Stripe : `checkout.session.completed` (étendu → `complete` + lien `commande_id`), `checkout.session.expired` (nouveau → `expiree`), `payment_intent.payment_failed` (nouveau → recherche de la session via `stripe.checkout.sessions.list` puis `echouee`) | ✅ |
-| 2b.4 | Page Commandes fusionnée : `commandes` + `tentatives_paiement` (hors `complete`, déjà représentées par la vraie commande) dans une seule liste triée, 3 nouveaux statuts (Panier en cours / Abandonnée / Paiement refusé), lien détail/facture désactivé pour les tentatives | ✅ |
+| 2b.4 | Page Commandes fusionnée : `commandes` + `tentatives_paiement` (hors `complete`, déjà représentées par la vraie commande) dans une seule liste triée, 3 nouveaux statuts (Panier en cours / Abandonnée / Échouée), lien détail/facture désactivé pour les tentatives | ✅ |
 | 2b.5 | Tests bout en bout | ⬜ |
 
 > **Prérequis pour :** le workflow "Tentative d'achat échouée" (9e recette Phase 5) et une future automatisation "panier abandonné" restent bloqués tant que cette phase n'est pas terminée.

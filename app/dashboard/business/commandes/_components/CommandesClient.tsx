@@ -13,7 +13,7 @@ const STATUT = {
   litige:     { label: 'Litige',           cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
   creee:      { label: 'Panier en cours',  cls: 'bg-blue-500/15   text-blue-400   border border-blue-500/20' },
   expiree:    { label: 'Abandonnée',       cls: 'bg-gray-600/15   text-gray-400   border border-gray-600/20' },
-  echouee:    { label: 'Paiement refusé',  cls: 'bg-rose-500/15   text-rose-400   border border-rose-500/20' },
+  echouee:    { label: 'Échouée',          cls: 'bg-rose-500/15   text-rose-400   border border-rose-500/20' },
 } as const
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -29,7 +29,7 @@ const TABS = [
   { label: 'Litige',           value: 'litige' },
   { label: 'Panier en cours',  value: 'creee' },
   { label: 'Abandonnée',       value: 'expiree' },
-  { label: 'Paiement refusé',  value: 'echouee' },
+  { label: 'Échouée',          value: 'echouee' },
 ]
 
 const SCOPES = [
