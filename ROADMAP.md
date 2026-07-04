@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-07-04 — Session de planification (pas de code) : 4.5/4.8 mis en pause (raisons documentées ci-dessous), nom "My Producer" à reconsidérer possiblement en fin de projet (étape 17, coût de renommage vérifié bas), nouveau chantier Commerce "tentatives_paiement" identifié comme **prérequis prioritaire** avant la Phase 5, et Phase 5 (Automatisations) entièrement repensée à partir des vrais workflows email de Jake. Prochaine session : construire `tentatives_paiement` (Commerce), puis les 8 workflows Phase 5 en isolation.
+> Dernière mise à jour : 2026-07-04 — Phase 2b (Commerce : Tentatives de paiement) construite et validée de bout en bout (T1-T4 ✅) : table `tentatives_paiement`, 3 nouveaux hooks webhook, page Commandes fusionnée avec 3 nouveaux statuts. 4.5/4.8 restent en pause (raisons documentées ci-dessous), nom "My Producer" à reconsidérer possiblement en fin de projet (étape 17, coût de renommage vérifié bas). Prochaine session : les 8 workflows Phase 5 (Automatisations) en isolation, en commençant par la migration SQL (5.1).
 
 ## Légende
 | Statut | Signification |
@@ -520,9 +520,11 @@ Extension future prévue si un vrai panier multi-articles voit le jour : table e
 | 2b.2 | Modifier `/api/stripe/checkout/route.ts` : insérer une ligne `tentatives_paiement` (statut `creee`) juste après `stripe.checkout.sessions.create()` (l'id de session est requis pour la ligne) | ✅ |
 | 2b.3 | Nouveaux hooks webhook Stripe : `checkout.session.completed` (étendu → `complete` + lien `commande_id`), `checkout.session.expired` (nouveau → `expiree`), `payment_intent.payment_failed` (nouveau → recherche de la session via `stripe.checkout.sessions.list` puis `echouee`) | ✅ |
 | 2b.4 | Page Commandes fusionnée : `commandes` + `tentatives_paiement` (hors `complete`, déjà représentées par la vraie commande) dans une seule liste triée, 3 nouveaux statuts (Panier en cours / Abandonnée / Échouée), lien détail/facture désactivé pour les tentatives | ✅ |
-| 2b.5 | Tests bout en bout | ⬜ |
+| 2b.5 | Tests bout en bout | ✅ |
 
-> **Prérequis pour :** le workflow "Tentative d'achat échouée" (9e recette Phase 5) et une future automatisation "panier abandonné" restent bloqués tant que cette phase n'est pas terminée.
+> **Phase 2b validée le 2026-07-04** — T1 (achat réussi, non-régression), T2 (carte refusée → email/client bien résolus après correctif), T3 (panier créé immédiatement, expiration 24h fiable par construction), T4 (abonnement → aucune ligne `tentatives_paiement`, scope respecté).
+>
+> **Débloque :** le workflow "Tentative d'achat échouée" (9e recette Phase 5) et une future automatisation "panier abandonné" peuvent maintenant être construits.
 >
 > **Action Jake :** exécuter `supabase/phase2b_tentatives_paiement.sql` dans l'éditeur SQL Supabase, puis ajouter les événements `checkout.session.expired` et `payment_intent.payment_failed` dans la config webhook du Dashboard Stripe (même écran que pour `account.updated` à l'étape 10).
 
