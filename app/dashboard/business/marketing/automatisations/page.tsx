@@ -8,7 +8,8 @@ export type AutomatisationRow = {
   actif: boolean
   objet: string | null
   corps: string | null
-  delai_minutes: number
+  delai_heures: number
+  heure_cible_minutes: number | null
 }
 
 export default async function AutomatisationsPage() {
@@ -18,10 +19,13 @@ export default async function AutomatisationsPage() {
 
   const { data } = await supabase
     .from('automatisations')
-    .select('id, type, actif, objet, corps, delai_minutes')
+    .select('id, type, actif, objet, corps, delai_heures, heure_cible_minutes')
     .eq('beatmaker_id', user.id)
 
-  async function sauvegarder(type: string, actif: boolean, objet: string, corps: string, delaiMinutes: number) {
+  async function sauvegarder(
+    type: string, actif: boolean, objet: string, corps: string,
+    delaiHeures: number, heureCibleMinutes: number | null,
+  ) {
     'use server'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -32,7 +36,8 @@ export default async function AutomatisationsPage() {
       actif,
       objet: objet.trim() || null,
       corps: corps.trim() || null,
-      delai_minutes: delaiMinutes > 0 ? delaiMinutes : 1440,
+      delai_heures: delaiHeures >= 0 ? delaiHeures : 10,
+      heure_cible_minutes: heureCibleMinutes,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'beatmaker_id,type' })
   }

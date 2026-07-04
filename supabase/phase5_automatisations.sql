@@ -20,10 +20,15 @@ CREATE TABLE IF NOT EXISTS automatisations (
   beatmaker_id  uuid        NOT NULL REFERENCES beatmakers(id) ON DELETE CASCADE,
   type          text        NOT NULL CHECK (type IN ('bienvenue_abonnement')),
   actif         boolean     NOT NULL DEFAULT true,
-  -- Délai avant envoi après l'événement déclencheur, en minutes (1440 = 1 jour,
-  -- le "J+1" voulu par Jake). Configurable pour permettre un test rapide
-  -- (ex. 1 minute) avant de repasser à la valeur définitive.
-  delai_minutes integer     NOT NULL DEFAULT 1440 CHECK (delai_minutes > 0),
+  -- Mécanique reprise telle quelle de la boutique perso de Jake (AutomateWoo) :
+  -- attendre au moins delai_heures après l'événement, PUIS envoyer à la
+  -- prochaine occurrence de heure_cible_minutes (heure de Paris, minutes depuis
+  -- minuit — 615 = 10h15). Découplé de l'heure exacte de l'événement : un achat
+  -- à 3h55 ne doit jamais générer un mail à 3h55 le lendemain (pas crédible).
+  -- heure_cible_minutes NULL = mode test : envoi dès que delai_heures est passé,
+  -- sans alignement sur une heure fixe (pratique pour tester avec delai_heures=0).
+  delai_heures         integer NOT NULL DEFAULT 10 CHECK (delai_heures >= 0),
+  heure_cible_minutes  integer CHECK (heure_cible_minutes IS NULL OR (heure_cible_minutes >= 0 AND heure_cible_minutes < 1440)),
   objet         text,
   corps         text,
   config        jsonb       NOT NULL DEFAULT '{}'::jsonb,

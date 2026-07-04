@@ -5,6 +5,37 @@ import type { BrandingBoutique } from './email-blocs'
 
 export type TypeAutomatisation = 'bienvenue_abonnement'
 
+// ── Échéance d'envoi (reprend la mécanique de la boutique perso de Jake) ──────
+// attendre au moins delaiHeures après l'événement, PUIS envoyer à la prochaine
+// occurrence de heureCibleMinutes en heure de Paris (615 = 10h15). Si
+// heureCibleMinutes est absent (mode test), l'échéance est juste delaiHeures
+// après l'événement, sans alignement sur une heure fixe.
+
+function decalageMinutesParis(date: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Paris', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(date)
+  const val = (t: string) => Number(parts.find(p => p.type === t)?.value)
+  const commeUTC = Date.UTC(val('year'), val('month') - 1, val('day'), val('hour'), val('minute'), val('second'))
+  return Math.round((commeUTC - date.getTime()) / 60_000)
+}
+
+function prochaineOccurrenceParis(auPlusTot: Date, heureCibleMinutes: number): Date {
+  const decalage = decalageMinutesParis(auPlusTot)
+  const equivalentParis = new Date(auPlusTot.getTime() + decalage * 60_000)
+  const minuitParis = Date.UTC(equivalentParis.getUTCFullYear(), equivalentParis.getUTCMonth(), equivalentParis.getUTCDate())
+  let candidat = minuitParis + heureCibleMinutes * 60_000 - decalage * 60_000
+  if (candidat < auPlusTot.getTime()) candidat += 24 * 60 * 60_000
+  return new Date(candidat)
+}
+
+function calculerEcheance(evenementCreeLe: string, delaiHeures: number, heureCibleMinutes: number | null): Date {
+  const auPlusTot = new Date(new Date(evenementCreeLe).getTime() + delaiHeures * 3_600_000)
+  return heureCibleMinutes != null ? prochaineOccurrenceParis(auPlusTot, heureCibleMinutes) : auPlusTot
+}
+
 // Construit un destinataire minimal à partir de la fiche client, sans les
 // statistiques CRM (LTV, RFM, préférences musicales...) — celles-ci exigent une
 // session utilisateur (chargerContactsEnrichis) alors que les automatisations
@@ -87,10 +118,10 @@ async function envoyerEmailAutomatisation(params: {
 }
 
 // Traite un événement en file d'attente : charge la config, le destinataire et
-// la boutique, envoie l'email si tout est prêt, puis marque l'événement traité
-// (que l'envoi ait réussi ou non — un événement non-traitable ne doit pas être
-// retenté indéfiniment par le cron du lendemain). Un événement pas encore
-// arrivé à échéance (delai_minutes) reste en file, retenté au prochain passage.
+// la boutique, envoie l'email si l'échéance est atteinte, puis marque
+// l'événement traité (que l'envoi ait réussi ou non — un événement
+// non-traitable ne doit pas être retenté indéfiniment). Un événement pas
+// encore à échéance reste en file, retenté au prochain passage du cron.
 export async function traiterEvenementAutomatisation(evenement: {
   id: string
   beatmaker_id: string
@@ -103,7 +134,7 @@ export async function traiterEvenementAutomatisation(evenement: {
 
   const { data: automatisation } = await admin
     .from('automatisations')
-    .select('id, actif, objet, corps, delai_minutes')
+    .select('id, actif, objet, corps, delai_heures, heure_cible_minutes')
     .eq('beatmaker_id', evenement.beatmaker_id)
     .eq('type', evenement.type)
     .maybeSingle()
@@ -113,8 +144,8 @@ export async function traiterEvenementAutomatisation(evenement: {
     return
   }
 
-  const echeance = new Date(evenement.created_at).getTime() + automatisation.delai_minutes * 60_000
-  if (Date.now() < echeance) return
+  const echeance = calculerEcheance(evenement.created_at, automatisation.delai_heures, automatisation.heure_cible_minutes)
+  if (Date.now() < echeance.getTime()) return
 
   const [destinataire, brandingRes] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),
