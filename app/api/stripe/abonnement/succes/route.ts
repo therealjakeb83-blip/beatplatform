@@ -86,7 +86,7 @@ export async function GET(request: Request) {
         const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
           beatmaker_id: session.metadata.beatmaker_id,
           client_id: clientId,
-          type: 'abonnement_bienvenue',
+          type: 'bienvenue_abonnement',
           reference_id: abonnement.id,
         })
         if (evenementError) console.error('[abo/succes] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))

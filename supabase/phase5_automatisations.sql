@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS automatisation_evenements (
   id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   beatmaker_id  uuid        NOT NULL REFERENCES beatmakers(id) ON DELETE CASCADE,
   client_id     uuid        NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  type          text        NOT NULL CHECK (type IN ('abonnement_bienvenue')),
+  type          text        NOT NULL CHECK (type IN ('bienvenue_abonnement')),
   reference_id  uuid        NOT NULL,
   created_at    timestamptz NOT NULL DEFAULT now(),
   traite        boolean     NOT NULL DEFAULT false,
