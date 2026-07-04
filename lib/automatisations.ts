@@ -5,6 +5,10 @@ import type { BrandingBoutique } from './email-blocs'
 
 export type TypeAutomatisation = 'bienvenue_abonnement'
 
+export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
+  bienvenue_abonnement: 'Bienvenue abonnement',
+}
+
 // ── Échéance d'envoi (reprend la mécanique de la boutique perso de Jake) ──────
 // attendre au moins delaiHeures après l'événement, PUIS envoyer à la prochaine
 // occurrence de heureCibleMinutes en heure de Paris (615 = 10h15). Si
@@ -31,7 +35,7 @@ function prochaineOccurrenceParis(auPlusTot: Date, heureCibleMinutes: number): D
   return new Date(candidat)
 }
 
-function calculerEcheance(evenementCreeLe: string, delaiHeures: number, heureCibleMinutes: number | null): Date {
+export function calculerEcheance(evenementCreeLe: string, delaiHeures: number, heureCibleMinutes: number | null): Date {
   const auPlusTot = new Date(new Date(evenementCreeLe).getTime() + delaiHeures * 3_600_000)
   return heureCibleMinutes != null ? prochaineOccurrenceParis(auPlusTot, heureCibleMinutes) : auPlusTot
 }
@@ -129,7 +133,7 @@ export async function traiterEvenementAutomatisation(evenement: {
   type: TypeAutomatisation
   reference_id: string
   created_at: string
-}): Promise<void> {
+}, options?: { forcer?: boolean }): Promise<void> {
   const admin = createAdminClient()
 
   const { data: automatisation } = await admin
@@ -145,7 +149,7 @@ export async function traiterEvenementAutomatisation(evenement: {
   }
 
   const echeance = calculerEcheance(evenement.created_at, automatisation.delai_heures, automatisation.heure_cible_minutes)
-  if (Date.now() < echeance.getTime()) return
+  if (!options?.forcer && Date.now() < echeance.getTime()) return
 
   const [destinataire, brandingRes] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),

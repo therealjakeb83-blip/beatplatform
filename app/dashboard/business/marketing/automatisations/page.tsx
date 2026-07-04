@@ -1,5 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
+import { calculerEcheance, traiterEvenementAutomatisation, LABELS_AUTOMATISATION, type TypeAutomatisation } from '@/lib/automatisations'
 import AutomatisationsClient from './_components/AutomatisationsClient'
 
 export type AutomatisationRow = {
@@ -12,6 +15,14 @@ export type AutomatisationRow = {
   heure_cible_minutes: number | null
 }
 
+export type EvenementFileAttente = {
+  id: string
+  flux: string
+  clientNom: string
+  clientEmail: string
+  echeanceISO: string | null
+}
+
 export default async function AutomatisationsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,6 +32,37 @@ export default async function AutomatisationsPage() {
     .from('automatisations')
     .select('id, type, actif, objet, corps, delai_heures, heure_cible_minutes')
     .eq('beatmaker_id', user.id)
+
+  const automatisations = (data ?? []) as AutomatisationRow[]
+
+  const admin = createAdminClient()
+  const { data: evenementsRaw } = await admin
+    .from('automatisation_evenements')
+    .select('id, type, created_at, clients(prenom, nom, email)')
+    .eq('beatmaker_id', user.id)
+    .eq('traite', false)
+    .order('created_at', { ascending: false })
+
+  type EvenementRaw = {
+    id: string
+    type: TypeAutomatisation
+    created_at: string
+    clients: { prenom: string | null; nom: string; email: string } | null
+  }
+
+  const fileAttente: EvenementFileAttente[] = ((evenementsRaw ?? []) as unknown as EvenementRaw[]).map(e => {
+    const config = automatisations.find(a => a.type === e.type)
+    const echeance = config?.actif
+      ? calculerEcheance(e.created_at, config.delai_heures, config.heure_cible_minutes)
+      : null
+    return {
+      id: e.id,
+      flux: LABELS_AUTOMATISATION[e.type] ?? e.type,
+      clientNom: [e.clients?.prenom, e.clients?.nom].filter(Boolean).join(' ') || '—',
+      clientEmail: e.clients?.email ?? '—',
+      echeanceISO: echeance ? echeance.toISOString() : null,
+    }
+  })
 
   async function sauvegarder(
     type: string, actif: boolean, objet: string, corps: string,
@@ -40,12 +82,34 @@ export default async function AutomatisationsPage() {
       heure_cible_minutes: heureCibleMinutes,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'beatmaker_id,type' })
+    revalidatePath('/dashboard/business/marketing/automatisations')
+  }
+
+  async function executerMaintenant(evenementId: string) {
+    'use server'
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const admin = createAdminClient()
+    const { data: evenement } = await admin
+      .from('automatisation_evenements')
+      .select('id, beatmaker_id, client_id, type, reference_id, created_at')
+      .eq('id', evenementId)
+      .eq('beatmaker_id', user.id)
+      .single()
+    if (!evenement) return
+
+    await traiterEvenementAutomatisation(evenement, { forcer: true })
+    revalidatePath('/dashboard/business/marketing/automatisations')
   }
 
   return (
     <AutomatisationsClient
-      automatisations={(data ?? []) as AutomatisationRow[]}
+      automatisations={automatisations}
       sauvegarder={sauvegarder}
+      fileAttente={fileAttente}
+      executerMaintenant={executerMaintenant}
     />
   )
 }

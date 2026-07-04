@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import ChampAvecVariables, { GROUPES_VARIABLES } from '../../_components/ChampAvecVariables'
-import type { AutomatisationRow } from '../page'
+import type { AutomatisationRow, EvenementFileAttente } from '../page'
 
 type Recette = { type: string; label: string; description: string; corpsDefaut: string }
 
@@ -26,6 +26,8 @@ type Props = {
     type: string, actif: boolean, objet: string, corps: string,
     delaiHeures: number, heureCibleMinutes: number | null,
   ) => Promise<void>
+  fileAttente: EvenementFileAttente[]
+  executerMaintenant: (evenementId: string) => Promise<void>
 }
 
 function minutesVersHeure(m: number): string {
@@ -36,7 +38,7 @@ function heureVersMinutes(hhmm: string): number {
   return h * 60 + m
 }
 
-export default function AutomatisationsClient({ automatisations, sauvegarder }: Props) {
+export default function AutomatisationsClient({ automatisations, sauvegarder, fileAttente, executerMaintenant }: Props) {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
@@ -55,7 +57,76 @@ export default function AutomatisationsClient({ automatisations, sauvegarder }: 
             sauvegarder={sauvegarder}
           />
         ))}
+
+        <FileAttenteTable fileAttente={fileAttente} executerMaintenant={executerMaintenant} />
       </div>
+    </div>
+  )
+}
+
+function fmtEcheance(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function FileAttenteTable({ fileAttente, executerMaintenant }: {
+  fileAttente: EvenementFileAttente[]
+  executerMaintenant: Props['executerMaintenant']
+}) {
+  const [enCours, setEnCours] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  function handleExecuter(id: string) {
+    setEnCours(id)
+    startTransition(async () => {
+      await executerMaintenant(id)
+      setEnCours(null)
+    })
+  }
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-800">
+        <p className="text-sm font-semibold text-white">File d&apos;attente</p>
+        <p className="text-xs text-gray-500 mt-0.5">Événements en attente d&apos;envoi. Vérifiée automatiquement chaque jour — ou exécute un envoi maintenant pour tester.</p>
+      </div>
+
+      {fileAttente.length === 0 ? (
+        <div className="py-10 text-center">
+          <p className="text-gray-600 text-sm">Aucun événement en attente</p>
+        </div>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-800 text-xs text-gray-500 font-medium">
+              <th className="text-left px-5 py-3">Flux de travail</th>
+              <th className="text-left px-5 py-3">Client</th>
+              <th className="text-left px-5 py-3">Date d&apos;exécution prévue</th>
+              <th className="text-right px-5 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-800/50">
+            {fileAttente.map(e => (
+              <tr key={e.id}>
+                <td className="px-5 py-3 text-white">{e.flux}</td>
+                <td className="px-5 py-3 text-gray-400">
+                  {e.clientNom} <span className="text-gray-600">{e.clientEmail}</span>
+                </td>
+                <td className="px-5 py-3 text-gray-400">{fmtEcheance(e.echeanceISO)}</td>
+                <td className="px-5 py-3 text-right">
+                  <button
+                    onClick={() => handleExecuter(e.id)}
+                    disabled={isPending && enCours === e.id}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 transition-colors"
+                  >
+                    {isPending && enCours === e.id ? 'Exécution...' : 'Exécuter maintenant'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   )
 }
