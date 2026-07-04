@@ -159,6 +159,7 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
           <>
             {subItem(`${BASE}/marketing/campagnes`, 'Campagnes', pathname.startsWith(`${BASE}/marketing/campagnes`))}
             {subItem(`${BASE}/marketing/templates`, 'Templates', pathname.startsWith(`${BASE}/marketing/templates`))}
+            {subItem(`${BASE}/marketing/automatisations`, 'Automatisations', pathname.startsWith(`${BASE}/marketing/automatisations`))}
           </>
         )}
 

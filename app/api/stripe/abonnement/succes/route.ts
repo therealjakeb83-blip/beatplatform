@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
     const email = session.customer_details?.email
     const nom = session.customer_details?.name ?? null
-    const clientId = session.metadata?.client_id || null
+    let clientId = session.metadata?.client_id || null
 
     if (email && session.metadata?.beatmaker_id) {
       const sub = session.subscription as import('stripe').Stripe.Subscription | null
@@ -33,12 +33,37 @@ export async function GET(request: Request) {
         .eq('id', session.metadata.beatmaker_id)
         .single()
 
+      // Résolution client par email — même logique que le webhook checkout,
+      // nécessaire pour que l'automatisation "Bienvenue abonnement" ait un
+      // destinataire même pour un abonné invité (non connecté au checkout)
+      if (!clientId) {
+        const { data: existingClient } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle()
+
+        if (existingClient) {
+          clientId = existingClient.id
+        } else {
+          const parts = (nom ?? '').trim().split(' ')
+          const prenom = parts[0] || null
+          const nomFamille = parts.slice(1).join(' ') || parts[0] || email.split('@')[0]
+          const { data: newClient } = await supabase
+            .from('clients')
+            .insert({ id: crypto.randomUUID(), email, nom: nomFamille, prenom })
+            .select('id')
+            .single()
+          clientId = newClient?.id ?? null
+        }
+      }
+
       const enEssai = sub?.status === 'trialing'
       const essaiFinLe = sub?.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null
       const dateDebut = new Date().toISOString()
       const dateFin = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      await supabase.from('abonnements_boutique').insert({
+      const { data: abonnement } = await supabase.from('abonnements_boutique').insert({
         beatmaker_id: session.metadata.beatmaker_id,
         client_id: clientId || null,
         acheteur_email: email,
@@ -55,7 +80,17 @@ export async function GET(request: Request) {
         essai_fin_le: essaiFinLe,
         date_debut: dateDebut,
         date_fin: dateFin,
-      })
+      }).select('id').single()
+
+      if (abonnement && clientId) {
+        const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+          beatmaker_id: session.metadata.beatmaker_id,
+          client_id: clientId,
+          type: 'abonnement_bienvenue',
+          reference_id: abonnement.id,
+        })
+        if (evenementError) console.error('[abo/succes] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+      }
 
       const cookieStore = await cookies()
       cookieStore.set(`abo_${slug}`, email, {
