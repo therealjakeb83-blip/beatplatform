@@ -61,11 +61,20 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true })
 }
 
+async function resoudreClientParEmail(supabase: ReturnType<typeof createAdminClient>, email: string | null) {
+  if (!email) return null
+  const { data: client } = await supabase.from('clients').select('id').eq('email', email).maybeSingle()
+  return client?.id ?? null
+}
+
 async function traiterExpirationTentative(session: Stripe.Checkout.Session) {
   const supabase = createAdminClient()
+  const email = session.customer_details?.email ?? null
+  const clientId = await resoudreClientParEmail(supabase, email)
+
   const { error } = await supabase
     .from('tentatives_paiement')
-    .update({ statut: 'expiree' })
+    .update({ statut: 'expiree', email, client_id: clientId })
     .eq('stripe_session_id', session.id)
     .eq('statut', 'creee')
 
@@ -78,9 +87,12 @@ async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
   if (!session) return
 
   const supabase = createAdminClient()
+  const email = session.customer_details?.email ?? null
+  const clientId = await resoudreClientParEmail(supabase, email)
+
   const { error } = await supabase
     .from('tentatives_paiement')
-    .update({ statut: 'echouee' })
+    .update({ statut: 'echouee', email, client_id: clientId })
     .eq('stripe_session_id', session.id)
     .eq('statut', 'creee')
 
