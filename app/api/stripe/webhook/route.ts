@@ -50,7 +50,41 @@ export async function POST(request: Request) {
     await traiterCompteConnecte(event.data.object as Stripe.Account)
   }
 
+  if (event.type === 'checkout.session.expired') {
+    await traiterExpirationTentative(event.data.object as Stripe.Checkout.Session)
+  }
+
+  if (event.type === 'payment_intent.payment_failed') {
+    await traiterEchecTentative(event.data.object as Stripe.PaymentIntent)
+  }
+
   return NextResponse.json({ ok: true })
+}
+
+async function traiterExpirationTentative(session: Stripe.Checkout.Session) {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('tentatives_paiement')
+    .update({ statut: 'expiree' })
+    .eq('stripe_session_id', session.id)
+    .eq('statut', 'creee')
+
+  if (error) console.error('[webhook] Erreur expiration tentative_paiement:', JSON.stringify(error))
+}
+
+async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
+  const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntent.id, limit: 1 })
+  const session = sessions.data[0]
+  if (!session) return
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('tentatives_paiement')
+    .update({ statut: 'echouee' })
+    .eq('stripe_session_id', session.id)
+    .eq('statut', 'creee')
+
+  if (error) console.error('[webhook] Erreur échec tentative_paiement:', JSON.stringify(error))
 }
 
 async function traiterMajAbonnement(subscription: Stripe.Subscription) {
@@ -194,6 +228,15 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   }
 
   console.log('[webhook] Commande créée:', commande?.id)
+
+  // Marquer la tentative de paiement correspondante comme complète
+  if (commande) {
+    const { error: tentativeError } = await supabase
+      .from('tentatives_paiement')
+      .update({ statut: 'complete', commande_id: commande.id, client_id: clientId, email: acheteurEmail })
+      .eq('stripe_session_id', session.id)
+    if (tentativeError) console.error('[webhook] Erreur maj tentative_paiement:', JSON.stringify(tentativeError))
+  }
 
   // Attribution marketing : exige à la fois un clic récent sur la campagne (cookie posé
   // par /api/marketing/clic) ET que l'achat soit fait avec le même client que le

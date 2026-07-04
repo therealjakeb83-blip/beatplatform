@@ -273,5 +273,19 @@ export async function POST(request: Request) {
 
   const session = await stripe.checkout.sessions.create(sessionParams)
 
+  const { error: tentativeError } = await adminForSplits.from('tentatives_paiement').insert({
+    beatmaker_id: String(beat.beatmaker_id),
+    beat_id,
+    licence_id,
+    client_id: user?.id ?? null,
+    email: user?.email ?? email_acheteur ?? null,
+    prix: prixTotal / 100,
+    code_promo: codePromoValide,
+    source_marketing: source_marketing ?? 'direct',
+    stripe_session_id: session.id,
+    statut: 'creee',
+  })
+  if (tentativeError) console.error('[checkout] Erreur insert tentative_paiement:', JSON.stringify(tentativeError))
+
   return NextResponse.json({ url: session.url })
 }

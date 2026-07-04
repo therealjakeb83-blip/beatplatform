@@ -7,10 +7,13 @@ import type { CommandeRow } from '../page'
 /* ─── constants ─────────────────────────────────────────────────── */
 
 const STATUT = {
-  en_attente: { label: 'En attente', cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
-  payee:      { label: 'Payée',      cls: 'bg-green-500/15  text-green-400  border border-green-500/20' },
-  remboursee: { label: 'Remboursée', cls: 'bg-red-500/15    text-red-400    border border-red-500/20' },
-  litige:     { label: 'Litige',     cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
+  en_attente: { label: 'En attente',       cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
+  payee:      { label: 'Payée',            cls: 'bg-green-500/15  text-green-400  border border-green-500/20' },
+  remboursee: { label: 'Remboursée',       cls: 'bg-red-500/15    text-red-400    border border-red-500/20' },
+  litige:     { label: 'Litige',           cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
+  creee:      { label: 'Panier en cours',  cls: 'bg-blue-500/15   text-blue-400   border border-blue-500/20' },
+  expiree:    { label: 'Abandonnée',       cls: 'bg-gray-600/15   text-gray-400   border border-gray-600/20' },
+  echouee:    { label: 'Paiement refusé',  cls: 'bg-rose-500/15   text-rose-400   border border-rose-500/20' },
 } as const
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -19,11 +22,14 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 const TABS = [
-  { label: 'Toutes',     value: '' },
-  { label: 'En attente', value: 'en_attente' },
-  { label: 'Payée',      value: 'payee' },
-  { label: 'Remboursée', value: 'remboursee' },
-  { label: 'Litige',     value: 'litige' },
+  { label: 'Toutes',           value: '' },
+  { label: 'En attente',       value: 'en_attente' },
+  { label: 'Payée',            value: 'payee' },
+  { label: 'Remboursée',       value: 'remboursee' },
+  { label: 'Litige',           value: 'litige' },
+  { label: 'Panier en cours',  value: 'creee' },
+  { label: 'Abandonnée',       value: 'expiree' },
+  { label: 'Paiement refusé',  value: 'echouee' },
 ]
 
 const SCOPES = [
@@ -96,12 +102,14 @@ function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href={`/dashboard/business/commandes/${c.id}`}
-              className="text-xs text-indigo-400 hover:text-indigo-300"
-            >
-              Voir le détail →
-            </Link>
+            {c._type === 'commande' && (
+              <Link
+                href={`/dashboard/business/commandes/${c.id}`}
+                className="text-xs text-indigo-400 hover:text-indigo-300"
+              >
+                Voir le détail →
+              </Link>
+            )}
             <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">
               ✕
             </button>
@@ -220,6 +228,9 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
       payee:        base.filter(c => c.statut === 'payee').length,
       remboursee:   base.filter(c => c.statut === 'remboursee').length,
       litige:       base.filter(c => c.statut === 'litige').length,
+      creee:        base.filter(c => c.statut === 'creee').length,
+      expiree:      base.filter(c => c.statut === 'expiree').length,
+      echouee:      base.filter(c => c.statut === 'echouee').length,
     } as Record<string, number>
   }, [commandes, filtreClientId])
 
@@ -445,12 +456,18 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
                                 <span className="font-medium text-white">{nom}</span>
                               )}
                               <div>
-                                <Link
-                                  href={`/dashboard/business/commandes/${c.id}`}
-                                  className="font-mono text-xs text-gray-500 hover:text-indigo-400 transition-colors"
-                                >
-                                  #{c.id.slice(0, 8).toUpperCase()}
-                                </Link>
+                                {c._type === 'commande' ? (
+                                  <Link
+                                    href={`/dashboard/business/commandes/${c.id}`}
+                                    className="font-mono text-xs text-gray-500 hover:text-indigo-400 transition-colors"
+                                  >
+                                    #{c.id.slice(0, 8).toUpperCase()}
+                                  </Link>
+                                ) : (
+                                  <span className="font-mono text-xs text-gray-600">
+                                    #{c.id.slice(0, 8).toUpperCase()}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
