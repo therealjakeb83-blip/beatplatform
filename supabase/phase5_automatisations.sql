@@ -20,7 +20,10 @@ CREATE TABLE IF NOT EXISTS automatisations (
   beatmaker_id  uuid        NOT NULL REFERENCES beatmakers(id) ON DELETE CASCADE,
   type          text        NOT NULL CHECK (type IN ('bienvenue_abonnement')),
   actif         boolean     NOT NULL DEFAULT true,
-  delai_jours   integer     NOT NULL DEFAULT 1,
+  -- Délai avant envoi après l'événement déclencheur, en minutes (1440 = 1 jour,
+  -- le "J+1" voulu par Jake). Configurable pour permettre un test rapide
+  -- (ex. 1 minute) avant de repasser à la valeur définitive.
+  delai_minutes integer     NOT NULL DEFAULT 1440 CHECK (delai_minutes > 0),
   objet         text,
   corps         text,
   config        jsonb       NOT NULL DEFAULT '{}'::jsonb,

@@ -22,8 +22,15 @@ Jake`,
 
 type Props = {
   automatisations: AutomatisationRow[]
-  sauvegarder: (type: string, actif: boolean, objet: string, corps: string) => Promise<void>
+  sauvegarder: (type: string, actif: boolean, objet: string, corps: string, delaiMinutes: number) => Promise<void>
 }
+
+const DELAIS = [
+  { valeur: 1,    label: '1 minute (test)' },
+  { valeur: 60,   label: '1 heure (test)' },
+  { valeur: 1440, label: '1 jour (recommandé)' },
+  { valeur: 2880, label: '2 jours' },
+]
 
 export default function AutomatisationsClient({ automatisations, sauvegarder }: Props) {
   return (
@@ -57,6 +64,7 @@ function RecetteCard({ recette, existante, sauvegarder }: {
   const [actif, setActif]               = useState(existante?.actif ?? false)
   const [objet, setObjet]               = useState(existante?.objet ?? '')
   const [corps, setCorps]               = useState(existante?.corps ?? recette.corpsDefaut)
+  const [delaiMinutes, setDelaiMinutes] = useState(existante?.delai_minutes ?? 1440)
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre]     = useState(false)
   const champActifRef = useRef<((token: string) => void) | null>(null)
@@ -67,7 +75,7 @@ function RecetteCard({ recette, existante, sauvegarder }: {
 
   async function handleEnregistrer() {
     setEnregistrement(true)
-    await sauvegarder(recette.type, actif, objet, corps)
+    await sauvegarder(recette.type, actif, objet, corps, delaiMinutes)
     setEnregistrement(false)
     setEnregistre(true)
     setTimeout(() => setEnregistre(false), 2000)
@@ -109,6 +117,16 @@ function RecetteCard({ recette, existante, sauvegarder }: {
               multiline
               className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-3 text-sm text-white min-h-[180px]"
             />
+          </div>
+          <div>
+            <label className="text-[11px] text-gray-500 mb-1 block">Délai avant envoi</label>
+            <select
+              value={delaiMinutes}
+              onChange={e => setDelaiMinutes(Number(e.target.value))}
+              className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white outline-none"
+            >
+              {DELAIS.map(d => <option key={d.valeur} value={d.valeur}>{d.label}</option>)}
+            </select>
           </div>
           <button
             onClick={handleEnregistrer}

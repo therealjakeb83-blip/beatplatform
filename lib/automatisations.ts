@@ -89,19 +89,21 @@ async function envoyerEmailAutomatisation(params: {
 // Traite un événement en file d'attente : charge la config, le destinataire et
 // la boutique, envoie l'email si tout est prêt, puis marque l'événement traité
 // (que l'envoi ait réussi ou non — un événement non-traitable ne doit pas être
-// retenté indéfiniment par le cron du lendemain).
+// retenté indéfiniment par le cron du lendemain). Un événement pas encore
+// arrivé à échéance (delai_minutes) reste en file, retenté au prochain passage.
 export async function traiterEvenementAutomatisation(evenement: {
   id: string
   beatmaker_id: string
   client_id: string
   type: TypeAutomatisation
   reference_id: string
+  created_at: string
 }): Promise<void> {
   const admin = createAdminClient()
 
   const { data: automatisation } = await admin
     .from('automatisations')
-    .select('id, actif, objet, corps')
+    .select('id, actif, objet, corps, delai_minutes')
     .eq('beatmaker_id', evenement.beatmaker_id)
     .eq('type', evenement.type)
     .maybeSingle()
@@ -110,6 +112,9 @@ export async function traiterEvenementAutomatisation(evenement: {
     await admin.from('automatisation_evenements').update({ traite: true }).eq('id', evenement.id)
     return
   }
+
+  const echeance = new Date(evenement.created_at).getTime() + automatisation.delai_minutes * 60_000
+  if (Date.now() < echeance) return
 
   const [destinataire, brandingRes] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),

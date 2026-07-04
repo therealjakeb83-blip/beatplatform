@@ -18,21 +18,19 @@ export async function GET(request: Request) {
 
   const supabase = createAdminClient()
 
-  // Délai J+1 : ne traite que les événements vieux d'au moins 24h, jamais le jour même
-  const seuil = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
+  // Le délai (configurable par recette, en minutes) est vérifié événement par
+  // événement dans traiterEvenementAutomatisation — pas de filtre d'âge ici.
   const { data: evenements } = await supabase
     .from('automatisation_evenements')
-    .select('id, beatmaker_id, client_id, type, reference_id')
+    .select('id, beatmaker_id, client_id, type, reference_id, created_at')
     .eq('traite', false)
-    .lte('created_at', seuil)
 
   let traites = 0
-  for (const evenement of (evenements ?? []) as { id: string; beatmaker_id: string; client_id: string; type: TypeAutomatisation; reference_id: string }[]) {
+  for (const evenement of (evenements ?? []) as { id: string; beatmaker_id: string; client_id: string; type: TypeAutomatisation; reference_id: string; created_at: string }[]) {
     await traiterEvenementAutomatisation(evenement)
     traites++
   }
 
-  console.log(`[cron] automatisations — événements traités: ${traites}`)
+  console.log(`[cron] automatisations — événements passés en revue: ${traites}`)
   return NextResponse.json({ traites })
 }
