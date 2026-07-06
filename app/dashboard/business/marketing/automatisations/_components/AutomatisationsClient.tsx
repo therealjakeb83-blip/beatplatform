@@ -156,6 +156,7 @@ function RecetteCard({ recette, existante, sauvegarder }: {
   existante?: AutomatisationRow
   sauvegarder: Props['sauvegarder']
 }) {
+  const [depliee, setDepliee]           = useState(false)
   const [actif, setActif]               = useState(existante?.actif ?? false)
   const [objet, setObjet]               = useState(existante?.objet ?? '')
   const [corps, setCorps]               = useState(existante?.corps ?? recette.corpsDefaut)
@@ -183,20 +184,32 @@ function RecetteCard({ recette, existante, sauvegarder }: {
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-        <div>
-          <p className="text-sm font-semibold text-white">{recette.label}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{recette.description}</p>
+      <div
+        onClick={() => setDepliee(d => !d)}
+        className="flex items-center justify-between px-5 py-4 cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-3">
+          <svg
+            className={`w-3.5 h-3.5 text-gray-500 flex-shrink-0 transition-transform ${depliee ? 'rotate-90' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-white">{recette.label}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{recette.description}</p>
+          </div>
         </div>
         <div
-          onClick={() => setActif(a => !a)}
+          onClick={e => { e.stopPropagation(); setActif(a => !a) }}
           className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${actif ? 'bg-indigo-600' : 'bg-gray-700'}`}
         >
           <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${actif ? 'translate-x-5' : 'translate-x-0.5'}`} />
         </div>
       </div>
 
-      <div className="p-5 grid grid-cols-[1fr_220px] gap-5">
+      {depliee && (
+      <div className="p-5 border-t border-gray-800 grid grid-cols-[1fr_220px] gap-5">
         <div className="space-y-4">
           <div>
             <label className="text-[11px] text-gray-500 mb-1 block">Objet</label>
@@ -305,6 +318,7 @@ function RecetteCard({ recette, existante, sauvegarder }: {
           ))}
         </div>
       </div>
+      )}
     </div>
   )
 }
