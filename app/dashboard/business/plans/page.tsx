@@ -9,7 +9,7 @@ export default async function PlansPage() {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours, stripe_price_id')
+    .select('abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours, abo_recurrence_cadeau_mois, stripe_price_id')
     .eq('id', user.id)
     .single()
 
@@ -20,6 +20,7 @@ export default async function PlansPage() {
     abo_prix:        beatmaker?.abo_prix        ?? null,
     abo_remise_pct:  beatmaker?.abo_remise_pct  ?? 30,
     abo_essai_jours: beatmaker?.abo_essai_jours ?? 0,
+    abo_recurrence_cadeau_mois: beatmaker?.abo_recurrence_cadeau_mois ?? 4,
     stripe_price_id: beatmaker?.stripe_price_id ?? null,
   }
 

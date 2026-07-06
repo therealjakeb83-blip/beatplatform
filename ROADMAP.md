@@ -584,8 +584,8 @@ Composants communs : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx` �
 
 | # | Workflow | Détail | Statut |
 |---|---|---|---|
-| 5.6a | Bienvenue abonnement | Nouvel abonnement — texte réel fourni par Jake | ⬜ |
-| 5.6b | Abonnement en attente | Échec de renouvellement (pas annulation) — `{{subscription.tempsavantpromo}}`, réutilise la logique du beat cadeau à 4 mois | ⬜ |
+| 5.6a | Bienvenue abonnement | Nouvel abonnement — texte réel fourni par Jake | ✅ *(validé le 2026-07-04)* |
+| 5.6b | Abonnement en attente | Échec de renouvellement (pas annulation) — `{{mois_avant_cadeau}}`. Statut `impaye` désormais distingué de `annule` dans le webhook ; délai de grâce d'1 mois avant annulation automatique (`/api/cron/abonnements-impayes`) ; récurrence du beat cadeau configurable par le beatmaker (`abo_recurrence_cadeau_mois`, page `/dashboard/business/plans`) au lieu d'un "4 mois" fixe ; `mois_consecutifs` enfin réellement incrémenté/remis à zéro | ✅ *(codé le 2026-07-06, à tester)* |
 | 5.6c | Churn message perso | Annulation réelle — distinct de la confirmation robotique d'annulation (Phase 6 Transactionnels) | ⬜ |
 | 5.6d | Remerciement achat | 4 paliers (1er/2e/3e/4e et +, basé sur données réelles : 1.5 commande/client en moyenne, 3.1 chez les récurrents) + variable conditionnelle singulier/pluriel dans le système de tokens (bien expliquée dans l'UI) | ⬜ |
 | 5.6e | Bienvenue perso | Compte créé sans achat/abo le jour même — ne se déclenche que si rien d'autre ne s'est passé ce jour-là (règle de suppression) | ⬜ |
@@ -613,7 +613,7 @@ Composants communs : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx` �
 | # | Sous-étape | Statut |
 |---|-----------|--------|
 | 5.1 | Migration SQL (`supabase/phase5_automatisations.sql`) : `automatisations` (config par recette), `automatisation_evenements` (file d'attente déposée par les webhooks), `automatisation_envois` (log idempotent) + RLS | ✅ |
-| 5.2 | Les 8 workflows en isolation (contenu + déclencheur) — **construits un par un** : 1/8 validé de bout en bout (Bienvenue abonnement, pilote) | 🔄 |
+| 5.2 | Les 8 workflows en isolation (contenu + déclencheur) — **construits un par un** : 2/8 codés (Bienvenue abonnement validé, Abonnement en attente à tester) | 🔄 |
 | 5.3 | Cron quotidien `/api/cron/automatisations` (pattern `splits-expiration`) : scan `automatisation_evenements` non traités, échéance calculée par événement | ✅ *(pilote)* |
 | 5.4 | Hooks événementiels : `abonnement/succes/route.ts` résout/crée le client puis dépose l'événement `bienvenue_abonnement` | ✅ *(pilote — 1/6 événements)* |
 | 5.5 | Page `/dashboard/business/marketing/automatisations/` : éditeur simple (objet/corps + palette de variables), toggle actif, **file d'attente** (événements en attente + bouton "Exécuter maintenant") — structure prête à accueillir les 7 autres recettes | ✅ *(pilote, validé — email reçu après exécution manuelle le 2026-07-04)* |
@@ -629,6 +629,8 @@ Composants communs : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx` �
 > **Limitation connue du pilote :** `lib/automatisations.ts` construit un destinataire minimal (identité + boutique) sans les statistiques CRM (LTV, RFM, préférences) — celles-ci exigent une session utilisateur (`chargerContactsEnrichis`), indisponible en contexte cron/webhook (service_role). Suffisant pour les textes de Jake, qui ne référencent que l'identité. À enrichir si un futur workflow a besoin de plus (ex. `{{nb_achats}}`).
 >
 > **✅ Point de vigilance scaling — corrigé le 2026-07-04 :** `/api/cron/automatisations` traitait les événements séquentiellement (un par un), avec un risque de dépasser le temps d'exécution max si beaucoup de boutiques partagent la même heure cible. Corrigé : traitement par lots de 20 en parallèle (`Promise.all`) + plafond de 500 événements par passage (le surplus attend simplement le passage suivant, rien n'est perdu). Reste en réserve si le besoin se confirme un jour à très grande échelle : décalage d'heure cible par boutique (jitter), ou passage à un système de réveil individuel par événement (ex. Vercel Workflows) plutôt qu'une ronde périodique partagée.
+>
+> **Limite connue (5.6b) :** `automatisation_evenements` a une contrainte `UNIQUE (type, reference_id)`. Pour `abonnement_en_attente`, `reference_id` = l'id de l'abonnement — donc si un même abonnement retombe en impayé une 2e fois après s'être rétabli entre-temps, l'insert échoue (erreur loguée dans `[webhook] Erreur insert automatisation_evenements`, pas de crash) et l'email n'est pas renvoyé pour ce 2e épisode. Edge case jugé rare, non traité pour l'instant plutôt que de complexifier le modèle de référence — à corriger si ça se présente en pratique (ex. générer un id de référence par épisode plutôt que par abonnement).
 
 ### Phase 6 — Mailing : Transactionnels ⬜ À faire
 

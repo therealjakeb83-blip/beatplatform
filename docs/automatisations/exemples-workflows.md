@@ -46,11 +46,13 @@ Jake
 
 ## 4. Abonnement en attente (renouvellement non passé, pas une annulation)
 
+> **Mis à jour le 2026-07-06** — décision prise avec Jake : contrairement à sa boutique perso où l'abonnement reste en attente indéfiniment, My Producer impose un **délai de grâce d'1 mois** : si le paiement n'est toujours pas passé après 30 jours, l'abonnement est annulé automatiquement (cron `/api/cron/abonnements-impayes`) et le compteur de fidélité (`mois_consecutifs`) repart à 0. Le texte ci-dessous a été adapté pour mentionner ce délai — l'original ne le mentionnait pas ("quand tu veux"). Le "4 mois" fixe est remplacé par `abo_recurrence_cadeau_mois`, réglable par le beatmaker (page `/dashboard/business/plans`) au lieu d'être figé à 4 — le compteur de fidélité (`mois_consecutifs`) n'était par ailleurs jamais réellement incrémenté nulle part avant cette automatisation ; c'est maintenant fait dans le webhook (`traiterPaiementAbonnement`).
+
 ```
-Salut {{ customer.first_name | default: customer.username }}, ça va ?
+Salut {{prénom}}, ça va ?
 Juste pour te prévenir : le renouvellement n'est pas passé ce mois-ci (rien de grave 👌🏼)
-Ton abo est juste en pause, tu peux le relancer via ton espace client quand tu veux !
-Rassure toi: ça ne bloque pas ta progression vers la prod gratuite (il te reste {{ subscription.tempsavantpromo }} mois sur 4)
+Ton abo est en pause — tu as un mois pour le relancer via ton espace client, sinon il sera automatiquement annulé.
+Rassure-toi, ça ne bloque pas ta progression vers le prochain beat cadeau (il te reste {{mois_avant_cadeau}} mois)
 Si t'as la moindre question, je suis là :)
 Jake
 ```

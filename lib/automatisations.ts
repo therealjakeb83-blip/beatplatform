@@ -3,10 +3,43 @@ import { getResend } from './resend'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
 
-export type TypeAutomatisation = 'bienvenue_abonnement'
+export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
+  abonnement_en_attente: 'Abonnement en attente',
+}
+
+// Tokens propres à un type d'automatisation (pas partagés avec le système de
+// tokens générique de lib/mailing.ts, qui ne connaît que le contact/la
+// boutique) — ex. le nombre de mois avant le prochain beat cadeau, qui dépend
+// de l'abonnement précis concerné par l'événement, pas juste du client.
+async function resoudreTokensSupplementaires(evenement: {
+  type: TypeAutomatisation
+  reference_id: string
+  beatmaker_id: string
+}): Promise<Record<string, string>> {
+  if (evenement.type !== 'abonnement_en_attente') return {}
+
+  const admin = createAdminClient()
+  const [{ data: abo }, { data: beatmaker }] = await Promise.all([
+    admin.from('abonnements_boutique').select('mois_consecutifs').eq('id', evenement.reference_id).maybeSingle(),
+    admin.from('beatmakers').select('abo_recurrence_cadeau_mois').eq('id', evenement.beatmaker_id).single(),
+  ])
+
+  const recurrence = beatmaker?.abo_recurrence_cadeau_mois ?? 4
+  const moisConsecutifs = abo?.mois_consecutifs ?? 0
+  const moisAvantCadeau = recurrence - (moisConsecutifs % recurrence)
+
+  return { mois_avant_cadeau: String(moisAvantCadeau) }
+}
+
+function appliquerTokensSupplementaires(texte: string, tokens: Record<string, string>): string {
+  let out = texte
+  for (const [cle, valeur] of Object.entries(tokens)) {
+    out = out.replaceAll(`{{${cle}}}`, valeur)
+  }
+  return out
 }
 
 // ── Échéance d'envoi (reprend la mécanique de la boutique perso de Jake) ──────
@@ -151,9 +184,10 @@ export async function traiterEvenementAutomatisation(evenement: {
   const echeance = calculerEcheance(evenement.created_at, automatisation.delai_heures, automatisation.heure_cible_minutes)
   if (!options?.forcer && Date.now() < echeance.getTime()) return
 
-  const [destinataire, brandingRes] = await Promise.all([
+  const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),
     admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url').eq('id', evenement.beatmaker_id).single(),
+    resoudreTokensSupplementaires(evenement),
   ])
 
   const branding = brandingRes.data as BrandingBoutique | null
@@ -163,8 +197,8 @@ export async function traiterEvenementAutomatisation(evenement: {
       automatisationId: automatisation.id,
       clientId: evenement.client_id,
       evenementCle: `${evenement.type}:${evenement.reference_id}`,
-      objet: automatisation.objet,
-      corps: automatisation.corps,
+      objet: appliquerTokensSupplementaires(automatisation.objet, tokensSupplementaires),
+      corps: appliquerTokensSupplementaires(automatisation.corps, tokensSupplementaires),
       destinataire,
       branding,
       beatmakerId: evenement.beatmaker_id,

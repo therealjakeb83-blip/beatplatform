@@ -4,7 +4,13 @@ import { useRef, useState, useTransition } from 'react'
 import ChampAvecVariables, { GROUPES_VARIABLES } from '../../_components/ChampAvecVariables'
 import type { AutomatisationRow, EvenementFileAttente } from '../page'
 
-type Recette = { type: string; label: string; description: string; corpsDefaut: string }
+type Recette = {
+  type: string
+  label: string
+  description: string
+  corpsDefaut: string
+  variablesSupplementaires?: { token: string; label: string }[]
+}
 
 const RECETTES: Recette[] = [
   {
@@ -17,6 +23,20 @@ Si jamais tu cherches un style en particulier, dis moi et je te prépare une pet
 Et si t'as besoin d'un MP3 pour maquetter un beat privé, n'hésites pas, je suis là 🦾
 À très vite,
 Jake`,
+  },
+  {
+    type: 'abonnement_en_attente',
+    label: 'Abonnement en attente',
+    description: "Envoyé le lendemain d'un renouvellement en échec (pas une annulation).",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Juste pour te prévenir : le renouvellement n'est pas passé ce mois-ci (rien de grave 👌🏼)
+Ton abo est en pause — tu as un mois pour le relancer via ton espace client, sinon il sera automatiquement annulé.
+Rassure-toi, ça ne bloque pas ta progression vers le prochain beat cadeau (il te reste {{mois_avant_cadeau}} mois)
+Si t'as la moindre question, je suis là :)
+Jake`,
+    variablesSupplementaires: [
+      { token: 'mois_avant_cadeau', label: 'Mois avant le beat cadeau' },
+    ],
   },
 ]
 
@@ -251,6 +271,22 @@ function RecetteCard({ recette, existante, sauvegarder }: {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2">Variables</p>
           <p className="text-[10px] text-gray-700 mb-3">Clique dans un champ, puis clique une variable pour l&apos;insérer.</p>
+          {recette.variablesSupplementaires && (
+            <div className="mb-3">
+              <p className="text-[10px] text-gray-500 mb-1.5">Spécifique à cette recette</p>
+              <div className="flex flex-wrap gap-1">
+                {recette.variablesSupplementaires.map(v => (
+                  <button
+                    key={v.token}
+                    onClick={() => insererVariable(`{{${v.token}}}`)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {GROUPES_VARIABLES.map(g => (
             <div key={g.groupe} className="mb-3">
               <p className="text-[10px] text-gray-500 mb-1.5">{g.groupe}</p>

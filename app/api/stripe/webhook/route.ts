@@ -102,24 +102,54 @@ async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
 async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   const supabase = createAdminClient()
   const status = subscription.status
-  // actif = active ou trialing
-  const statut = (status === 'active' || status === 'trialing') ? 'actif' : 'annule'
+  // actif = active ou trialing ; impaye = renouvellement en échec mais Stripe
+  // retente encore (past_due) ; annule = tout le reste (canceled, unpaid...)
+  const statut = (status === 'active' || status === 'trialing') ? 'actif'
+    : status === 'past_due' ? 'impaye'
+    : 'annule'
   const enEssai = status === 'trialing'
+
+  const { data: abo } = await supabase
+    .from('abonnements_boutique')
+    .select('id, beatmaker_id, client_id, statut')
+    .eq('stripe_subscription_id', subscription.id)
+    .maybeSingle()
+
+  if (!abo) return
+
+  const entreEnImpaye = statut === 'impaye' && abo.statut !== 'impaye'
 
   const { error } = await supabase
     .from('abonnements_boutique')
-    .update({ statut, en_essai: enEssai })
+    .update({
+      statut,
+      en_essai: enEssai,
+      // Ne pose la date que la première fois (pas à chaque relance Stripe tant
+      // qu'on reste en impaye) ; la efface si le paiement est finalement repassé.
+      ...(entreEnImpaye ? { impaye_depuis: new Date().toISOString() } : {}),
+      ...(statut === 'actif' ? { impaye_depuis: null } : {}),
+    })
     .eq('stripe_subscription_id', subscription.id)
 
   if (error) console.error('[webhook] Erreur maj abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement mis à jour:', subscription.id, statut)
+
+  if (entreEnImpaye && abo.client_id) {
+    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+      beatmaker_id: abo.beatmaker_id,
+      client_id: abo.client_id,
+      type: 'abonnement_en_attente',
+      reference_id: abo.id,
+    })
+    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (impaye):', JSON.stringify(evenementError))
+  }
 }
 
 async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('abonnements_boutique')
-    .update({ statut: 'annule', en_essai: false })
+    .update({ statut: 'annule', en_essai: false, mois_consecutifs: 0, impaye_depuis: null })
     .eq('stripe_subscription_id', subscription.id)
 
   if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
@@ -515,15 +545,22 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     return
   }
 
-  // Incrémenter mensualites_payees
+  // Incrémenter mensualites_payees (total facturé) et mois_consecutifs (compteur
+  // de fidélité vers le beat cadeau — remis à 0 uniquement sur annulation, pas
+  // sur un simple impayé temporaire : un paiement qui repasse pendant la
+  // période de grâce ne fait donc pas "repartir de zéro")
   const { data: aboActuel } = await supabase
     .from('abonnements_boutique')
-    .select('mensualites_payees')
+    .select('mensualites_payees, mois_consecutifs')
     .eq('id', abo.id)
     .single()
   await supabase
     .from('abonnements_boutique')
-    .update({ mensualites_payees: (aboActuel?.mensualites_payees ?? 0) + 1 })
+    .update({
+      mensualites_payees: (aboActuel?.mensualites_payees ?? 0) + 1,
+      mois_consecutifs: (aboActuel?.mois_consecutifs ?? 0) + 1,
+      impaye_depuis: null,
+    })
     .eq('id', abo.id)
 
   console.log('[webhook]', typeCommande, '— commande créée, mensualites_payees incrémenté pour abo', abo.id)

@@ -9,6 +9,7 @@ type Plan = {
   abo_prix: number | null       // en centimes
   abo_remise_pct: number
   abo_essai_jours: number
+  abo_recurrence_cadeau_mois: number
   stripe_price_id: string | null
 }
 
@@ -43,6 +44,7 @@ export default function PlansClient({ plan: planInitial }: { plan: Plan }) {
           remise_pct:  plan.abo_remise_pct,
           essai_jours: plan.abo_essai_jours,
           actif:       plan.abo_actif,
+          recurrence_cadeau_mois: plan.abo_recurrence_cadeau_mois,
         }),
       })
       if (!res.ok) throw new Error()
@@ -109,7 +111,7 @@ export default function PlansClient({ plan: planInitial }: { plan: Plan }) {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1.5">Prix mensuel (€)</label>
             <input
@@ -144,6 +146,18 @@ export default function PlansClient({ plan: planInitial }: { plan: Plan }) {
               onChange={e => setPlan(p => ({ ...p, abo_essai_jours: parseInt(e.target.value) || 0 }))}
               className={inp}
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1.5">Beat cadeau tous les (mois)</label>
+            <input
+              type="number"
+              min="1"
+              max="24"
+              value={plan.abo_recurrence_cadeau_mois}
+              onChange={e => setPlan(p => ({ ...p, abo_recurrence_cadeau_mois: parseInt(e.target.value) || 4 }))}
+              className={inp}
+            />
+            <p className="text-xs text-gray-600 mt-1">Mois consécutifs pour débloquer un code promo</p>
           </div>
         </div>
 

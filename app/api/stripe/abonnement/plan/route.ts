@@ -9,7 +9,7 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non connecté' }, { status: 401 })
 
-  const { nom, description, prix_cents, remise_pct, essai_jours, actif } = await request.json()
+  const { nom, description, prix_cents, remise_pct, essai_jours, actif, recurrence_cadeau_mois } = await request.json()
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
@@ -58,6 +58,7 @@ export async function PUT(request: Request) {
       abo_prix: prix_cents,
       abo_remise_pct: remise_pct,
       abo_essai_jours: essai_jours,
+      abo_recurrence_cadeau_mois: recurrence_cadeau_mois && recurrence_cadeau_mois > 0 ? recurrence_cadeau_mois : 4,
       stripe_product_id: productId,
       stripe_price_id: priceId,
     })
@@ -73,7 +74,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from('beatmakers')
-    .select('abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours, stripe_price_id')
+    .select('abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours, abo_recurrence_cadeau_mois, stripe_price_id')
     .eq('id', user.id)
     .single()
 
