@@ -486,9 +486,12 @@ async function distribuerSplits({
 }
 
 async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
-  // Uniquement les paiements de création ou de renouvellement d'abonnement
+  // Uniquement les paiements de création ou de renouvellement d'abonnement.
+  // subscription_update couvre notamment la fin d'essai forcée (trial_end
+  // déclenche une facture immédiate avec cette raison, pas subscription_cycle)
+  // et toute autre modification d'abonnement générant un vrai paiement.
   const billing = invoice.billing_reason
-  if (billing !== 'subscription_create' && billing !== 'subscription_cycle') return
+  if (billing !== 'subscription_create' && billing !== 'subscription_cycle' && billing !== 'subscription_update') return
 
   // Stripe v22 : l'abonnement est dans invoice.parent.subscription_details.subscription
   const subRaw = invoice.parent?.subscription_details?.subscription
