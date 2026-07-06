@@ -31,7 +31,12 @@ export async function POST(request: Request) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    await traiterPaiement(event.data.object as Stripe.Checkout.Session)
+    const session = event.data.object as Stripe.Checkout.Session
+    if (session.mode === 'subscription') {
+      await traiterAbonnementCree(session)
+    } else {
+      await traiterPaiement(session)
+    }
   }
 
   if (event.type === 'invoice.payment_succeeded') {
@@ -65,6 +70,35 @@ async function resoudreClientParEmail(supabase: ReturnType<typeof createAdminCli
   if (!email) return null
   const { data: client } = await supabase.from('clients').select('id').eq('email', email).maybeSingle()
   return client?.id ?? null
+}
+
+// Résolution client par email — crée un compte invité si inconnu (contrairement
+// à resoudreClientParEmail qui ne fait que chercher, sans créer)
+async function resoudreOuCreerClient(
+  supabase: ReturnType<typeof createAdminClient>,
+  email: string | null,
+  nom: string | null,
+): Promise<string | null> {
+  if (!email) return null
+
+  const { data: existingClient } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (existingClient) return existingClient.id
+
+  const parts = (nom ?? '').trim().split(' ')
+  const prenom = parts[0] || null
+  const nomFamille = parts.slice(1).join(' ') || parts[0] || email.split('@')[0]
+  const { data: newClient, error: clientError } = await supabase
+    .from('clients')
+    .insert({ id: crypto.randomUUID(), email, nom: nomFamille, prenom })
+    .select('id')
+    .single()
+  if (clientError) console.error('[webhook] Erreur insert client invité:', JSON.stringify(clientError))
+  return newClient?.id ?? null
 }
 
 async function traiterExpirationTentative(session: Stripe.Checkout.Session) {
@@ -156,6 +190,88 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   else console.log('[webhook] Abonnement annulé:', subscription.id)
 }
 
+// Crée la ligne abonnements_boutique directement depuis le webhook plutôt que
+// depuis la redirection navigateur (/api/stripe/abonnement/succes) : le webhook
+// arrive de serveur à serveur, quasi instantanément, alors que la redirection
+// dépend du navigateur du client et n'est pas garantie (onglet fermé, connexion
+// lente...). Sans ça, invoice.payment_succeeded peut arriver avant que la ligne
+// existe et abandonner silencieusement (découvert en testant le 2026-07-06).
+async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
+  const meta = session.metadata
+  if (!meta?.beatmaker_id) return
+
+  const email = session.customer_details?.email ?? null
+  const nom = session.customer_details?.name ?? null
+  const subscriptionId = typeof session.subscription === 'string'
+    ? session.subscription
+    : session.subscription?.id ?? null
+
+  const supabase = createAdminClient()
+
+  // Idempotence : si le webhook est rejoué (ou si la course inverse se produit
+  // un jour), ne pas créer une 2e ligne pour le même abonnement
+  if (subscriptionId) {
+    const { data: existant } = await supabase
+      .from('abonnements_boutique')
+      .select('id')
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle()
+    if (existant) {
+      console.log('[webhook] Abonnement déjà créé:', subscriptionId)
+      return
+    }
+  }
+
+  const clientId = meta.client_id || await resoudreOuCreerClient(supabase, email, nom)
+  if (!clientId) {
+    console.error('[webhook] Impossible de résoudre le client pour l\'abonnement, session:', session.id)
+    return
+  }
+
+  const { data: beatmaker } = await supabase
+    .from('beatmakers')
+    .select('abo_prix')
+    .eq('id', meta.beatmaker_id)
+    .single()
+
+  const dateDebut = new Date().toISOString()
+  const dateFin = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: abonnement, error } = await supabase.from('abonnements_boutique').insert({
+    beatmaker_id: meta.beatmaker_id,
+    client_id: clientId,
+    acheteur_email: email,
+    acheteur_nom: nom,
+    plan: 'standard',
+    periode: 'mensuel',
+    prix: beatmaker?.abo_prix ?? 0,
+    devise: 'EUR',
+    statut: 'actif',
+    methode_paiement: 'stripe',
+    stripe_subscription_id: subscriptionId,
+    stripe_customer_id: typeof session.customer === 'string' ? session.customer : null,
+    en_essai: false,
+    essai_fin_le: null,
+    date_debut: dateDebut,
+    date_fin: dateFin,
+  }).select('id').single()
+
+  if (error) {
+    console.error('[webhook] Erreur insert abonnement_boutique:', JSON.stringify(error))
+    return
+  }
+
+  console.log('[webhook] Abonnement créé:', abonnement?.id)
+
+  const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+    beatmaker_id: meta.beatmaker_id,
+    client_id: clientId,
+    type: 'bienvenue_abonnement',
+    reference_id: abonnement.id,
+  })
+  if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+}
+
 async function traiterPaiement(session: Stripe.Checkout.Session) {
   const meta = session.metadata
   if (!meta?.beat_id || !meta?.licence_id || !meta?.beatmaker_id) return
@@ -176,30 +292,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   const supabase = createAdminClient()
 
-  // Résolution client par email — crée un compte invité si inconnu
-  let clientId: string | null = null
-  if (acheteurEmail) {
-    const { data: existingClient } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('email', acheteurEmail)
-      .maybeSingle()
-
-    if (existingClient) {
-      clientId = existingClient.id
-    } else {
-      const parts = (acheteurNom ?? '').trim().split(' ')
-      const prenom = parts[0] || null
-      const nom = parts.slice(1).join(' ') || parts[0] || acheteurEmail.split('@')[0]
-      const { data: newClient, error: clientError } = await supabase
-        .from('clients')
-        .insert({ id: crypto.randomUUID(), email: acheteurEmail, nom, prenom })
-        .select('id')
-        .single()
-      if (clientError) console.error('[webhook] Erreur insert client invité:', JSON.stringify(clientError))
-      clientId = newClient?.id ?? null
-    }
-  }
+  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom)
 
   // Récupérer les infos du beat (titre nécessaire pour les emails de fonds en attente)
   const { data: beat } = await supabase
