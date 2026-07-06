@@ -578,6 +578,26 @@ async function distribuerSplits({
   }
 }
 
+type AboLookup = { id: string; client_id: string | null; beatmaker_id: string; prix: number }
+
+async function attendreAbonnement(
+  supabase: ReturnType<typeof createAdminClient>,
+  subscriptionId: string,
+  tentatives = 5,
+  delaiMs = 1500,
+): Promise<AboLookup | null> {
+  for (let i = 0; i < tentatives; i++) {
+    const { data: abo } = await supabase
+      .from('abonnements_boutique')
+      .select('id, client_id, beatmaker_id, prix')
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle()
+    if (abo) return abo
+    if (i < tentatives - 1) await new Promise(r => setTimeout(r, delaiMs))
+  }
+  return null
+}
+
 async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
   // Uniquement les paiements de création ou de renouvellement d'abonnement.
   // subscription_update couvre notamment la fin d'essai forcée (trial_end
@@ -593,11 +613,13 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
 
   const supabase = createAdminClient()
 
-  const { data: abo } = await supabase
-    .from('abonnements_boutique')
-    .select('id, client_id, beatmaker_id, prix')
-    .eq('stripe_subscription_id', subscriptionId)
-    .maybeSingle()
+  // Pour une toute nouvelle souscription, invoice.payment_succeeded arrive en
+  // fait AVANT checkout.session.completed (celui qui crée la ligne
+  // abonnements_boutique) — pas après, contrairement à l'ordre intuitif.
+  // Quelques nouvelles tentatives espacées laissent le temps à cette ligne
+  // d'apparaître plutôt que d'abandonner immédiatement (confirmé en testant
+  // le 2026-07-06 : l'écart observé était de l'ordre d'1 seconde).
+  const abo = await attendreAbonnement(supabase, subscriptionId)
 
   if (!abo) {
     console.log('[webhook] invoice.payment_succeeded — abonnement boutique non trouvé:', subscriptionId)
