@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const supabase = createAdminClient()
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('id, nom_artiste, abo_actif, abo_prix, abo_nom, abo_essai_jours, stripe_price_id, stripe_account_id')
+    .select('id, nom_artiste, abo_actif, abo_prix, abo_nom, stripe_price_id, stripe_account_id')
     .eq('slug', slug)
     .single()
 
@@ -32,7 +32,6 @@ export async function POST(request: Request) {
     line_items: [{ price: beatmaker.stripe_price_id, quantity: 1 }],
     billing_address_collection: 'required',
     subscription_data: {
-      trial_period_days: beatmaker.abo_essai_jours ?? 30,
       metadata: { beatmaker_id: beatmaker.id, slug },
     },
     success_url: `${origin}/api/stripe/abonnement/succes?session_id={CHECKOUT_SESSION_ID}&slug=${slug}`,

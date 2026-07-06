@@ -186,6 +186,8 @@
 | 8.13 | Fix : beats privés incluent `mp3_tague_url` pour les abonnés → lecture audio possible depuis la boutique | Claude 🤖 | 15 min | ✅ |
 
 > **Note :** Le cookie session membre (`abo_<slug>`) est provisoire — remplacé par des comptes Supabase Auth à l'étape 9.
+>
+> **Décision (2026-07-06) — essai gratuit natif retiré pour la V1 :** en construisant l'automatisation "Abonnement en attente" (Phase 5), découvert qu'un essai gratuit natif Stripe (`trial_period_days`) bloque `invoice.payment_succeeded` tant qu'il dure — donc bloque aussi l'incrémentation de `mois_consecutifs` (compteur de fidélité). Jake a choisi de retirer le champ "Essai gratuit (jours)" et la logique de trial au checkout plutôt que de complexifier le compteur : un beatmaker qui veut offrir un mois gratuit utilisera un code promo à -100% (déjà tracké, déjà limitable par client). Réversible facilement si besoin plus tard : `abo_essai_jours`/`en_essai`/`essai_fin_le` restent en base et tout l'affichage existant (CRM, dashboard abonnements, espace client) continue de fonctionner tel quel — il suffirait de remettre `trial_period_days` au checkout + le champ de réglage sur `/dashboard/business/plans`.
 
 ---
 
