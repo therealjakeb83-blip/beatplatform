@@ -41,12 +41,6 @@ function dateFin(a: AboRow): string | null {
   return null
 }
 
-function finEssai(a: AboRow): string | null {
-  if (a.fin_essai) return a.fin_essai
-  if (a.en_essai && a.date_fin) return a.date_fin
-  return null
-}
-
 function methodLabel(m: string): string {
   if (m === 'paypal') return 'Via PayPal'
   return 'Via Stripe'
@@ -251,7 +245,6 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Abonnement</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">État</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Date de début</th>
-                <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Fin d'essai</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Paiement suivant</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Dernière commande</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Date de fin</th>
@@ -265,7 +258,6 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
                 const pays      = paysCode(a)
                 const paiement  = paiementSuivant(a)
                 const fin       = dateFin(a)
-                const essai     = finEssai(a)
                 const nb        = a.mensualites_payees ?? 0
 
                 return (
@@ -317,13 +309,6 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
                       <span className="text-xs text-gray-500">{formatDate(a.date_debut)}</span>
                     </td>
 
-                    {/* Fin d'essai */}
-                    <td className="px-4 py-3">
-                      <span className={`text-xs ${essai ? 'text-gray-500' : 'text-gray-700'}`}>
-                        {formatDate(essai)}
-                      </span>
-                    </td>
-
                     {/* Paiement suivant */}
                     <td className="px-4 py-3">
                       <span className={`text-xs ${paiement ? 'text-gray-500' : 'text-gray-700'}`}>
@@ -372,7 +357,7 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
 
               {displayed.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-12 text-center text-xs text-gray-700">
+                  <td colSpan={8} className="px-5 py-12 text-center text-xs text-gray-700">
                     Aucun abonnement trouvé
                   </td>
                 </tr>

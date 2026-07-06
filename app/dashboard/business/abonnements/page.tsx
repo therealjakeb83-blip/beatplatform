@@ -17,8 +17,6 @@ export type AboRow = {
   date_fin: string
   date_annulation: string | null
   methode_paiement: string
-  en_essai: boolean
-  fin_essai: string | null
   annulation_en_cours: boolean
   mensualites_payees: number | null
   mois_consecutifs: number
@@ -49,7 +47,7 @@ export default async function AbonnementsPage() {
         id, client_id, beatmaker_id, created_at,
         plan, periode, prix, devise,
         statut, date_debut, date_fin, date_annulation,
-        methode_paiement, en_essai, fin_essai, annulation_en_cours,
+        methode_paiement, annulation_en_cours,
         mensualites_payees, mois_consecutifs,
         acheteur_email, acheteur_nom, stripe_subscription_id,
         clients (id, prenom, nom, email, pays)

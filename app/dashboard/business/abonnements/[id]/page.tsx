@@ -80,8 +80,6 @@ export default async function AbonnementDetailPage({
     date_fin: string
     date_annulation: string | null
     methode_paiement: string
-    en_essai: boolean
-    fin_essai: string | null
     annulation_en_cours: boolean
     mensualites_payees: number | null
     mois_consecutifs: number
@@ -99,7 +97,7 @@ export default async function AbonnementDetailPage({
         id, client_id, beatmaker_id, created_at,
         plan, periode, prix, devise,
         statut, date_debut, date_fin, date_annulation,
-        methode_paiement, en_essai, fin_essai, annulation_en_cours,
+        methode_paiement, annulation_en_cours,
         mensualites_payees, mois_consecutifs,
         acheteur_email, acheteur_nom, stripe_subscription_id,
         clients (id, prenom, nom, email, pays)
@@ -169,7 +167,6 @@ export default async function AbonnementDetailPage({
 
   const paiementSuivant = (abo.statut === 'actif' && !abo.annulation_en_cours) ? abo.date_fin : null
   const dateFinDisplay  = (abo.statut === 'annule' || abo.annulation_en_cours)  ? abo.date_fin : null
-  const finEssai        = abo.fin_essai ?? (abo.en_essai ? abo.date_fin : null)
 
   /* ── historique auto-généré ── */
   type Evt = { texte: string; date: string }
@@ -427,12 +424,6 @@ export default async function AbonnementDetailPage({
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-xs text-gray-500">Date de début</span>
                   <span className="text-xs text-gray-300">{formatDate(abo.date_debut)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2.5">
-                  <span className="text-xs text-gray-500">Fin d&apos;essai</span>
-                  <span className={`text-xs ${finEssai ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {formatDate(finEssai)}
-                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-xs text-gray-500">Paiement suivant</span>
