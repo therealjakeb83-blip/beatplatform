@@ -14,6 +14,7 @@ export type CommandeRow = {
   fichiers_livres: boolean | null
   source_marketing: string | null
   type_transaction: string | null
+  type_commande: string | null
   plateforme_source: string | null
   methode_paiement: string | null
   acheteur_email: string | null
@@ -52,7 +53,7 @@ export default async function CommandesPage({
     .select(
       `id, created_at, prix_paye, devise, statut,
        code_promo, reduction_montant, fichiers_livres,
-       source_marketing, type_transaction, plateforme_source,
+       source_marketing, type_transaction, type_commande, plateforme_source,
        acheteur_email, acheteur_nom, methode_paiement,
        clients (id, prenom, nom, email, pays),
        beats (titre, image_url),
@@ -102,6 +103,7 @@ export default async function CommandesPage({
     fichiers_livres: null,
     source_marketing: t.source_marketing,
     type_transaction: null,
+    type_commande: null,
     plateforme_source: 'my_producer',
     methode_paiement: 'stripe',
     acheteur_email: t.email,

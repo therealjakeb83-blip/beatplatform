@@ -16,6 +16,11 @@ const STATUT = {
   echouee:    { label: 'Échouée',          cls: 'bg-rose-500/15   text-rose-400   border border-rose-500/20' },
 } as const
 
+const TYPE_COMMANDE_LABEL: Record<string, string> = {
+  CREATION_ABONNEMENT: 'Création abonnement',
+  RENOUVELLEMENT: 'Renouvellement abonnement',
+}
+
 const SOURCE_LABEL: Record<string, string> = {
   youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', google: 'Google',
   google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
@@ -132,6 +137,8 @@ function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Produit</p>
             {c.beats ? (
               <p className="text-sm text-white">{c.beats.titre}</p>
+            ) : c.type_commande && TYPE_COMMANDE_LABEL[c.type_commande] ? (
+              <p className="text-sm text-white">{TYPE_COMMANDE_LABEL[c.type_commande]}</p>
             ) : (
               <p className="text-sm text-gray-500">—</p>
             )}
@@ -487,8 +494,10 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
                               </svg>
                             </button>
                             <div>
-                              {c.beats && (
+                              {c.beats ? (
                                 <p className="text-xs text-gray-400 truncate max-w-[150px]">{c.beats.titre}</p>
+                              ) : c.type_commande && TYPE_COMMANDE_LABEL[c.type_commande] && (
+                                <p className="text-xs text-gray-400">{TYPE_COMMANDE_LABEL[c.type_commande]}</p>
                               )}
                               {c.licences && (
                                 <p className="text-xs text-gray-600">{c.licences.nom} · {c.licences.modele}</p>
