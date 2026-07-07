@@ -18,10 +18,11 @@ export default function SAbonnerButton({
     setLoading(true)
     setErreur(null)
     try {
+      const source_marketing = sessionStorage.getItem('source_marketing') ?? 'direct'
       const res = await fetch('/api/stripe/abonnement/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug }),
+        body: JSON.stringify({ slug, source_marketing }),
       })
       const data = await res.json()
       if (data.url) {

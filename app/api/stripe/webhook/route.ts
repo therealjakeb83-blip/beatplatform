@@ -254,6 +254,7 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
     essai_fin_le: null,
     date_debut: dateDebut,
     date_fin: dateFin,
+    source_marketing: meta.source_marketing ?? 'direct',
   }).select('id').single()
 
   if (error) {
@@ -578,7 +579,7 @@ async function distribuerSplits({
   }
 }
 
-type AboLookup = { id: string; client_id: string | null; beatmaker_id: string; prix: number }
+type AboLookup = { id: string; client_id: string | null; beatmaker_id: string; prix: number; source_marketing: string | null }
 
 async function attendreAbonnement(
   supabase: ReturnType<typeof createAdminClient>,
@@ -589,7 +590,7 @@ async function attendreAbonnement(
   for (let i = 0; i < tentatives; i++) {
     const { data: abo } = await supabase
       .from('abonnements_boutique')
-      .select('id, client_id, beatmaker_id, prix')
+      .select('id, client_id, beatmaker_id, prix, source_marketing')
       .eq('stripe_subscription_id', subscriptionId)
       .maybeSingle()
     if (abo) return abo
@@ -656,6 +657,7 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     external_order_id: invoiceId,
     type_commande: typeCommande,
     fichiers_livres: true,
+    source_marketing: abo.source_marketing ?? 'direct',
   })
 
   if (error) {

@@ -7,7 +7,7 @@ import type Stripe from 'stripe'
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
-  const { slug } = await request.json()
+  const { slug, source_marketing } = await request.json()
   if (!slug) return NextResponse.json({ erreur: 'slug manquant' }, { status: 400 })
 
   const supabaseUser = await createClient()
@@ -36,7 +36,11 @@ export async function POST(request: Request) {
     },
     success_url: `${origin}/api/stripe/abonnement/succes?session_id={CHECKOUT_SESSION_ID}&slug=${slug}`,
     cancel_url: `${origin}/${slug}/abonnement`,
-    metadata: { beatmaker_id: beatmaker.id, slug, type: 'abonnement_boutique', client_id: user?.id ?? '', client_email: user?.email ?? '' },
+    metadata: {
+      beatmaker_id: beatmaker.id, slug, type: 'abonnement_boutique',
+      client_id: user?.id ?? '', client_email: user?.email ?? '',
+      source_marketing: source_marketing ?? 'direct',
+    },
   }
 
   if (beatmaker.stripe_account_id) {
