@@ -68,7 +68,7 @@ export default async function CommandesPage({
   const { data: tentatives } = await admin
     .from('tentatives_paiement')
     .select(
-      `id, created_at, prix, code_promo, source_marketing, email, statut,
+      `id, created_at, prix, code_promo, source_marketing, email, statut, type,
        clients (id, prenom, nom, email, pays),
        beats (titre, image_url),
        licences (nom, modele)`
@@ -86,6 +86,7 @@ export default async function CommandesPage({
     source_marketing: string | null
     email: string | null
     statut: 'creee' | 'expiree' | 'echouee'
+    type: 'achat_beat' | 'renouvellement_abonnement'
     clients: CommandeRow['clients']
     beats: CommandeRow['beats']
     licences: CommandeRow['licences']
@@ -103,7 +104,7 @@ export default async function CommandesPage({
     fichiers_livres: null,
     source_marketing: t.source_marketing,
     type_transaction: null,
-    type_commande: null,
+    type_commande: t.type === 'renouvellement_abonnement' ? 'RENOUVELLEMENT' : null,
     plateforme_source: 'my_producer',
     methode_paiement: 'stripe',
     acheteur_email: t.email,
