@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-07-04 — Phase 2b (Commerce : Tentatives de paiement) construite et validée de bout en bout (T1-T4 ✅) : table `tentatives_paiement`, 3 nouveaux hooks webhook, page Commandes fusionnée avec 3 nouveaux statuts. 4.5/4.8 restent en pause (raisons documentées ci-dessous), nom "My Producer" à reconsidérer possiblement en fin de projet (étape 17, coût de renommage vérifié bas). Prochaine session : les 8 workflows Phase 5 (Automatisations) en isolation, en commençant par la migration SQL (5.1).
+> Dernière mise à jour : 2026-07-08 — Phase 2b étendue aux échecs de renouvellement d'abonnement et workflow Phase 5 "Abonnement en attente" tous deux validés en test Stripe réel (T1-T7 ✅), CTA "essai gratuit" trompeur retiré des pages publiques d'abonnement. Trou de scope découvert et documenté : le "beat cadeau de fidélité" (délivrance réelle du cadeau quand `mois_consecutifs` atteint le seuil) n'était planifié nulle part — reclassé comme email transactionnel et reporté à la Phase 6 (6.7), pas construit maintenant. 4.5/4.8 restent en pause (raisons documentées ci-dessous), nom "My Producer" à reconsidérer possiblement en fin de projet (étape 17, coût de renommage vérifié bas). Prochaine session : reprendre les 6 workflows Phase 5 restants un par un (Churn message perso, Remerciement achat 4 paliers, Bienvenue perso, Relance inactivité, Follow-up free download, Follow-up favori).
 
 ## Légende
 | Statut | Signification |
@@ -194,6 +194,8 @@
 > 2. En revérifiant l'ordre réel des événements Stripe pour une nouvelle souscription : `invoice.created` → `invoice.finalized` → `invoice.paid` → **`invoice.payment_succeeded`** → `customer.subscription.created` → **`checkout.session.completed`** (~1s plus tard). `invoice.payment_succeeded` arrive donc **avant** `checkout.session.completed`, pas après — aucun événement "plus tôt" n'existe structurellement pour créer la ligne en premier. Corrigé en rendant `traiterPaiementAbonnement` tolérant : si la ligne n'existe pas encore, il réessaie (5 tentatives, 1,5s d'intervalle) avant d'abandonner, laissant le temps à `checkout.session.completed` d'arriver.
 >
 > `/api/stripe/abonnement/succes` ne fait toujours plus que poser le cookie de session membre et rediriger (reste une bonne pratique), mais la vraie garantie de fiabilité vient du nouveau mécanisme de réessai, pas de l'ordre des événements webhook (Stripe ne garantit explicitement aucun ordre entre événements différents).
+>
+> **Fix (2026-07-08) — CTA "essai gratuit" trompeur sur les pages publiques :** conséquence oubliée de la décision du 2026-07-06 ci-dessus — `SAbonnerButton.tsx`, `/[slug]/abonnement` et `/[slug]/membres` affichaient encore "Essayer X jours gratuitement" basé sur `abo_essai_jours`, alors que le checkout n'accorde plus aucun essai réel depuis cette date. CTA simplifié en "S'abonner pour X€/mois" sur les 3 pages ; "1 beat gratuit tous les 4 mois" (texte marketing codé en dur) corrigé pour afficher la vraie récurrence configurée (`abo_recurrence_cadeau_mois`). `abo_essai_jours` retiré des `select()` désormais inutiles (`/[slug]/abonnement`, `/[slug]/mon-abonnement`) — la colonne reste en base, toujours réversible comme prévu.
 
 ---
 
