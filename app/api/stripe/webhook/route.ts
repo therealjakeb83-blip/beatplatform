@@ -43,6 +43,10 @@ export async function POST(request: Request) {
     await traiterPaiementAbonnement(event.data.object as Stripe.Invoice)
   }
 
+  if (event.type === 'invoice.payment_failed') {
+    await traiterEchecRenouvellementAbonnement(event.data.object as Stripe.Invoice)
+  }
+
   if (event.type === 'customer.subscription.updated') {
     await traiterMajAbonnement(event.data.object as Stripe.Subscription)
   }
@@ -559,7 +563,7 @@ async function distribuerSplits({
       })
       if (split.email_invite) {
         const montantEuros = (montantCents / 100).toFixed(2)
-        envoyerFondsEnAttente({ to: split.email_invite, titreBeat, montantEuros }).catch(() => {})
+        envoyerFondsEnAttente({ to: split.email_invite, titreBeat, montantEuros, beatmakerId }).catch(() => {})
       }
     }
   }
@@ -703,6 +707,48 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     .eq('id', abo.id)
 
   console.log('[webhook]', typeCommande, '— commande créée, mensualites_payees incrémenté pour abo', abo.id)
+}
+
+// Trace chaque échec de renouvellement dans tentatives_paiement (rien n'était
+// visible jusqu'ici : pas de commande puisque rien n'a été payé). Une ligne
+// par facture Stripe (idempotent sur stripe_invoice_id) — visible sur la
+// fiche abonnement, découvert manquant en testant l'automatisation "Abonnement
+// en attente" le 2026-07-08.
+async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
+  const billing = invoice.billing_reason
+  if (billing !== 'subscription_create' && billing !== 'subscription_cycle' && billing !== 'subscription_update') return
+
+  const subRaw = invoice.parent?.subscription_details?.subscription
+  const subscriptionId = typeof subRaw === 'string' ? subRaw : subRaw?.id ?? null
+  if (!subscriptionId) return
+
+  const supabase = createAdminClient()
+
+  const { data: abo } = await supabase
+    .from('abonnements_boutique')
+    .select('id, beatmaker_id, client_id, acheteur_email, source_marketing')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+
+  if (!abo) {
+    console.log('[webhook] invoice.payment_failed — abonnement boutique non trouvé:', subscriptionId)
+    return
+  }
+
+  const { error } = await supabase.from('tentatives_paiement').upsert({
+    type: 'renouvellement_abonnement',
+    beatmaker_id: abo.beatmaker_id,
+    abonnement_id: abo.id,
+    client_id: abo.client_id,
+    email: abo.acheteur_email,
+    prix: (invoice.amount_due ?? 0) / 100,
+    source_marketing: abo.source_marketing,
+    stripe_invoice_id: invoice.id,
+    statut: 'echouee',
+  }, { onConflict: 'stripe_invoice_id' })
+
+  if (error) console.error('[webhook] Erreur insert tentative renouvellement:', JSON.stringify(error))
+  else console.log('[webhook] Échec de renouvellement tracé pour abo', abo.id)
 }
 
 async function traiterCompteConnecte(account: Stripe.Account) {

@@ -49,6 +49,11 @@ const COMMANDE_STATUT_BADGE: Record<string, string> = {
   en_attente: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
   remboursee: 'bg-red-500/15 text-red-400 border border-red-500/20',
   litige:     'bg-orange-500/15 text-orange-400 border border-orange-500/20',
+  echouee:    'bg-rose-500/15 text-rose-400 border border-rose-500/20',
+}
+
+const COMMANDE_STATUT_LABEL: Record<string, string> = {
+  payee: 'Payée', en_attente: 'En attente', remboursee: 'Remboursée', litige: 'Litige', echouee: 'Échouée',
 }
 
 /* ─── page ────────────────────────────────────────────────────────── */
@@ -90,7 +95,7 @@ export default async function AbonnementDetailPage({
   }
 
   /* ── queries parallèles ── */
-  const [{ data: rawAbo }, { data: beatmakerData }] = await Promise.all([
+  const [{ data: rawAbo }, { data: beatmakerData }, { data: tentativesRaw }] = await Promise.all([
     admin
       .from('abonnements_boutique')
       .select(`
@@ -111,7 +116,18 @@ export default async function AbonnementDetailPage({
       .select('abo_nom, abo_prix')
       .eq('id', user.id)
       .single(),
+
+    // Échecs de renouvellement — rien n'est payé, donc pas de commande, mais
+    // on veut les voir malgré tout (cf. tentatives_paiement, Phase 2b étendue)
+    admin
+      .from('tentatives_paiement')
+      .select('id, created_at, prix, statut')
+      .eq('type', 'renouvellement_abonnement')
+      .eq('abonnement_id', id)
+      .order('created_at', { ascending: false }),
   ])
+
+  const tentativesEchouees = tentativesRaw ?? []
 
   const abo = rawAbo as unknown as AboDetail | null
   if (!abo) notFound()
@@ -194,6 +210,13 @@ export default async function AbonnementDetailPage({
       events.push({ texte: 'Paiement confirmé · En attente → Actif.',             date: c.created_at })
     })
 
+  tentativesEchouees
+    .slice()
+    .reverse()
+    .forEach(t => {
+      events.push({ texte: `Renouvellement échoué (${t.prix.toFixed(2)}€) · Statut passé à En attente.`, date: t.created_at })
+    })
+
   if (abo.annulation_en_cours) {
     events.push({
       texte: "Le client a demandé l'annulation. Accès maintenu jusqu'à la fin de la période en cours.",
@@ -203,11 +226,37 @@ export default async function AbonnementDetailPage({
   if (abo.statut === 'annule' && abo.date_fin) {
     events.push({ texte: 'Abonnement résilié. Accès révoqué.', date: abo.date_fin })
   }
-  if (abo.statut === 'impaye') {
-    events.push({ texte: 'Paiement en attente de confirmation Stripe.', date: abo.date_debut })
-  }
 
   const historique = events.reverse()
+
+  /* ── ligne fusionnée pour "Commandes associées" (commandes + tentatives échouées) ── */
+  type LigneAssociee = {
+    id: string
+    created_at: string
+    relation: string
+    statut: string
+    prix: number
+    lienCommande: boolean
+  }
+
+  const lignesAssociees: LigneAssociee[] = [
+    ...commandesAssociees.map(c => ({
+      id: c.id,
+      created_at: c.created_at,
+      relation: c.type_commande === 'CREATION_ABONNEMENT' ? 'Commande parente' : 'Commande de renouvellement',
+      statut: c.statut,
+      prix: c.prix_paye,
+      lienCommande: true,
+    })),
+    ...tentativesEchouees.map(t => ({
+      id: t.id,
+      created_at: t.created_at,
+      relation: 'Tentative de renouvellement',
+      statut: 'echouee',
+      prix: t.prix,
+      lienCommande: false,
+    })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return (
     <div className="flex-1 overflow-auto">
@@ -334,9 +383,9 @@ export default async function AbonnementDetailPage({
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
               <div className="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between">
                 <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Commandes associées</h2>
-                <span className="text-[10px] text-gray-600">{commandesAssociees.length}</span>
+                <span className="text-[10px] text-gray-600">{lignesAssociees.length}</span>
               </div>
-              {commandesAssociees.length > 0 ? (
+              {lignesAssociees.length > 0 ? (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-800">
@@ -348,17 +397,19 @@ export default async function AbonnementDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
-                    {commandesAssociees.map(c => (
+                    {lignesAssociees.map(c => (
                       <tr key={c.id} className="hover:bg-gray-800/40 transition-colors">
                         <td className="px-5 py-2.5">
-                          <Link href={`/dashboard/business/commandes/${c.id}`} className="text-sm font-mono text-indigo-400 hover:text-indigo-300 transition-colors">
-                            {idCourt(c.id)}
-                          </Link>
+                          {c.lienCommande ? (
+                            <Link href={`/dashboard/business/commandes/${c.id}`} className="text-sm font-mono text-indigo-400 hover:text-indigo-300 transition-colors">
+                              {idCourt(c.id)}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-mono text-gray-600">{idCourt(c.id)}</span>
+                          )}
                         </td>
                         <td className="px-5 py-2.5">
-                          <span className="text-xs text-gray-400">
-                            {c.type_commande === 'CREATION_ABONNEMENT' ? 'Commande parente' : 'Commande de renouvellement'}
-                          </span>
+                          <span className="text-xs text-gray-400">{c.relation}</span>
                         </td>
                         <td className="px-5 py-2.5">
                           <span className="text-xs text-gray-500" title={formatDate(c.created_at)}>
@@ -367,11 +418,11 @@ export default async function AbonnementDetailPage({
                         </td>
                         <td className="px-5 py-2.5">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${COMMANDE_STATUT_BADGE[c.statut] ?? 'bg-gray-700 text-gray-400 border-gray-600'}`}>
-                            {c.statut === 'payee' ? 'Payée' : c.statut === 'en_attente' ? 'En attente' : c.statut === 'remboursee' ? 'Remboursée' : c.statut}
+                            {COMMANDE_STATUT_LABEL[c.statut] ?? c.statut}
                           </span>
                         </td>
                         <td className="px-5 py-2.5 text-right">
-                          <span className="text-sm font-medium text-white">€{(c.prix_paye / 100).toFixed(2)}</span>
+                          <span className="text-sm font-medium text-white">€{c.prix.toFixed(2)}</span>
                         </td>
                       </tr>
                     ))}
