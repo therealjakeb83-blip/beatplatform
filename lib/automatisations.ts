@@ -3,11 +3,12 @@ import { envoyerEmailUnique } from './email-logger'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
 
-export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente'
+export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
   abonnement_en_attente: 'Abonnement en attente',
+  churn_message_perso: 'Churn message perso',
 }
 
 // Tokens propres à un type d'automatisation (pas partagés avec le système de

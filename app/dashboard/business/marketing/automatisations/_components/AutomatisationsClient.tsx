@@ -38,6 +38,17 @@ Jake`,
       { token: 'mois_avant_cadeau', label: 'Mois avant le beat cadeau' },
     ],
   },
+  {
+    type: 'churn_message_perso',
+    label: 'Churn message perso',
+    description: "Envoyé le lendemain d'une annulation réelle d'abonnement (pas juste un renouvellement en échec).",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+J'ai vu que t'avais mis fin à ton abo hier, merci d'avoir tenté l'aventure✨
+Si t'as 2 minutes, ça m'aiderait vraiment d'avoir ton ressenti : ce que t'as aimé dans l'expérience, ce qui t'a déçu ou manqué, ton retour est super précieux pour moi 🙏
+À très vite,
+Jake
+PS : Et n'hésite pas à m'envoyer tes prochains morceaux, je suis toujours super chaud d'écouter ;)`,
+  },
 ]
 
 type Props = {

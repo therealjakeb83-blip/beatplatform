@@ -202,6 +202,13 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
 
 async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   const supabase = createAdminClient()
+
+  const { data: abo } = await supabase
+    .from('abonnements_boutique')
+    .select('id, beatmaker_id, client_id')
+    .eq('stripe_subscription_id', subscription.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('abonnements_boutique')
     .update({ statut: 'annule', en_essai: false, mois_consecutifs: 0, impaye_depuis: null })
@@ -209,6 +216,16 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
 
   if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement annulé:', subscription.id)
+
+  if (abo?.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
+    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+      beatmaker_id: abo.beatmaker_id,
+      client_id: abo.client_id,
+      type: 'churn_message_perso',
+      reference_id: abo.id,
+    })
+    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
+  }
 }
 
 // Crée la ligne abonnements_boutique directement depuis le webhook plutôt que
