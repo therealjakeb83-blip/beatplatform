@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { EmailLogRow } from '../page'
+import RenvoyerLogButton from './RenvoyerLogButton'
 
 const TYPE_LABEL: Record<string, { label: string; cls: string }> = {
   transactionnel: { label: 'Transactionnel', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
@@ -85,7 +86,10 @@ function DetailModal({ log, onClose }: { log: EmailLogRow; onClose: () => void }
             </span>
             <BadgeStatut statut={log.statut} />
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
+          <div className="flex items-center gap-2">
+            {(log.corps_html || log.corps_texte) && <RenvoyerLogButton logId={log.id} />}
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
+          </div>
         </div>
 
         <div className="px-5 py-4 space-y-4 overflow-y-auto">
@@ -292,17 +296,20 @@ export default function LogsClient({ logs, counts, page, totalPages, filtreStatu
                         <td className="px-4 py-3">
                           <BadgeStatut statut={log.statut} />
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setDetail(log)}
-                            className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                            title="Voir le détail"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </button>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            {(log.corps_html || log.corps_texte) && <RenvoyerLogButton logId={log.id} />}
+                            <button
+                              onClick={() => setDetail(log)}
+                              className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                              title="Voir le détail"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
