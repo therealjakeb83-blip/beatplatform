@@ -16,7 +16,7 @@ export default async function AbonnementPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours, stripe_price_id')
+    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_recurrence_cadeau_mois, stripe_price_id')
     .eq('slug', slug)
     .single()
 
@@ -102,11 +102,6 @@ export default async function AbonnementPage({
                     {prixAffiche}€<span className="text-gray-400 text-lg font-normal">/mois</span>
                   </p>
                 )}
-                {beatmaker.abo_essai_jours > 0 && (
-                  <p className="text-green-400 text-sm mt-1">
-                    {beatmaker.abo_essai_jours} jours d&apos;essai gratuit, sans engagement
-                  </p>
-                )}
               </div>
 
               {/* Avantages */}
@@ -123,11 +118,11 @@ export default async function AbonnementPage({
                 )}
                 <li className="flex items-start gap-3 text-sm text-gray-300">
                   <span className="text-green-400 mt-0.5">✓</span>
-                  1 beat gratuit tous les 4 mois
+                  1 beat gratuit tous les {beatmaker.abo_recurrence_cadeau_mois} mois
                 </li>
               </ul>
 
-              <SAbonnerButton slug={slug} essaiJours={beatmaker.abo_essai_jours} prixAffiche={prixAffiche} />
+              <SAbonnerButton slug={slug} prixAffiche={prixAffiche} />
 
               <p className="text-xs text-gray-600 text-center mt-4">
                 Annulable à tout moment. Paiement sécurisé par Stripe.

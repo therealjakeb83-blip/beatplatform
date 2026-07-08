@@ -17,7 +17,7 @@ export default async function MembresPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_essai_jours')
+    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct')
     .eq('slug', slug)
     .single()
 
@@ -124,9 +124,6 @@ export default async function MembresPage({
             {prixAffiche && (
               <div className="text-center">
                 <p className="text-2xl font-black text-white">{prixAffiche}€<span className="text-gray-400 text-base font-normal">/mois</span></p>
-                {beatmaker.abo_essai_jours > 0 && (
-                  <p className="text-green-400 text-sm">{beatmaker.abo_essai_jours} jours gratuits</p>
-                )}
               </div>
             )}
             {beatmaker.abo_remise_pct > 0 && (
@@ -137,7 +134,7 @@ export default async function MembresPage({
             href={`/${slug}/abonnement`}
             className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
           >
-            {beatmaker.abo_essai_jours > 0 ? `Essayer ${beatmaker.abo_essai_jours} jours gratuitement` : `S'abonner pour ${prixAffiche}€/mois`}
+            S&apos;abonner pour {prixAffiche}€/mois
           </Link>
         </div>
       )}

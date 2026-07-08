@@ -16,7 +16,7 @@ export default async function MonAbonnementPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, abo_nom, abo_prix, abo_essai_jours')
+    .select('id, nom_artiste, abo_nom, abo_prix')
     .eq('slug', slug)
     .single()
 

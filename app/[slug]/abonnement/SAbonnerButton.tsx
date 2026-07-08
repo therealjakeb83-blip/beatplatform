@@ -4,11 +4,9 @@ import { useState } from 'react'
 
 export default function SAbonnerButton({
   slug,
-  essaiJours,
   prixAffiche,
 }: {
   slug: string
-  essaiJours: number
   prixAffiche: string | null
 }) {
   const [loading, setLoading] = useState(false)
@@ -46,8 +44,6 @@ export default function SAbonnerButton({
       >
         {loading
           ? 'Redirection...'
-          : essaiJours > 0
-          ? `Essayer ${essaiJours} jours gratuitement`
           : prixAffiche
           ? `S'abonner pour ${prixAffiche}€/mois`
           : `S'abonner`}
