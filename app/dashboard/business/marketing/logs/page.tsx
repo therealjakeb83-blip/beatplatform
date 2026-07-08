@@ -23,13 +23,18 @@ export type EmailLogRow = {
 
 const PAGE_SIZE = 50
 
+const SCOPES = ['destinataire', 'sujet', 'message'] as const
+type Scope = typeof SCOPES[number]
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function appliquerFiltres(query: any, beatmakerId: string, type?: string, q?: string) {
+function appliquerFiltres(query: any, beatmakerId: string, type?: string, q?: string, scope?: string) {
   let qy = query.eq('beatmaker_id', beatmakerId)
   if (type) qy = qy.eq('type', type)
   if (q) {
     const like = `%${q.replace(/,/g, ' ')}%`
-    qy = qy.or(`destinataire.ilike.${like},sujet.ilike.${like}`)
+    if (scope === 'sujet') qy = qy.ilike('sujet', like)
+    else if (scope === 'message') qy = qy.or(`corps_html.ilike.${like},corps_texte.ilike.${like}`)
+    else qy = qy.ilike('destinataire', like)
   }
   return qy
 }
@@ -37,10 +42,11 @@ function appliquerFiltres(query: any, beatmakerId: string, type?: string, q?: st
 export default async function LogsEmailsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; statut?: string; type?: string; q?: string }>
+  searchParams: Promise<{ page?: string; statut?: string; type?: string; q?: string; scope?: string }>
 }) {
-  const { page: pageParam, statut, type, q } = await searchParams
+  const { page: pageParam, statut, type, q, scope: scopeParam } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const scope: Scope = SCOPES.includes(scopeParam as Scope) ? (scopeParam as Scope) : 'destinataire'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -49,9 +55,9 @@ export default async function LogsEmailsPage({
   const admin = createAdminClient()
 
   const [{ count: totalCount }, { count: envoyeCount }, { count: echoueCount }] = await Promise.all([
-    appliquerFiltres(admin.from('email_logs').select('id', { count: 'exact', head: true }), user.id, type, q),
-    appliquerFiltres(admin.from('email_logs').select('id', { count: 'exact', head: true }), user.id, type, q).eq('statut', 'envoye'),
-    appliquerFiltres(admin.from('email_logs').select('id', { count: 'exact', head: true }), user.id, type, q).eq('statut', 'echoue'),
+    appliquerFiltres(admin.from('email_logs').select('id', { count: 'exact', head: true }), user.id, type, q, scope),
+    appliquerFiltres(admin.from('email_logs').select('id', { count: 'exact', head: true }), user.id, type, q, scope).eq('statut', 'envoye'),
+    appliquerFiltres(admin.from('email_logs').select('id', { count: 'exact', head: true }), user.id, type, q, scope).eq('statut', 'echoue'),
   ])
 
   let requetePage = appliquerFiltres(
@@ -60,7 +66,7 @@ export default async function LogsEmailsPage({
       ouvert_at, clique_at, commande_id, automatisation_id, corps_html, corps_texte,
       clients (id, prenom, nom)
     `),
-    user.id, type, q,
+    user.id, type, q, scope,
   )
   if (statut === 'envoye' || statut === 'echoue') requetePage = requetePage.eq('statut', statut)
 
@@ -80,6 +86,7 @@ export default async function LogsEmailsPage({
       filtreStatut={statut ?? ''}
       filtreType={type ?? ''}
       q={q ?? ''}
+      scope={scope}
     />
   )
 }

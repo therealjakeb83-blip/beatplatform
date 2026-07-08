@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { EmailLogRow } from '../page'
 import RenvoyerLogButton from './RenvoyerLogButton'
+import { messageErreurNaturel } from '@/lib/email-erreurs'
 
 const TYPE_LABEL: Record<string, { label: string; cls: string }> = {
   transactionnel: { label: 'Transactionnel', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
@@ -148,9 +149,9 @@ function DetailModal({ log, onClose }: { log: EmailLogRow; onClose: () => void }
           {log.erreur && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400 mb-1">Erreur</p>
-              <pre className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3 whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
-                {log.erreur}
-              </pre>
+              <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3 whitespace-pre-wrap break-words">
+                {messageErreurNaturel(log.erreur)}
+              </p>
             </div>
           )}
 
@@ -169,7 +170,14 @@ type Props = {
   filtreStatut: string
   filtreType: string
   q: string
+  scope: string
 }
+
+const SCOPES = [
+  { value: 'destinataire', label: 'Destinataire' },
+  { value: 'sujet',        label: 'Sujet' },
+  { value: 'message',      label: 'Message' },
+]
 
 const TABS: Array<{ value: string; label: string; key: 'tous' | 'envoye' | 'echoue' }> = [
   { value: '',        label: 'Tous',     key: 'tous' },
@@ -177,11 +185,11 @@ const TABS: Array<{ value: string; label: string; key: 'tous' | 'envoye' | 'echo
   { value: 'echoue',  label: 'Échoués',  key: 'echoue' },
 ]
 
-export default function LogsClient({ logs, counts, page, totalPages, filtreStatut, filtreType, q }: Props) {
+export default function LogsClient({ logs, counts, page, totalPages, filtreStatut, filtreType, q, scope }: Props) {
   const [detail, setDetail] = useState<EmailLogRow | null>(null)
 
   function hrefAvec(overrides: Record<string, string>) {
-    const merged: Record<string, string> = { statut: filtreStatut, type: filtreType, q, page: '1', ...overrides }
+    const merged: Record<string, string> = { statut: filtreStatut, type: filtreType, q, scope, page: '1', ...overrides }
     const params = new URLSearchParams()
     for (const [k, v] of Object.entries(merged)) {
       if (v) params.set(k, v)
@@ -222,17 +230,28 @@ export default function LogsClient({ logs, counts, page, totalPages, filtreStatu
         <form className="flex flex-wrap items-center gap-3" action="" method="GET">
           {filtreStatut && <input type="hidden" name="statut" value={filtreStatut} />}
 
-          <div className="flex items-center px-3 py-2 gap-2 bg-gray-900 border border-gray-800 rounded-xl min-w-[260px]">
-            <svg className="w-4 h-4 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              name="q"
-              defaultValue={q}
-              placeholder="Rechercher un destinataire ou un sujet..."
-              className="bg-transparent text-sm text-white placeholder-gray-600 outline-none flex-1"
-            />
+          <div className="flex items-center gap-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <select
+              name="scope"
+              defaultValue={scope}
+              className="bg-gray-800 text-xs text-gray-400 px-3 py-2 border-r border-gray-700 outline-none cursor-pointer"
+            >
+              {SCOPES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <div className="flex items-center px-3 py-2 gap-2 flex-1 min-w-[220px]">
+              <svg className="w-4 h-4 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                name="q"
+                defaultValue={q}
+                placeholder="Rechercher..."
+                className="bg-transparent text-sm text-white placeholder-gray-600 outline-none flex-1"
+              />
+            </div>
           </div>
 
           <select
@@ -276,6 +295,7 @@ export default function LogsClient({ logs, counts, page, totalPages, filtreStatu
                     <th className="text-left px-4 py-3">Sujet</th>
                     <th className="text-left px-4 py-3">Type</th>
                     <th className="text-left px-4 py-3">Statut</th>
+                    <th className="text-left px-4 py-3">Erreur</th>
                     <th className="text-right px-4 py-3">Actions</th>
                   </tr>
                 </thead>
@@ -295,6 +315,9 @@ export default function LogsClient({ logs, counts, page, totalPages, filtreStatu
                         </td>
                         <td className="px-4 py-3">
                           <BadgeStatut statut={log.statut} />
+                        </td>
+                        <td className="px-4 py-3 text-xs text-red-300 max-w-[220px] truncate" title={messageErreurNaturel(log.erreur) ?? undefined}>
+                          {messageErreurNaturel(log.erreur) ?? <span className="text-gray-700">—</span>}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
