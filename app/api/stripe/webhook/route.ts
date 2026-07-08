@@ -72,6 +72,23 @@ async function resoudreClientParEmail(supabase: ReturnType<typeof createAdminCli
   return client?.id ?? null
 }
 
+// Vérifie que l'automatisation est activée avant même de déposer l'événement
+// dans la file d'attente — un beatmaker qui n'a jamais activé une recette ne
+// doit rien y voir apparaître (choix produit de Jake, 2026-07-08).
+async function automatisationActive(
+  supabase: ReturnType<typeof createAdminClient>,
+  beatmakerId: string,
+  type: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('automatisations')
+    .select('actif')
+    .eq('beatmaker_id', beatmakerId)
+    .eq('type', type)
+    .maybeSingle()
+  return data?.actif ?? false
+}
+
 // Résolution client par email — crée un compte invité si inconnu (contrairement
 // à resoudreClientParEmail qui ne fait que chercher, sans créer)
 async function resoudreOuCreerClient(
@@ -168,7 +185,7 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   if (error) console.error('[webhook] Erreur maj abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement mis à jour:', subscription.id, statut)
 
-  if (entreEnImpaye && abo.client_id) {
+  if (entreEnImpaye && abo.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'abonnement_en_attente')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: abo.beatmaker_id,
       client_id: abo.client_id,
@@ -264,13 +281,15 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
 
   console.log('[webhook] Abonnement créé:', abonnement?.id)
 
-  const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
-    beatmaker_id: meta.beatmaker_id,
-    client_id: clientId,
-    type: 'bienvenue_abonnement',
-    reference_id: abonnement.id,
-  })
-  if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+  if (await automatisationActive(supabase, meta.beatmaker_id, 'bienvenue_abonnement')) {
+    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+      beatmaker_id: meta.beatmaker_id,
+      client_id: clientId,
+      type: 'bienvenue_abonnement',
+      reference_id: abonnement.id,
+    })
+    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+  }
 }
 
 async function traiterPaiement(session: Stripe.Checkout.Session) {
