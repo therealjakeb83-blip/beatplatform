@@ -4,7 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { r2, R2_BUCKET } from '@/lib/r2'
-import { getResend } from '@/lib/resend'
+import { envoyerEmailUnique } from '@/lib/email-logger'
 
 export const runtime = 'nodejs'
 
@@ -158,12 +158,14 @@ export async function POST(req: Request) {
   )
 
   // 6. Email avec le lien (non-bloquant)
-  try {
-    await getResend().emails.send({
-      from:    `My Producer <noreply@jakebmusic.com>`,
-      to:      clientEmail,
-      subject: `Ton free download — ${beat.titre}`,
-      html: `
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'telechargement_gratuit',
+    clientId,
+    to: clientEmail,
+    subject: `Ton free download — ${beat.titre}`,
+    html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#111;">
           <h2 style="color:#4f46e5;">Ton free download est prêt !</h2>
           <p>Voici ton téléchargement gratuit pour le beat <strong>${beat.titre}</strong> de ${beatmaker.nom_artiste}.</p>
@@ -182,10 +184,7 @@ export async function POST(req: Request) {
           </p>
         </div>
       `,
-    })
-  } catch (e) {
-    console.error('[free-download] Email error:', e)
-  }
+  })
 
   return NextResponse.json({ downloadUrl, beatTitre: beat.titre })
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { getResend } from '@/lib/resend'
+import { envoyerEmailUnique } from '@/lib/email-logger'
 
 export const runtime = 'nodejs'
 
@@ -68,12 +68,15 @@ export async function POST(
   const nomArtiste = beatmaker?.nom_artiste ?? 'votre beatmaker'
 
   // Envoyer l'email
-  try {
-    await getResend().emails.send({
-      from: `My Producer <noreply@jakebmusic.com>`,
-      to: destinataire,
-      subject: `Vos fichiers — ${titreBeat} (${nomLicence})`,
-      html: `
+  const { error: envoiError } = await envoyerEmailUnique({
+    beatmakerId: user.id,
+    type: 'transactionnel',
+    evenement: 'renvoi_commande',
+    clientId: c.client_id,
+    commandeId,
+    to: destinataire,
+    subject: `Vos fichiers — ${titreBeat} (${nomLicence})`,
+    html: `
         <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111;background:#fff;padding:32px;border-radius:12px;">
           <h2 style="color:#4f46e5;margin-top:0;">Vos fichiers sont disponibles</h2>
           <p>Bonjour ${nomDestinataire},</p>
@@ -97,9 +100,10 @@ export async function POST(
           </p>
         </div>
       `,
-    })
-  } catch (err) {
-    console.error('[renvoyer] Erreur email:', err)
+  })
+
+  if (envoiError) {
+    console.error('[renvoyer] Erreur email:', envoiError)
     return NextResponse.json({ error: 'Erreur envoi email' }, { status: 500 })
   }
 

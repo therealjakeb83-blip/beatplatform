@@ -135,6 +135,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               nomProprietaire: bm.nom_artiste,
               titreBeat: titre,
               pourcentage: inv.pourcentage,
+              beatmakerId: user.id,
             }).catch(() => {})
           )
         )

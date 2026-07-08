@@ -1,6 +1,5 @@
-import { getResend } from './resend'
+import { envoyerEmailUnique } from './email-logger'
 
-const FROM = 'My Producer <noreply@jakebmusic.com>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
 
 export async function envoyerInvitationCollab({
@@ -8,14 +7,18 @@ export async function envoyerInvitationCollab({
   nomProprietaire,
   titreBeat,
   pourcentage,
+  beatmakerId,
 }: {
   to: string
   nomProprietaire: string
   titreBeat: string
   pourcentage: number
+  beatmakerId: string
 }) {
-  await getResend().emails.send({
-    from: FROM,
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'invitation_collab',
     to,
     subject: `${nomProprietaire} vous invite à collaborer sur "${titreBeat}"`,
     text: [
@@ -36,13 +39,17 @@ export async function envoyerFondsEnAttente({
   to,
   titreBeat,
   montantEuros,
+  beatmakerId,
 }: {
   to: string
   titreBeat: string
   montantEuros: string
+  beatmakerId: string
 }) {
-  await getResend().emails.send({
-    from: FROM,
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'fonds_en_attente',
     to,
     subject: `${montantEuros}€ vous attendent sur My Producer`,
     text: [
@@ -65,15 +72,19 @@ export async function envoyerRappelFonds({
   titreBeat,
   montantEuros,
   joursRestants,
+  beatmakerId,
 }: {
   to: string
   titreBeat: string
   montantEuros: string
   joursRestants: number
+  beatmakerId: string
 }) {
   const urgence = joursRestants <= 10
-  await getResend().emails.send({
-    from: FROM,
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'rappel_fonds',
     to,
     subject: urgence
       ? `⚠️ Dernier rappel — ${montantEuros}€ expirent dans ${joursRestants} jours`
@@ -97,13 +108,17 @@ export async function envoyerConfirmationExpiration({
   to,
   titreBeat,
   montantEuros,
+  beatmakerId,
 }: {
   to: string
   titreBeat: string
   montantEuros: string
+  beatmakerId: string
 }) {
-  await getResend().emails.send({
-    from: FROM,
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'confirmation_expiration',
     to,
     subject: `Votre part sur "${titreBeat}" a expiré`,
     text: [

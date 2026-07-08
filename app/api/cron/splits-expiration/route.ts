@@ -86,6 +86,7 @@ export async function GET(request: Request) {
       to: sp.email_invite,
       titreBeat,
       montantEuros,
+      beatmakerId: commande.beatmaker_id,
     }).catch(() => {})
 
     reversals++
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
   // ── J+50 : Avertissement final ───────────────────────────────
   const { data: splits50 } = await supabase
     .from('split_payments')
-    .select('id, montant, email_invite, commandes(beats(titre))')
+    .select('id, montant, email_invite, commandes(beatmaker_id, beats(titre))')
     .eq('statut', 'en_attente')
     .not('email_invite', 'is', null)
     .lte('created_at', new Date(now - 50 * JOUR).toISOString())
@@ -104,16 +105,18 @@ export async function GET(request: Request) {
     id: string
     montant: number
     email_invite: string
-    commandes: { beats: { titre: string } | null } | null
+    commandes: { beatmaker_id: string; beats: { titre: string } | null } | null
   }
 
   for (const sp of (splits50 ?? []) as unknown as RappelSplit[]) {
     const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
+    if (!sp.commandes) continue
     envoyerRappelFonds({
       to: sp.email_invite,
       titreBeat,
       montantEuros: (sp.montant / 100).toFixed(2),
       joursRestants: 10,
+      beatmakerId: sp.commandes.beatmaker_id,
     }).catch(() => {})
     rappels50++
   }
@@ -121,7 +124,7 @@ export async function GET(request: Request) {
   // ── J+30 : Premier rappel ────────────────────────────────────
   const { data: splits30 } = await supabase
     .from('split_payments')
-    .select('id, montant, email_invite, commandes(beats(titre))')
+    .select('id, montant, email_invite, commandes(beatmaker_id, beats(titre))')
     .eq('statut', 'en_attente')
     .not('email_invite', 'is', null)
     .lte('created_at', new Date(now - 30 * JOUR).toISOString())
@@ -129,11 +132,13 @@ export async function GET(request: Request) {
 
   for (const sp of (splits30 ?? []) as unknown as RappelSplit[]) {
     const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
+    if (!sp.commandes) continue
     envoyerRappelFonds({
       to: sp.email_invite,
       titreBeat,
       montantEuros: (sp.montant / 100).toFixed(2),
       joursRestants: 30,
+      beatmakerId: sp.commandes.beatmaker_id,
     }).catch(() => {})
     rappels30++
   }

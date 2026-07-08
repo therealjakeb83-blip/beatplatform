@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { createClient as createServerClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { getResend } from './resend'
+import { envoyerLotEmails } from './email-logger'
 import { rendreEmailHtml, type BlocEmail, type BrandingBoutique } from './email-blocs'
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '@/app/dashboard/business/_lib/contacts'
 import { evaluerFiltres, type Condition } from '@/app/dashboard/business/_lib/segments'
@@ -313,14 +313,18 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
         const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id, campagneId)
         const htmlPersonnalise = remplacerTokens(htmlBase, contact, branding, lien)
         return {
-          from,
           to: contact.email,
           subject: remplacerTokens(campagne.objet ?? campagne.nom, contact, branding, lien),
           html: envelopperLiensSuivi(htmlPersonnalise, contact.id, campagne.beatmaker_id, campagneId),
+          clientId: contact.id,
         }
       })
 
-      const { data, error } = await getResend().batch.send(payloads)
+      const { data, error } = await envoyerLotEmails(
+        { beatmakerId: campagne.beatmaker_id, type: 'campagne', evenement: 'campagne', campagneId },
+        from,
+        payloads,
+      )
       if (error || !data) {
         console.error('[mailing] Échec envoi Resend pour la campagne', campagneId, ':', error)
         echecs += lot.length

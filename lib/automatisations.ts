@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { getResend } from './resend'
+import { envoyerEmailUnique } from './email-logger'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
 
@@ -131,7 +131,12 @@ async function envoyerEmailAutomatisation(params: {
 
   const from = `${params.branding.nom_artiste} <campagnes@jakebmusic.com>`
 
-  const { data, error } = await getResend().emails.send({
+  const { data, error } = await envoyerEmailUnique({
+    beatmakerId: params.beatmakerId,
+    type: 'automatisation',
+    evenement: `automatisation_${params.evenementCle.split(':')[0]}`,
+    automatisationId: params.automatisationId,
+    clientId: params.clientId,
     from,
     to: params.destinataire.email,
     subject: objet,

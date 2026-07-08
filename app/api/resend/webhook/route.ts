@@ -36,13 +36,32 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient()
+
+  const { data: log } = await admin
+    .from('email_logs')
+    .select('id, ouvert_at, clique_at')
+    .eq('resend_message_id', event.data.email_id)
+    .maybeSingle()
+
+  if (log) {
+    if (event.type === 'email.opened' && !log.ouvert_at) {
+      await admin.from('email_logs').update({ ouvert_at: new Date().toISOString() }).eq('id', log.id)
+    }
+    if (event.type === 'email.clicked' && !log.clique_at) {
+      await admin.from('email_logs').update({ clique_at: new Date().toISOString() }).eq('id', log.id)
+    }
+    if (event.type === 'email.bounced' || event.type === 'email.complained') {
+      await admin.from('email_logs').update({ statut: 'echoue' }).eq('id', log.id)
+    }
+  }
+
   const { data: envoi } = await admin
     .from('campagne_envois')
     .select('id, campagne_id, ouvert_at, clique_at')
     .eq('resend_message_id', event.data.email_id)
     .maybeSingle()
 
-  // Pas de correspondance = email transactionnel classique (collab, confirmation...), pas une campagne
+  // Pas de correspondance = email transactionnel/automatisation, pas une campagne
   if (!envoi) return NextResponse.json({ ok: true })
 
   if (event.type === 'email.opened' && !envoi.ouvert_at) {

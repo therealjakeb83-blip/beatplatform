@@ -88,6 +88,7 @@ export async function POST(request: Request) {
               nomProprietaire: bm.nom_artiste,
               titreBeat: titre,
               pourcentage: c.pourcentage,
+              beatmakerId: user.id,
             }).catch(() => {})
           )
         )
