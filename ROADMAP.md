@@ -655,6 +655,16 @@ Composants communs : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx` �
 | 6.4 | Page `/dashboard/business/mailing/transactionnels/` : liste des 3 types + formulaire d'édition (champs limités) + preview | ⬜ |
 | 6.5 | Nouvel onglet sidebar "Mailing" (sous-section Transactionnels) | ⬜ |
 | 6.6 | Tests bout en bout | ⬜ |
+| 6.7 | **Beat cadeau de fidélité** (4e type transactionnel, trou de scope découvert le 2026-07-08) — voir note ci-dessous | ⬜ |
+
+> **Trou de scope découvert le 2026-07-08 :** en testant "Abonnement en attente" (Phase 5), Jake a réalisé que `mois_consecutifs` (compteur de fidélité, incrémenté à chaque renouvellement réussi) n'a jamais eu de contrepartie codée — le compteur alimente uniquement le token `{{mois_avant_cadeau}}` de l'email, mais **rien ne délivre réellement le cadeau** quand le seuil (`abo_recurrence_cadeau_mois`, configurable par le beatmaker) est atteint. Vérifié : ce n'était planifié nulle part (ni étape 8, ni les 8 workflows de la Phase 5, ni les 3 types déjà listés ici).
+>
+> **Décision de classification (Jake) :** ce n'est **pas** une Automatisation Marketing (opt-in, texte de persuasion, toggle séparé à activer) mais un **email transactionnel** — la remise du cadeau doit être une conséquence mécanique automatique de la configuration du plan d'abonnement (si le beatmaker a un abonnement actif avec une récurrence de N mois configurée, le client doit recevoir son cadeau tous les N mois, sans dépendre d'un toggle marketing distinct). D'où le rattachement à la Phase 6 plutôt qu'un 9e workflow Phase 5.
+>
+> **Conception validée (à coder à la Phase 6) :**
+> - Déclenchement dans `traiterPaiementAbonnement` (webhook), juste après l'incrément de `mois_consecutifs` : si le nouveau total est multiple de `abo_recurrence_cadeau_mois`.
+> - Génération automatique d'un code promo (`codes_promo`) : 100% de réduction, `type_remise='produit'`, sans restriction de beat/licence (utilisable sur tout le catalogue), `limite_par_code=1` + `limite_par_utilisateur=1` + `emails_autorises=[email du client]` (réservé à ce client, un seul usage). Visible tel quel dans la page Codes promo existante.
+> - Reste à trancher à ce moment-là : expiration du code (jamais vs durée limitée) et texte exact de l'email (pas de texte de référence existant chez Jake pour ce cas précis, contrairement aux 8 workflows de la Phase 5).
 
 ### Phase 7 — Catégories & Certification ⬜ À faire
 
