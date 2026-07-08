@@ -45,37 +45,12 @@ function BadgeStatut({ statut }: { statut: 'envoye' | 'echoue' }) {
 }
 
 function MessageApercu({ log }: { log: EmailLogRow }) {
-  const [vue, setVue] = useState<'apercu' | 'source'>('apercu')
-
   if (!log.corps_html && !log.corps_texte) return null
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Message</p>
-        {log.corps_html && (
-          <div className="flex gap-1 bg-gray-800 rounded-lg p-0.5">
-            <button
-              onClick={() => setVue('apercu')}
-              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
-                vue === 'apercu' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              Aperçu
-            </button>
-            <button
-              onClick={() => setVue('source')}
-              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
-                vue === 'source' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              Code source
-            </button>
-          </div>
-        )}
-      </div>
-
-      {log.corps_html && vue === 'apercu' ? (
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Message</p>
+      {log.corps_html ? (
         <iframe
           srcDoc={log.corps_html}
           sandbox=""
@@ -84,7 +59,7 @@ function MessageApercu({ log }: { log: EmailLogRow }) {
         />
       ) : (
         <pre className="text-xs text-gray-300 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
-          {log.corps_html ?? log.corps_texte}
+          {log.corps_texte}
         </pre>
       )}
     </div>
