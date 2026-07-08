@@ -6,7 +6,6 @@ import type { EmailLogRow } from '../page'
 
 const TYPE_LABEL: Record<string, { label: string; cls: string }> = {
   transactionnel: { label: 'Transactionnel', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
-  campagne:       { label: 'Campagne',        cls: 'bg-purple-500/15 text-purple-400 border border-purple-500/20' },
   automatisation: { label: 'Automatisation',  cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
 }
 
@@ -17,7 +16,6 @@ const EVENEMENT_LABEL: Record<string, string> = {
   confirmation_expiration:  'Confirmation expiration',
   renvoi_commande:          'Renvoi commande',
   telechargement_gratuit:   'Téléchargement gratuit',
-  campagne:                 'Campagne',
 }
 
 function labelEvenement(ev: string): string {
@@ -217,7 +215,6 @@ export default function LogsClient({ logs, counts, page, totalPages, filtreStatu
           >
             <option value="">Type</option>
             <option value="transactionnel">Transactionnel</option>
-            <option value="campagne">Campagne</option>
             <option value="automatisation">Automatisation</option>
           </select>
 

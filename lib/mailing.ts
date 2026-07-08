@@ -316,15 +316,10 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
           to: contact.email,
           subject: remplacerTokens(campagne.objet ?? campagne.nom, contact, branding, lien),
           html: envelopperLiensSuivi(htmlPersonnalise, contact.id, campagne.beatmaker_id, campagneId),
-          clientId: contact.id,
         }
       })
 
-      const { data, error } = await envoyerLotEmails(
-        { beatmakerId: campagne.beatmaker_id, type: 'campagne', evenement: 'campagne', campagneId },
-        from,
-        payloads,
-      )
+      const { data, error } = await envoyerLotEmails(from, payloads)
       if (error || !data) {
         console.error('[mailing] Échec envoi Resend pour la campagne', campagneId, ':', error)
         echecs += lot.length

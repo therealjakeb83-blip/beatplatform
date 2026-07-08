@@ -8,14 +8,13 @@ export type EmailLogRow = {
   created_at: string
   destinataire: string
   sujet: string
-  type: 'transactionnel' | 'campagne' | 'automatisation'
+  type: 'transactionnel' | 'automatisation'
   evenement: string
   statut: 'envoye' | 'echoue'
   erreur: string | null
   ouvert_at: string | null
   clique_at: string | null
   commande_id: string | null
-  campagne_id: string | null
   automatisation_id: string | null
   clients: { id: string; prenom: string | null; nom: string } | null
 }
@@ -56,7 +55,7 @@ export default async function LogsEmailsPage({
   let requetePage = appliquerFiltres(
     admin.from('email_logs').select(`
       id, created_at, destinataire, sujet, type, evenement, statut, erreur,
-      ouvert_at, clique_at, commande_id, campagne_id, automatisation_id,
+      ouvert_at, clique_at, commande_id, automatisation_id,
       clients (id, prenom, nom)
     `),
     user.id, type, q,

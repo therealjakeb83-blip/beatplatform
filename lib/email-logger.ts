@@ -1,7 +1,11 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getResend } from './resend'
 
-export type TypeEmailLog = 'transactionnel' | 'campagne' | 'automatisation'
+// Les campagnes (envoi de masse) ne passent volontairement pas par ce
+// logger : leur historique détaillé par destinataire vit déjà dans
+// campagne_envois et s'affiche sur la page Campagnes — le dupliquer ici
+// noierait la liste sous des milliers de lignes identiques.
+export type TypeEmailLog = 'transactionnel' | 'automatisation'
 
 const FROM_DEFAUT = 'My Producer <noreply@jakebmusic.com>'
 
@@ -11,7 +15,6 @@ type ContexteEnvoi = {
   evenement: string
   clientId?: string | null
   commandeId?: string | null
-  campagneId?: string | null
   automatisationId?: string | null
 }
 
@@ -33,7 +36,6 @@ async function enregistrer(
     resend_message_id: resultat.messageId ?? null,
     client_id: ctx.clientId ?? null,
     commande_id: ctx.commandeId ?? null,
-    campagne_id: ctx.campagneId ?? null,
     automatisation_id: ctx.automatisationId ?? null,
   })
   if (error) console.error('[email-logger] Erreur insertion email_logs:', JSON.stringify(error))
@@ -67,35 +69,13 @@ export async function envoyerEmailUnique(ctx: ContexteEnvoi & {
   }
 }
 
-export type DestinataireLot = { to: string; subject: string; html: string; clientId?: string | null }
+export type DestinataireLot = { to: string; subject: string; html: string }
 
-// Variante batch — utilisée par les campagnes (lib/mailing.ts). Logge une
-// ligne par destinataire, y compris en cas d'échec du lot entier.
-export async function envoyerLotEmails(
-  ctx: Omit<ContexteEnvoi, 'clientId'>,
-  from: string,
-  destinataires: DestinataireLot[],
-) {
-  try {
-    const { data, error } = await getResend().batch.send(
-      destinataires.map(d => ({ from, to: d.to, subject: d.subject, html: d.html })),
-    )
-    if (error || !data) {
-      const erreur = JSON.stringify(error)
-      await Promise.all(destinataires.map(d =>
-        enregistrer({ ...ctx, clientId: d.clientId }, d.to, d.subject, { erreur })
-      ))
-      return { data: null, error }
-    }
-    await Promise.all(destinataires.map((d, idx) =>
-      enregistrer({ ...ctx, clientId: d.clientId }, d.to, d.subject, { messageId: data.data[idx]?.id ?? null })
-    ))
-    return { data, error: null }
-  } catch (err) {
-    const erreur = err instanceof Error ? err.message : String(err)
-    await Promise.all(destinataires.map(d =>
-      enregistrer({ ...ctx, clientId: d.clientId }, d.to, d.subject, { erreur })
-    ))
-    return { data: null, error: err }
-  }
+// Variante batch — utilisée par les campagnes (lib/mailing.ts). Ne logge
+// pas dans email_logs (voir note sur TypeEmailLog plus haut) : l'appelant
+// gère lui-même le suivi via campagne_envois.
+export async function envoyerLotEmails(from: string, destinataires: DestinataireLot[]) {
+  return getResend().batch.send(
+    destinataires.map(d => ({ from, to: d.to, subject: d.subject, html: d.html })),
+  )
 }
