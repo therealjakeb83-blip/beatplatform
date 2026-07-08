@@ -22,6 +22,7 @@ async function enregistrer(
   ctx: ContexteEnvoi,
   destinataire: string,
   sujet: string,
+  corps: { html?: string | null; texte?: string | null },
   resultat: { messageId?: string | null; erreur?: string | null },
 ) {
   const admin = createAdminClient()
@@ -37,6 +38,8 @@ async function enregistrer(
     client_id: ctx.clientId ?? null,
     commande_id: ctx.commandeId ?? null,
     automatisation_id: ctx.automatisationId ?? null,
+    corps_html: corps.html ?? null,
+    corps_texte: corps.texte ?? null,
   })
   if (error) console.error('[email-logger] Erreur insertion email_logs:', JSON.stringify(error))
 }
@@ -57,14 +60,14 @@ export async function envoyerEmailUnique(ctx: ContexteEnvoi & {
     const { data, error } = await getResend().emails.send(
       ctx.html ? { ...base, html: ctx.html } : { ...base, text: ctx.text ?? '' }
     )
-    await enregistrer(ctx, ctx.to, ctx.subject, {
+    await enregistrer(ctx, ctx.to, ctx.subject, { html: ctx.html, texte: ctx.text }, {
       messageId: data?.id ?? null,
       erreur: error ? JSON.stringify(error) : null,
     })
     return { data, error }
   } catch (err) {
     const erreur = err instanceof Error ? err.message : String(err)
-    await enregistrer(ctx, ctx.to, ctx.subject, { erreur })
+    await enregistrer(ctx, ctx.to, ctx.subject, { html: ctx.html, texte: ctx.text }, { erreur })
     return { data: null, error: err }
   }
 }

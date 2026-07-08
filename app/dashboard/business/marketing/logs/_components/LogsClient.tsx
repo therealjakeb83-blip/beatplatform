@@ -44,6 +44,53 @@ function BadgeStatut({ statut }: { statut: 'envoye' | 'echoue' }) {
   )
 }
 
+function MessageApercu({ log }: { log: EmailLogRow }) {
+  const [vue, setVue] = useState<'apercu' | 'source'>('apercu')
+
+  if (!log.corps_html && !log.corps_texte) return null
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Message</p>
+        {log.corps_html && (
+          <div className="flex gap-1 bg-gray-800 rounded-lg p-0.5">
+            <button
+              onClick={() => setVue('apercu')}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+                vue === 'apercu' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              Aperçu
+            </button>
+            <button
+              onClick={() => setVue('source')}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+                vue === 'source' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              Code source
+            </button>
+          </div>
+        )}
+      </div>
+
+      {log.corps_html && vue === 'apercu' ? (
+        <iframe
+          srcDoc={log.corps_html}
+          sandbox=""
+          className="w-full h-72 bg-white rounded-lg border border-gray-700"
+          title="Aperçu de l'email"
+        />
+      ) : (
+        <pre className="text-xs text-gray-300 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
+          {log.corps_html ?? log.corps_texte}
+        </pre>
+      )}
+    </div>
+  )
+}
+
 function DetailModal({ log, onClose }: { log: EmailLogRow; onClose: () => void }) {
   const t = TYPE_LABEL[log.type]
 
@@ -53,10 +100,10 @@ function DetailModal({ log, onClose }: { log: EmailLogRow; onClose: () => void }
       onClick={onClose}
     >
       <div
-        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] shadow-2xl overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${t?.cls ?? 'bg-gray-700 text-gray-300'}`}>
               {t?.label ?? log.type}
@@ -66,7 +113,7 @@ function DetailModal({ log, onClose }: { log: EmailLogRow; onClose: () => void }
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
         </div>
 
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Destinataire</p>
             <p className="text-sm text-white">{log.destinataire}</p>
@@ -127,6 +174,8 @@ function DetailModal({ log, onClose }: { log: EmailLogRow; onClose: () => void }
               </pre>
             </div>
           )}
+
+          <MessageApercu log={log} />
         </div>
       </div>
     </div>
