@@ -1,27 +1,12 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
-import { calculerEcheance, traiterEvenementAutomatisation, genererApercuAutomatisation, LABELS_AUTOMATISATION, type TypeAutomatisation } from '@/lib/automatisations'
-import AutomatisationsClient from './_components/AutomatisationsClient'
-
-export type AutomatisationRow = {
-  id: string
-  type: string
-  actif: boolean
-  objet: string | null
-  corps: string | null
-  delai_heures: number
-  heure_cible_minutes: number | null
-}
-
-export type EvenementFileAttente = {
-  id: string
-  flux: string
-  clientNom: string
-  clientEmail: string
-  echeanceISO: string | null
-}
+import Link from 'next/link'
+import { calculerEcheance, LABELS_AUTOMATISATION, type TypeAutomatisation } from '@/lib/automatisations'
+import { RECETTES, ORDRE_CATEGORIES, slugCategorie } from './_lib/recettes'
+import type { AutomatisationRow, EvenementFileAttente } from './_lib/types'
+import { executerMaintenant, previsualiser, supprimerEvenement } from './_lib/actions'
+import FileAttenteTable from './_components/FileAttenteTable'
 
 export default async function AutomatisationsPage() {
   const supabase = await createClient()
@@ -64,88 +49,53 @@ export default async function AutomatisationsPage() {
     }
   })
 
-  async function sauvegarder(
-    type: string, actif: boolean, objet: string, corps: string,
-    delaiHeures: number, heureCibleMinutes: number | null,
-  ): Promise<{ erreur?: string }> {
-    'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { erreur: 'Non authentifié.' }
-    const { error } = await supabase.from('automatisations').upsert({
-      beatmaker_id: user.id,
-      type,
-      actif,
-      objet: objet.trim() || null,
-      corps: corps.trim() || null,
-      delai_heures: delaiHeures >= 0 ? delaiHeures : 10,
-      heure_cible_minutes: heureCibleMinutes,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'beatmaker_id,type' })
-    if (error) {
-      console.error('[automatisations] Erreur sauvegarde:', JSON.stringify(error))
-      return { erreur: error.message }
-    }
-    revalidatePath('/dashboard/business/marketing/automatisations')
-    return {}
-  }
-
-  async function executerMaintenant(evenementId: string) {
-    'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const admin = createAdminClient()
-    const { data: evenement } = await admin
-      .from('automatisation_evenements')
-      .select('id, beatmaker_id, client_id, type, reference_id, created_at')
-      .eq('id', evenementId)
-      .eq('beatmaker_id', user.id)
-      .single()
-    if (!evenement) return
-
-    await traiterEvenementAutomatisation(evenement, { forcer: true })
-    revalidatePath('/dashboard/business/marketing/automatisations')
-  }
-
-  async function previsualiser(evenementId: string): Promise<{ objet: string; corpsHtml: string } | { erreur: string }> {
-    'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { erreur: 'Non authentifié.' }
-
-    const admin = createAdminClient()
-    const { data: evenement } = await admin
-      .from('automatisation_evenements')
-      .select('beatmaker_id, client_id, type, reference_id')
-      .eq('id', evenementId)
-      .eq('beatmaker_id', user.id)
-      .single()
-    if (!evenement) return { erreur: 'Événement introuvable.' }
-
-    return genererApercuAutomatisation(evenement as { beatmaker_id: string; client_id: string; type: TypeAutomatisation; reference_id: string })
-  }
-
-  async function supprimerEvenement(evenementId: string) {
-    'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const admin = createAdminClient()
-    await admin.from('automatisation_evenements').delete().eq('id', evenementId).eq('beatmaker_id', user.id)
-    revalidatePath('/dashboard/business/marketing/automatisations')
-  }
-
   return (
-    <AutomatisationsClient
-      automatisations={automatisations}
-      sauvegarder={sauvegarder}
-      fileAttente={fileAttente}
-      executerMaintenant={executerMaintenant}
-      previsualiser={previsualiser}
-      supprimerEvenement={supprimerEvenement}
-    />
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-white">Automatisations</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Emails envoyés automatiquement selon l&apos;activité de tes clients — jamais à l&apos;heure exacte de l&apos;événement.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {ORDRE_CATEGORIES.map(categorie => {
+            const recettesCategorie = RECETTES.filter(r => r.categorie === categorie)
+            if (recettesCategorie.length === 0) return null
+            const nbActives = recettesCategorie.filter(r => automatisations.find(a => a.type === r.type)?.actif).length
+
+            return (
+              <Link
+                key={categorie}
+                href={`/dashboard/business/marketing/automatisations/${slugCategorie(categorie)}`}
+                className="flex items-center gap-3 bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">{categorie}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {recettesCategorie.length} recette{recettesCategorie.length > 1 ? 's' : ''}
+                    {nbActives > 0 && ` · ${nbActives} active${nbActives > 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <svg className="w-4 h-4 text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            )
+          })}
+        </div>
+
+        <FileAttenteTable
+          fileAttente={fileAttente}
+          executerMaintenant={executerMaintenant}
+          previsualiser={previsualiser}
+          supprimerEvenement={supprimerEvenement}
+        />
+      </div>
+    </div>
   )
 }

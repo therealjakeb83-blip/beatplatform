@@ -1,0 +1,196 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import ChampAvecVariables, { GROUPES_VARIABLES } from '../../_components/ChampAvecVariables'
+import type { AutomatisationRow } from '../_lib/types'
+import type { Recette } from '../_lib/recettes'
+
+function minutesVersHeure(m: number): string {
+  return `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`
+}
+function heureVersMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+export default function RecetteCard({ recette, existante, sauvegarder }: {
+  recette: Recette
+  existante?: AutomatisationRow
+  sauvegarder: (
+    type: string, actif: boolean, objet: string, corps: string,
+    delaiHeures: number, heureCibleMinutes: number | null,
+  ) => Promise<{ erreur?: string }>
+}) {
+  const [depliee, setDepliee]           = useState(false)
+  const [actif, setActif]               = useState(existante?.actif ?? false)
+  const [objet, setObjet]               = useState(existante?.objet ?? '')
+  const [corps, setCorps]               = useState(existante?.corps ?? recette.corpsDefaut)
+  const [delaiHeures, setDelaiHeures]   = useState(existante?.delai_heures ?? 10)
+  const [heureCibleActive, setHeureCibleActive] = useState(existante ? existante.heure_cible_minutes != null : true)
+  const [heureCible, setHeureCible]     = useState(minutesVersHeure(existante?.heure_cible_minutes ?? 615))
+  const [enregistrement, setEnregistrement] = useState(false)
+  const [enregistre, setEnregistre]     = useState(false)
+  const [erreur, setErreur]             = useState('')
+  const champActifRef = useRef<((token: string) => void) | null>(null)
+
+  function insererVariable(token: string) {
+    champActifRef.current?.(token)
+  }
+
+  async function handleEnregistrer() {
+    setEnregistrement(true)
+    setErreur('')
+    const { erreur: msg } = await sauvegarder(
+      recette.type, actif, objet, corps,
+      delaiHeures, heureCibleActive ? heureVersMinutes(heureCible) : null,
+    )
+    setEnregistrement(false)
+    if (msg) {
+      setErreur(msg)
+    } else {
+      setEnregistre(true)
+      setTimeout(() => setEnregistre(false), 2000)
+    }
+  }
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div
+        onClick={() => setDepliee(d => !d)}
+        className="flex items-center justify-between px-5 py-4 cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-3">
+          <svg
+            className={`w-3.5 h-3.5 text-gray-500 flex-shrink-0 transition-transform ${depliee ? 'rotate-90' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-white">{recette.label}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{recette.description}</p>
+          </div>
+        </div>
+        <div
+          onClick={e => { e.stopPropagation(); setActif(a => !a) }}
+          className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${actif ? 'bg-indigo-600' : 'bg-gray-700'}`}
+        >
+          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${actif ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </div>
+      </div>
+
+      {depliee && (
+      <div className="p-5 border-t border-gray-800 grid grid-cols-[1fr_220px] gap-5">
+        <div className="space-y-4">
+          <div>
+            <label className="text-[11px] text-gray-500 mb-1 block">Objet</label>
+            <ChampAvecVariables
+              value={objet}
+              onChange={setObjet}
+              onFocusChamp={inserer => { champActifRef.current = inserer }}
+              placeholder="Ex : Bienvenue dans l'équipe 🎶"
+              className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] text-gray-500 mb-1 block">Corps</label>
+            <ChampAvecVariables
+              value={corps}
+              onChange={setCorps}
+              onFocusChamp={inserer => { champActifRef.current = inserer }}
+              multiline
+              className="w-full bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-3 text-sm text-white min-h-[180px]"
+            />
+          </div>
+
+          <div className="flex items-end gap-4">
+            <div>
+              <label className="text-[11px] text-gray-500 mb-1 block">Délai minimum</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={delaiHeures}
+                  onChange={e => setDelaiHeures(Math.max(0, Number(e.target.value)))}
+                  className="w-16 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
+                />
+                <span className="text-xs text-gray-500">heures</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-[11px] text-gray-500 mb-1">
+                <input
+                  type="checkbox"
+                  checked={heureCibleActive}
+                  onChange={e => setHeureCibleActive(e.target.checked)}
+                  className="accent-indigo-600"
+                />
+                Aligner sur une heure fixe
+              </label>
+              {heureCibleActive ? (
+                <input
+                  type="time"
+                  value={heureCible}
+                  onChange={e => setHeureCible(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
+                />
+              ) : (
+                <p className="text-[10px] text-amber-500 max-w-[220px]">
+                  Mode test : envoi dès le délai passé, à n&apos;importe quelle heure.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={handleEnregistrer}
+            disabled={enregistrement}
+            className="text-xs px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold transition-colors"
+          >
+            {enregistre ? 'Enregistré ✓' : enregistrement ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+          {erreur && <p className="text-xs text-red-400 mt-2">Échec de l&apos;enregistrement : {erreur}</p>}
+        </div>
+
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2">Variables</p>
+          <p className="text-[10px] text-gray-700 mb-3">Clique dans un champ, puis clique une variable pour l&apos;insérer.</p>
+          {recette.variablesSupplementaires && (
+            <div className="mb-3">
+              <p className="text-[10px] text-gray-500 mb-1.5">Spécifique à cette recette</p>
+              <div className="flex flex-wrap gap-1">
+                {recette.variablesSupplementaires.map(v => (
+                  <button
+                    key={v.token}
+                    onClick={() => insererVariable(`{{${v.token}}}`)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {GROUPES_VARIABLES.map(g => (
+            <div key={g.groupe} className="mb-3">
+              <p className="text-[10px] text-gray-500 mb-1.5">{g.groupe}</p>
+              <div className="flex flex-wrap gap-1">
+                {g.vars.map(v => (
+                  <button
+                    key={v.token}
+                    onClick={() => insererVariable(`{{${v.token}}}`)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition-colors"
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      )}
+    </div>
+  )
+}
