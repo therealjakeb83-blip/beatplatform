@@ -94,7 +94,7 @@ Jake`,
     label: 'Remerciement achat — 4e achat et +',
     description: "Envoyé le lendemain du 4e achat (ou plus) de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
-Merci pour ta dernière, toujours un plaisir de te voir revenir 🙏🏼
+Merci pour ta dernière commande, toujours un plaisir de te voir revenir 🙏🏼
 Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
 À très vite,
 Jake`,
