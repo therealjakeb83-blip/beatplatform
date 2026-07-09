@@ -5,9 +5,10 @@ export type Recette = {
   description: string
   corpsDefaut: string
   variablesSupplementaires?: { token: string; label: string }[]
-  // Paramètre numérique propre à la recette, stocké dans automatisations.config
-  // (jsonb) — ex. le nombre de mois d'inactivité avant relance.
-  champConfig?: { cle: string; label: string; defaut: number; suffixe: string }
+  // Paramètres numériques propres à la recette, stockés dans
+  // automatisations.config (jsonb) — ex. le nombre de mois d'inactivité avant
+  // relance, ou le pourcentage du code promo généré automatiquement.
+  champsConfig?: { cle: string; label: string; defaut: number; suffixe: string }[]
 }
 
 // Ordre d'affichage des catégories — reprend les "slots" déjà actés pour la
@@ -142,13 +143,21 @@ Jake`,
     type: 'relance_inactivite',
     categorie: 'Engagement',
     label: 'Relance inactivité',
-    description: "Envoyé quand un client n'a plus rien acheté depuis X mois (configurable ci-dessous).",
-    champConfig: { cle: 'mois_inactivite', label: "Mois d'inactivité avant relance", defaut: 3, suffixe: 'mois' },
+    description: "Envoyé quand un client n'a plus rien acheté depuis X mois. Un code promo personnel (valable 30 jours, réservé à son email) est généré automatiquement à l'envoi.",
+    champsConfig: [
+      { cle: 'mois_inactivite', label: "Mois d'inactivité avant relance", defaut: 3, suffixe: 'mois' },
+      { cle: 'pourcentage_remise', label: 'Remise du code promo', defaut: 50, suffixe: '%' },
+    ],
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Ça fait un moment qu'on s'est pas croisés, j'espère que tout va bien de ton côté 🙏🏼
-Je viens de sortir pas mal de nouvelles prods depuis ta dernière visite, n'hésite pas à venir jeter un œil si t'as 5 minutes !
+Je te fais un geste pour te donner envie de revenir : -{{pourcentage_remise}}% sur le beat de ton choix avec le code {{code_promo}}, rien que pour toi (valable jusqu'au {{date_expiration_code}}) 🎁
 À très vite,
 Jake`,
+    variablesSupplementaires: [
+      { token: 'code_promo', label: 'Code promo généré (auto)' },
+      { token: 'pourcentage_remise', label: 'Pourcentage de remise (auto)' },
+      { token: 'date_expiration_code', label: "Date d'expiration du code (auto)" },
+    ],
   },
   {
     type: 'follow_up_free_download',

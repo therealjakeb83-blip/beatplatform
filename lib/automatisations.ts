@@ -48,7 +48,8 @@ async function resoudreTokensSupplementaires(evenement: {
   type: TypeAutomatisation
   reference_id: string
   beatmaker_id: string
-}): Promise<Record<string, string>> {
+  client_id: string
+}, options?: { previsualisation?: boolean }): Promise<Record<string, string>> {
   const admin = createAdminClient()
 
   if (evenement.type === 'abonnement_en_attente') {
@@ -92,7 +93,77 @@ async function resoudreTokensSupplementaires(evenement: {
     return { titre_beat: titre ?? 'ce beat' }
   }
 
+  if (evenement.type === 'relance_inactivite') {
+    const { data: automatisation } = await admin
+      .from('automatisations')
+      .select('config')
+      .eq('beatmaker_id', evenement.beatmaker_id)
+      .eq('type', 'relance_inactivite')
+      .maybeSingle()
+
+    const pourcentage = Number((automatisation?.config as Record<string, number> | null)?.pourcentage_remise) || 50
+    const dateExpiration = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const dateExpirationFormatee = dateExpiration.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+    // Aperçu : ne jamais créer de vrai code promo pour une simple prévisualisation
+    // (le bouton Visualiser peut être cliqué plusieurs fois sans effet de bord).
+    if (options?.previsualisation) {
+      return { code_promo: 'APERÇU-XXXXXX', pourcentage_remise: String(pourcentage), date_expiration_code: dateExpirationFormatee }
+    }
+
+    const { data: client } = await admin.from('clients').select('email').eq('id', evenement.client_id).maybeSingle()
+    const code = await creerCodePromoRelance(evenement.beatmaker_id, client?.email ?? null, pourcentage, dateExpiration)
+
+    return {
+      code_promo: code ?? 'ERREUR-CODE',
+      pourcentage_remise: String(pourcentage),
+      date_expiration_code: dateExpirationFormatee,
+    }
+  }
+
   return {}
+}
+
+// Génère un code promo personnel pour relancer un client inactif — réservé à
+// son email (emails_autorises), usage unique, valable 30 jours. Créé
+// uniquement au moment de l'envoi réel (pas à la prévisualisation) : appelé
+// une seule fois par événement dans le fonctionnement normal (un événement
+// traité disparaît de la file, "Exécuter maintenant" ne peut plus le rejouer).
+async function creerCodePromoRelance(
+  beatmakerId: string,
+  clientEmail: string | null,
+  pourcentage: number,
+  dateExpiration: Date,
+): Promise<string | null> {
+  const admin = createAdminClient()
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+  for (let tentative = 0; tentative < 5; tentative++) {
+    let code = 'RETOUR-'
+    for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)]
+
+    const { error } = await admin.from('codes_promo').insert({
+      beatmaker_id: beatmakerId,
+      code,
+      description: 'Relance inactivité (généré automatiquement)',
+      type_remise: 'panier',
+      type_valeur: 'pourcentage',
+      valeur: pourcentage,
+      date_expiration: dateExpiration.toISOString(),
+      statut: 'actif',
+      limite_par_utilisateur: 1,
+      emails_autorises: clientEmail ? [clientEmail] : [],
+    })
+
+    if (!error) return code
+    if (error.code !== '23505') {
+      console.error('[automatisations] Erreur création code promo relance:', JSON.stringify(error))
+      return null
+    }
+  }
+
+  console.error('[automatisations] Échec génération code promo relance après 5 tentatives (collisions)')
+  return null
 }
 
 // Garde-fous type-spécifiques : certains événements ne doivent plus partir si
@@ -262,7 +333,7 @@ export async function genererApercuAutomatisation(evenement: {
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),
     admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url').eq('id', evenement.beatmaker_id).single(),
-    resoudreTokensSupplementaires(evenement),
+    resoudreTokensSupplementaires(evenement, { previsualisation: true }),
   ])
 
   const branding = brandingRes.data as BrandingBoutique | null
