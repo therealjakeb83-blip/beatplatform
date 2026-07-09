@@ -32,8 +32,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Panier vide' }, { status: 400 })
   }
 
-  console.error('[checkout] items reçus:', JSON.stringify(items))
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -77,7 +75,6 @@ export async function POST(request: Request) {
     .in('beat_id', beatIds)
 
   if (beatLicencesError) console.error('[checkout] Erreur query beat_licences:', JSON.stringify(beatLicencesError))
-  console.error('[checkout] beatIds demandés:', beatIds, '— lignes beat_licences trouvées:', beatLicencesData?.length ?? 0, JSON.stringify(beatLicencesData))
 
   type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
   const beatLicenceMap = new Map(
@@ -194,11 +191,9 @@ export async function POST(request: Request) {
 
     const beatLicence = beatLicenceMap.get(`${item.beat_id}:${item.licence_id}`)
     if (!beatLicence) {
-      console.error('[checkout] beat_licence introuvable pour', item.beat_id, item.licence_id, '— clés dispo:', [...beatLicenceMap.keys()])
       return NextResponse.json({ erreur: `Combinaison beat/licence introuvable pour "${beat.titre}"` }, { status: 400 })
     }
     if (!beatLicence.actif) {
-      console.error('[checkout] beat_licence inactif pour', item.beat_id, item.licence_id)
       return NextResponse.json({ erreur: `Licence désactivée pour "${beat.titre}"` }, { status: 400 })
     }
     if (beatLicence.sur_demande) {
