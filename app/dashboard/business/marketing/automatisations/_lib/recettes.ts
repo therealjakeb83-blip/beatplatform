@@ -133,8 +133,8 @@ Jake`,
     label: 'Bienvenue perso',
     description: "Envoyé le lendemain de la création d'un compte, seulement si rien d'autre ne s'est passé ce jour-là (pas d'achat ni d'abonnement — sinon le remerciement correspondant suffit).",
     corpsDefaut: `Salut {{prénom}}, ça va ?
-Je viens de voir que tu as créé ton compte, bienvenue par ici 🙌🏼
-N'hésite pas à jeter un œil à mes prods, et si t'as un coup de cœur ou une question, je suis dispo !
+Je viens de voir que tu as créé ton compte sur ma boutique, bienvenue par ici 👐
+Si t'as une question ou besoin de quoi que ce soit n'hésite pas !
 À très vite,
 Jake`,
   },
