@@ -112,11 +112,12 @@ export async function GET(request: Request) {
     { data: allFreeDl },
     { data: allFavoris },
   ] = await Promise.all([
-    admin.from('commandes')
-      .select('prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat)')
-      .eq('beatmaker_id', user.id)
-      .eq('statut', 'payee')
-      .or('type_commande.eq.LICENCE,type_commande.is.null'),
+    // Niveau article (commande_lignes) — un panier de plusieurs beats donne
+    // plusieurs lignes ici, chacune avec ses propres styles/licence.
+    admin.from('commande_lignes')
+      .select('prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
+      .eq('commandes.beatmaker_id', user.id)
+      .eq('commandes.statut', 'payee'),
     admin.from('beat_plays')
       .select('played_at, beats(styles, ambiances, instruments, type_beat)')
       .eq('beatmaker_id', user.id),

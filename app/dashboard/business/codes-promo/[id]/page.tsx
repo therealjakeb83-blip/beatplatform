@@ -13,6 +13,12 @@ type CommandeDetail = {
   clients: { id: string; prenom: string | null; nom: string; nom_artiste: string | null } | null
   beats: { titre: string } | null
   licences: { nom: string } | null
+  nbArticles: number
+}
+
+type LigneJointe = {
+  beats: { titre: string } | null
+  licences: { nom: string } | null
 }
 
 export default async function CodePromoDetailPage({
@@ -41,7 +47,7 @@ export default async function CodePromoDetailPage({
   const [{ data: rawCommandes }, { data: bm }, { data: rawLicences }, { data: rawBeats }] = await Promise.all([
     admin
       .from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, statut, clients(id, prenom, nom, nom_artiste), beats(titre), licences(nom)')
+      .select('id, created_at, prix_paye, reduction_montant, statut, clients(id, prenom, nom, nom_artiste), commande_lignes(beats(titre), licences(nom))')
       .eq('beatmaker_id', user.id)
       .eq('code_promo', code.code)
       .order('created_at', { ascending: false })
@@ -51,7 +57,16 @@ export default async function CodePromoDetailPage({
     admin.from('beats').select('id, titre, couleur, statut').eq('beatmaker_id', user.id).is('supprime_le', null).in('statut', ['public', 'prive']).order('created_at', { ascending: false }).limit(200),
   ])
 
-  const commandes: CommandeDetail[] = (rawCommandes ?? []) as unknown as CommandeDetail[]
+  type RawCommande = Omit<CommandeDetail, 'beats' | 'licences' | 'nbArticles'> & { commande_lignes: LigneJointe[] }
+  const commandes: CommandeDetail[] = ((rawCommandes ?? []) as unknown as RawCommande[]).map(c => {
+    const { commande_lignes, ...rest } = c
+    return {
+      ...rest,
+      beats: commande_lignes?.[0]?.beats ?? null,
+      licences: commande_lignes?.[0]?.licences ?? null,
+      nbArticles: commande_lignes?.length ?? 0,
+    }
+  })
   const slug = bm?.slug ?? ''
 
   const caGenere       = commandes.filter(c => c.statut === 'payee').reduce((s, c) => s + c.prix_paye, 0)

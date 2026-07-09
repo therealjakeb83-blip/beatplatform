@@ -209,10 +209,10 @@ export default async function BeatDetailPage({
       <LicencesTable
         licences={licences}
         beatId={beatId}
-        slug={slug}
+        beatTitre={beat.titre}
+        beatImageUrl={beat.image_url}
         estAbonne={estAbonne}
         remisePct={beatmaker.abo_remise_pct ?? 0}
-        userEmail={user?.email ?? null}
       />
 
       {beat.free_download_actif && beat.mp3_tague_url && (

@@ -68,14 +68,9 @@ function EditRow({ label, name, value, placeholder }: { label: string; name: str
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Commande = {
-  id: string
+type LigneCommande = {
   beat_id: string | null
-  created_at: string
   prix_paye: number
-  statut: string
-  type_commande: string | null
-  plateforme_source: string | null
   beats: {
     titre: string
     image_url: string | null
@@ -85,6 +80,16 @@ type Commande = {
     instruments: string[] | null
   } | null
   licences: { nom: string } | null
+}
+
+type Commande = {
+  id: string
+  created_at: string
+  prix_paye: number
+  statut: string
+  type_commande: string | null
+  plateforme_source: string | null
+  commande_lignes: LigneCommande[]
 }
 
 // ── Onglets ───────────────────────────────────────────────────────────────────
@@ -176,9 +181,12 @@ export default async function FicheClientPage({
     supabase
       .from('commandes')
       .select(`
-        id, beat_id, created_at, prix_paye, statut, plateforme_source, type_commande,
-        beats(titre, image_url, styles, type_beat, ambiances, instruments),
-        licences(nom)
+        id, created_at, prix_paye, statut, plateforme_source, type_commande,
+        commande_lignes(
+          beat_id, prix_paye,
+          beats(titre, image_url, styles, type_beat, ambiances, instruments),
+          licences(nom)
+        )
       `)
       .eq('beatmaker_id', beatmakerId)
       .or(orCommandes)
@@ -283,7 +291,7 @@ export default async function FicheClientPage({
     ambiances:   new Map<string, number>(),
     instruments: new Map<string, number>(),
   }
-  for (const c of payees) accumPrefs(prefCounts, c.beats, 2)
+  for (const c of payees) for (const l of c.commande_lignes ?? []) accumPrefs(prefCounts, l.beats, 2)
 
   const topStyles      = topN(prefCounts.styles,      5)
   const topTypeBeat    = topN(prefCounts.typeBeat,    3)
@@ -292,11 +300,41 @@ export default async function FicheClientPage({
   const topLicences    = (() => {
     const m = new Map<string, number>()
     for (const c of licencesPayees) {
-      const nom = c.licences?.nom
-      if (nom) m.set(nom, (m.get(nom) ?? 0) + 1)
+      for (const l of c.commande_lignes ?? []) {
+        const nom = l.licences?.nom
+        if (nom) m.set(nom, (m.get(nom) ?? 0) + 1)
+      }
     }
     return topN(m, 3)
   })()
+
+  const beatIdsAchetes = new Set(
+    licencesPayees.flatMap(c => (c.commande_lignes ?? []).map(l => l.beat_id).filter((id): id is string => !!id))
+  )
+
+  /* Historique d'achats aplati au niveau article — un panier de plusieurs
+     beats donne plusieurs lignes dans le tableau, chacune avec son propre montant. */
+  const achatsLignes = achats.flatMap(a =>
+    (a.commande_lignes ?? []).length > 0
+      ? a.commande_lignes.map(l => ({
+          id: `${a.id}:${l.beat_id ?? 'na'}`,
+          created_at: a.created_at,
+          plateforme_source: a.plateforme_source,
+          type_commande: a.type_commande,
+          prix_paye: l.prix_paye,
+          beats: l.beats,
+          licences: l.licences,
+        }))
+      : [{
+          id: a.id,
+          created_at: a.created_at,
+          plateforme_source: a.plateforme_source,
+          type_commande: a.type_commande,
+          prix_paye: a.prix_paye,
+          beats: null,
+          licences: null,
+        }]
+  )
 
   // ── Server actions ─────────────────────────────────────────────────────────
 
@@ -845,13 +883,13 @@ export default async function FicheClientPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {achats.map((a, i) => {
+                  {achatsLignes.map((a, i) => {
                     const isBs  = a.plateforme_source === 'beatstars'
                     const titre = a.beats?.titre ?? (isBs ? 'Import BeatStars' : 'Beat supprimé')
                     return (
                       <tr
                         key={a.id}
-                        className={`${i < achats.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}
+                        className={`${i < achatsLignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}
                       >
                         <td className="px-5 py-3 font-medium text-white">{titre}</td>
                         <td className="px-5 py-3 text-xs text-gray-400">
@@ -1021,7 +1059,7 @@ export default async function FicheClientPage({
               ) : (
                 <div className="divide-y divide-gray-800">
                   {freeDLs.map((dl, i) => {
-                    const beatAchete = licencesPayees.some(c => c.beat_id === dl.beat_id)
+                    const beatAchete = beatIdsAchetes.has(dl.beat_id)
                     return (
                       <div key={i} className="flex items-center justify-between px-5 py-3">
                         <div className="flex items-center gap-2">
@@ -1056,7 +1094,7 @@ export default async function FicheClientPage({
               ) : (
                 <div className="divide-y divide-gray-800">
                   {favoris.map((fav, i) => {
-                    const beatAchete = licencesPayees.some(c => c.beat_id === fav.beat_id)
+                    const beatAchete = beatIdsAchetes.has(fav.beat_id)
                     return (
                       <div key={i} className="flex items-center justify-between px-5 py-3">
                         <div className="flex items-center gap-2">

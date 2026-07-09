@@ -37,24 +37,14 @@ async function resoudreTokensSupplementaires(evenement: {
   }
 
   if (evenement.type === 'remerciement_1er_achat') {
-    // Compte les lignes commandes de la même session Stripe — aujourd'hui
-    // toujours 1 (pas de panier multi-articles), mais déjà correct le jour où
-    // un panier existera (plusieurs beats = plusieurs lignes, même session).
-    const { data: commande } = await admin
-      .from('commandes')
-      .select('stripe_session_id')
-      .eq('id', evenement.reference_id)
-      .maybeSingle()
+    // Depuis Phase 2c (panier multi-articles), 1 commande peut couvrir
+    // plusieurs beats — compte les commande_lignes de cette commande.
+    const { count } = await admin
+      .from('commande_lignes')
+      .select('id', { count: 'exact', head: true })
+      .eq('commande_id', evenement.reference_id)
 
-    let nbBeats = 1
-    if (commande?.stripe_session_id) {
-      const { count } = await admin
-        .from('commandes')
-        .select('id', { count: 'exact', head: true })
-        .eq('stripe_session_id', commande.stripe_session_id)
-      if (count) nbBeats = count
-    }
-
+    const nbBeats = count || 1
     return { le_beat: nbBeats > 1 ? 'les beats' : 'le beat' }
   }
 

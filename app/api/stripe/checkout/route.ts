@@ -6,83 +6,100 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
-export async function POST(request: Request) {
-  const { beat_id, licence_id, slug, code_promo, email_acheteur, source_marketing } = await request.json()
+type ItemPanier = { beat_id: string; licence_id: string }
 
-  if (!beat_id || !licence_id || !slug) {
-    return NextResponse.json({ erreur: 'Paramètres manquants' }, { status: 400 })
+type LigneCalculee = {
+  beat_id: string
+  licence_id: string
+  titre: string
+  image_url: string | null
+  nomLicence: string
+  prixTotalCents: number
+  reductionCodeCents: number
+  codePromoApplique: boolean
+}
+
+export async function POST(request: Request) {
+  const { items, slug, code_promo, email_acheteur, source_marketing } = await request.json() as {
+    items?: ItemPanier[]
+    slug?: string
+    code_promo?: string
+    email_acheteur?: string
+    source_marketing?: string
+  }
+
+  if (!slug || !items?.length) {
+    return NextResponse.json({ erreur: 'Panier vide' }, { status: 400 })
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: beat } = await supabase
-    .from('beats')
-    .select('id, titre, image_url, beatmaker_id, beatmakers(stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct)')
-    .eq('id', beat_id)
-    .in('statut', ['public', 'prive'])
-    .is('supprime_le', null)
+  const { data: beatmakerRow } = await supabase
+    .from('beatmakers')
+    .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+    .eq('slug', slug)
     .single()
 
-  if (!beat) return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
+  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
+  let beatmaker = beatmakerRow as BeatmakerRow | null
 
-  const { data: beatLicence } = await supabase
-    .from('beat_licences')
-    .select('actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
-    .eq('beat_id', beat_id)
-    .eq('licence_id', licence_id)
-    .single()
-
-  if (!beatLicence?.actif || beatLicence.sur_demande) {
-    return NextResponse.json({ erreur: 'Licence indisponible' }, { status: 400 })
-  }
-
-  type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
-  const licence = beatLicence.licences as unknown as LicenceRow
-  if (!licence?.actif) return NextResponse.json({ erreur: 'Licence inactive' }, { status: 400 })
-
-  type BeatmakerRow = { stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
-  let beatmaker = (beat as unknown as { beatmakers: BeatmakerRow }).beatmakers
-
-  // Fallback admin si l'artiste connecté ne peut pas lire le JOIN beatmakers via RLS
+  // Fallback admin si l'artiste connecté ne peut pas lire beatmakers via RLS
   if (!beatmaker) {
     const admin = createAdminClient()
     const { data: bm } = await admin
       .from('beatmakers')
-      .select('stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
-      .eq('id', beat.beatmaker_id)
+      .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+      .eq('slug', slug)
       .single()
-    beatmaker = bm as unknown as BeatmakerRow
+    beatmaker = bm as BeatmakerRow | null
   }
 
-  if (!beatmaker) return NextResponse.json({ erreur: 'Beatmaker introuvable' }, { status: 404 })
+  if (!beatmaker) return NextResponse.json({ erreur: 'Boutique introuvable' }, { status: 404 })
 
-  const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
+  const admin = createAdminClient()
+  const beatIds = [...new Set(items.map(i => i.beat_id))]
 
-  // Remise membre si abonné (sauf licence Illimité/Exclusive)
+  const { data: beatsData } = await admin
+    .from('beats')
+    .select('id, titre, image_url, beatmaker_id')
+    .in('id', beatIds)
+    .in('statut', ['public', 'prive'])
+    .is('supprime_le', null)
+
+  const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
+
+  const { data: beatLicencesData } = await admin
+    .from('beat_licences')
+    .select('beat_id, licence_id, actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
+    .in('beat_id', beatIds)
+
+  type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
+  const beatLicenceMap = new Map(
+    (beatLicencesData ?? []).map(bl => [`${bl.beat_id}:${bl.licence_id}`, bl])
+  )
+
+  // Remise membre si abonné (partagée par tous les articles éligibles du panier)
   let remisePct = 0
-  const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
-  if (beatmaker.abo_actif && !estIllimite) {
-    const adminAbo = createAdminClient()
+  if (beatmaker.abo_actif) {
     if (user) {
-      const { data: abo } = await adminAbo
+      const { data: abo } = await admin
         .from('abonnements_boutique')
         .select('id')
-        .eq('beatmaker_id', String(beat.beatmaker_id))
+        .eq('beatmaker_id', beatmaker.id)
         .eq('statut', 'actif')
         .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
         .maybeSingle()
       if (abo && beatmaker.abo_remise_pct) remisePct = beatmaker.abo_remise_pct
     }
-
     if (remisePct === 0) {
       const cookieStore = await cookies()
       const emailCookie = cookieStore.get(`abo_${slug}`)?.value
       if (emailCookie) {
-        const { data: abo } = await adminAbo
+        const { data: abo } = await admin
           .from('abonnements_boutique')
           .select('id')
-          .eq('beatmaker_id', String(beat.beatmaker_id))
+          .eq('beatmaker_id', beatmaker.id)
           .eq('acheteur_email', emailCookie)
           .eq('statut', 'actif')
           .maybeSingle()
@@ -91,94 +108,63 @@ export async function POST(request: Request) {
     }
   }
 
-  let prixApresRemise = remisePct > 0 ? Math.round(prixBaseHT * (1 - remisePct / 100)) : prixBaseHT
-
-  // Application du code promo (panier / produit uniquement — abonnements gérés par Stripe)
-  let reductionCodeCents = 0
+  // Code promo — validé une fois pour tout le panier, appliqué article par article
+  let promo: Record<string, unknown> | null = null
   let codePromoValide: string | null = null
+  const emailEffectif = user?.email ?? (email_acheteur as string | undefined) ?? null
 
-  if (code_promo && !estIllimite) {
-    const adminCode = createAdminClient()
-    const { data: promo } = await adminCode
+  if (code_promo) {
+    const { data: promoData } = await admin
       .from('codes_promo')
       .select('*')
-      .eq('beatmaker_id', String(beat.beatmaker_id))
+      .eq('beatmaker_id', beatmaker.id)
       .eq('code', (code_promo as string).toUpperCase().trim())
       .eq('statut', 'actif')
       .single()
 
-    if (!promo) {
-      return NextResponse.json({ erreur: 'Code promo invalide' }, { status: 400 })
-    }
-
-    if (promo.type_remise === 'abonnement') {
+    if (!promoData) return NextResponse.json({ erreur: 'Code promo invalide' }, { status: 400 })
+    if (promoData.type_remise === 'abonnement') {
       return NextResponse.json({ erreur: 'Ce code est réservé aux abonnements' }, { status: 400 })
     }
 
     const now = new Date()
-    if (promo.date_debut && new Date(promo.date_debut) > now) {
+    if (promoData.date_debut && new Date(promoData.date_debut) > now) {
       return NextResponse.json({ erreur: "Ce code n'est pas encore actif" }, { status: 400 })
     }
-    if (promo.date_expiration && new Date(promo.date_expiration) < now) {
+    if (promoData.date_expiration && new Date(promoData.date_expiration) < now) {
       return NextResponse.json({ erreur: 'Ce code a expiré' }, { status: 400 })
     }
-
-    if (promo.beats_inclus?.length > 0 && !promo.beats_inclus.includes(beat_id)) {
-      return NextResponse.json({ erreur: 'Code non applicable à ce beat' }, { status: 400 })
-    }
-    if (promo.beats_exclus?.includes(beat_id)) {
-      return NextResponse.json({ erreur: 'Code non applicable à ce beat' }, { status: 400 })
-    }
-
-    if (promo.licences_eligibles?.length > 0 && !promo.licences_eligibles.includes(licence.nom)) {
-      return NextResponse.json({ erreur: 'Code non applicable à cette licence' }, { status: 400 })
-    }
-
-    // depense_min / max comparés en euros (prixApresRemise est en centimes)
-    const prixEuros = prixApresRemise / 100
-    if (promo.depense_min && prixEuros < Number(promo.depense_min)) {
-      return NextResponse.json({ erreur: `Montant minimum requis : ${promo.depense_min}€` }, { status: 400 })
-    }
-    if (promo.depense_max && prixEuros > Number(promo.depense_max)) {
-      return NextResponse.json({ erreur: 'Code non applicable (montant trop élevé)' }, { status: 400 })
-    }
-
-    if (promo.limite_par_code !== null && promo.utilisations >= promo.limite_par_code) {
+    if (promoData.limite_par_code !== null && promoData.utilisations >= promoData.limite_par_code) {
       return NextResponse.json({ erreur: "Ce code a atteint sa limite d'utilisation" }, { status: 400 })
     }
-
-    // Vérifications liées à l'email (utilisateur connecté ou email saisi manuellement)
-    const emailEffectif = user?.email ?? (email_acheteur as string | undefined) ?? null
-    if (promo.emails_autorises?.length > 0) {
-      if (!emailEffectif || !promo.emails_autorises.includes(emailEffectif)) {
+    if (promoData.emails_autorises?.length > 0) {
+      if (!emailEffectif || !promoData.emails_autorises.includes(emailEffectif)) {
         return NextResponse.json({ erreur: 'Code non autorisé pour cette adresse email' }, { status: 400 })
       }
     }
-    if (emailEffectif && promo.emails_exclus?.includes(emailEffectif)) {
+    if (emailEffectif && promoData.emails_exclus?.includes(emailEffectif)) {
       return NextResponse.json({ erreur: 'Code non autorisé pour cette adresse email' }, { status: 400 })
     }
-    if (user?.email) {
-
-      if (promo.premiere_commande) {
-        const { data: commandeExistante } = await adminCode
-          .from('commandes')
-          .select('id')
-          .eq('beatmaker_id', String(beat.beatmaker_id))
-          .eq('statut', 'payee')
-          .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
-          .limit(1)
-          .maybeSingle()
-        if (commandeExistante) {
-          return NextResponse.json({ erreur: 'Ce code est réservé aux nouveaux clients' }, { status: 400 })
-        }
+    if (user?.email && promoData.premiere_commande) {
+      const { data: commandeExistante } = await admin
+        .from('commandes')
+        .select('id')
+        .eq('beatmaker_id', beatmaker.id)
+        .eq('statut', 'payee')
+        .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
+        .limit(1)
+        .maybeSingle()
+      if (commandeExistante) {
+        return NextResponse.json({ erreur: 'Ce code est réservé aux nouveaux clients' }, { status: 400 })
       }
-
-      const limiteParUser = promo.limite_par_utilisateur ?? (promo.utilisation_individuelle ? 1 : null)
+    }
+    if (user?.email) {
+      const limiteParUser = promoData.limite_par_utilisateur ?? (promoData.utilisation_individuelle ? 1 : null)
       if (limiteParUser !== null) {
-        const { count } = await adminCode
+        const { count } = await admin
           .from('commandes')
           .select('id', { count: 'exact', head: true })
-          .eq('beatmaker_id', String(beat.beatmaker_id))
+          .eq('beatmaker_id', beatmaker.id)
           .eq('code_promo', (code_promo as string).toUpperCase().trim())
           .eq('statut', 'payee')
           .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
@@ -188,56 +174,119 @@ export async function POST(request: Request) {
       }
     }
 
-    // Calcul de la réduction
-    if (promo.type_valeur === 'pourcentage') {
-      reductionCodeCents = Math.round(prixApresRemise * Number(promo.valeur) / 100)
-    } else {
-      reductionCodeCents = Math.min(Math.round(Number(promo.valeur) * 100), prixApresRemise)
-    }
+    promo = promoData
     codePromoValide = (code_promo as string).toUpperCase().trim()
-    prixApresRemise = Math.max(0, prixApresRemise - reductionCodeCents)
   }
 
-  const tvaMultiplier = beatmaker.tva_active && beatmaker.tva_taux ? beatmaker.tva_taux / 100 : 0
-  const prixTotal = Math.round(prixApresRemise * (1 + tvaMultiplier))
+  // Calcul par article
+  const lignes: LigneCalculee[] = []
+
+  for (const item of items) {
+    const beat = beatMap.get(item.beat_id)
+    if (!beat || String(beat.beatmaker_id) !== String(beatmaker.id)) {
+      return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
+    }
+
+    const beatLicence = beatLicenceMap.get(`${item.beat_id}:${item.licence_id}`)
+    if (!beatLicence?.actif || beatLicence.sur_demande) {
+      return NextResponse.json({ erreur: `Licence indisponible pour "${beat.titre}"` }, { status: 400 })
+    }
+    const licence = beatLicence.licences as unknown as LicenceRow
+    if (!licence?.actif) {
+      return NextResponse.json({ erreur: `Licence inactive pour "${beat.titre}"` }, { status: 400 })
+    }
+
+    const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
+    const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
+    const remisePctItem = estIllimite ? 0 : remisePct
+    let prixApresRemise = remisePctItem > 0 ? Math.round(prixBaseHT * (1 - remisePctItem / 100)) : prixBaseHT
+
+    let reductionCodeCents = 0
+    let codePromoAppliqueItem = false
+
+    if (promo && !estIllimite) {
+      const beatsInclus = promo.beats_inclus as string[] | null
+      const beatsExclus = promo.beats_exclus as string[] | null
+      const licencesEligibles = promo.licences_eligibles as string[] | null
+      const depenseMin = promo.depense_min as number | null
+      const depenseMax = promo.depense_max as number | null
+
+      const eligible =
+        (!beatsInclus?.length || beatsInclus.includes(item.beat_id)) &&
+        !beatsExclus?.includes(item.beat_id) &&
+        (!licencesEligibles?.length || licencesEligibles.includes(licence.nom)) &&
+        (!depenseMin || (prixApresRemise / 100) >= Number(depenseMin)) &&
+        (!depenseMax || (prixApresRemise / 100) <= Number(depenseMax))
+
+      if (eligible) {
+        if (promo.type_valeur === 'pourcentage') {
+          reductionCodeCents = Math.round(prixApresRemise * Number(promo.valeur) / 100)
+        } else {
+          reductionCodeCents = Math.min(Math.round(Number(promo.valeur) * 100), prixApresRemise)
+        }
+        prixApresRemise = Math.max(0, prixApresRemise - reductionCodeCents)
+        codePromoAppliqueItem = true
+      }
+    }
+
+    const tvaMultiplier = beatmaker.tva_active && beatmaker.tva_taux ? beatmaker.tva_taux / 100 : 0
+    const prixTotal = Math.round(prixApresRemise * (1 + tvaMultiplier))
+
+    lignes.push({
+      beat_id: item.beat_id,
+      licence_id: item.licence_id,
+      titre: beat.titre,
+      image_url: beat.image_url,
+      nomLicence: licence.nom,
+      prixTotalCents: prixTotal,
+      reductionCodeCents,
+      codePromoApplique: codePromoAppliqueItem,
+    })
+  }
+
+  // Un code promo saisi doit s'appliquer à au moins un article du panier
+  if (promo && !lignes.some(l => l.codePromoApplique)) {
+    return NextResponse.json({ erreur: "Ce code ne s'applique à aucun article du panier" }, { status: 400 })
+  }
 
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
-  // Attribution campagne marketing : posée par /api/marketing/clic lors du clic sur
-  // un lien de campagne, valable seulement si elle correspond au beatmaker de ce beat
   const cookieClic = (await cookies()).get(COOKIE_CLIC)?.value
   const verifClic = cookieClic ? verifierTokenCampagne(cookieClic) : null
-  const attributionCampagne = verifClic && verifClic.beatmakerId === String(beat.beatmaker_id) ? verifClic : null
+  const attributionCampagne = verifClic && verifClic.beatmakerId === String(beatmaker.id) ? verifClic : null
+
+  // Répartition des fonds : si au moins un article a des splits, toute la
+  // session bascule en mode "fonds retenus + transferts manuels par article"
+  // (les articles sans split de ce même panier reçoivent alors 100% par transfert
+  // plutôt qu'une destination charge directe — cf plan Phase 2c).
+  const { data: splitsData } = await admin
+    .from('beat_splits')
+    .select('beat_id')
+    .in('beat_id', beatIds)
+  const hasSplits = (splitsData?.length ?? 0) > 0
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     payment_method_types: ['card'],
-    line_items: [{
+    line_items: lignes.map(l => ({
       price_data: {
         currency: 'eur',
         product_data: {
-          name: `${beat.titre} — ${licence.nom}`,
-          ...(beat.image_url ? { images: [beat.image_url] } : {}),
+          name: `${l.titre} — ${l.nomLicence}`,
+          ...(l.image_url ? { images: [l.image_url] } : {}),
         },
-        unit_amount: prixTotal,
+        unit_amount: l.prixTotalCents,
       },
       quantity: 1,
-    }],
+    })),
     billing_address_collection: 'required',
-    success_url: `${origin}/${slug}/${beat_id}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/${slug}/${beat_id}`,
+    success_url: `${origin}/${slug}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/${slug}`,
     metadata: {
-      beat_id,
-      licence_id,
-      beatmaker_id: String(beat.beatmaker_id),
+      beatmaker_id: String(beatmaker.id),
       slug,
-      prix_ht: String(prixBaseHT),
-      remise_pct: String(remisePct),
       source_marketing: source_marketing ?? 'direct',
-      ...(codePromoValide ? {
-        code_promo: codePromoValide,
-        reduction_code_promo: String(reductionCodeCents),
-      } : {}),
+      ...(codePromoValide ? { code_promo: codePromoValide } : {}),
       ...(attributionCampagne ? {
         campagne_id: attributionCampagne.campagneId,
         campagne_client_id: attributionCampagne.clientId,
@@ -245,24 +294,10 @@ export async function POST(request: Request) {
     },
   }
 
-  const adminForSplits = createAdminClient()
-  const { data: beatSplits } = await adminForSplits
-    .from('beat_splits')
-    .select('id')
-    .eq('beat_id', beat_id)
-
-  const hasSplits = beatSplits && beatSplits.length > 0
-
   if (hasSplits) {
     const transferGroup = crypto.randomUUID()
-    sessionParams.payment_intent_data = {
-      transfer_group: transferGroup,
-    }
-    sessionParams.metadata = {
-      ...sessionParams.metadata,
-      transfer_group: transferGroup,
-      has_splits: 'true',
-    }
+    sessionParams.payment_intent_data = { transfer_group: transferGroup }
+    sessionParams.metadata = { ...sessionParams.metadata, transfer_group: transferGroup, has_splits: 'true' }
   } else if (beatmaker.stripe_account_id) {
     sessionParams.payment_intent_data = {
       application_fee_amount: 0,
@@ -273,19 +308,34 @@ export async function POST(request: Request) {
 
   const session = await stripe.checkout.sessions.create(sessionParams)
 
-  const { error: tentativeError } = await adminForSplits.from('tentatives_paiement').insert({
-    beatmaker_id: String(beat.beatmaker_id),
-    beat_id,
-    licence_id,
+  const prixTotalEuros = lignes.reduce((s, l) => s + l.prixTotalCents, 0) / 100
+
+  const { data: tentative, error: tentativeError } = await admin.from('tentatives_paiement').insert({
+    beatmaker_id: beatmaker.id,
     client_id: user?.id ?? null,
     email: user?.email ?? email_acheteur ?? null,
-    prix: prixTotal / 100,
+    prix: prixTotalEuros,
     code_promo: codePromoValide,
     source_marketing: source_marketing ?? 'direct',
     stripe_session_id: session.id,
     statut: 'creee',
-  })
-  if (tentativeError) console.error('[checkout] Erreur insert tentative_paiement:', JSON.stringify(tentativeError))
+  }).select('id').single()
+
+  if (tentativeError) {
+    console.error('[checkout] Erreur insert tentative_paiement:', JSON.stringify(tentativeError))
+  } else if (tentative) {
+    const { error: lignesError } = await admin.from('tentatives_paiement_lignes').insert(
+      lignes.map(l => ({
+        tentative_id: tentative.id,
+        beat_id: l.beat_id,
+        licence_id: l.licence_id,
+        prix: l.prixTotalCents / 100,
+        reduction_montant: l.reductionCodeCents / 100,
+        code_promo_applique: l.codePromoApplique,
+      }))
+    )
+    if (lignesError) console.error('[checkout] Erreur insert tentatives_paiement_lignes:', JSON.stringify(lignesError))
+  }
 
   return NextResponse.json({ url: session.url })
 }

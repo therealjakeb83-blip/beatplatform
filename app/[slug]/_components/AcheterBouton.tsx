@@ -1,53 +1,43 @@
 'use client'
 
-import { useState } from 'react'
+import { useCart } from './CartContext'
 
 export default function AcheterBouton({
   beatId,
   licenceId,
-  slug,
-  label,
-  codePromo,
-  emailAcheteur,
+  titre,
+  imageUrl,
+  licenceNom,
+  prix,
 }: {
   beatId: string
   licenceId: string
-  slug: string
-  label: string
-  codePromo?: string
-  emailAcheteur?: string
+  titre: string
+  imageUrl: string | null
+  licenceNom: string
+  prix: number
 }) {
-  const [chargement, setChargement] = useState(false)
-  const [erreur, setErreur] = useState<string | null>(null)
+  const { addItem, isInCart, open } = useCart()
+  const dejaAjoute = isInCart(beatId, licenceId)
 
-  async function acheter() {
-    setChargement(true)
-    setErreur(null)
-    const source_marketing = sessionStorage.getItem('source_marketing') ?? 'direct'
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beat_id: beatId, licence_id: licenceId, slug, code_promo: codePromo, email_acheteur: emailAcheteur, source_marketing }),
-    })
-    const data = await res.json()
-    if (data.url) {
-      window.location.href = data.url
-    } else {
-      setErreur(data.erreur ?? 'Erreur lors du paiement')
-      setChargement(false)
+  function ajouter() {
+    if (dejaAjoute) {
+      open()
+      return
     }
+    addItem({ beatId, licenceId, titre, imageUrl, licenceNom, prix })
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={acheter}
-        disabled={chargement}
-        className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors whitespace-nowrap shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
-      >
-        {chargement ? '...' : label}
-      </button>
-      {erreur && <p className="text-red-400 text-xs">{erreur}</p>}
-    </div>
+    <button
+      onClick={ajouter}
+      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap ${
+        dejaAjoute
+          ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          : 'bg-brand-600 hover:bg-brand-500 text-white shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]'
+      }`}
+    >
+      {dejaAjoute ? 'Dans le panier ✓' : 'Ajouter au panier'}
+    </button>
   )
 }

@@ -351,99 +351,192 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
 
 async function traiterPaiement(session: Stripe.Checkout.Session) {
   const meta = session.metadata
-  if (!meta?.beat_id || !meta?.licence_id || !meta?.beatmaker_id) return
+  if (!meta?.beatmaker_id) return
 
   const acheteurEmail = session.customer_details?.email ?? null
   const acheteurNom = session.customer_details?.name ?? null
   const totalCents = session.amount_total ?? 0
-  const prixPaye = totalCents / 100
+  const prixPayeTotal = totalCents / 100
   const stripePaymentId = typeof session.payment_intent === 'string'
     ? session.payment_intent
     : (session.payment_intent?.id ?? null)
   const hasSplits = meta.has_splits === 'true'
   const transferGroup = meta.transfer_group ?? null
-
-  // Code promo appliqué côté serveur avant checkout — lu depuis les métadonnées
   const promoCode = meta.code_promo ?? null
-  const reduction = meta.reduction_code_promo ? Number(meta.reduction_code_promo) / 100 : 0
 
   const supabase = createAdminClient()
 
+  // Le détail du panier (quels beats/licences) n'est plus dans la metadata Stripe
+  // (limite de taille pour un panier à N articles) — source de vérité :
+  // tentatives_paiement_lignes, écrites en DB au moment du checkout.
+  const { data: tentative } = await supabase
+    .from('tentatives_paiement')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle()
+
+  if (!tentative) {
+    console.error('[webhook] Aucune tentative_paiement pour la session:', session.id)
+    return
+  }
+
+  const { data: tentativeLignes } = await supabase
+    .from('tentatives_paiement_lignes')
+    .select('id, beat_id, licence_id, prix, reduction_montant')
+    .eq('tentative_id', tentative.id)
+
+  if (!tentativeLignes || tentativeLignes.length === 0) {
+    console.error('[webhook] Aucune ligne de panier pour la tentative:', tentative.id)
+    return
+  }
+
   const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom)
 
-  // Récupérer les infos du beat (titre nécessaire pour les emails de fonds en attente)
-  const { data: beat } = await supabase
-    .from('beats')
-    .select('titre, bpm, cle')
-    .eq('id', meta.beat_id)
-    .single()
-
-  // Récupérer les splits du beat (avec stripe_account_id pour les transfers)
-  const { data: splits } = await supabase
-    .from('beat_splits')
-    .select('id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)')
-    .eq('beat_id', meta.beat_id)
+  const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
+  const licenceIds = [...new Set(tentativeLignes.map(l => l.licence_id as string))]
 
   type SplitRow = {
     id: string
+    beat_id: string
     pourcentage: number
     beatmaker_id: string | null
     email_invite: string | null
     beatmakers: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
   }
 
-  const { data: beatmaker } = await supabase
-    .from('beatmakers')
-    .select('nom_artiste, email, stripe_account_id')
-    .eq('id', meta.beatmaker_id)
-    .single()
+  const [{ data: beatsData }, { data: licencesData }, { data: splitsData }, { data: beatmaker }] = await Promise.all([
+    supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
+    supabase.from('licences').select('id, nom').in('id', licenceIds),
+    supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
+    supabase.from('beatmakers').select('nom_artiste, email, stripe_account_id').eq('id', meta.beatmaker_id).single(),
+  ])
 
-  let splitsSnapshot: { nom_artiste: string; pourcentage: number; email?: string }[]
+  const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
+  const licenceMap = new Map((licencesData ?? []).map(l => [l.id, l]))
 
-  if (!splits || splits.length === 0) {
-    splitsSnapshot = [{ nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100, email: beatmaker?.email }]
-  } else {
-    splitsSnapshot = (splits as unknown as SplitRow[]).map(s => ({
-      nom_artiste: s.beatmakers?.nom_artiste ?? s.email_invite ?? 'Collab',
-      pourcentage: s.pourcentage,
-      email: s.beatmakers?.email ?? s.email_invite ?? undefined,
-    }))
+  const splitsByBeat = new Map<string, SplitRow[]>()
+  for (const s of (splitsData ?? []) as unknown as SplitRow[]) {
+    const arr = splitsByBeat.get(s.beat_id) ?? []
+    arr.push(s)
+    splitsByBeat.set(s.beat_id, arr)
   }
 
-  // Créer la commande
+  const reductionTotal = tentativeLignes.reduce((sum, l) => sum + Number(l.reduction_montant ?? 0), 0)
+
+  // 1. Header de commande — 1 panier = 1 commande, quel que soit le nombre d'articles
   const { data: commande, error } = await supabase.from('commandes').insert({
     client_id: clientId,
     beatmaker_id: meta.beatmaker_id,
-    beat_id: meta.beat_id,
-    licence_id: meta.licence_id,
     acheteur_email: acheteurEmail,
     acheteur_nom: acheteurNom,
-    prix_paye: prixPaye,
+    prix_paye: prixPayeTotal,
     devise: 'EUR',
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,
     stripe_session_id: session.id,
     statut: 'payee',
     code_promo: promoCode,
-    reduction_montant: reduction,
+    reduction_montant: reductionTotal,
     fichiers_livres: false,
     plateforme_source: 'my_producer',
     source_marketing: meta.source_marketing ?? 'direct',
     type_commande: 'LICENCE',
-    splits_snapshot: splitsSnapshot,
     stripe_transfer_group: hasSplits ? transferGroup : null,
   }).select('id').single()
 
-  if (error) {
+  if (error || !commande) {
     console.error('[webhook] Erreur insert commande:', JSON.stringify(error))
     return
   }
 
-  console.log('[webhook] Commande créée:', commande?.id)
+  console.log('[webhook] Commande créée:', commande.id, '—', tentativeLignes.length, 'article(s)')
 
-  // 1er achat licence de ce client chez ce beatmaker — la ligne qu'on vient
-  // d'insérer compte déjà dedans, donc count===1 signifie "aucune autre avant".
-  if (commande && clientId) {
+  // 2. Une commande_ligne par article : splits, transferts, contrat PDF
+  let contratsOk = 0
+
+  for (const tLigne of tentativeLignes) {
+    const beat = beatMap.get(tLigne.beat_id)
+    const licence = licenceMap.get(tLigne.licence_id)
+    const splitsBeat = splitsByBeat.get(tLigne.beat_id) ?? []
+
+    let splitsSnapshot: { nom_artiste: string; pourcentage: number; email?: string }[]
+    if (splitsBeat.length === 0) {
+      splitsSnapshot = [{ nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100, email: beatmaker?.email }]
+    } else {
+      splitsSnapshot = splitsBeat.map(s => ({
+        nom_artiste: s.beatmakers?.nom_artiste ?? s.email_invite ?? 'Collab',
+        pourcentage: s.pourcentage,
+        email: s.beatmakers?.email ?? s.email_invite ?? undefined,
+      }))
+    }
+
+    const { data: ligne, error: ligneError } = await supabase.from('commande_lignes').insert({
+      commande_id: commande.id,
+      beat_id: tLigne.beat_id,
+      licence_id: tLigne.licence_id,
+      prix_paye: tLigne.prix,
+      reduction_montant: tLigne.reduction_montant ?? 0,
+      splits_snapshot: splitsSnapshot,
+    }).select('id').single()
+
+    if (ligneError || !ligne) {
+      console.error('[webhook] Erreur insert commande_ligne:', JSON.stringify(ligneError))
+      continue
+    }
+
+    await supabase.from('tentatives_paiement_lignes').update({ commande_ligne_id: ligne.id }).eq('id', tLigne.id)
+
+    // Distribuer les fonds pour cet article (le panier entier route en mode
+    // "fonds retenus + transferts manuels" dès qu'un seul article a des splits)
+    if (hasSplits && transferGroup) {
+      const montantLigneCents = Math.round(Number(tLigne.prix) * 100)
+      await distribuerSplitsArticle({
+        supabase,
+        splits: splitsBeat,
+        beatmaker,
+        commandeId: commande.id,
+        beatmakerId: meta.beatmaker_id,
+        montantCents: montantLigneCents,
+        transferGroup,
+        titreBeat: beat?.titre ?? 'Beat',
+      })
+    }
+
+    // Contrat PDF par article
+    try {
+      if (beat && licence) {
+        const pdfBytes = await genererContratPdf({
+          beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
+          beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
+          acheteur: { nom: acheteurNom, email: acheteurEmail },
+          licence: { nom: licence.nom },
+          splits: splitsSnapshot,
+          dateVente: new Date(),
+        })
+        const pdfUrl = await uploadPdfContrat(ligne.id, pdfBytes)
+        await supabase.from('commande_lignes').update({ contrat_pdf_url: pdfUrl }).eq('id', ligne.id)
+        contratsOk++
+        console.log('[webhook] Contrat PDF généré pour la ligne', ligne.id, ':', pdfUrl)
+      }
+    } catch (err) {
+      console.error('[webhook] Erreur génération PDF pour la ligne', ligne.id, ':', err)
+    }
+  }
+
+  if (contratsOk === tentativeLignes.length) {
+    await supabase.from('commandes').update({ fichiers_livres: true }).eq('id', commande.id)
+  }
+
+  // 3. Marquer la tentative de paiement correspondante comme complète
+  const { error: tentativeError } = await supabase
+    .from('tentatives_paiement')
+    .update({ statut: 'complete', commande_id: commande.id, client_id: clientId, email: acheteurEmail })
+    .eq('id', tentative.id)
+  if (tentativeError) console.error('[webhook] Erreur maj tentative_paiement:', JSON.stringify(tentativeError))
+
+  // 4. "1er achat" — évalué une seule fois par session (pas par article), sinon
+  // l'automation se déclencherait N fois pour un panier de N beats.
+  if (clientId) {
     const { count } = await supabase
       .from('commandes')
       .select('id', { count: 'exact', head: true })
@@ -462,15 +555,6 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     }
   }
 
-  // Marquer la tentative de paiement correspondante comme complète
-  if (commande) {
-    const { error: tentativeError } = await supabase
-      .from('tentatives_paiement')
-      .update({ statut: 'complete', commande_id: commande.id, client_id: clientId, email: acheteurEmail })
-      .eq('stripe_session_id', session.id)
-    if (tentativeError) console.error('[webhook] Erreur maj tentative_paiement:', JSON.stringify(tentativeError))
-  }
-
   // Attribution marketing : exige à la fois un clic récent sur la campagne (cookie posé
   // par /api/marketing/clic) ET que l'achat soit fait avec le même client que le
   // destinataire — pour que la conversion reste cohérente avec la fiche client
@@ -482,7 +566,8 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     )
   }
 
-  // Incrémenter le compteur d'utilisations du code promo
+  // Incrémenter le compteur d'utilisations du code promo — une fois par commande,
+  // même si le code s'est appliqué à plusieurs articles du panier
   if (promoCode) {
     const { data: codePromoData } = await supabase
       .from('codes_promo')
@@ -517,81 +602,39 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
       if (leadError) console.error('[webhook] Erreur insert lead:', JSON.stringify(leadError))
     }
   }
-
-  // Distribuer les fonds entre collaborateurs (si le beat a des splits)
-  if (hasSplits && transferGroup && splits && splits.length > 0 && commande) {
-    await distribuerSplits({
-      supabase,
-      splits: splits as unknown as SplitRow[],
-      beatmaker,
-      commandeId: commande.id,
-      beatmakerId: meta.beatmaker_id,
-      totalCents,
-      transferGroup,
-      titreBeat: beat?.titre ?? 'Beat',
-    })
-  }
-
-  // Générer le contrat PDF
-  try {
-    const { data: licence } = await supabase
-      .from('licences')
-      .select('nom')
-      .eq('id', meta.licence_id)
-      .single()
-
-    if (beat && licence && commande) {
-      const pdfBytes = await genererContratPdf({
-        beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
-        beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
-        acheteur: { nom: acheteurNom, email: acheteurEmail },
-        licence: { nom: licence.nom },
-        splits: splitsSnapshot,
-        dateVente: new Date(),
-      })
-
-      const pdfUrl = await uploadPdfContrat(commande.id, pdfBytes)
-
-      await supabase
-        .from('commandes')
-        .update({ contrat_pdf_url: pdfUrl, fichiers_livres: true })
-        .eq('id', commande.id)
-
-      console.log('[webhook] Contrat PDF généré:', pdfUrl)
-    }
-  } catch (err) {
-    console.error('[webhook] Erreur génération PDF:', err)
-  }
 }
 
-type SplitRow = {
-  id: string
-  pourcentage: number
-  beatmaker_id: string | null
-  email_invite: string | null
-  beatmakers: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
-}
-
-async function distribuerSplits({
+async function distribuerSplitsArticle({
   supabase,
   splits,
   beatmaker,
   commandeId,
   beatmakerId,
-  totalCents,
+  montantCents,
   transferGroup,
   titreBeat,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
-  splits: SplitRow[]
+  splits: {
+    id: string
+    beat_id: string
+    pourcentage: number
+    beatmaker_id: string | null
+    email_invite: string | null
+    beatmakers: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
+  }[]
   beatmaker: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
   commandeId: string
   beatmakerId: string
-  totalCents: number
+  montantCents: number
   transferGroup: string
   titreBeat: string
 }) {
+  // Aucun split sur cet article : 100% part au propriétaire du beat (le beatmaker
+  // de la boutique) — le panier entier route quand même en mode manuel car un
+  // AUTRE article du même panier a des splits.
+  const totalCents = montantCents
   const splitPayments: Record<string, unknown>[] = []
   let montantProprioCents = totalCents
 

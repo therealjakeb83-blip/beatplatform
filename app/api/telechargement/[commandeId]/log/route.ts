@@ -9,7 +9,7 @@ export async function POST(
 ) {
   const { commandeId } = await params
   const body = await req.json().catch(() => ({}))
-  const { fichier } = body as { fichier?: string }
+  const { fichier, ligne_id } = body as { fichier?: string; ligne_id?: string }
 
   if (!commandeId || !fichier) {
     return NextResponse.json({ ok: false }, { status: 400 })
@@ -32,9 +32,10 @@ export async function POST(
   const ip_address = forwarded ? forwarded.split(',')[0].trim() : null
 
   const { error } = await admin.from('licence_downloads').insert({
-    commande_id:  commandeId,
-    beatmaker_id: commande.beatmaker_id,
-    client_id:    commande.client_id ?? null,
+    commande_id:       commandeId,
+    commande_ligne_id: ligne_id ?? null,
+    beatmaker_id:      commande.beatmaker_id,
+    client_id:         commande.client_id ?? null,
     fichier,
     ip_address,
   })

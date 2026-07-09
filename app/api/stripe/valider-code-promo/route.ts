@@ -2,9 +2,12 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
-  const { code, beat_id, slug, email } = await request.json()
+  const { code, beat_id, beat_ids, slug, email } = await request.json()
 
-  if (!code || !beat_id || !slug) {
+  // beat_id (legacy, page beat seule) ou beat_ids (panier) — au moins un des deux
+  const beatIds: string[] = beat_ids?.length ? beat_ids : (beat_id ? [beat_id] : [])
+
+  if (!code || !beatIds.length || !slug) {
     return NextResponse.json({ valide: false, erreur: 'Paramètres manquants' }, { status: 400 })
   }
 
@@ -44,11 +47,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ valide: false, erreur: 'Ce code a expiré' })
   }
 
-  if (promo.beats_inclus?.length > 0 && !promo.beats_inclus.includes(beat_id)) {
-    return NextResponse.json({ valide: false, erreur: 'Ce code ne s\'applique pas à ce beat' })
-  }
-  if (promo.beats_exclus?.includes(beat_id)) {
-    return NextResponse.json({ valide: false, erreur: 'Ce code ne s\'applique pas à ce beat' })
+  const auMoinsUnEligible = beatIds.some((id: string) =>
+    (!promo.beats_inclus?.length || promo.beats_inclus.includes(id)) &&
+    !promo.beats_exclus?.includes(id)
+  )
+  if (!auMoinsUnEligible) {
+    return NextResponse.json({ valide: false, erreur: "Ce code ne s'applique à aucun article du panier" })
   }
 
   if (promo.limite_par_code !== null && promo.utilisations >= promo.limite_par_code) {

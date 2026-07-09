@@ -24,11 +24,11 @@ export async function GET(request: Request) {
       .eq('beatmaker_id', user.id)
       .is('supprime_le', null)
       .order('created_at', { ascending: false }),
-    admin.from('commandes')
-      .select('beat_id, prix_paye, created_at')
-      .eq('beatmaker_id', user.id)
-      .eq('statut', 'payee')
-      .eq('type_commande', 'LICENCE'),
+    // Niveau article — un panier de plusieurs beats donne plusieurs lignes, chacune attribuée à son beat
+    admin.from('commande_lignes')
+      .select('beat_id, prix_paye, created_at, commandes!inner(beatmaker_id, statut)')
+      .eq('commandes.beatmaker_id', user.id)
+      .eq('commandes.statut', 'payee'),
     admin.from('beat_plays')
       .select('beat_id, played_at, duree_secondes')
       .eq('beatmaker_id', user.id),

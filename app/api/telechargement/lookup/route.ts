@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     .from('commandes')
     .select('id')
     .eq('stripe_session_id', sessionId)
-    .single()
+    .maybeSingle()
 
   if (!data) {
     return NextResponse.json({ erreur: 'Commande introuvable' }, { status: 404 })

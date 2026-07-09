@@ -1,13 +1,26 @@
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
+import { CartProvider } from './_components/CartContext'
+import CartDrawer from './_components/CartDrawer'
 
-export default function BoutiqueLayout({ children }: { children: React.ReactNode }) {
+export default async function BoutiqueLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+
   return (
     <PlayerProvider>
-      <div className="min-h-screen bg-black text-white pb-28">
-        {children}
-      </div>
-      <PlayerBar />
+      <CartProvider>
+        <div className="min-h-screen bg-black text-white pb-28">
+          {children}
+        </div>
+        <PlayerBar />
+        <CartDrawer slug={slug} />
+      </CartProvider>
     </PlayerProvider>
   )
 }

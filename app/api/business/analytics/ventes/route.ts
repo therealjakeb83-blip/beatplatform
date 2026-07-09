@@ -20,14 +20,24 @@ export async function GET(request: Request) {
 
   const [
     { data: allCommandes },
+    { data: allLignes },
     { data: allCollabs },
     { data: beatmaker },
   ] = await Promise.all([
     admin.from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, beats(titre), licences(nom), clients(prenom, nom)')
+      .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'payee')
       .or('type_commande.eq.LICENCE,type_commande.is.null')
+      .order('created_at', { ascending: false }),
+    // Niveau article — pour "beats vendus" et la table des ventes (1 ligne = 1 beat, pas 1 panier)
+    admin.from('commande_lignes')
+      .select(`
+        id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom),
+        commandes!inner(beatmaker_id, statut, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom))
+      `)
+      .eq('commandes.beatmaker_id', user.id)
+      .eq('commandes.statut', 'payee')
       .order('created_at', { ascending: false }),
     admin.from('split_payments')
       .select('montant, created_at')
@@ -40,6 +50,7 @@ export async function GET(request: Request) {
   ])
 
   const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
+  const lignes  = (allLignes    ?? []).filter(l => inPeriod(l.created_at, from, to))
   const collabs = (allCollabs   ?? []).filter(c => inPeriod(c.created_at, from, to))
 
   const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
@@ -49,7 +60,7 @@ export async function GET(request: Request) {
   const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises    = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net     = netHt(ca_brut - remises)
-  const beats_vendus = cmds.length
+  const beats_vendus = lignes.length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0) / 100
 
@@ -68,11 +79,12 @@ export async function GET(request: Request) {
   const slots = getHistoriqueSlots(periode, from, to, dataFrom)
   const historique = slots.map(slot => {
     const mCmds    = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
+    const mLignes  = (allLignes    ?? []).filter(l => l.created_at >= slot.from && l.created_at < slot.to)
     const mCollabs = (allCollabs   ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
 
     const ca_mois     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const ca_net_mois = netHt(mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0))
-    const ventes_mois = mCmds.length
+    const ventes_mois = mLignes.length
     const panier_mois = mCmds.length ? ca_mois / mCmds.length : 0
     const collab_mois = mCollabs.reduce((s, c) => s + c.montant, 0) / 100
 
@@ -86,27 +98,28 @@ export async function GET(request: Request) {
     return row
   })
 
-  // Table des commandes
-  type Raw = {
+  // Table des ventes — au niveau article (1 ligne = 1 beat vendu, pas 1 panier)
+  type LigneRaw = {
     id: string; created_at: string; prix_paye: number; reduction_montant: number | null
-    type_commande: string | null; source_marketing: string | null
-    acheteur_nom: string | null; acheteur_email: string | null
-    beats: unknown; licences: unknown; clients: unknown
+    beats: unknown; licences: unknown
+    commandes: unknown
   }
-  const commandes = cmds.map((d: Raw) => {
+  const commandes = (lignes as unknown as LigneRaw[]).map(d => {
     const b = Array.isArray(d.beats) ? d.beats[0] : d.beats
     const l = Array.isArray(d.licences) ? d.licences[0] : d.licences
-    const cl = Array.isArray(d.clients) ? d.clients[0] : d.clients
+    const cmd = Array.isArray(d.commandes) ? d.commandes[0] : d.commandes
+    const cmdTyped = cmd as { source_marketing: string | null; acheteur_nom: string | null; acheteur_email: string | null; clients: unknown } | null
+    const cl = cmdTyped ? (Array.isArray(cmdTyped.clients) ? cmdTyped.clients[0] : cmdTyped.clients) : null
     const client_nom = cl
       ? [(cl as { prenom: string | null }).prenom, (cl as { nom: string }).nom].filter(Boolean).join(' ')
-      : (d.acheteur_nom ?? d.acheteur_email ?? '—')
+      : (cmdTyped?.acheteur_nom ?? cmdTyped?.acheteur_email ?? '—')
     return {
       id:               d.id,
       created_at:       d.created_at,
       client_nom,
       beat_titre:       (b as { titre: string } | null)?.titre ?? '—',
       licence_nom:      (l as { nom: string } | null)?.nom ?? '—',
-      source_marketing: d.source_marketing ?? 'direct',
+      source_marketing: cmdTyped?.source_marketing ?? 'direct',
       prix_paye:        d.prix_paye,
       reduction_montant: d.reduction_montant,
     }

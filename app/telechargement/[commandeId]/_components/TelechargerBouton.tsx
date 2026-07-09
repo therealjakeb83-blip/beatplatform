@@ -5,11 +5,13 @@ export default function TelechargerBouton({
   url,
   icon = 'file',
   commandeId,
+  ligneId,
 }: {
   label: string
   url: string
   icon?: 'file' | 'pdf'
   commandeId?: string
+  ligneId?: string
 }) {
   function handleClick() {
     if (commandeId) {
@@ -18,7 +20,7 @@ export default function TelechargerBouton({
       fetch(`/api/telechargement/${commandeId}/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fichier: label }),
+        body: JSON.stringify({ fichier: label, ligne_id: ligneId }),
         keepalive: true,
       }).catch(() => {})
     }

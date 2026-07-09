@@ -16,6 +16,7 @@ type CommandeDetail = {
   clients: { id: string; prenom: string | null; nom: string; nom_artiste: string | null } | null
   beats: { titre: string } | null
   licences: { nom: string } | null
+  nbArticles: number
 }
 
 type FormData = {
@@ -365,6 +366,7 @@ export default function CodePromoDetailClient({
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
                     {c.beats?.titre ?? '—'}{c.licences?.nom ? ` · ${c.licences.nom}` : ''}
+                    {c.nbArticles > 1 && ` +${c.nbArticles - 1}`}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <p className="font-semibold text-white">{c.prix_paye.toFixed(2)}€</p>

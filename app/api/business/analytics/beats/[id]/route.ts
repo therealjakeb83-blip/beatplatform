@@ -15,6 +15,13 @@ function clientInfo(raw: unknown): { client_id: string | null; client_nom: strin
   return { client_id: cl.id, client_nom: [prenom, nom].filter(Boolean).join(' ') || null }
 }
 
+type CommandeJoin = { source_marketing: string | null; client_id: string | null; clients: unknown } | null
+
+function commandeInfo(raw: unknown): { source_marketing: string | null; client_id: string | null; clients: unknown } {
+  const c = (Array.isArray(raw) ? raw[0] : raw) as CommandeJoin
+  return { source_marketing: c?.source_marketing ?? null, client_id: c?.client_id ?? null, clients: c?.clients ?? null }
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -40,11 +47,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     { data: allSplits },
     { data: allFavoris },
   ] = await Promise.all([
-    admin.from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, source_marketing, client_id, licences(nom), clients(id, prenom, nom)')
-      .eq('beatmaker_id', user.id)
+    // Niveau article — un panier peut inclure ce beat parmi d'autres ; l'id renvoyé
+    // (commande_id) reste celui de la commande, pour le lien vers sa fiche détail.
+    admin.from('commande_lignes')
+      .select(`
+        commande_id, created_at, prix_paye, reduction_montant, licences(nom),
+        commandes!inner(beatmaker_id, statut, source_marketing, client_id, clients(id, prenom, nom))
+      `)
       .eq('beat_id', id)
-      .eq('statut', 'payee')
+      .eq('commandes.beatmaker_id', user.id)
+      .eq('commandes.statut', 'payee')
       .order('created_at', { ascending: false }),
     admin.from('beat_plays')
       .select('id, played_at, client_id, pays, device_type, source_marketing, duree_secondes, clients(id, prenom, nom)')
@@ -92,7 +104,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // CA par source
   const srcMap = new Map<string, number>()
   for (const c of cmds) {
-    const src = c.source_marketing ?? 'direct'
+    const src = commandeInfo(c.commandes).source_marketing ?? 'direct'
     srcMap.set(src, (srcMap.get(src) ?? 0) + c.prix_paye)
   }
   const ca_par_source = [...srcMap.entries()]
@@ -103,15 +115,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   type RawCmd = typeof cmds[number]
   const ventes_detail = cmds.map((c: RawCmd) => {
     const l  = Array.isArray(c.licences) ? c.licences[0] : c.licences
-    const { client_id, client_nom } = clientInfo(c.clients)
+    const cmdInfo = commandeInfo(c.commandes)
+    const { client_id, client_nom } = clientInfo(cmdInfo.clients)
     return {
-      id:                c.id,
+      id:                c.commande_id,
       created_at:        c.created_at,
       licence_nom:       (l as { nom: string } | null)?.nom ?? '—',
-      source_marketing:  c.source_marketing ?? 'direct',
+      source_marketing:  cmdInfo.source_marketing ?? 'direct',
       prix_paye:         c.prix_paye,
       reduction_montant: c.reduction_montant,
-      client_id:         client_id ?? c.client_id ?? null,
+      client_id:         client_id ?? cmdInfo.client_id ?? null,
       client_nom,
     }
   })

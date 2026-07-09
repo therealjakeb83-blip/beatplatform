@@ -136,7 +136,10 @@ function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Produit</p>
             {c.beats ? (
-              <p className="text-sm text-white">{c.beats.titre}</p>
+              <p className="text-sm text-white">
+                {c.beats.titre}
+                {c.nbArticles > 1 && <span className="text-gray-500"> +{c.nbArticles - 1} autre{c.nbArticles - 1 > 1 ? 's' : ''}</span>}
+              </p>
             ) : c.type_commande && TYPE_COMMANDE_LABEL[c.type_commande] ? (
               <p className="text-sm text-white">{TYPE_COMMANDE_LABEL[c.type_commande]}</p>
             ) : (
@@ -260,7 +263,7 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
         const id8    = c.id.slice(0, 8).toUpperCase()
         const email  = (c.clients?.email ?? c.acheteur_email ?? '').toLowerCase()
         const client = nomClient(c).toLowerCase()
-        const beat   = (c.beats?.titre ?? '').toLowerCase()
+        const beat   = (c.tousBeatsTitres?.length ? c.tousBeatsTitres.join(' ') : (c.beats?.titre ?? '')).toLowerCase()
         switch (scope) {
           case 'numero':  return id8.includes(q.toUpperCase())
           case 'email':   return email.includes(q)
@@ -495,7 +498,10 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
                             </button>
                             <div>
                               {c.beats ? (
-                                <p className="text-xs text-gray-400 truncate max-w-[150px]">{c.beats.titre}</p>
+                                <p className="text-xs text-gray-400 truncate max-w-[150px]">
+                                  {c.beats.titre}
+                                  {c.nbArticles > 1 && <span className="text-gray-600"> +{c.nbArticles - 1}</span>}
+                                </p>
                               ) : c.type_commande && TYPE_COMMANDE_LABEL[c.type_commande] && (
                                 <p className="text-xs text-gray-400">{TYPE_COMMANDE_LABEL[c.type_commande]}</p>
                               )}

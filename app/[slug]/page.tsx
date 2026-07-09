@@ -2,8 +2,10 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import BoutiqueHeader from './_components/BoutiqueHeader'
 import BeatCatalogue from './_components/BeatCatalogue'
+import SuccessBanner from './_components/SuccessBanner'
 import type { BeatPublic, LicencePublic } from './_components/BeatCard'
 
 export default async function BoutiquePage({
@@ -164,6 +166,11 @@ export default async function BoutiquePage({
         slug={slug}
         clientUser={clientUser}
       />
+      <Suspense>
+        <div className="max-w-5xl mx-auto px-6 pt-6">
+          <SuccessBanner />
+        </div>
+      </Suspense>
       <BeatCatalogue
         beats={beats}
         beatsPrives={beatsPrives}

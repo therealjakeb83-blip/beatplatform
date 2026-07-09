@@ -6,6 +6,14 @@ import TelechargerBouton from './_components/TelechargerBouton'
 
 export const runtime = 'nodejs'
 
+type LigneDispo = {
+  ligneId: string
+  titre: string
+  licenceNom: string
+  fichiersSignes: { label: string; url: string }[]
+  pdfSigneUrl: string | null
+}
+
 export default async function TelechargerPage({
   params,
 }: {
@@ -16,59 +24,80 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, acheteur_email, acheteur_nom, contrat_pdf_url, splits_snapshot, beat_id, licence_id')
+    .select('id, beatmaker_id, acheteur_email, acheteur_nom')
     .eq('id', commandeId)
     .single()
 
   if (commandeError) console.error('[telechargement] Erreur query commande:', JSON.stringify(commandeError))
   if (!commande) notFound()
 
-  const [{ data: beat, error: beatError }, { data: licence, error: licenceError }] = await Promise.all([
-    supabase.from('beats').select('titre, bpm, cle, mp3_propre_url, wav_url, stems_url, beatmaker_id').eq('id', commande.beat_id).single(),
-    supabase.from('licences').select('nom, modele').eq('id', commande.licence_id).single(),
+  const { data: lignes, error: lignesError } = await supabase
+    .from('commande_lignes')
+    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot')
+    .eq('commande_id', commandeId)
+
+  if (lignesError) console.error('[telechargement] Erreur query commande_lignes:', JSON.stringify(lignesError))
+  if (!lignes || lignes.length === 0) notFound()
+
+  const beatIds = [...new Set(lignes.map(l => l.beat_id))]
+  const licenceIds = [...new Set(lignes.map(l => l.licence_id))]
+
+  const [{ data: beatsData }, { data: licencesData }, { data: beatmaker }] = await Promise.all([
+    supabase.from('beats').select('id, titre, bpm, cle, mp3_propre_url, wav_url, stems_url').in('id', beatIds),
+    supabase.from('licences').select('id, nom, modele').in('id', licenceIds),
+    supabase.from('beatmakers').select('nom_artiste').eq('id', commande.beatmaker_id).single(),
   ])
 
-  console.log('[telechargement] beat_id:', commande.beat_id, 'licence_id:', commande.licence_id)
-  console.log('[telechargement] beat:', beat ? beat.titre : 'NULL', 'beatError:', JSON.stringify(beatError))
-  console.log('[telechargement] licence:', licence ? licence.nom : 'NULL', 'licenceError:', JSON.stringify(licenceError))
-  if (beat) console.log('[telechargement] urls:', beat.mp3_propre_url, beat.wav_url, beat.stems_url)
+  const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
+  const licenceMap = new Map((licencesData ?? []).map(l => [l.id, l]))
 
-  // Générer le PDF si pas encore fait
-  let contratUrl = commande.contrat_pdf_url
-  if (!contratUrl && beat && licence) {
-    try {
-      const { data: beatmaker } = await supabase
-        .from('beatmakers')
-        .select('nom_artiste')
-        .eq('id', beat.beatmaker_id)
-        .single()
+  const lignesDispo: LigneDispo[] = []
 
-      const splitsSnapshot = (commande.splits_snapshot as { nom_artiste: string; pourcentage: number }[] | null) ?? [
-        { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100 }
-      ]
+  for (const ligne of lignes) {
+    const beat = beatMap.get(ligne.beat_id)
+    const licence = licenceMap.get(ligne.licence_id)
+    if (!beat || !licence) continue
 
-      const pdfBytes = await genererContratPdf({
-        beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
-        beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
-        acheteur: { nom: commande.acheteur_nom, email: commande.acheteur_email },
-        licence: { nom: licence.nom },
-        splits: splitsSnapshot,
-        dateVente: new Date(),
-      })
+    // Générer le PDF si pas encore fait
+    let contratUrl = ligne.contrat_pdf_url
+    if (!contratUrl) {
+      try {
+        const splitsSnapshot = (ligne.splits_snapshot as { nom_artiste: string; pourcentage: number }[] | null) ?? [
+          { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100 }
+        ]
 
-      contratUrl = await uploadPdfContrat(commandeId, pdfBytes)
-      await supabase.from('commandes').update({ contrat_pdf_url: contratUrl, fichiers_livres: true }).eq('id', commandeId)
-    } catch (err) {
-      console.error('[telechargement] Erreur PDF:', err)
+        const pdfBytes = await genererContratPdf({
+          beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
+          beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
+          acheteur: { nom: commande.acheteur_nom, email: commande.acheteur_email },
+          licence: { nom: licence.nom },
+          splits: splitsSnapshot,
+          dateVente: new Date(),
+        })
+
+        contratUrl = await uploadPdfContrat(ligne.id, pdfBytes)
+        await supabase.from('commande_lignes').update({ contrat_pdf_url: contratUrl }).eq('id', ligne.id)
+      } catch (err) {
+        console.error('[telechargement] Erreur PDF pour la ligne', ligne.id, ':', err)
+      }
     }
+
+    const fichiersSignes = await genererUrlsSignees(beat, licence.modele ?? 'mp3')
+    const pdfFilename = `Contrat - ${beat.titre} (${licence.nom}).pdf`
+    const pdfSigneUrl = contratUrl ? await genererUrlSigneePdf(contratUrl, pdfFilename).catch(() => null) : null
+
+    lignesDispo.push({
+      ligneId: ligne.id,
+      titre: beat.titre,
+      licenceNom: licence.nom,
+      fichiersSignes,
+      pdfSigneUrl,
+    })
   }
 
-  // Générer URLs signées pour les fichiers
-  const fichiersSignes = beat ? await genererUrlsSignees(beat, licence?.modele ?? 'mp3') : []
-
-  // URL signée pour le PDF
-  const pdfFilename = beat ? `Contrat - ${beat.titre} (${licence?.nom ?? 'Licence'}).pdf` : 'contrat.pdf'
-  const pdfSigneUrl = contratUrl ? await genererUrlSigneePdf(contratUrl, pdfFilename).catch(() => null) : null
+  const titrePage = lignesDispo.length > 1
+    ? `${lignesDispo.length} beats`
+    : `${lignesDispo[0]?.titre} — ${lignesDispo[0]?.licenceNom}`
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4 py-12">
@@ -81,9 +110,7 @@ export default async function TelechargerPage({
             </svg>
           </div>
           <h1 className="text-2xl font-black mb-1">Paiement confirmé</h1>
-          <p className="text-gray-400 text-sm">
-            {beat?.titre} — {licence?.nom}
-          </p>
+          <p className="text-gray-400 text-sm">{titrePage}</p>
           {commande.acheteur_email && (
             <p className="text-gray-600 text-xs mt-1">{commande.acheteur_email}</p>
           )}
@@ -96,23 +123,30 @@ export default async function TelechargerPage({
           </p>
         </div>
 
-        {/* Fichiers */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-4">
-          <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Fichiers inclus</h2>
-          <div className="flex flex-col gap-3">
-            {fichiersSignes.map(f => (
-              <TelechargerBouton key={f.label} label={f.label} url={f.url} commandeId={commandeId} />
-            ))}
-          </div>
-        </div>
+        {/* Une section par article acheté */}
+        {lignesDispo.map(ligne => (
+          <div key={ligne.ligneId} className="mb-4">
+            {lignesDispo.length > 1 && (
+              <p className="text-sm font-semibold text-white mb-2">{ligne.titre} — {ligne.licenceNom}</p>
+            )}
 
-        {/* Contrat PDF */}
-        {pdfSigneUrl && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Contrat de licence</h2>
-            <TelechargerBouton label="Contrat PDF" url={pdfSigneUrl} icon="pdf" commandeId={commandeId} />
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
+              <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Fichiers inclus</h2>
+              <div className="flex flex-col gap-3">
+                {ligne.fichiersSignes.map(f => (
+                  <TelechargerBouton key={f.label} label={f.label} url={f.url} commandeId={commandeId} ligneId={ligne.ligneId} />
+                ))}
+              </div>
+            </div>
+
+            {ligne.pdfSigneUrl && (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Contrat de licence</h2>
+                <TelechargerBouton label="Contrat PDF" url={ligne.pdfSigneUrl} icon="pdf" commandeId={commandeId} ligneId={ligne.ligneId} />
+              </div>
+            )}
           </div>
-        )}
+        ))}
 
         <p className="text-center text-gray-700 text-xs mt-6">
           Propulsé par My Producer · Les paiements sont sécurisés

@@ -10,33 +10,14 @@ import RemboursementButton from './_components/RemboursementButton'
 
 type Note = { texte: string; date: string }
 
-type CommandeDetail = {
+type LigneDetail = {
   id: string
-  created_at: string
+  beat_id: string
+  licence_id: string
   prix_paye: number
-  devise: string | null
-  statut: 'en_attente' | 'payee' | 'remboursee' | 'litige'
-  methode_paiement: string | null
-  code_promo: string | null
   reduction_montant: number | null
-  fichiers_livres: boolean | null
   contrat_pdf_url: string | null
-  facture_pdf_url: string | null
-  source_marketing: string | null
   type_transaction: string | null
-  type_commande: string | null
-  plateforme_source: string | null
-  acheteur_email: string | null
-  acheteur_nom: string | null
-  notes: Note[] | null
-  client_id: string | null
-  clients: {
-    id: string
-    prenom: string | null
-    nom: string
-    email: string
-    pays: string | null
-  } | null
   beats: {
     id: string
     titre: string
@@ -54,6 +35,34 @@ type CommandeDetail = {
     inclut_wav: boolean
     inclut_stems: boolean
   } | null
+}
+
+type CommandeDetail = {
+  id: string
+  created_at: string
+  prix_paye: number
+  devise: string | null
+  statut: 'en_attente' | 'payee' | 'remboursee' | 'litige'
+  methode_paiement: string | null
+  code_promo: string | null
+  reduction_montant: number | null
+  fichiers_livres: boolean | null
+  facture_pdf_url: string | null
+  source_marketing: string | null
+  type_commande: string | null
+  plateforme_source: string | null
+  acheteur_email: string | null
+  acheteur_nom: string | null
+  notes: Note[] | null
+  client_id: string | null
+  clients: {
+    id: string
+    prenom: string | null
+    nom: string
+    email: string
+    pays: string | null
+  } | null
+  commande_lignes: LigneDetail[]
 }
 
 type HistoriqueCommande = {
@@ -133,12 +142,15 @@ export default async function CommandeDetailPage({
     .select(`
       id, created_at, prix_paye, devise, statut,
       methode_paiement, code_promo, reduction_montant,
-      fichiers_livres, contrat_pdf_url, facture_pdf_url,
-      source_marketing, type_transaction, type_commande, plateforme_source,
+      fichiers_livres, facture_pdf_url,
+      source_marketing, type_commande, plateforme_source,
       acheteur_email, acheteur_nom, notes, client_id,
       clients (id, prenom, nom, email, pays),
-      beats (id, titre, couleur, image_url, mp3_propre_url, wav_url, stems_url),
-      licences (id, nom, modele, inclut_mp3, inclut_wav, inclut_stems)
+      commande_lignes (
+        id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
+        beats (id, titre, couleur, image_url, mp3_propre_url, wav_url, stems_url),
+        licences (id, nom, modele, inclut_mp3, inclut_wav, inclut_stems)
+      )
     `)
     .eq('id', id)
     .eq('beatmaker_id', user.id)
@@ -172,18 +184,27 @@ export default async function CommandeDetailPage({
     .order('downloaded_at', { ascending: false })
   const downloads = (downloadsRaw ?? []) as { id: string; fichier: string; downloaded_at: string; ip_address: string | null }[]
 
-  /* Fichiers disponibles selon la licence */
-  const fichiersDispos: { label: string; url: string | null }[] = []
-  if (c.licences && c.beats) {
-    if (c.licences.inclut_mp3 && c.beats.mp3_propre_url)
-      fichiersDispos.push({ label: 'MP3 (sans tag)', url: c.beats.mp3_propre_url })
-    if (c.licences.inclut_wav && c.beats.wav_url)
-      fichiersDispos.push({ label: 'WAV', url: c.beats.wav_url })
-    if (c.licences.inclut_stems && c.beats.stems_url)
-      fichiersDispos.push({ label: 'Stems (ZIP)', url: c.beats.stems_url })
-  }
-  if (c.contrat_pdf_url)
-    fichiersDispos.push({ label: 'Contrat PDF', url: c.contrat_pdf_url })
+  const lignes = c.commande_lignes ?? []
+  const multiArticles = lignes.length > 1
+
+  /* Fichiers disponibles par article (licence + fichiers audio + contrat) */
+  const lignesDispo = lignes.map(l => {
+    const fichiers: { label: string; url: string | null }[] = []
+    if (l.licences && l.beats) {
+      if (l.licences.inclut_mp3 && l.beats.mp3_propre_url)
+        fichiers.push({ label: 'MP3 (sans tag)', url: l.beats.mp3_propre_url })
+      if (l.licences.inclut_wav && l.beats.wav_url)
+        fichiers.push({ label: 'WAV', url: l.beats.wav_url })
+      if (l.licences.inclut_stems && l.beats.stems_url)
+        fichiers.push({ label: 'Stems (ZIP)', url: l.beats.stems_url })
+    }
+    if (l.contrat_pdf_url)
+      fichiers.push({ label: 'Contrat PDF', url: l.contrat_pdf_url })
+    return { ligne: l, fichiers }
+  })
+  const fichiersDispos = lignesDispo.flatMap(({ ligne, fichiers }) =>
+    fichiers.map(f => ({ ...f, titreArticle: ligne.beats?.titre ?? null }))
+  )
 
   /* Données affichage */
   const s = STATUT[c.statut] ?? { label: c.statut, cls: 'bg-gray-700 text-gray-300 border border-gray-600' }
@@ -193,15 +214,10 @@ export default async function CommandeDetailPage({
   const emailClient = c.clients?.email ?? c.acheteur_email
   const destinataire = emailClient ?? ''
   const sourceDisplay = c.source_marketing ? (SOURCE_LABEL[c.source_marketing] ?? c.source_marketing) : 'Direct'
-  const typeDisplay = TYPE_LABEL[c.type_commande ?? c.type_transaction ?? ''] ?? 'Achat de licence'
+  const uneLigneEstUpgrade = lignes.some(l => l.type_transaction === 'upgrade')
+  const typeDisplay = TYPE_LABEL[c.type_commande ?? (uneLigneEstUpgrade ? 'upgrade' : '')] ?? 'Achat de licence'
 
-  /* Label article format proto : "Beat — Licence MP3" */
-  const produitLabel = c.beats && c.licences
-    ? `${c.beats.titre} — Licence ${c.licences.modele}`
-    : c.beats?.titre ?? '—'
-  const produitDetail = c.licences ? `Licence : ${c.licences.modele}` : ''
-
-  /* Calculs financiers */
+  /* Calculs financiers globaux (header) */
   const remiseTTC    = c.reduction_montant ?? 0
   const prixTTC      = c.prix_paye
   const prixHT       = prixTTC / 1.2
@@ -378,21 +394,35 @@ export default async function CommandeDetailPage({
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-gray-800/50">
-                <td className="px-5 py-4">
-                  <p className="text-sm text-gray-200">{produitLabel}</p>
-                  {produitDetail && <p className="text-xs text-gray-500 mt-0.5">{produitDetail}</p>}
-                </td>
-                <td className="px-5 py-4 text-right text-sm text-gray-400">€{htAvantRemise.toFixed(2)}</td>
-                <td className="px-5 py-4 text-right text-sm text-gray-400">× 1</td>
-                <td className="px-5 py-4 text-right">
-                  <p className="text-sm text-gray-300">€{htAvantRemise.toFixed(2)}</p>
-                  {remiseHT > 0 && (
-                    <p className="text-xs text-green-400 mt-0.5">remise de €{remiseHT.toFixed(2)}</p>
-                  )}
-                </td>
-                <td className="px-5 py-4 text-right text-sm text-gray-400">€{(htAvantRemise * 0.2).toFixed(2)}</td>
-              </tr>
+              {lignes.map(l => {
+                const ligneTTC       = l.prix_paye
+                const ligneRemiseTTC = l.reduction_montant ?? 0
+                const ligneHT        = ligneTTC / 1.2
+                const ligneRemiseHT  = ligneRemiseTTC / 1.2
+                const ligneHtAvantRemise = ligneHT + ligneRemiseHT
+                const produitLabel = l.beats && l.licences
+                  ? `${l.beats.titre} — Licence ${l.licences.modele}`
+                  : l.beats?.titre ?? '—'
+                return (
+                  <tr key={l.id} className="border-b border-gray-800/50">
+                    <td className="px-5 py-4">
+                      <p className="text-sm text-gray-200">{produitLabel}</p>
+                      {l.type_transaction === 'upgrade' && (
+                        <span className="text-[10px] text-purple-400 font-medium">↑ Upgrade</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right text-sm text-gray-400">€{ligneHtAvantRemise.toFixed(2)}</td>
+                    <td className="px-5 py-4 text-right text-sm text-gray-400">× 1</td>
+                    <td className="px-5 py-4 text-right">
+                      <p className="text-sm text-gray-300">€{ligneHtAvantRemise.toFixed(2)}</p>
+                      {ligneRemiseHT > 0 && (
+                        <p className="text-xs text-green-400 mt-0.5">remise de €{ligneRemiseHT.toFixed(2)}</p>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right text-sm text-gray-400">€{(ligneHtAvantRemise * 0.2).toFixed(2)}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
 
@@ -459,10 +489,10 @@ export default async function CommandeDetailPage({
 
           {/* Badges fichiers inclus */}
           {fichiersDispos.length > 0 && (
-            <div className="flex gap-2 mb-4">
-              {fichiersDispos.map(f => (
-                <span key={f.label} className="text-[10px] px-2 py-0.5 rounded-full border font-medium bg-gray-800 text-gray-400 border-gray-700">
-                  {f.label}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {fichiersDispos.map((f, i) => (
+                <span key={`${f.titreArticle}-${f.label}-${i}`} className="text-[10px] px-2 py-0.5 rounded-full border font-medium bg-gray-800 text-gray-400 border-gray-700">
+                  {multiArticles && f.titreArticle ? `${f.titreArticle} — ${f.label}` : f.label}
                 </span>
               ))}
             </div>
@@ -513,10 +543,12 @@ export default async function CommandeDetailPage({
               </div>
               <CopyButton text={downloadPageUrl} />
             </div>
-            {fichiersDispos.map(f => f.url ? (
-              <div key={f.label} className="flex items-center justify-between gap-4 bg-gray-800/40 rounded-lg px-4 py-2.5">
+            {fichiersDispos.map((f, i) => f.url ? (
+              <div key={`${f.titreArticle}-${f.label}-${i}`} className="flex items-center justify-between gap-4 bg-gray-800/40 rounded-lg px-4 py-2.5">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[10px] font-medium text-gray-400 w-36 shrink-0">{f.label}</span>
+                  <span className="text-[10px] font-medium text-gray-400 w-36 shrink-0">
+                    {multiArticles && f.titreArticle ? `${f.titreArticle} — ${f.label}` : f.label}
+                  </span>
                   <span className="text-xs font-mono text-gray-600 truncate">{f.url}</span>
                 </div>
                 <CopyButton text={f.url} />

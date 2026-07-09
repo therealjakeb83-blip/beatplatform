@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import CartBadge from './CartBadge'
 
 type BoutiqueHeaderProps = {
   nomArtiste: string
@@ -29,7 +30,8 @@ export default function BoutiqueHeader({
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-brand-600/25 rounded-full blur-[120px]" />
 
       {/* Barre de nav artiste */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-4 flex justify-end">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-4 flex items-center justify-end gap-5">
+        <CartBadge />
         {clientUser ? (
           <Link
             href={`/${slug}/mon-compte`}
