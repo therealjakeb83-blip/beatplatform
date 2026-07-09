@@ -58,16 +58,14 @@ async function resoudreTokensSupplementaires(evenement: {
 // "Midnight Drive" / "Midnight Drive et Ocean Eyes" / "A, B et C" / au-delà de
 // 3 titres cités : "A, B, C et N autres" pour ne pas faire une phrase à rallonge.
 function formaterListeBeats(titres: string[]): string {
-  if (titres.length === 0) return 'ce beat'
-  if (titres.length === 1) return titres[0]
-
-  const MAX_CITES = 3
-  if (titres.length <= MAX_CITES) {
-    return `${titres.slice(0, -1).join(', ')} et ${titres[titres.length - 1]}`
-  }
-  const cites = titres.slice(0, MAX_CITES)
-  const reste = titres.length - MAX_CITES
-  return `${cites.join(', ')} et ${reste} autre${reste > 1 ? 's' : ''}`
+  const n = titres.length
+  if (n === 0) return 'ce beat'
+  if (n === 1) return titres[0]
+  if (n === 2) return `${titres[0]} et ${titres[1]}`
+  if (n === 3) return `${titres.slice(0, -1).join(', ')} et ${titres[titres.length - 1]}`
+  // Au-delà de 3, citer chaque titre + "et N autres" sonnait robotique
+  // (retour terrain de Jake) — on bascule sur un compte générique.
+  return `les ${n} beats`
 }
 
 function appliquerTokensSupplementaires(texte: string, tokens: Record<string, string>): string {
