@@ -38,17 +38,36 @@ async function resoudreTokensSupplementaires(evenement: {
 
   if (evenement.type === 'remerciement_1er_achat') {
     // Depuis Phase 2c (panier multi-articles), 1 commande peut couvrir
-    // plusieurs beats — compte les commande_lignes de cette commande.
-    const { count } = await admin
+    // plusieurs beats — on nomme les titres achetés plutôt qu'un générique
+    // "le beat"/"les beats", plus personnel (voulu par Jake).
+    const { data: lignes } = await admin
       .from('commande_lignes')
-      .select('id', { count: 'exact', head: true })
+      .select('beats(titre)')
       .eq('commande_id', evenement.reference_id)
 
-    const nbBeats = count || 1
-    return { le_beat: nbBeats > 1 ? 'les beats' : 'le beat' }
+    const titres = ((lignes ?? []) as unknown as { beats: { titre: string } | null }[])
+      .map(l => l.beats?.titre)
+      .filter((t): t is string => !!t)
+
+    return { titre_beats: formaterListeBeats(titres) }
   }
 
   return {}
+}
+
+// "Midnight Drive" / "Midnight Drive et Ocean Eyes" / "A, B et C" / au-delà de
+// 3 titres cités : "A, B, C et N autres" pour ne pas faire une phrase à rallonge.
+function formaterListeBeats(titres: string[]): string {
+  if (titres.length === 0) return 'ce beat'
+  if (titres.length === 1) return titres[0]
+
+  const MAX_CITES = 3
+  if (titres.length <= MAX_CITES) {
+    return `${titres.slice(0, -1).join(', ')} et ${titres[titres.length - 1]}`
+  }
+  const cites = titres.slice(0, MAX_CITES)
+  const reste = titres.length - MAX_CITES
+  return `${cites.join(', ')} et ${reste} autre${reste > 1 ? 's' : ''}`
 }
 
 function appliquerTokensSupplementaires(texte: string, tokens: Record<string, string>): string {

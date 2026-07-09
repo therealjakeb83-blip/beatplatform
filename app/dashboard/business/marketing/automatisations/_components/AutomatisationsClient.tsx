@@ -55,12 +55,12 @@ PS : Et n'hésite pas à m'envoyer tes prochains morceaux, je suis toujours supe
     description: "Envoyé le lendemain du tout premier achat de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Je viens de voir ton achat d'hier, merci pour la force ça fait plaisir d'avoir un nouvel artiste qui bosse sur mes prods 🙏🏼
-N'hésite pas à m'envoyer ce que tu feras sur {{le_beat}}, je te donnerai mon avis avec plaisir !
+N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
 Et si jamais ça t'intéresse, j'ai aussi quelques prods qui sont pas sur YouTube, je peux t'envoyer 2–3 extraits
 À très vite,
 Jake`,
     variablesSupplementaires: [
-      { token: 'le_beat', label: 'Le beat / Les beats (auto)' },
+      { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
   },
 ]
