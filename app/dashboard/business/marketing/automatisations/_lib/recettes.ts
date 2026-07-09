@@ -11,14 +11,13 @@ export type Recette = {
 }
 
 // Ordre d'affichage des catégories — reprend les "slots" déjà actés pour la
-// gestion des combinaisons (ROADMAP, Phase 5) : Abonnement/Achats/Bienvenue/
-// Engagement sont mutuellement exclusifs par nature pour un même client.
-export const ORDRE_CATEGORIES = ['Abonnement', 'Achats', 'Bienvenue', 'Engagement']
+// gestion des combinaisons (ROADMAP, Phase 5) : Abonnement/Achats/Engagement
+// sont mutuellement exclusifs par nature pour un même client.
+export const ORDRE_CATEGORIES = ['Abonnement', 'Achats', 'Engagement']
 
 const SLUGS_CATEGORIES: Record<string, string> = {
   Abonnement: 'abonnement',
   Achats: 'achats',
-  Bienvenue: 'bienvenue',
   Engagement: 'engagement',
 }
 
@@ -130,7 +129,7 @@ Jake`,
   },
   {
     type: 'bienvenue_perso',
-    categorie: 'Bienvenue',
+    categorie: 'Engagement',
     label: 'Bienvenue perso',
     description: "Envoyé le lendemain de la création d'un compte, seulement si rien d'autre ne s'est passé ce jour-là (pas d'achat ni d'abonnement — sinon le remerciement correspondant suffit).",
     corpsDefaut: `Salut {{prénom}}, ça va ?
