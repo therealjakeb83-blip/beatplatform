@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import CartBadge from './CartBadge'
-
 type BoutiqueHeaderProps = {
   nomArtiste: string
   tagline: string | null
@@ -9,8 +6,6 @@ type BoutiqueHeaderProps = {
   youtubeUrl: string | null
   tiktokUrl: string | null
   nbBeats: number
-  slug: string
-  clientUser: { prenom: string; nom: string } | null
 }
 
 export default function BoutiqueHeader({
@@ -21,36 +16,11 @@ export default function BoutiqueHeader({
   youtubeUrl,
   tiktokUrl,
   nbBeats,
-  slug,
-  clientUser,
 }: BoutiqueHeaderProps) {
   return (
     <header className="relative overflow-hidden border-b border-gray-800 bg-black">
       {/* Lueur de marque en fond */}
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-brand-600/25 rounded-full blur-[120px]" />
-
-      {/* Barre de nav artiste */}
-      <div className="relative z-10 max-w-5xl mx-auto px-6 pt-4 flex items-center justify-end gap-5">
-        <CartBadge />
-        {clientUser ? (
-          <Link
-            href={`/${slug}/mon-compte`}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold">
-              {(clientUser.prenom || clientUser.nom || '?').slice(0, 1).toUpperCase()}
-            </div>
-            <span>Mon compte</span>
-          </Link>
-        ) : (
-          <Link
-            href={`/artiste/connexion?redirect=/${slug}`}
-            className="text-sm text-gray-500 hover:text-brand-400 transition-colors"
-          >
-            Se connecter
-          </Link>
-        )}
-      </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">

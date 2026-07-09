@@ -29,17 +29,8 @@ export default async function BoutiquePage({
   // Vérifier si le visiteur est abonné — session Supabase en priorité, cookie en fallback
   const { data: { user } } = await supabase.auth.getUser()
   let estAbonne = false
-  let clientUser: { prenom: string; nom: string } | null = null
 
   if (user) {
-    // Récupérer les infos du client pour le header
-    const { data: client } = await admin
-      .from('clients')
-      .select('prenom, nom')
-      .eq('id', user.id)
-      .single()
-    clientUser = client
-
     // Vérifier l'abonnement par client_id OU par email (rétrocompatibilité)
     const { data: abo } = await admin
       .from('abonnements_boutique')
@@ -163,8 +154,6 @@ export default async function BoutiquePage({
         youtubeUrl={beatmaker.youtube_url}
         tiktokUrl={beatmaker.tiktok_url}
         nbBeats={beats.length}
-        slug={slug}
-        clientUser={clientUser}
       />
       <Suspense>
         <div className="max-w-5xl mx-auto px-6 pt-6">
