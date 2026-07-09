@@ -3,14 +3,22 @@ import { envoyerEmailUnique } from './email-logger'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
 
-export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso' | 'remerciement_1er_achat'
+export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
+  | 'remerciement_1er_achat' | 'remerciement_2e_achat' | 'remerciement_3e_achat' | 'remerciement_4e_achat_plus'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
   abonnement_en_attente: 'Abonnement en attente',
   churn_message_perso: 'Churn message perso',
   remerciement_1er_achat: 'Remerciement achat — 1er achat',
+  remerciement_2e_achat: 'Remerciement achat — 2e achat',
+  remerciement_3e_achat: 'Remerciement achat — 3e achat',
+  remerciement_4e_achat_plus: 'Remerciement achat — 4e achat et +',
 }
+
+const TYPES_REMERCIEMENT_ACHAT: TypeAutomatisation[] = [
+  'remerciement_1er_achat', 'remerciement_2e_achat', 'remerciement_3e_achat', 'remerciement_4e_achat_plus',
+]
 
 // Tokens propres à un type d'automatisation (pas partagés avec le système de
 // tokens générique de lib/mailing.ts, qui ne connaît que le contact/la
@@ -36,7 +44,7 @@ async function resoudreTokensSupplementaires(evenement: {
     return { mois_avant_cadeau: String(moisAvantCadeau) }
   }
 
-  if (evenement.type === 'remerciement_1er_achat') {
+  if (TYPES_REMERCIEMENT_ACHAT.includes(evenement.type)) {
     // Depuis Phase 2c (panier multi-articles), 1 commande peut couvrir
     // plusieurs beats — on nomme les titres achetés plutôt qu'un générique
     // "le beat"/"les beats", plus personnel (voulu par Jake).
@@ -56,7 +64,8 @@ async function resoudreTokensSupplementaires(evenement: {
 }
 
 // "Midnight Drive" / "Midnight Drive et Ocean Eyes" / "A, B et C" / au-delà de
-// 3 titres cités : "A, B, C et N autres" pour ne pas faire une phrase à rallonge.
+// 3 titres, compte générique ("les 4 beats") plutôt que citer + "et N autres"
+// (sonnait robotique — retour terrain de Jake).
 function formaterListeBeats(titres: string[]): string {
   const n = titres.length
   if (n === 0) return 'ce beat'

@@ -63,6 +63,45 @@ Jake`,
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
   },
+  {
+    type: 'remerciement_2e_achat',
+    label: 'Remerciement achat — 2e achat',
+    description: "Envoyé le lendemain du 2e achat de licence d'un client.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Merci beaucoup pour ta commande d'hier, ça fais plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
+Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un retour !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
+    ],
+  },
+  {
+    type: 'remerciement_3e_achat',
+    label: 'Remerciement achat — 3e achat',
+    description: "Envoyé le lendemain du 3e achat de licence d'un client.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Merci beaucoup pour ta commande d'hier, ça fais plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
+Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un retour !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
+    ],
+  },
+  {
+    type: 'remerciement_4e_achat_plus',
+    label: 'Remerciement achat — 4e achat et +',
+    description: "Envoyé le lendemain du 4e achat (ou plus) de licence d'un client.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Merci beaucoup pour ta commande d'hier, ça fais plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
+Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un retour !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
+    ],
+  },
 ]
 
 type Props = {

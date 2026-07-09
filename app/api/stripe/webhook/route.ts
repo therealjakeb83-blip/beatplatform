@@ -534,8 +534,11 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     .eq('id', tentative.id)
   if (tentativeError) console.error('[webhook] Erreur maj tentative_paiement:', JSON.stringify(tentativeError))
 
-  // 4. "1er achat" — évalué une seule fois par session (pas par article), sinon
-  // l'automation se déclencherait N fois pour un panier de N beats.
+  // 4. "Remerciement achat" par palier — évalué une seule fois par session
+  // (pas par article), sinon l'automation se déclencherait N fois pour un
+  // panier de N beats. Un panier compte comme 1 seule commande pour le
+  // palier (décision Jake, 2026-07-09) — count = nombre total de commandes
+  // LICENCE de ce client chez ce beatmaker, celle-ci incluse.
   if (clientId) {
     const { count } = await supabase
       .from('commandes')
@@ -544,14 +547,21 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
       .eq('beatmaker_id', meta.beatmaker_id)
       .eq('type_commande', 'LICENCE')
 
-    if (count === 1 && await automatisationActive(supabase, meta.beatmaker_id, 'remerciement_1er_achat')) {
+    const typeParPalier: Record<number, string> = {
+      1: 'remerciement_1er_achat',
+      2: 'remerciement_2e_achat',
+      3: 'remerciement_3e_achat',
+    }
+    const typePalier = count ? (typeParPalier[count] ?? 'remerciement_4e_achat_plus') : null
+
+    if (typePalier && await automatisationActive(supabase, meta.beatmaker_id, typePalier)) {
       const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
         beatmaker_id: meta.beatmaker_id,
         client_id: clientId,
-        type: 'remerciement_1er_achat',
+        type: typePalier,
         reference_id: commande.id,
       })
-      if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (1er achat):', JSON.stringify(evenementError))
+      if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (remerciement achat):', JSON.stringify(evenementError))
     }
   }
 
