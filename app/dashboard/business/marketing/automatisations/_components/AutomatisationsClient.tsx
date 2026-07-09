@@ -41,7 +41,7 @@ Jake`,
   {
     type: 'churn_message_perso',
     label: 'Churn message perso',
-    description: "Envoyé le lendemain d'une annulation réelle d'abonnement (pas juste un renouvellement en échec).",
+    description: "Envoyé le lendemain de la décision d'annuler (même si l'abonné reste actif jusqu'à la fin de sa période payée) — distinct d'un simple renouvellement en échec.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
 J'ai vu que t'avais mis fin à ton abo hier, merci d'avoir tenté l'aventure✨
 Si t'as 2 minutes, ça m'aiderait vraiment d'avoir ton ressenti : ce que t'as aimé dans l'expérience, ce qui t'a déçu ou manqué, ton retour est super précieux pour moi 🙏

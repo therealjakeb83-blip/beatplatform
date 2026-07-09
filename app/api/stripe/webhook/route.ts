@@ -166,19 +166,30 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
 
   const { data: abo } = await supabase
     .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, statut')
+    .select('id, beatmaker_id, client_id, statut, annulation_en_cours')
     .eq('stripe_subscription_id', subscription.id)
     .maybeSingle()
 
   if (!abo) return
 
   const entreEnImpaye = statut === 'impaye' && abo.statut !== 'impaye'
+  // Moment de la décision de churn (clic "Annuler" côté Business ou
+  // self-service client) — l'abo reste actif jusqu'à la fin de la période
+  // payée (cancel_at_period_end), Stripe n'enverra subscription.deleted que
+  // plus tard. Jake veut le message churn dès la décision, pas à l'échéance
+  // réelle (voir traiterAnnulationAbonnement pour le filet des annulations
+  // immédiates, ex. abo impaye annulé sans phase de transition).
+  const entreEnAnnulationProgrammee = subscription.cancel_at_period_end && !abo.annulation_en_cours
 
   const { error } = await supabase
     .from('abonnements_boutique')
     .update({
       statut,
       en_essai: enEssai,
+      // Synchronise le flag même pour l'annulation self-service côté client
+      // (/api/stripe/abonnement/annuler), qui ne le mettait jusqu'ici jamais à
+      // jour en base — seul le bouton Business le faisait.
+      annulation_en_cours: subscription.cancel_at_period_end,
       // Ne pose la date que la première fois (pas à chaque relance Stripe tant
       // qu'on reste en impaye) ; la efface si le paiement est finalement repassé.
       ...(entreEnImpaye ? { impaye_depuis: new Date().toISOString() } : {}),
@@ -197,6 +208,16 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
       reference_id: abo.id,
     })
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (impaye):', JSON.stringify(evenementError))
+  }
+
+  if (entreEnAnnulationProgrammee && abo.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
+    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+      beatmaker_id: abo.beatmaker_id,
+      client_id: abo.client_id,
+      type: 'churn_message_perso',
+      reference_id: abo.id,
+    })
+    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
   }
 }
 
@@ -217,6 +238,12 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement annulé:', subscription.id)
 
+  // Filet pour les annulations immédiates (ex. abo impaye annulé directement,
+  // sans être passé par cancel_at_period_end) — le cas normal (décision
+  // d'annuler pendant que l'abo est encore actif) est déjà couvert par
+  // traiterMajAbonnement. La contrainte UNIQUE(type, reference_id) sur
+  // automatisation_evenements empêche un double envoi si les deux se
+  // déclenchent pour le même abo.
   if (abo?.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: abo.beatmaker_id,
