@@ -3,12 +3,13 @@ import { envoyerEmailUnique } from './email-logger'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
 
-export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
+export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso' | 'remerciement_1er_achat'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
   abonnement_en_attente: 'Abonnement en attente',
   churn_message_perso: 'Churn message perso',
+  remerciement_1er_achat: 'Remerciement achat — 1er achat',
 }
 
 // Tokens propres à un type d'automatisation (pas partagés avec le système de
@@ -20,19 +21,44 @@ async function resoudreTokensSupplementaires(evenement: {
   reference_id: string
   beatmaker_id: string
 }): Promise<Record<string, string>> {
-  if (evenement.type !== 'abonnement_en_attente') return {}
-
   const admin = createAdminClient()
-  const [{ data: abo }, { data: beatmaker }] = await Promise.all([
-    admin.from('abonnements_boutique').select('mois_consecutifs').eq('id', evenement.reference_id).maybeSingle(),
-    admin.from('beatmakers').select('abo_recurrence_cadeau_mois').eq('id', evenement.beatmaker_id).single(),
-  ])
 
-  const recurrence = beatmaker?.abo_recurrence_cadeau_mois ?? 4
-  const moisConsecutifs = abo?.mois_consecutifs ?? 0
-  const moisAvantCadeau = recurrence - (moisConsecutifs % recurrence)
+  if (evenement.type === 'abonnement_en_attente') {
+    const [{ data: abo }, { data: beatmaker }] = await Promise.all([
+      admin.from('abonnements_boutique').select('mois_consecutifs').eq('id', evenement.reference_id).maybeSingle(),
+      admin.from('beatmakers').select('abo_recurrence_cadeau_mois').eq('id', evenement.beatmaker_id).single(),
+    ])
 
-  return { mois_avant_cadeau: String(moisAvantCadeau) }
+    const recurrence = beatmaker?.abo_recurrence_cadeau_mois ?? 4
+    const moisConsecutifs = abo?.mois_consecutifs ?? 0
+    const moisAvantCadeau = recurrence - (moisConsecutifs % recurrence)
+
+    return { mois_avant_cadeau: String(moisAvantCadeau) }
+  }
+
+  if (evenement.type === 'remerciement_1er_achat') {
+    // Compte les lignes commandes de la même session Stripe — aujourd'hui
+    // toujours 1 (pas de panier multi-articles), mais déjà correct le jour où
+    // un panier existera (plusieurs beats = plusieurs lignes, même session).
+    const { data: commande } = await admin
+      .from('commandes')
+      .select('stripe_session_id')
+      .eq('id', evenement.reference_id)
+      .maybeSingle()
+
+    let nbBeats = 1
+    if (commande?.stripe_session_id) {
+      const { count } = await admin
+        .from('commandes')
+        .select('id', { count: 'exact', head: true })
+        .eq('stripe_session_id', commande.stripe_session_id)
+      if (count) nbBeats = count
+    }
+
+    return { le_beat: nbBeats > 1 ? 'les beats' : 'le beat' }
+  }
+
+  return {}
 }
 
 function appliquerTokensSupplementaires(texte: string, tokens: Record<string, string>): string {

@@ -441,6 +441,27 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
   console.log('[webhook] Commande créée:', commande?.id)
 
+  // 1er achat licence de ce client chez ce beatmaker — la ligne qu'on vient
+  // d'insérer compte déjà dedans, donc count===1 signifie "aucune autre avant".
+  if (commande && clientId) {
+    const { count } = await supabase
+      .from('commandes')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .eq('beatmaker_id', meta.beatmaker_id)
+      .eq('type_commande', 'LICENCE')
+
+    if (count === 1 && await automatisationActive(supabase, meta.beatmaker_id, 'remerciement_1er_achat')) {
+      const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
+        beatmaker_id: meta.beatmaker_id,
+        client_id: clientId,
+        type: 'remerciement_1er_achat',
+        reference_id: commande.id,
+      })
+      if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (1er achat):', JSON.stringify(evenementError))
+    }
+  }
+
   // Marquer la tentative de paiement correspondante comme complète
   if (commande) {
     const { error: tentativeError } = await supabase
