@@ -188,8 +188,16 @@ export async function POST(request: Request) {
     }
 
     const beatLicence = beatLicenceMap.get(`${item.beat_id}:${item.licence_id}`)
-    if (!beatLicence?.actif || beatLicence.sur_demande) {
-      return NextResponse.json({ erreur: `Licence indisponible pour "${beat.titre}"` }, { status: 400 })
+    if (!beatLicence) {
+      console.error('[checkout] beat_licence introuvable pour', item.beat_id, item.licence_id, '— clés dispo:', [...beatLicenceMap.keys()])
+      return NextResponse.json({ erreur: `Combinaison beat/licence introuvable pour "${beat.titre}"` }, { status: 400 })
+    }
+    if (!beatLicence.actif) {
+      console.error('[checkout] beat_licence inactif pour', item.beat_id, item.licence_id)
+      return NextResponse.json({ erreur: `Licence désactivée pour "${beat.titre}"` }, { status: 400 })
+    }
+    if (beatLicence.sur_demande) {
+      return NextResponse.json({ erreur: `Licence sur demande (non achetable directement) pour "${beat.titre}"` }, { status: 400 })
     }
     const licence = beatLicence.licences as unknown as LicenceRow
     if (!licence?.actif) {
