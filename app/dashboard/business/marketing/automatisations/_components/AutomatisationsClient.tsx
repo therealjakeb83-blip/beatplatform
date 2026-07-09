@@ -81,7 +81,7 @@ Jake`,
     label: 'Remerciement achat — 3e achat',
     description: "Envoyé le lendemain du 3e achat de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
-Merci pour ta confiance c'est déjà la 3ème commande que tu passes chez moi 🙏🏼
+Encore une commande, merci infiniment, tu fais clairement partie des habitués maintenant et ça me touche vraiment 🙏🏼
 J'ai hâte d'écouter ce que tu feras sur {{titre_beats}} !
 À très vite,
 Jake`,
@@ -94,8 +94,8 @@ Jake`,
     label: 'Remerciement achat — 4e achat et +',
     description: "Envoyé le lendemain du 4e achat (ou plus) de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
-Merci beaucoup pour ta commande d'hier, ça fais plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
-Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un retour !
+Merci pour ta dernière, toujours un plaisir de te voir revenir 🙏🏼
+Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
 À très vite,
 Jake`,
     variablesSupplementaires: [
