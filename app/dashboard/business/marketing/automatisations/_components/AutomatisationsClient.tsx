@@ -70,7 +70,7 @@ type Props = {
   sauvegarder: (
     type: string, actif: boolean, objet: string, corps: string,
     delaiHeures: number, heureCibleMinutes: number | null,
-  ) => Promise<void>
+  ) => Promise<{ erreur?: string }>
   fileAttente: EvenementFileAttente[]
   executerMaintenant: (evenementId: string) => Promise<void>
 }
@@ -190,6 +190,7 @@ function RecetteCard({ recette, existante, sauvegarder }: {
   const [heureCible, setHeureCible]     = useState(minutesVersHeure(existante?.heure_cible_minutes ?? 615))
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre]     = useState(false)
+  const [erreur, setErreur]             = useState('')
   const champActifRef = useRef<((token: string) => void) | null>(null)
 
   function insererVariable(token: string) {
@@ -198,13 +199,18 @@ function RecetteCard({ recette, existante, sauvegarder }: {
 
   async function handleEnregistrer() {
     setEnregistrement(true)
-    await sauvegarder(
+    setErreur('')
+    const { erreur: msg } = await sauvegarder(
       recette.type, actif, objet, corps,
       delaiHeures, heureCibleActive ? heureVersMinutes(heureCible) : null,
     )
     setEnregistrement(false)
-    setEnregistre(true)
-    setTimeout(() => setEnregistre(false), 2000)
+    if (msg) {
+      setErreur(msg)
+    } else {
+      setEnregistre(true)
+      setTimeout(() => setEnregistre(false), 2000)
+    }
   }
 
   return (
@@ -304,6 +310,7 @@ function RecetteCard({ recette, existante, sauvegarder }: {
           >
             {enregistre ? 'Enregistré ✓' : enregistrement ? 'Enregistrement...' : 'Enregistrer'}
           </button>
+          {erreur && <p className="text-xs text-red-400 mt-2">Échec de l&apos;enregistrement : {erreur}</p>}
         </div>
 
         <div>

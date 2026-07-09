@@ -67,12 +67,12 @@ export default async function AutomatisationsPage() {
   async function sauvegarder(
     type: string, actif: boolean, objet: string, corps: string,
     delaiHeures: number, heureCibleMinutes: number | null,
-  ) {
+  ): Promise<{ erreur?: string }> {
     'use server'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('automatisations').upsert({
+    if (!user) return { erreur: 'Non authentifié.' }
+    const { error } = await supabase.from('automatisations').upsert({
       beatmaker_id: user.id,
       type,
       actif,
@@ -82,7 +82,12 @@ export default async function AutomatisationsPage() {
       heure_cible_minutes: heureCibleMinutes,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'beatmaker_id,type' })
+    if (error) {
+      console.error('[automatisations] Erreur sauvegarde:', JSON.stringify(error))
+      return { erreur: error.message }
+    }
     revalidatePath('/dashboard/business/marketing/automatisations')
+    return {}
   }
 
   async function executerMaintenant(evenementId: string) {
