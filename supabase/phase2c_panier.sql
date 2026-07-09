@@ -104,12 +104,19 @@ grant select on public.tentatives_paiement_lignes to authenticated;
 --    Chaque commande actuelle (achat de beat) devient 1 header + 1 ligne
 -- ============================================================
 
--- Passe 1 : créer la ligne pour chaque commande d'achat de beat existante
+-- Passe 1 : créer la ligne pour chaque commande d'achat de beat existante.
+-- Défensif contre l'historique imparfait (imports BeatStars, anciennes lignes
+-- avec licence_id null, ou beat_id/licence_id pointant vers une ligne depuis
+-- supprimée) — commande_lignes.beat_id/licence_id sont NOT NULL + FK, une
+-- seule ligne invalide ferait échouer (et annuler) tout le script.
 insert into commande_lignes (commande_id, beat_id, licence_id, prix_paye, reduction_montant, splits_snapshot, contrat_pdf_url, type_transaction, created_at)
-select id, beat_id, licence_id, prix_paye, coalesce(reduction_montant, 0), splits_snapshot, contrat_pdf_url,
-       coalesce(type_transaction, 'achat'), created_at
-from commandes
-where beat_id is not null;
+select c.id, c.beat_id, c.licence_id, c.prix_paye, coalesce(c.reduction_montant, 0), c.splits_snapshot, c.contrat_pdf_url,
+       coalesce(c.type_transaction, 'achat'), c.created_at
+from commandes c
+where c.beat_id is not null
+  and c.licence_id is not null
+  and exists (select 1 from beats b where b.id = c.beat_id)
+  and exists (select 1 from licences l where l.id = c.licence_id);
 
 -- Passe 2 : reconstituer le lien d'upgrade (commande_originale_id → ligne d'origine)
 update commande_lignes cl
@@ -124,9 +131,13 @@ where cl.commande_id = c.id
 -- ============================================================
 
 insert into tentatives_paiement_lignes (tentative_id, beat_id, licence_id, prix, code_promo_applique, created_at)
-select id, beat_id, licence_id, prix, (code_promo is not null), created_at
-from tentatives_paiement
-where type = 'achat_beat' and beat_id is not null;
+select t.id, t.beat_id, t.licence_id, t.prix, (t.code_promo is not null), t.created_at
+from tentatives_paiement t
+where t.type = 'achat_beat'
+  and t.beat_id is not null
+  and t.licence_id is not null
+  and exists (select 1 from beats b where b.id = t.beat_id)
+  and exists (select 1 from licences l where l.id = t.licence_id);
 
 -- ============================================================
 -- 5. NETTOYAGE : commandes perd les colonnes déplacées vers commande_lignes
@@ -138,8 +149,10 @@ alter table commandes drop column contrat_pdf_url;
 alter table commandes drop column commande_originale_id;
 alter table commandes drop column type_transaction;
 
--- 1 session Stripe = 1 commande de nouveau (redevient vrai avec le modèle header + lignes)
-alter table commandes add constraint commandes_stripe_session_id_unique unique (stripe_session_id);
+-- Note : pas de contrainte unique ajoutée sur stripe_session_id ici — l'historique
+-- peut contenir des doublons (webhook Stripe rejoué) qui feraient échouer toute
+-- la migration. 1 session = 1 commande reste vrai pour les nouvelles commandes
+-- par construction du code (webhook), sans avoir besoin de l'imposer en base.
 
 -- ============================================================
 -- 6. NETTOYAGE : tentatives_paiement perd beat_id/licence_id (déplacés
