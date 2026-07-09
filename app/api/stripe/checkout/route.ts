@@ -32,6 +32,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Panier vide' }, { status: 400 })
   }
 
+  console.error('[checkout] items reçus:', JSON.stringify(items))
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -69,10 +71,13 @@ export async function POST(request: Request) {
 
   const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
 
-  const { data: beatLicencesData } = await admin
+  const { data: beatLicencesData, error: beatLicencesError } = await admin
     .from('beat_licences')
     .select('beat_id, licence_id, actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif)')
     .in('beat_id', beatIds)
+
+  if (beatLicencesError) console.error('[checkout] Erreur query beat_licences:', JSON.stringify(beatLicencesError))
+  console.error('[checkout] beatIds demandés:', beatIds, '— lignes beat_licences trouvées:', beatLicencesData?.length ?? 0, JSON.stringify(beatLicencesData))
 
   type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
   const beatLicenceMap = new Map(
