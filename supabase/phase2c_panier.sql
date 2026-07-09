@@ -140,7 +140,28 @@ where t.type = 'achat_beat'
   and exists (select 1 from licences l where l.id = t.licence_id);
 
 -- ============================================================
--- 5. NETTOYAGE : commandes perd les colonnes déplacées vers commande_lignes
+-- 5. split_payments : la policy RLS joint commandes.beat_id, colonne sur le
+--    point d'être supprimée ci-dessous → la repasser par commande_lignes
+--    D'ABORD (sinon le DROP COLUMN échoue, policy dépendante).
+--    commande_id ne change pas de sens (une commande peut avoir des splits
+--    sur plusieurs de ses lignes).
+-- ============================================================
+
+drop policy if exists "propriétaire voit les splits de ses ventes" on split_payments;
+
+create policy "propriétaire voit les splits de ses ventes"
+  on split_payments for select
+  using (
+    exists (
+      select 1 from commande_lignes cl
+      join beats b on b.id = cl.beat_id
+      where cl.commande_id = split_payments.commande_id
+      and b.beatmaker_id = auth.uid()
+    )
+  );
+
+-- ============================================================
+-- 6. NETTOYAGE : commandes perd les colonnes déplacées vers commande_lignes
 -- ============================================================
 
 alter table commandes drop column beat_id;
@@ -155,7 +176,7 @@ alter table commandes drop column type_transaction;
 -- par construction du code (webhook), sans avoir besoin de l'imposer en base.
 
 -- ============================================================
--- 6. NETTOYAGE : tentatives_paiement perd beat_id/licence_id (déplacés
+-- 7. NETTOYAGE : tentatives_paiement perd beat_id/licence_id (déplacés
 --    vers tentatives_paiement_lignes), la contrainte de forme est réécrite
 -- ============================================================
 
@@ -172,7 +193,7 @@ alter table tentatives_paiement add constraint tentatives_paiement_forme_coheren
 );
 
 -- ============================================================
--- 7. licence_downloads : savoir quel article précis a été téléchargé
+-- 8. licence_downloads : savoir quel article précis a été téléchargé
 --    (une commande peut désormais contenir plusieurs beats)
 -- ============================================================
 
@@ -180,22 +201,3 @@ alter table licence_downloads
   add column if not exists commande_ligne_id uuid references commande_lignes(id) on delete set null;
 
 create index if not exists licence_downloads_ligne_idx on licence_downloads (commande_ligne_id);
-
--- ============================================================
--- 8. split_payments : la policy RLS joignait commandes.beat_id (supprimée)
---    → repasse par commande_lignes. commande_id ne change pas de sens
---    (une commande peut avoir des splits sur plusieurs de ses lignes).
--- ============================================================
-
-drop policy if exists "propriétaire voit les splits de ses ventes" on split_payments;
-
-create policy "propriétaire voit les splits de ses ventes"
-  on split_payments for select
-  using (
-    exists (
-      select 1 from commande_lignes cl
-      join beats b on b.id = cl.beat_id
-      where cl.commande_id = split_payments.commande_id
-      and b.beatmaker_id = auth.uid()
-    )
-  );
