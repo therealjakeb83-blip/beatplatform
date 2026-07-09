@@ -11,7 +11,7 @@ type Props = { periode: Periode; debut: string; fin: string }
 type Data = {
   kpis: { ca_brut: number; ca_net: number; panier_moyen: number; beats_vendus: number; collab_ca: number; source_top: { nom: string; ca: number; pct: number } | null }
   historique: Array<Record<string, unknown>>
-  commandes: Array<{ id: string; created_at: string; client_nom: string; beat_titre: string; licence_nom: string; source_marketing: string | null; prix_paye: number; reduction_montant: number | null }>
+  commandes: Array<{ id: string; created_at: string; client_nom: string; beat_titre: string; nb_articles: number; licence_nom: string; source_marketing: string | null; prix_paye: number; reduction_montant: number | null }>
 }
 
 type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'collab_ca' | 'source_top'
@@ -140,7 +140,9 @@ export default function TabVentes({ periode, debut, fin }: Props) {
                     </Link>
                   </td>
                   <td className="px-4 py-2.5 text-white font-medium">{c.client_nom}</td>
-                  <td className="px-4 py-2.5 text-gray-300 max-w-[140px] truncate">{c.beat_titre}</td>
+                  <td className="px-4 py-2.5 text-gray-300 max-w-[140px] truncate">
+                    {c.beat_titre}{c.nb_articles > 1 && <span className="text-gray-500"> +{c.nb_articles - 1}</span>}
+                  </td>
                   <td className="px-4 py-2.5">
                     <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">{c.licence_nom}</span>
                   </td>

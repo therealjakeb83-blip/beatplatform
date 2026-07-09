@@ -25,17 +25,14 @@ export async function GET(request: Request) {
     { data: beatmaker },
   ] = await Promise.all([
     admin.from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing')
+      .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'payee')
       .or('type_commande.eq.LICENCE,type_commande.is.null')
       .order('created_at', { ascending: false }),
-    // Niveau article — pour "beats vendus" et la table des ventes (1 ligne = 1 beat, pas 1 panier)
+    // Niveau article — pour le KPI "beats vendus" (compte les articles, pas les paniers)
     admin.from('commande_lignes')
-      .select(`
-        id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom),
-        commandes!inner(beatmaker_id, statut, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom))
-      `)
+      .select('id, commande_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
       .eq('commandes.statut', 'payee')
       .order('created_at', { ascending: false }),
@@ -98,30 +95,43 @@ export async function GET(request: Request) {
     return row
   })
 
-  // Table des ventes — au niveau article (1 ligne = 1 beat vendu, pas 1 panier)
+  // Table des ventes — 1 ligne par commande (comme Commerce → Commandes), le
+  // 1er article s'affiche avec un "+N" si le panier en contient plusieurs.
   type LigneRaw = {
-    id: string; created_at: string; prix_paye: number; reduction_montant: number | null
+    id: string; commande_id: string; created_at: string; prix_paye: number; reduction_montant: number | null
     beats: unknown; licences: unknown
-    commandes: unknown
   }
-  const commandes = (lignes as unknown as LigneRaw[]).map(d => {
-    const b = Array.isArray(d.beats) ? d.beats[0] : d.beats
-    const l = Array.isArray(d.licences) ? d.licences[0] : d.licences
-    const cmd = Array.isArray(d.commandes) ? d.commandes[0] : d.commandes
-    const cmdTyped = cmd as { source_marketing: string | null; acheteur_nom: string | null; acheteur_email: string | null; clients: unknown } | null
-    const cl = cmdTyped ? (Array.isArray(cmdTyped.clients) ? cmdTyped.clients[0] : cmdTyped.clients) : null
+  const lignesParCommande = new Map<string, LigneRaw[]>()
+  for (const l of lignes as unknown as LigneRaw[]) {
+    const arr = lignesParCommande.get(l.commande_id) ?? []
+    arr.push(l)
+    lignesParCommande.set(l.commande_id, arr)
+  }
+
+  type CmdRaw = {
+    id: string; created_at: string; prix_paye: number; reduction_montant: number | null
+    source_marketing: string | null; acheteur_nom: string | null; acheteur_email: string | null
+    clients: unknown
+  }
+  const commandes = (cmds as unknown as CmdRaw[]).map(c => {
+    const lignesCmd = lignesParCommande.get(c.id) ?? []
+    const premiere = lignesCmd[0]
+    const b = premiere ? (Array.isArray(premiere.beats) ? premiere.beats[0] : premiere.beats) : null
+    const l = premiere ? (Array.isArray(premiere.licences) ? premiere.licences[0] : premiere.licences) : null
+    const cl = Array.isArray(c.clients) ? c.clients[0] : c.clients
     const client_nom = cl
       ? [(cl as { prenom: string | null }).prenom, (cl as { nom: string }).nom].filter(Boolean).join(' ')
-      : (cmdTyped?.acheteur_nom ?? cmdTyped?.acheteur_email ?? '—')
+      : (c.acheteur_nom ?? c.acheteur_email ?? '—')
     return {
-      id:               d.id,
-      created_at:       d.created_at,
+      id:               c.id,
+      created_at:       c.created_at,
       client_nom,
       beat_titre:       (b as { titre: string } | null)?.titre ?? '—',
+      nb_articles:      lignesCmd.length,
       licence_nom:      (l as { nom: string } | null)?.nom ?? '—',
-      source_marketing: cmdTyped?.source_marketing ?? 'direct',
-      prix_paye:        d.prix_paye,
-      reduction_montant: d.reduction_montant,
+      source_marketing: c.source_marketing ?? 'direct',
+      prix_paye:        c.prix_paye,
+      reduction_montant: c.reduction_montant,
     }
   })
 
