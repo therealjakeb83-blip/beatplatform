@@ -152,19 +152,16 @@ export default function AutomatisationsClient({ automatisations, sauvegarder, fi
           const recettesCategorie = RECETTES.filter(r => r.categorie === categorie)
           if (recettesCategorie.length === 0) return null
           return (
-            <div key={categorie} className="space-y-3">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-gray-600">{categorie}</p>
-              <div className="space-y-3">
-                {recettesCategorie.map(recette => (
-                  <RecetteCard
-                    key={recette.type}
-                    recette={recette}
-                    existante={automatisations.find(a => a.type === recette.type)}
-                    sauvegarder={sauvegarder}
-                  />
-                ))}
-              </div>
-            </div>
+            <CategorieDossier key={categorie} categorie={categorie} nbRecettes={recettesCategorie.length}>
+              {recettesCategorie.map(recette => (
+                <RecetteCard
+                  key={recette.type}
+                  recette={recette}
+                  existante={automatisations.find(a => a.type === recette.type)}
+                  sauvegarder={sauvegarder}
+                />
+              ))}
+            </CategorieDossier>
           )
         })}
 
@@ -175,6 +172,37 @@ export default function AutomatisationsClient({ automatisations, sauvegarder, fi
           supprimerEvenement={supprimerEvenement}
         />
       </div>
+    </div>
+  )
+}
+
+function CategorieDossier({ categorie, nbRecettes, children }: {
+  categorie: string
+  nbRecettes: number
+  children: React.ReactNode
+}) {
+  const [ouvert, setOuvert] = useState(true)
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => setOuvert(o => !o)}
+        className="flex items-center gap-2 select-none"
+      >
+        <svg
+          className={`w-3 h-3 text-gray-500 flex-shrink-0 transition-transform ${ouvert ? 'rotate-90' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        </svg>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{categorie}</p>
+        <span className="text-[10px] text-gray-700">{nbRecettes}</span>
+      </button>
+
+      {ouvert && <div className="space-y-3 pl-1">{children}</div>}
     </div>
   )
 }
