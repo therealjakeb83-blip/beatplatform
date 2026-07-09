@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { automatisationActive } from './automatisations'
 
 export async function lierCompteClient(
   userId: string,
@@ -85,13 +86,27 @@ export async function lierCompteClient(
         .maybeSingle()
 
       if (!existingLead) {
-        const { error } = await admin.from('leads').insert({
+        const { data: lead, error } = await admin.from('leads').insert({
           client_id:          userId,
           beatmaker_id:       beatmaker.id,
           source:             'visite',
           newsletter_inscrit: newsletter_consent ?? false,
-        })
+        }).select('id').single()
         if (error) console.error('[lierCompteClient] Erreur insert lead:', JSON.stringify(error))
+
+        // "Bienvenue perso" — 1re fois que ce client est connu de CE
+        // beatmaker (nouveau compte global ou connexion sur une nouvelle
+        // boutique). La règle de suppression (rien d'autre le même jour) est
+        // vérifiée à l'envoi, pas ici — voir doitEtreIgnore dans automatisations.ts.
+        if (lead && await automatisationActive(beatmaker.id, 'bienvenue_perso')) {
+          const { error: evenementError } = await admin.from('automatisation_evenements').insert({
+            beatmaker_id: beatmaker.id,
+            client_id:    userId,
+            type:         'bienvenue_perso',
+            reference_id: lead.id,
+          })
+          if (evenementError) console.error('[lierCompteClient] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+        }
       }
     }
   }
