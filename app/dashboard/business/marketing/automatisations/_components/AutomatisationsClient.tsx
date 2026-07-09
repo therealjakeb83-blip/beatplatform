@@ -6,15 +6,22 @@ import type { AutomatisationRow, EvenementFileAttente } from '../page'
 
 type Recette = {
   type: string
+  categorie: string
   label: string
   description: string
   corpsDefaut: string
   variablesSupplementaires?: { token: string; label: string }[]
 }
 
+// Ordre d'affichage des catégories — reprend les "slots" déjà actés pour la
+// gestion des combinaisons (ROADMAP, Phase 5) : Abonnement/Achats/Bienvenue/
+// Engagement sont mutuellement exclusifs par nature pour un même client.
+const ORDRE_CATEGORIES = ['Abonnement', 'Achats', 'Bienvenue', 'Engagement']
+
 const RECETTES: Recette[] = [
   {
     type: 'bienvenue_abonnement',
+    categorie: 'Abonnement',
     label: 'Bienvenue abonnement',
     description: "Envoyé le lendemain d'un nouvel abonnement.",
     corpsDefaut: `Yo {{prénom}}, ça va ?
@@ -26,6 +33,7 @@ Jake`,
   },
   {
     type: 'abonnement_en_attente',
+    categorie: 'Abonnement',
     label: 'Abonnement en attente',
     description: "Envoyé le lendemain d'un renouvellement en échec (pas une annulation).",
     corpsDefaut: `Salut {{prénom}}, ça va ?
@@ -40,6 +48,7 @@ Jake`,
   },
   {
     type: 'churn_message_perso',
+    categorie: 'Abonnement',
     label: 'Churn message perso',
     description: "Envoyé le lendemain de la décision d'annuler (même si l'abonné reste actif jusqu'à la fin de sa période payée) — distinct d'un simple renouvellement en échec.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
@@ -51,6 +60,7 @@ PS : Et n'hésite pas à m'envoyer tes prochains morceaux, je suis toujours supe
   },
   {
     type: 'remerciement_1er_achat',
+    categorie: 'Achats',
     label: 'Remerciement achat — 1er achat',
     description: "Envoyé le lendemain du tout premier achat de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
@@ -65,6 +75,7 @@ Jake`,
   },
   {
     type: 'remerciement_2e_achat',
+    categorie: 'Achats',
     label: 'Remerciement achat — 2e achat',
     description: "Envoyé le lendemain du 2e achat de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
@@ -78,6 +89,7 @@ Jake`,
   },
   {
     type: 'remerciement_3e_achat',
+    categorie: 'Achats',
     label: 'Remerciement achat — 3e achat',
     description: "Envoyé le lendemain du 3e achat de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
@@ -91,6 +103,7 @@ Jake`,
   },
   {
     type: 'remerciement_4e_achat_plus',
+    categorie: 'Achats',
     label: 'Remerciement achat — 4e achat et +',
     description: "Envoyé le lendemain du 4e achat (ou plus) de licence d'un client.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
@@ -135,14 +148,25 @@ export default function AutomatisationsClient({ automatisations, sauvegarder, fi
           </p>
         </div>
 
-        {RECETTES.map(recette => (
-          <RecetteCard
-            key={recette.type}
-            recette={recette}
-            existante={automatisations.find(a => a.type === recette.type)}
-            sauvegarder={sauvegarder}
-          />
-        ))}
+        {ORDRE_CATEGORIES.map(categorie => {
+          const recettesCategorie = RECETTES.filter(r => r.categorie === categorie)
+          if (recettesCategorie.length === 0) return null
+          return (
+            <div key={categorie} className="space-y-3">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-gray-600">{categorie}</p>
+              <div className="space-y-3">
+                {recettesCategorie.map(recette => (
+                  <RecetteCard
+                    key={recette.type}
+                    recette={recette}
+                    existante={automatisations.find(a => a.type === recette.type)}
+                    sauvegarder={sauvegarder}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
 
         <FileAttenteTable
           fileAttente={fileAttente}
