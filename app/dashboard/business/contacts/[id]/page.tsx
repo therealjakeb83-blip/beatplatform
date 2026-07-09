@@ -395,6 +395,33 @@ export default async function FicheClientPage({
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
+  // Promeut une adresse secondaire (manuelle ou issue d'une fusion) au rang
+  // de principale — c'est clients.email qui sert d'adresse d'envoi partout
+  // (marketing, automatisations, résolution client Stripe), donc "définir
+  // comme principale" = permuter les deux plutôt qu'ajouter un nouveau champ.
+  // L'ancienne principale part dans emails_secondaires pour ne pas être perdue.
+  async function definirEmailPrincipal(formData: FormData) {
+    'use server'
+    const a = createAdminClient()
+    const nouvelEmail = (formData.get('email') as string ?? '').trim().toLowerCase()
+    if (!nouvelEmail) return
+
+    const { data: current } = await a.from('clients').select('email, emails_secondaires').eq('id', clientId).single()
+    if (!current || current.email === nouvelEmail) return
+
+    const ancienEmail = current.email
+    const existants = (current.emails_secondaires as string[]) ?? []
+    const nouveauxSecondaires = existants.filter(e => e !== nouvelEmail)
+    if (!nouveauxSecondaires.includes(ancienEmail)) nouveauxSecondaires.push(ancienEmail)
+
+    const { error } = await a.from('clients')
+      .update({ email: nouvelEmail, emails_secondaires: nouveauxSecondaires })
+      .eq('id', clientId)
+    if (error) console.error('[fiche-client] Erreur définition email principal:', JSON.stringify(error))
+
+    revalidatePath(`/dashboard/business/contacts/${clientId}`)
+  }
+
   async function ajouterMorceau(formData: FormData) {
     'use server'
     const a     = createAdminClient()
@@ -683,20 +710,40 @@ export default async function FicheClientPage({
                 </span>
               </div>
 
-              {/* Emails secondaires des fusions (lecture seule) */}
-              {emailsFusion.map(e => (
+              {/* Emails secondaires des fusions (lecture seule sauf promotion) —
+                  exclut l'adresse déjà principale (peut arriver après une
+                  promotion : fusions_crm.emails_archives n'est pas modifié) */}
+              {emailsFusion.filter(e => e !== client.email).map(e => (
                 <div key={e} className="flex items-center gap-3 py-2 border-b border-gray-800">
                   <span className="flex-1 text-xs text-gray-400 truncate">{e}</span>
+                  <form action={definirEmailPrincipal}>
+                    <input type="hidden" name="email" value={e} />
+                    <button
+                      type="submit"
+                      className="text-xs px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-colors flex-shrink-0"
+                    >
+                      Définir principal
+                    </button>
+                  </form>
                   <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700/60 text-gray-500 font-medium flex-shrink-0">
                     Fusion
                   </span>
                 </div>
               ))}
 
-              {/* Emails secondaires ajoutés manuellement (avec suppression) */}
+              {/* Emails secondaires ajoutés manuellement (promotion + suppression) */}
               {emailsManuels.map(e => (
                 <div key={e} className="flex items-center gap-3 py-2 border-b border-gray-800">
                   <span className="flex-1 text-xs text-gray-400 truncate">{e}</span>
+                  <form action={definirEmailPrincipal}>
+                    <input type="hidden" name="email" value={e} />
+                    <button
+                      type="submit"
+                      className="text-xs px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-colors flex-shrink-0"
+                    >
+                      Définir principal
+                    </button>
+                  </form>
                   <form action={supprimerEmailSecondaire}>
                     <input type="hidden" name="email" value={e} />
                     <button
