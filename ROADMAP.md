@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-07-09 — **Phase 2c (Panier multi-articles) codée de bout en bout** (2c.2 à 2c.9 ✅, `tsc`/`lint` propres) : migration SQL exécutée par Jake, `commandes` devenue un header + nouvelle table `commande_lignes`, checkout/webhook multi-articles, splits/contrats/téléchargements par article, dashboard Commandes + CRM + les 5 routes Analytics adaptés, UI panier complète côté boutique (`CartContext`/`CartDrawer`/`AcheterBouton`). Décisions actées en session : "Ajouter au panier" remplace l'achat 1-clic, 1 panier = 1 vraie ligne `commandes` (même à 50 beats), code promo au niveau du panier. Reste **2c.10 : test bout en bout en Stripe test mode**, à faire par Jake avant de considérer la Phase 2c terminée. Prochaine session : soit ce test, soit reprendre les 6 workflows Phase 5 restants (Remerciement achat 4 paliers, Bienvenue perso, Relance inactivité, Follow-up free download, Follow-up favori) — Phase 2c était une parenthèse dédiée hors de ce plan.
+> Dernière mise à jour : 2026-07-09 — **Phase 2c (Panier multi-articles) validée de bout en bout** (T1-T21 ✅ en Stripe test mode). `commandes` devenue un header + nouvelle table `commande_lignes`, checkout/webhook multi-articles, splits/contrats/téléchargements par article, dashboard Commandes + CRM + les 5 routes Analytics adaptés, UI panier complète côté boutique (`CartContext`/`CartDrawer`/`AcheterBouton`). Décisions actées en session : "Ajouter au panier" remplace l'achat 1-clic, 1 panier = 1 vraie ligne `commandes` (même à 50 beats), code promo au niveau du panier. **3 bugs trouvés et corrigés pendant le test réel** (invisibles en `tsc`/`lint`) : grant `service_role` manquant sur `beat_licences` (checkout échouait), migration SQL qui s'auto-annulait sur historique réel (licences null + ordre de dépendance RLS `split_payments`↔`commandes.beat_id`), et l'onglet Analytics Ventes qui liait vers l'id de ligne au lieu de l'id de commande (404). T22/T23 (automation "1er achat" singulier/pluriel) reportés — nécessitent un nouveau client + l'automation activée, à refaire en session dédiée Phase 5. Prochaine session : reprendre les 6 workflows Phase 5 restants (Remerciement achat 4 paliers, Bienvenue perso, Relance inactivité, Follow-up free download, Follow-up favori) — Phase 2c était une parenthèse dédiée hors de ce plan, maintenant terminée.
 
 ## Légende
 | Statut | Signification |
@@ -541,7 +541,7 @@ Extension future prévue si un vrai panier multi-articles voit le jour : table e
 >
 > **Action Jake :** exécuter `supabase/phase2b_tentatives_paiement.sql` dans l'éditeur SQL Supabase, puis ajouter les événements `checkout.session.expired` et `payment_intent.payment_failed` dans la config webhook du Dashboard Stripe (même écran que pour `account.updated` à l'étape 10).
 
-### Phase 2c — Commerce : Panier multi-articles 🔄 En cours (plan validé le 2026-07-09)
+### Phase 2c — Commerce : Panier multi-articles ✅ Validée (2026-07-09)
 
 > **Contexte :** En concevant le token singulier/pluriel `{{le_beat}}`/`{{les beats}}` pour l'automation "Remerciement achat — 1er achat" (Phase 5), découvert que cette plateforme n'a **aucun panier multi-articles** — chaque commande = exactement 1 beat. Ce n'était planifié nulle part. Session dédiée du 2026-07-09 : lecture du contexte + du code existant, plan complet proposé et validé par Jake.
 >
@@ -579,7 +579,7 @@ Extension future prévue si un vrai panier multi-articles voit le jour : table e
 | 2c.7 | CRM `_lib/contacts.ts` (préférences/licence via `commande_lignes`) + fiche client `contacts/[id]/page.tsx` (historique d'achats aplati par article) + `mon-compte/achats`, `mon-compte` racine, détail code promo (`codes-promo/[id]`) — tous adaptés au 1er-article + "+N autres" | ✅ |
 | 2c.8 | Analytics : 5 routes adaptées pour lire via `commande_lignes` — `beats_vendus`/`ventes` comptent des articles (pas des paniers), `panier_moyen` reste au niveau commande, `top_beats`/`ca_par_beat` recalculés par ligne | ✅ |
 | 2c.9 | UI Panier boutique : `CartContext` (localStorage scopé par `slug`, via `usePathname()`), `CartDrawer` (liste, suppression, code promo panier, passer commande), `CartBadge` dans `BoutiqueHeader`, `AcheterBouton` devient "Ajouter au panier", `LicencesTable` simplifié (code promo retiré — vit dans le panier maintenant), `layout.tsx` wrap `CartProvider` | ✅ |
-| 2c.10 | Test bout en bout (Stripe test mode) : panier de 3 beats (1 avec split, 1 avec code promo éligible) — commande, lignes, contrats, transferts, téléchargements, dashboard, analytics, automation "1er achat" | ⬜ *(à faire par Jake)* |
+| 2c.10 | Test bout en bout (Stripe test mode) : panier de 3 beats (1 avec split, 1 avec code promo éligible) — commande, lignes, contrats, transferts, téléchargements, dashboard, analytics, automation "1er achat" | ✅ *(T1-T21 validés le 2026-07-09 ; T22/T23 — automation "1er achat" au singulier/pluriel — reportés à une session dédiée aux automatisations, nécessitent un nouveau client + l'automation activée)* |
 
 ### Phase 3 — Analytics ✅ Complète
 
