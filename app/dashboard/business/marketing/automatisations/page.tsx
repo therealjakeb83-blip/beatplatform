@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { calculerEcheance, traiterEvenementAutomatisation, LABELS_AUTOMATISATION, type TypeAutomatisation } from '@/lib/automatisations'
+import { calculerEcheance, traiterEvenementAutomatisation, genererApercuAutomatisation, LABELS_AUTOMATISATION, type TypeAutomatisation } from '@/lib/automatisations'
 import AutomatisationsClient from './_components/AutomatisationsClient'
 
 export type AutomatisationRow = {
@@ -109,12 +109,43 @@ export default async function AutomatisationsPage() {
     revalidatePath('/dashboard/business/marketing/automatisations')
   }
 
+  async function previsualiser(evenementId: string): Promise<{ objet: string; corpsHtml: string } | { erreur: string }> {
+    'use server'
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { erreur: 'Non authentifié.' }
+
+    const admin = createAdminClient()
+    const { data: evenement } = await admin
+      .from('automatisation_evenements')
+      .select('beatmaker_id, client_id, type, reference_id')
+      .eq('id', evenementId)
+      .eq('beatmaker_id', user.id)
+      .single()
+    if (!evenement) return { erreur: 'Événement introuvable.' }
+
+    return genererApercuAutomatisation(evenement as { beatmaker_id: string; client_id: string; type: TypeAutomatisation; reference_id: string })
+  }
+
+  async function supprimerEvenement(evenementId: string) {
+    'use server'
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const admin = createAdminClient()
+    await admin.from('automatisation_evenements').delete().eq('id', evenementId).eq('beatmaker_id', user.id)
+    revalidatePath('/dashboard/business/marketing/automatisations')
+  }
+
   return (
     <AutomatisationsClient
       automatisations={automatisations}
       sauvegarder={sauvegarder}
       fileAttente={fileAttente}
       executerMaintenant={executerMaintenant}
+      previsualiser={previsualiser}
+      supprimerEvenement={supprimerEvenement}
     />
   )
 }

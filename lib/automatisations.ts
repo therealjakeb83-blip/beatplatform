@@ -148,6 +148,50 @@ async function chargerDestinatairePourAutomatisation(clientId: string): Promise<
   }
 }
 
+// Aperçu — construit l'objet/corps résolus (tokens remplacés) sans envoyer ni
+// journaliser, pour prévisualiser un événement en file d'attente avant qu'il
+// ne parte réellement. Pas de vrai lien de désinscription (pas encore
+// envoyé) : placeholder inerte.
+export async function genererApercuAutomatisation(evenement: {
+  beatmaker_id: string
+  client_id: string
+  type: TypeAutomatisation
+  reference_id: string
+}): Promise<{ objet: string; corpsHtml: string } | { erreur: string }> {
+  const admin = createAdminClient()
+
+  const { data: automatisation } = await admin
+    .from('automatisations')
+    .select('objet, corps')
+    .eq('beatmaker_id', evenement.beatmaker_id)
+    .eq('type', evenement.type)
+    .maybeSingle()
+
+  if (!automatisation?.objet || !automatisation.corps) {
+    return { erreur: "Cette recette n'a pas encore d'objet ou de corps enregistré." }
+  }
+
+  const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
+    chargerDestinatairePourAutomatisation(evenement.client_id),
+    admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url').eq('id', evenement.beatmaker_id).single(),
+    resoudreTokensSupplementaires(evenement),
+  ])
+
+  const branding = brandingRes.data as BrandingBoutique | null
+  if (!destinataire || !branding) {
+    return { erreur: 'Impossible de charger le destinataire ou la boutique.' }
+  }
+
+  const objetAvecTokens = appliquerTokensSupplementaires(automatisation.objet, tokensSupplementaires)
+  const corpsAvecTokens = appliquerTokensSupplementaires(automatisation.corps, tokensSupplementaires)
+
+  const objet = remplacerTokens(objetAvecTokens, destinataire, branding, '#')
+  const corpsHtml = remplacerTokens(corpsAvecTokens, destinataire, branding, '#')
+    .split('\n').map(l => `<p style="margin:0 0 1em">${l}</p>`).join('')
+
+  return { objet, corpsHtml }
+}
+
 async function envoyerEmailAutomatisation(params: {
   automatisationId: string
   clientId: string

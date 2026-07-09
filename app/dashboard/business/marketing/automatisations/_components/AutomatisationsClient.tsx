@@ -73,6 +73,8 @@ type Props = {
   ) => Promise<{ erreur?: string }>
   fileAttente: EvenementFileAttente[]
   executerMaintenant: (evenementId: string) => Promise<void>
+  previsualiser: (evenementId: string) => Promise<{ objet: string; corpsHtml: string } | { erreur: string }>
+  supprimerEvenement: (evenementId: string) => Promise<void>
 }
 
 function minutesVersHeure(m: number): string {
@@ -83,7 +85,7 @@ function heureVersMinutes(hhmm: string): number {
   return h * 60 + m
 }
 
-export default function AutomatisationsClient({ automatisations, sauvegarder, fileAttente, executerMaintenant }: Props) {
+export default function AutomatisationsClient({ automatisations, sauvegarder, fileAttente, executerMaintenant, previsualiser, supprimerEvenement }: Props) {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
@@ -103,7 +105,12 @@ export default function AutomatisationsClient({ automatisations, sauvegarder, fi
           />
         ))}
 
-        <FileAttenteTable fileAttente={fileAttente} executerMaintenant={executerMaintenant} />
+        <FileAttenteTable
+          fileAttente={fileAttente}
+          executerMaintenant={executerMaintenant}
+          previsualiser={previsualiser}
+          supprimerEvenement={supprimerEvenement}
+        />
       </div>
     </div>
   )
@@ -114,11 +121,18 @@ function fmtEcheance(iso: string | null): string {
   return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function FileAttenteTable({ fileAttente, executerMaintenant }: {
+type ApercuState = { flux: string; client: string } & ({ objet: string; corpsHtml: string } | { erreur: string })
+
+function FileAttenteTable({ fileAttente, executerMaintenant, previsualiser, supprimerEvenement }: {
   fileAttente: EvenementFileAttente[]
   executerMaintenant: Props['executerMaintenant']
+  previsualiser: Props['previsualiser']
+  supprimerEvenement: Props['supprimerEvenement']
 }) {
   const [enCours, setEnCours] = useState<string | null>(null)
+  const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null)
+  const [apercuEnCours, setApercuEnCours] = useState<string | null>(null)
+  const [apercu, setApercu] = useState<ApercuState | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleExecuter(id: string) {
@@ -127,6 +141,21 @@ function FileAttenteTable({ fileAttente, executerMaintenant }: {
       await executerMaintenant(id)
       setEnCours(null)
     })
+  }
+
+  function handleSupprimer(id: string) {
+    setSuppressionEnCours(id)
+    startTransition(async () => {
+      await supprimerEvenement(id)
+      setSuppressionEnCours(null)
+    })
+  }
+
+  async function handleVisualiser(e: EvenementFileAttente) {
+    setApercuEnCours(e.id)
+    const res = await previsualiser(e.id)
+    setApercuEnCours(null)
+    setApercu({ flux: e.flux, client: `${e.clientNom} (${e.clientEmail})`, ...res })
   }
 
   return (
@@ -158,7 +187,14 @@ function FileAttenteTable({ fileAttente, executerMaintenant }: {
                   {e.clientNom} <span className="text-gray-600">{e.clientEmail}</span>
                 </td>
                 <td className="px-5 py-3 text-gray-400">{fmtEcheance(e.echeanceISO)}</td>
-                <td className="px-5 py-3 text-right">
+                <td className="px-5 py-3 text-right whitespace-nowrap space-x-2">
+                  <button
+                    onClick={() => handleVisualiser(e)}
+                    disabled={apercuEnCours === e.id}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 transition-colors"
+                  >
+                    {apercuEnCours === e.id ? 'Chargement...' : 'Visualiser'}
+                  </button>
                   <button
                     onClick={() => handleExecuter(e.id)}
                     disabled={isPending && enCours === e.id}
@@ -166,12 +202,72 @@ function FileAttenteTable({ fileAttente, executerMaintenant }: {
                   >
                     {isPending && enCours === e.id ? 'Exécution...' : 'Exécuter maintenant'}
                   </button>
+                  <button
+                    onClick={() => handleSupprimer(e.id)}
+                    disabled={isPending && suppressionEnCours === e.id}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/40 border border-transparent hover:border-red-500/30 disabled:opacity-50 text-gray-300 hover:text-red-400 transition-colors"
+                  >
+                    {isPending && suppressionEnCours === e.id ? 'Suppression...' : 'Supprimer'}
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      {apercu && <ApercuModal apercu={apercu} onClose={() => setApercu(null)} />}
+    </div>
+  )
+}
+
+function ApercuModal({ apercu, onClose }: { apercu: ApercuState; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] shadow-2xl overflow-hidden flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20">
+              {apercu.flux}
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300">Aperçu</span>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4 overflow-y-auto">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Destinataire</p>
+            <p className="text-sm text-white">{apercu.client}</p>
+          </div>
+
+          {'erreur' in apercu ? (
+            <p className="text-sm text-red-400">{apercu.erreur}</p>
+          ) : (
+            <>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Sujet</p>
+                <p className="text-sm text-white">{apercu.objet}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Message</p>
+                <iframe
+                  srcDoc={apercu.corpsHtml}
+                  sandbox=""
+                  className="w-full h-72 bg-white rounded-lg border border-gray-700"
+                  title="Aperçu de l'email"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
