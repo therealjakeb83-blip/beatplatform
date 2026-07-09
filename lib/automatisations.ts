@@ -5,6 +5,7 @@ import type { BrandingBoutique } from './email-blocs'
 
 export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
   | 'remerciement_1er_achat' | 'remerciement_2e_achat' | 'remerciement_3e_achat' | 'remerciement_4e_achat_plus'
+  | 'bienvenue_perso' | 'relance_inactivite' | 'follow_up_free_download' | 'follow_up_favori'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
@@ -14,11 +15,30 @@ export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   remerciement_2e_achat: 'Remerciement achat — 2e achat',
   remerciement_3e_achat: 'Remerciement achat — 3e achat',
   remerciement_4e_achat_plus: 'Remerciement achat — 4e achat et +',
+  bienvenue_perso: 'Bienvenue perso',
+  relance_inactivite: 'Relance inactivité',
+  follow_up_free_download: 'Follow-up free download',
+  follow_up_favori: 'Follow-up favori',
 }
 
 const TYPES_REMERCIEMENT_ACHAT: TypeAutomatisation[] = [
   'remerciement_1er_achat', 'remerciement_2e_achat', 'remerciement_3e_achat', 'remerciement_4e_achat_plus',
 ]
+
+// Vérifie qu'une recette est activée avant même de déposer un événement dans
+// la file d'attente — un beatmaker qui n'a jamais activé une recette ne doit
+// rien y voir apparaître (choix produit de Jake, 2026-07-08). Partagé entre
+// tous les points de dépôt (webhook Stripe, liaison de compte, crons de scan).
+export async function automatisationActive(beatmakerId: string, type: TypeAutomatisation): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('automatisations')
+    .select('actif')
+    .eq('beatmaker_id', beatmakerId)
+    .eq('type', type)
+    .maybeSingle()
+  return data?.actif ?? false
+}
 
 // Tokens propres à un type d'automatisation (pas partagés avec le système de
 // tokens générique de lib/mailing.ts, qui ne connaît que le contact/la
@@ -60,7 +80,68 @@ async function resoudreTokensSupplementaires(evenement: {
     return { titre_beats: formaterListeBeats(titres) }
   }
 
+  if (evenement.type === 'follow_up_free_download') {
+    const { data } = await admin.from('free_downloads').select('beats(titre)').eq('id', evenement.reference_id).maybeSingle()
+    const titre = (data as unknown as { beats: { titre: string } | null } | null)?.beats?.titre
+    return { titre_beat: titre ?? 'ce beat' }
+  }
+
+  if (evenement.type === 'follow_up_favori') {
+    const { data } = await admin.from('favoris').select('beats(titre)').eq('id', evenement.reference_id).maybeSingle()
+    const titre = (data as unknown as { beats: { titre: string } | null } | null)?.beats?.titre
+    return { titre_beat: titre ?? 'ce beat' }
+  }
+
   return {}
+}
+
+// Garde-fous type-spécifiques : certains événements ne doivent plus partir si
+// la situation a changé entre le dépôt et l'envoi (J+1) — ex. le client a
+// déjà acheté le beat qu'il venait de favori/télécharger gratuitement, ou un
+// achat/abonnement est arrivé le même jour que la création du compte (le
+// message "bienvenue perso" grillerait l'effet du remerciement d'achat, voir
+// règle de suppression Phase 5).
+async function doitEtreIgnore(evenement: {
+  type: TypeAutomatisation
+  reference_id: string
+  client_id: string
+  beatmaker_id: string
+  created_at: string
+}): Promise<boolean> {
+  const admin = createAdminClient()
+
+  if (evenement.type === 'bienvenue_perso') {
+    const jour = evenement.created_at.slice(0, 10)
+    const debut = `${jour}T00:00:00.000Z`
+    const fin = `${jour}T23:59:59.999Z`
+    const [{ count: nbCommandes }, { count: nbAbos }] = await Promise.all([
+      admin.from('commandes').select('id', { count: 'exact', head: true })
+        .eq('client_id', evenement.client_id).eq('beatmaker_id', evenement.beatmaker_id)
+        .gte('created_at', debut).lte('created_at', fin),
+      admin.from('abonnements_boutique').select('id', { count: 'exact', head: true })
+        .eq('client_id', evenement.client_id).eq('beatmaker_id', evenement.beatmaker_id)
+        .gte('date_debut', debut).lte('date_debut', fin),
+    ])
+    return (nbCommandes ?? 0) > 0 || (nbAbos ?? 0) > 0
+  }
+
+  if (evenement.type === 'follow_up_free_download') {
+    const { data } = await admin.from('free_downloads').select('achete').eq('id', evenement.reference_id).maybeSingle()
+    return data?.achete === true
+  }
+
+  if (evenement.type === 'follow_up_favori') {
+    const { data: favori } = await admin.from('favoris').select('client_id, beat_id').eq('id', evenement.reference_id).maybeSingle()
+    if (!favori) return true // défavori entre-temps
+    const { count } = await admin
+      .from('commande_lignes')
+      .select('id, commandes!inner(client_id)', { count: 'exact', head: true })
+      .eq('beat_id', favori.beat_id)
+      .eq('commandes.client_id', favori.client_id)
+    return (count ?? 0) > 0
+  }
+
+  return false
 }
 
 // "Midnight Drive" / "Midnight Drive et Ocean Eyes" / "A, B et C" / au-delà de
@@ -275,6 +356,11 @@ export async function traiterEvenementAutomatisation(evenement: {
 
   const echeance = calculerEcheance(evenement.created_at, automatisation.delai_heures, automatisation.heure_cible_minutes)
   if (!options?.forcer && Date.now() < echeance.getTime()) return
+
+  if (await doitEtreIgnore(evenement)) {
+    await admin.from('automatisation_evenements').update({ traite: true }).eq('id', evenement.id)
+    return
+  }
 
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),

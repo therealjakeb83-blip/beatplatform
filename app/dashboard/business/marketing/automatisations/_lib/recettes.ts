@@ -5,6 +5,9 @@ export type Recette = {
   description: string
   corpsDefaut: string
   variablesSupplementaires?: { token: string; label: string }[]
+  // Paramètre numérique propre à la recette, stocké dans automatisations.config
+  // (jsonb) — ex. le nombre de mois d'inactivité avant relance.
+  champConfig?: { cle: string; label: string; defaut: number; suffixe: string }
 }
 
 // Ordre d'affichage des catégories — reprend les "slots" déjà actés pour la
@@ -123,6 +126,57 @@ Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
 Jake`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
+    ],
+  },
+  {
+    type: 'bienvenue_perso',
+    categorie: 'Bienvenue',
+    label: 'Bienvenue perso',
+    description: "Envoyé le lendemain de la création d'un compte, seulement si rien d'autre ne s'est passé ce jour-là (pas d'achat ni d'abonnement — sinon le remerciement correspondant suffit).",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Je viens de voir que tu as créé ton compte, bienvenue par ici 🙌🏼
+N'hésite pas à jeter un œil à mes prods, et si t'as un coup de cœur ou une question, je suis dispo !
+À très vite,
+Jake`,
+  },
+  {
+    type: 'relance_inactivite',
+    categorie: 'Engagement',
+    label: 'Relance inactivité',
+    description: "Envoyé quand un client n'a plus rien acheté depuis X mois (configurable ci-dessous).",
+    champConfig: { cle: 'mois_inactivite', label: "Mois d'inactivité avant relance", defaut: 3, suffixe: 'mois' },
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Ça fait un moment qu'on s'est pas croisés, j'espère que tout va bien de ton côté 🙏🏼
+Je viens de sortir pas mal de nouvelles prods depuis ta dernière visite, n'hésite pas à venir jeter un œil si t'as 5 minutes !
+À très vite,
+Jake`,
+  },
+  {
+    type: 'follow_up_free_download',
+    categorie: 'Engagement',
+    label: 'Follow-up free download',
+    description: "Envoyé le lendemain d'un téléchargement gratuit — sauté si le client a déjà acheté le beat entre-temps.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Je voulais savoir ce que tu penses de {{titre_beat}} que t'as téléchargé, ça t'a plu ?
+Si jamais tu veux la version complète pour sortir ton morceau, tu sais où me trouver !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beat', label: 'Titre du beat téléchargé' },
+    ],
+  },
+  {
+    type: 'follow_up_favori',
+    categorie: 'Engagement',
+    label: 'Follow-up favori',
+    description: "Envoyé le lendemain d'un ajout aux favoris — sauté si le client a déjà acheté le beat entre-temps.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+J'ai vu que t'avais ajouté {{titre_beat}} à tes favoris, il t'a tapé dans l'œil 👀
+Si t'hésites encore, dis-moi si t'as des questions, je suis là !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beat', label: 'Titre du beat favori' },
     ],
   },
 ]

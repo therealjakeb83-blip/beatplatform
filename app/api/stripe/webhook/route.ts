@@ -4,6 +4,7 @@ import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
 import { envoyerFondsEnAttente } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
+import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -74,23 +75,6 @@ async function resoudreClientParEmail(supabase: ReturnType<typeof createAdminCli
   if (!email) return null
   const { data: client } = await supabase.from('clients').select('id').eq('email', email).maybeSingle()
   return client?.id ?? null
-}
-
-// Vérifie que l'automatisation est activée avant même de déposer l'événement
-// dans la file d'attente — un beatmaker qui n'a jamais activé une recette ne
-// doit rien y voir apparaître (choix produit de Jake, 2026-07-08).
-async function automatisationActive(
-  supabase: ReturnType<typeof createAdminClient>,
-  beatmakerId: string,
-  type: string,
-): Promise<boolean> {
-  const { data } = await supabase
-    .from('automatisations')
-    .select('actif')
-    .eq('beatmaker_id', beatmakerId)
-    .eq('type', type)
-    .maybeSingle()
-  return data?.actif ?? false
 }
 
 // Résolution client par email — crée un compte invité si inconnu (contrairement
@@ -209,7 +193,7 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   if (error) console.error('[webhook] Erreur maj abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement mis à jour:', subscription.id, statut)
 
-  if (entreEnImpaye && abo.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'abonnement_en_attente')) {
+  if (entreEnImpaye && abo.client_id && await automatisationActive(abo.beatmaker_id, 'abonnement_en_attente')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: abo.beatmaker_id,
       client_id: abo.client_id,
@@ -219,7 +203,7 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (impaye):', JSON.stringify(evenementError))
   }
 
-  if (demandeAnnulationProgrammee && abo.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
+  if (demandeAnnulationProgrammee && abo.client_id && await automatisationActive(abo.beatmaker_id, 'churn_message_perso')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: abo.beatmaker_id,
       client_id: abo.client_id,
@@ -253,7 +237,7 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   // traiterMajAbonnement. La contrainte UNIQUE(type, reference_id) sur
   // automatisation_evenements empêche un double envoi si les deux se
   // déclenchent pour le même abo.
-  if (abo?.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
+  if (abo?.client_id && await automatisationActive(abo.beatmaker_id, 'churn_message_perso')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: abo.beatmaker_id,
       client_id: abo.client_id,
@@ -338,7 +322,7 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
 
   console.log('[webhook] Abonnement créé:', abonnement?.id)
 
-  if (await automatisationActive(supabase, meta.beatmaker_id, 'bienvenue_abonnement')) {
+  if (await automatisationActive(meta.beatmaker_id, 'bienvenue_abonnement')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: meta.beatmaker_id,
       client_id: clientId,
@@ -547,14 +531,14 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
       .eq('beatmaker_id', meta.beatmaker_id)
       .eq('type_commande', 'LICENCE')
 
-    const typeParPalier: Record<number, string> = {
+    const typeParPalier: Record<number, TypeAutomatisation> = {
       1: 'remerciement_1er_achat',
       2: 'remerciement_2e_achat',
       3: 'remerciement_3e_achat',
     }
     const typePalier = count ? (typeParPalier[count] ?? 'remerciement_4e_achat_plus') : null
 
-    if (typePalier && await automatisationActive(supabase, meta.beatmaker_id, typePalier)) {
+    if (typePalier && await automatisationActive(meta.beatmaker_id, typePalier)) {
       const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
         beatmaker_id: meta.beatmaker_id,
         client_id: clientId,

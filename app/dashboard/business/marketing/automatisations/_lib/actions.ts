@@ -11,6 +11,7 @@ const PATTERN_CATEGORIE = '/dashboard/business/marketing/automatisations/[catego
 export async function sauvegarderAutomatisation(
   type: string, actif: boolean, objet: string, corps: string,
   delaiHeures: number, heureCibleMinutes: number | null,
+  config: Record<string, number> = {},
 ): Promise<{ erreur?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,6 +24,7 @@ export async function sauvegarderAutomatisation(
     corps: corps.trim() || null,
     delai_heures: delaiHeures >= 0 ? delaiHeures : 10,
     heure_cible_minutes: heureCibleMinutes,
+    config,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'beatmaker_id,type' })
   if (error) {

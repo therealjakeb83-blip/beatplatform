@@ -24,7 +24,7 @@ export default async function CategorieAutomatisationsPage({
 
   const { data } = await supabase
     .from('automatisations')
-    .select('id, type, actif, objet, corps, delai_heures, heure_cible_minutes')
+    .select('id, type, actif, objet, corps, delai_heures, heure_cible_minutes, config')
     .eq('beatmaker_id', user.id)
 
   const automatisations = (data ?? []) as AutomatisationRow[]

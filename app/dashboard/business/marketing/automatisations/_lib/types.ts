@@ -6,6 +6,7 @@ export type AutomatisationRow = {
   corps: string | null
   delai_heures: number
   heure_cible_minutes: number | null
+  config: Record<string, number> | null
 }
 
 export type EvenementFileAttente = {

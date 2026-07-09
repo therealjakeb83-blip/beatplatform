@@ -19,6 +19,7 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
   sauvegarder: (
     type: string, actif: boolean, objet: string, corps: string,
     delaiHeures: number, heureCibleMinutes: number | null,
+    config?: Record<string, number>,
   ) => Promise<{ erreur?: string }>
 }) {
   const [depliee, setDepliee]           = useState(false)
@@ -28,6 +29,9 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
   const [delaiHeures, setDelaiHeures]   = useState(existante?.delai_heures ?? 10)
   const [heureCibleActive, setHeureCibleActive] = useState(existante ? existante.heure_cible_minutes != null : true)
   const [heureCible, setHeureCible]     = useState(minutesVersHeure(existante?.heure_cible_minutes ?? 615))
+  const [valeurConfig, setValeurConfig] = useState(
+    existante?.config?.[recette.champConfig?.cle ?? ''] ?? recette.champConfig?.defaut ?? 0
+  )
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre]     = useState(false)
   const [erreur, setErreur]             = useState('')
@@ -40,9 +44,11 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
   async function handleEnregistrer() {
     setEnregistrement(true)
     setErreur('')
+    const config = recette.champConfig ? { [recette.champConfig.cle]: valeurConfig } : {}
     const { erreur: msg } = await sauvegarder(
       recette.type, actif, objet, corps,
       delaiHeures, heureCibleActive ? heureVersMinutes(heureCible) : null,
+      config,
     )
     setEnregistrement(false)
     if (msg) {
@@ -104,6 +110,21 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
           </div>
 
           <div className="flex items-end gap-4">
+            {recette.champConfig && (
+              <div>
+                <label className="text-[11px] text-gray-500 mb-1 block">{recette.champConfig.label}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={valeurConfig}
+                    onChange={e => setValeurConfig(Math.max(1, Number(e.target.value)))}
+                    className="w-16 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
+                  />
+                  <span className="text-xs text-gray-500">{recette.champConfig.suffixe}</span>
+                </div>
+              </div>
+            )}
             <div>
               <label className="text-[11px] text-gray-500 mb-1 block">Délai minimum</label>
               <div className="flex items-center gap-2">
