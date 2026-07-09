@@ -541,6 +541,24 @@ Extension future prévue si un vrai panier multi-articles voit le jour : table e
 >
 > **Action Jake :** exécuter `supabase/phase2b_tentatives_paiement.sql` dans l'éditeur SQL Supabase, puis ajouter les événements `checkout.session.expired` et `payment_intent.payment_failed` dans la config webhook du Dashboard Stripe (même écran que pour `account.updated` à l'étape 10).
 
+### Phase 2c — Commerce : Panier multi-articles ⬜ À faire (nouveau, 2026-07-09)
+
+> **Contexte :** En concevant le token singulier/pluriel `{{le_beat}}`/`{{les beats}}` pour l'automation "Remerciement achat — 1er achat" (Phase 5), découvert que cette plateforme n'a **aucun panier multi-articles** — chaque commande = exactement 1 beat (`app/[slug]/_components/AcheterBouton.tsx` → `/api/stripe/checkout/route.ts` → un seul `beat_id`/`licence_id` par session Stripe, `commandes.beat_id` non-null, une ligne = un beat). Ce n'était planifié nulle part (juste une clause de compatibilité future dans la conception de la Phase 2b, jamais datée). **Jake veut le construire maintenant, dans une session dédiée** (celle-ci reste concentrée sur la Phase 5).
+>
+> **Contraintes/décisions déjà actées à respecter :**
+> - **Un panier de plusieurs beats doit créer plusieurs lignes `commandes` partageant le même `stripe_session_id`** — c'est l'invariant dont dépend déjà le token `{{le_beat}}` de "Remerciement achat — 1er achat" (`lib/automatisations.ts`, compte les lignes par `stripe_session_id`). Ne pas introduire un autre mécanisme de groupement (ex. table `paniers` séparée) sans adapter ce token.
+> - **Un panier de 3 beats compte comme 1 seule commande** (pas 3 achats) pour les futurs paliers de l'automation "client récurrent" (2e/3e/4e+, pas encore codée) — décision actée le 2026-07-09, à respecter quand ce workflow sera construit.
+> - Le check "1er achat" dans `traiterPaiement` (`app/api/stripe/webhook/route.ts`) évalue actuellement "est-ce la 1re commande" **à chaque ligne insérée** — avec un panier créant plusieurs lignes par session, il faudra l'évaluer **une seule fois par session** (sinon l'automation se déclenche plusieurs fois pour une même commande groupée).
+> - Chaque beat a ses propres splits (`beat_splits`), sa propre licence choisie, son propre contrat PDF (`lib/contrat.ts`) — un panier multi-beats doit gérer ça par article, pas globalement pour toute la session.
+> - `tentatives_paiement` (Phase 2b) a une extension prévue mais jamais construite : table enfant `tentatives_paiement_lignes` (migration additive) si un panier voit le jour.
+> - Codes promo actuellement validés côté serveur par rapport à un seul `beat_id` (`app/api/stripe/checkout/route.ts:126-129`) — à repenser pour un panier (remise par article vs panier entier).
+>
+> Détail complet de la découverte et du raisonnement dans `memory/project_phase5_automatisations_redesign.md` et le journal de session du 2026-07-09 (Phase 5) ci-dessous.
+
+| # | Sous-étape | Statut |
+|---|-----------|--------|
+| 2c.1 | Session dédiée : lire ce contexte + les fichiers cités, proposer un plan détaillé (schéma, flow checkout, UI panier) et attendre validation avant de coder | ⬜ |
+
 ### Phase 3 — Analytics ✅ Complète
 
 Composants communs : `PeriodeSelector.tsx` · `KpiCard.tsx` · `ChartCard.tsx` · `AnalyticsLineChart.tsx` · `MiniBar.tsx`
