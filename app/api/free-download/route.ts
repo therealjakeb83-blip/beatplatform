@@ -5,6 +5,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { r2, R2_BUCKET } from '@/lib/r2'
 import { envoyerEmailUnique } from '@/lib/email-logger'
+import { automatisationActive } from '@/lib/automatisations'
 
 export const runtime = 'nodejs'
 
@@ -135,12 +136,22 @@ export async function POST(req: Request) {
   }
 
   // 4. Log free_download
-  const { error: dlError } = await admin.from('free_downloads').insert({
+  const { data: freeDownload, error: dlError } = await admin.from('free_downloads').insert({
     beatmaker_id: beatmakerId,
     client_id:    clientId,
     beat_id:      beatId,
-  })
+  }).select('id').single()
   if (dlError) console.error('[free-download] Insert free_downloads error:', JSON.stringify(dlError))
+
+  if (freeDownload && await automatisationActive(beatmakerId, 'follow_up_free_download')) {
+    const { error: evenementError } = await admin.from('automatisation_evenements').insert({
+      beatmaker_id: beatmakerId,
+      client_id:    clientId,
+      type:         'follow_up_free_download',
+      reference_id: freeDownload.id,
+    })
+    if (evenementError) console.error('[free-download] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+  }
 
   // 5. Signed URL R2 (1h, force-download)
   const PUBLIC_URL = process.env.R2_PUBLIC_URL!
