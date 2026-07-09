@@ -166,7 +166,7 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
 
   const { data: abo } = await supabase
     .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, statut, annulation_en_cours')
+    .select('id, beatmaker_id, client_id, statut')
     .eq('stripe_subscription_id', subscription.id)
     .maybeSingle()
 
@@ -179,7 +179,16 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   // plus tard. Jake veut le message churn dès la décision, pas à l'échéance
   // réelle (voir traiterAnnulationAbonnement pour le filet des annulations
   // immédiates, ex. abo impaye annulé sans phase de transition).
-  const entreEnAnnulationProgrammee = subscription.cancel_at_period_end && !abo.annulation_en_cours
+  //
+  // Pas de détection de transition ici (ex. "!abo.annulation_en_cours") : le
+  // bouton Business pose annulation_en_cours=true en base de façon synchrone
+  // dans sa propre route, avant même que ce webhook n'arrive — une détection
+  // par transition ne verrait donc jamais passer ce cas (toujours déjà true à
+  // la lecture). On tente l'insertion à chaque webhook où cancel_at_period_end
+  // est true ; la contrainte UNIQUE(type, reference_id) sur
+  // automatisation_evenements absorbe les tentatives redondantes (même
+  // mécanisme que pour abonnement_en_attente).
+  const demandeAnnulationProgrammee = subscription.cancel_at_period_end === true
 
   const { error } = await supabase
     .from('abonnements_boutique')
@@ -210,7 +219,7 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (impaye):', JSON.stringify(evenementError))
   }
 
-  if (entreEnAnnulationProgrammee && abo.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
+  if (demandeAnnulationProgrammee && abo.client_id && await automatisationActive(supabase, abo.beatmaker_id, 'churn_message_perso')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
       beatmaker_id: abo.beatmaker_id,
       client_id: abo.client_id,
