@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/abonnements-impayes",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/scans-automatisations",
+      "schedule": "0 9 * * *"
     }
   ]
 }
