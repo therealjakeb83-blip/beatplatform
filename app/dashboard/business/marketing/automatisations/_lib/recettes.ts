@@ -4,6 +4,7 @@ export type Recette = {
   label: string
   description: string
   corpsDefaut: string
+  objetDefaut?: string
   variablesSupplementaires?: { token: string; label: string }[]
   // Paramètres numériques propres à la recette, stockés dans
   // automatisations.config (jsonb) — ex. le nombre de mois d'inactivité avant
@@ -149,6 +150,7 @@ Jake`,
       { cle: 'pourcentage_remise', label: 'Remise du code promo', defaut: 50, suffixe: '%' },
       { cle: 'jours_validite_code', label: 'Validité du code', defaut: 30, suffixe: 'jours' },
     ],
+    objetDefaut: '{{prénom}}, un petit cadeau pour toi 🎁',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Ça fait un moment qu'on n'a pas bossé ensemble, alors j'ai pensé à te faire un petit cadeau si jamais tu prépares un nouveau projet ;)
 Tu peux utiliser le code {{code_promo}} pour profiter de -{{pourcentage_remise}} % sur le beat et la licence de ton choix (valable jusqu'au {{date_expiration_code}}).

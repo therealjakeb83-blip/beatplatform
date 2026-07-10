@@ -24,7 +24,7 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
 }) {
   const [depliee, setDepliee]           = useState(false)
   const [actif, setActif]               = useState(existante?.actif ?? false)
-  const [objet, setObjet]               = useState(existante?.objet ?? '')
+  const [objet, setObjet]               = useState(existante?.objet ?? recette.objetDefaut ?? '')
   const [corps, setCorps]               = useState(existante?.corps ?? recette.corpsDefaut)
   const [delaiHeures, setDelaiHeures]   = useState(existante?.delai_heures ?? 10)
   const [heureCibleActive, setHeureCibleActive] = useState(existante ? existante.heure_cible_minutes != null : true)
@@ -112,58 +112,69 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
             />
           </div>
 
-          <div className="flex items-end gap-4">
-            {(recette.champsConfig ?? []).map(champ => (
-              <div key={champ.cle}>
-                <label className="text-[11px] text-gray-500 mb-1 block">{champ.label}</label>
+          {recette.champsConfig && recette.champsConfig.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">Paramètres de la recette</p>
+              <div className="grid grid-cols-3 gap-3">
+                {recette.champsConfig.map(champ => (
+                  <div key={champ.cle}>
+                    <label className="text-[11px] text-gray-500 mb-1 block">{champ.label}</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={valeursConfig[champ.cle] ?? champ.defaut}
+                        onChange={e => setValeursConfig(v => ({ ...v, [champ.cle]: Math.max(1, Number(e.target.value)) }))}
+                        className="w-16 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
+                      />
+                      <span className="text-xs text-gray-500">{champ.suffixe}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">Programmation de l&apos;envoi</p>
+            <div className="flex items-end gap-4">
+              <div>
+                <label className="text-[11px] text-gray-500 mb-1 block">Délai minimum</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    min={1}
-                    value={valeursConfig[champ.cle] ?? champ.defaut}
-                    onChange={e => setValeursConfig(v => ({ ...v, [champ.cle]: Math.max(1, Number(e.target.value)) }))}
+                    min={0}
+                    value={delaiHeures}
+                    onChange={e => setDelaiHeures(Math.max(0, Number(e.target.value)))}
                     className="w-16 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
                   />
-                  <span className="text-xs text-gray-500">{champ.suffixe}</span>
+                  <span className="text-xs text-gray-500">heures</span>
                 </div>
               </div>
-            ))}
-            <div>
-              <label className="text-[11px] text-gray-500 mb-1 block">Délai minimum</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  value={delaiHeures}
-                  onChange={e => setDelaiHeures(Math.max(0, Number(e.target.value)))}
-                  className="w-16 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
-                />
-                <span className="text-xs text-gray-500">heures</span>
-              </div>
-            </div>
 
-            <div>
-              <label className="flex items-center gap-2 text-[11px] text-gray-500 mb-1">
-                <input
-                  type="checkbox"
-                  checked={heureCibleActive}
-                  onChange={e => setHeureCibleActive(e.target.checked)}
-                  className="accent-indigo-600"
-                />
-                Aligner sur une heure fixe
-              </label>
-              {heureCibleActive ? (
-                <input
-                  type="time"
-                  value={heureCible}
-                  onChange={e => setHeureCible(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
-                />
-              ) : (
-                <p className="text-[10px] text-amber-500 max-w-[220px]">
-                  Mode test : envoi dès le délai passé, à n&apos;importe quelle heure.
-                </p>
-              )}
+              <div>
+                <label className="flex items-center gap-2 text-[11px] text-gray-500 mb-1">
+                  <input
+                    type="checkbox"
+                    checked={heureCibleActive}
+                    onChange={e => setHeureCibleActive(e.target.checked)}
+                    className="accent-indigo-600"
+                  />
+                  Aligner sur une heure fixe
+                </label>
+                {heureCibleActive ? (
+                  <input
+                    type="time"
+                    value={heureCible}
+                    onChange={e => setHeureCible(e.target.value)}
+                    className="bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-2 py-2 text-sm text-white outline-none"
+                  />
+                ) : (
+                  <p className="text-[10px] text-amber-500 max-w-[220px]">
+                    Mode test : envoi dès le délai passé, à n&apos;importe quelle heure.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
