@@ -177,18 +177,4 @@ Jake`,
       { token: 'titre_beat', label: 'Titre du beat téléchargé' },
     ],
   },
-  {
-    type: 'follow_up_favori',
-    categorie: 'Engagement',
-    label: 'Follow-up favori',
-    description: "Envoyé le lendemain d'un ajout aux favoris — sauté si le client a déjà acheté le beat entre-temps.",
-    corpsDefaut: `Salut {{prénom}}, ça va ?
-J'ai vu que t'avais ajouté {{titre_beat}} à tes favoris, il t'a tapé dans l'œil 👀
-Si t'hésites encore, dis-moi si t'as des questions, je suis là !
-À très vite,
-Jake`,
-    variablesSupplementaires: [
-      { token: 'titre_beat', label: 'Titre du beat favori' },
-    ],
-  },
 ]

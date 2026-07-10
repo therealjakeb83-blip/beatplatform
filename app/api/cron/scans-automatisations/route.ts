@@ -12,24 +12,21 @@ function estAutorise(request: Request): boolean {
 
 type Admin = ReturnType<typeof createAdminClient>
 
-// Relance inactivité et Follow-up favori n'ont pas de déclencheur ponctuel
-// (webhook/route) — contrairement aux autres recettes, ils dépendent d'un
-// scan périodique. Regroupés dans un seul cron pour ne pas multiplier les
-// entrées dans vercel.json (limite du plan Vercel).
+// Relance inactivité n'a pas de déclencheur ponctuel (webhook/route) —
+// contrairement aux autres recettes, elle dépend d'un scan périodique.
+// Route dédiée (plutôt qu'ajoutée à /api/cron/automatisations) pour garder un
+// nom générique — prête à accueillir un futur workflow du même genre sans
+// multiplier les entrées dans vercel.json (limite du plan Vercel).
 export async function GET(request: Request) {
   if (!estAutorise(request)) {
     return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 })
   }
 
   const admin = createAdminClient()
+  const relances = await scannerRelanceInactivite(admin)
 
-  const [relances, favoris] = await Promise.all([
-    scannerRelanceInactivite(admin),
-    scannerFollowUpFavori(admin),
-  ])
-
-  console.log(`[cron] scans-automatisations — relance_inactivite: ${relances}, follow_up_favori: ${favoris}`)
-  return NextResponse.json({ relance_inactivite: relances, follow_up_favori: favoris })
+  console.log(`[cron] scans-automatisations — relance_inactivite: ${relances}`)
+  return NextResponse.json({ relance_inactivite: relances })
 }
 
 // Pour chaque beatmaker ayant activé la recette : dernière commande LICENCE
@@ -78,43 +75,6 @@ async function scannerRelanceInactivite(admin: Admin): Promise<number> {
       if (!error) deposes++
       // Erreur silencieuse attendue si déjà relancé pour cette dernière
       // commande (contrainte UNIQUE) — pas un vrai échec.
-    }
-  }
-
-  return deposes
-}
-
-// Favoris ajoutés récemment (fenêtre de quelques jours — pas la peine de
-// rescanner tout l'historique, un favori doit être suivi rapidement ou pas
-// du tout) pour les beatmakers ayant activé la recette. reference_id = id du
-// favori, dédupliqué par la même contrainte UNIQUE.
-async function scannerFollowUpFavori(admin: Admin): Promise<number> {
-  const { data: automatisationsActives } = await admin
-    .from('automatisations')
-    .select('beatmaker_id')
-    .eq('type', 'follow_up_favori')
-    .eq('actif', true)
-
-  const seuil = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-  let deposes = 0
-
-  for (const auto of automatisationsActives ?? []) {
-    const { data: favorisRaw } = await admin
-      .from('favoris')
-      .select('id, client_id, beats!inner(beatmaker_id)')
-      .eq('beats.beatmaker_id', auto.beatmaker_id)
-      .gte('created_at', seuil)
-
-    const favoris = (favorisRaw ?? []) as unknown as { id: string; client_id: string }[]
-
-    for (const favori of favoris) {
-      const { error } = await admin.from('automatisation_evenements').insert({
-        beatmaker_id: auto.beatmaker_id,
-        client_id: favori.client_id,
-        type: 'follow_up_favori',
-        reference_id: favori.id,
-      })
-      if (!error) deposes++
     }
   }
 

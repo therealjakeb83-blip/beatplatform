@@ -5,7 +5,7 @@ import type { BrandingBoutique } from './email-blocs'
 
 export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
   | 'remerciement_1er_achat' | 'remerciement_2e_achat' | 'remerciement_3e_achat' | 'remerciement_4e_achat_plus'
-  | 'bienvenue_perso' | 'relance_inactivite' | 'follow_up_free_download' | 'follow_up_favori'
+  | 'bienvenue_perso' | 'relance_inactivite' | 'follow_up_free_download'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
@@ -18,7 +18,6 @@ export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_perso: 'Bienvenue perso',
   relance_inactivite: 'Relance inactivité',
   follow_up_free_download: 'Follow-up free download',
-  follow_up_favori: 'Follow-up favori',
 }
 
 const TYPES_REMERCIEMENT_ACHAT: TypeAutomatisation[] = [
@@ -83,12 +82,6 @@ async function resoudreTokensSupplementaires(evenement: {
 
   if (evenement.type === 'follow_up_free_download') {
     const { data } = await admin.from('free_downloads').select('beats(titre)').eq('id', evenement.reference_id).maybeSingle()
-    const titre = (data as unknown as { beats: { titre: string } | null } | null)?.beats?.titre
-    return { titre_beat: titre ?? 'ce beat' }
-  }
-
-  if (evenement.type === 'follow_up_favori') {
-    const { data } = await admin.from('favoris').select('beats(titre)').eq('id', evenement.reference_id).maybeSingle()
     const titre = (data as unknown as { beats: { titre: string } | null } | null)?.beats?.titre
     return { titre_beat: titre ?? 'ce beat' }
   }
@@ -171,7 +164,7 @@ async function creerCodePromoRelance(
 
 // Garde-fous type-spécifiques : certains événements ne doivent plus partir si
 // la situation a changé entre le dépôt et l'envoi (J+1) — ex. le client a
-// déjà acheté le beat qu'il venait de favori/télécharger gratuitement, ou un
+// déjà acheté le beat qu'il venait de télécharger gratuitement, ou un
 // achat/abonnement est arrivé le même jour que la création du compte (le
 // message "bienvenue perso" grillerait l'effet du remerciement d'achat, voir
 // règle de suppression Phase 5).
@@ -202,17 +195,6 @@ async function doitEtreIgnore(evenement: {
   if (evenement.type === 'follow_up_free_download') {
     const { data } = await admin.from('free_downloads').select('achete').eq('id', evenement.reference_id).maybeSingle()
     return data?.achete === true
-  }
-
-  if (evenement.type === 'follow_up_favori') {
-    const { data: favori } = await admin.from('favoris').select('client_id, beat_id').eq('id', evenement.reference_id).maybeSingle()
-    if (!favori) return true // défavori entre-temps
-    const { count } = await admin
-      .from('commande_lignes')
-      .select('id, commandes!inner(client_id)', { count: 'exact', head: true })
-      .eq('beat_id', favori.beat_id)
-      .eq('commandes.client_id', favori.client_id)
-    return (count ?? 0) > 0
   }
 
   return false
