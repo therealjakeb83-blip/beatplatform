@@ -143,15 +143,17 @@ Jake`,
     type: 'relance_inactivite',
     categorie: 'Engagement',
     label: 'Relance inactivité',
-    description: "Envoyé quand un client n'a plus rien acheté depuis X mois. Un code promo personnel (valable 30 jours, réservé à son email) est généré automatiquement à l'envoi.",
+    description: "Envoyé quand un client n'a plus rien acheté depuis X mois. Un code promo personnel (réservé à son email) est généré automatiquement à l'envoi.",
     champsConfig: [
       { cle: 'mois_inactivite', label: "Mois d'inactivité avant relance", defaut: 3, suffixe: 'mois' },
       { cle: 'pourcentage_remise', label: 'Remise du code promo', defaut: 50, suffixe: '%' },
+      { cle: 'jours_validite_code', label: 'Validité du code', defaut: 30, suffixe: 'jours' },
     ],
     corpsDefaut: `Salut {{prénom}}, ça va ?
-Ça fait un moment qu'on s'est pas croisés, j'espère que tout va bien de ton côté 🙏🏼
-Je te fais un geste pour te donner envie de revenir : -{{pourcentage_remise}}% sur le beat de ton choix avec le code {{code_promo}}, rien que pour toi (valable jusqu'au {{date_expiration_code}}) 🎁
-À très vite,
+Ça fait un moment qu'on n'a pas bossé ensemble, alors j'ai pensé à te faire un petit cadeau si jamais tu prépares un nouveau projet ;)
+Tu peux utiliser le code {{code_promo}} pour profiter de -{{pourcentage_remise}} % sur le beat et la licence de ton choix (valable jusqu'au {{date_expiration_code}}).
+Et si tu cherches un style précis, n'hésite pas, je peux te faire une petite sélection 🙏
+À bientôt,
 Jake`,
     variablesSupplementaires: [
       { token: 'code_promo', label: 'Code promo généré (auto)' },

@@ -101,8 +101,10 @@ async function resoudreTokensSupplementaires(evenement: {
       .eq('type', 'relance_inactivite')
       .maybeSingle()
 
-    const pourcentage = Number((automatisation?.config as Record<string, number> | null)?.pourcentage_remise) || 50
-    const dateExpiration = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const config = automatisation?.config as Record<string, number> | null
+    const pourcentage = Number(config?.pourcentage_remise) || 50
+    const joursValidite = Number(config?.jours_validite_code) || 30
+    const dateExpiration = new Date(Date.now() + joursValidite * 24 * 60 * 60 * 1000)
     const dateExpirationFormatee = dateExpiration.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
     // Aperçu : ne jamais créer de vrai code promo pour une simple prévisualisation
@@ -125,8 +127,9 @@ async function resoudreTokensSupplementaires(evenement: {
 }
 
 // Génère un code promo personnel pour relancer un client inactif — réservé à
-// son email (emails_autorises), usage unique, valable 30 jours. Créé
-// uniquement au moment de l'envoi réel (pas à la prévisualisation) : appelé
+// son email (emails_autorises), usage unique, durée de validité configurable
+// par le beatmaker. Créé uniquement au moment de l'envoi réel (pas à la
+// prévisualisation) : appelé
 // une seule fois par événement dans le fonctionnement normal (un événement
 // traité disparaît de la file, "Exécuter maintenant" ne peut plus le rejouer).
 async function creerCodePromoRelance(
