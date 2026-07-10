@@ -168,10 +168,10 @@ Jake`,
     categorie: 'Engagement',
     label: 'Follow-up free download',
     description: "Envoyé le lendemain d'un téléchargement gratuit — sauté si le client a déjà acheté le beat entre-temps.",
-    corpsDefaut: `Salut {{prénom}}, ça va ?
-Je voulais savoir ce que tu penses de {{titre_beat}} que t'as téléchargé, ça t'a plu ?
-Si jamais tu veux la version complète pour sortir ton morceau, tu sais où me trouver !
-À très vite,
+    objetDefaut: '{{prénom}}, je peux écouter ton morceau ?',
+    corpsDefaut: `Salut {{prénom}}, j'espère que tu vas bien !
+J'ai vu que tu as téléchargé {{titre_beat}} hier, tu as une maquette à me faire écouter ?
+Je te donnerai un feedback avec grand plaisir !
 Jake`,
     variablesSupplementaires: [
       { token: 'titre_beat', label: 'Titre du beat téléchargé' },
