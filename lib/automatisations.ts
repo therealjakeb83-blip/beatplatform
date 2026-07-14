@@ -177,20 +177,10 @@ async function doitEtreIgnore(evenement: {
 }): Promise<boolean> {
   const admin = createAdminClient()
 
-  if (evenement.type === 'bienvenue_perso') {
-    const jour = evenement.created_at.slice(0, 10)
-    const debut = `${jour}T00:00:00.000Z`
-    const fin = `${jour}T23:59:59.999Z`
-    const [{ count: nbCommandes }, { count: nbAbos }] = await Promise.all([
-      admin.from('commandes').select('id', { count: 'exact', head: true })
-        .eq('client_id', evenement.client_id).eq('beatmaker_id', evenement.beatmaker_id)
-        .gte('created_at', debut).lte('created_at', fin),
-      admin.from('abonnements_boutique').select('id', { count: 'exact', head: true })
-        .eq('client_id', evenement.client_id).eq('beatmaker_id', evenement.beatmaker_id)
-        .gte('date_debut', debut).lte('date_debut', fin),
-    ])
-    return (nbCommandes ?? 0) > 0 || (nbAbos ?? 0) > 0
-  }
+  // bienvenue_perso avait une règle de suppression ici (rien d'autre le même
+  // jour) — retirée le 2026-07-14 : Jake veut d'abord valider les 7 workflows
+  // strictement en isolation, la logique de combinaison entre workflows (dont
+  // celle-ci) revient volontairement en Phase 5.7, pas avant.
 
   if (evenement.type === 'follow_up_free_download') {
     const { data } = await admin.from('free_downloads').select('achete').eq('id', evenement.reference_id).maybeSingle()

@@ -133,7 +133,7 @@ Jake`,
     type: 'bienvenue_perso',
     categorie: 'Engagement',
     label: 'Bienvenue perso',
-    description: "Envoyé le lendemain de la création d'un compte, seulement si rien d'autre ne s'est passé ce jour-là (pas d'achat ni d'abonnement — sinon le remerciement correspondant suffit).",
+    description: "Envoyé le lendemain de la création d'un compte (inscription, ou 1re connexion à un compte existant sur cette boutique).",
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Je viens de voir que tu as créé ton compte sur ma boutique, bienvenue par ici 👐
 Si t'as une question ou besoin de quoi que ce soit n'hésite pas !
