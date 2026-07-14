@@ -12,7 +12,7 @@ Au début de chaque session (sauf si Jake dit explicitement de ne pas le faire),
 - `ROADMAP.md` — état d'avancement à jour, journal des sessions
 - Les fichiers récemment modifiés (git log dans beatplatform)
 
-Le module Business (`/dashboard/business/`) est entièrement migré (CRM, Commerce, Analytics). Marketing (Campagnes + éditeur de templates par blocs) est fonctionnel de bout en bout (envoi, ciblage, tracking, désinscription, conversions, éditeur de contenu avec variables de personnalisation) — reste le vrai domaine d'envoi par boutique et les tests formels (voir Phase 4 dans `ROADMAP.md`). Il ne reste sinon que la page d'accueil business. `C:\Users\nicoj\crm-proto` (prototype UX mock data) ne sert plus de référence que pour ces morceaux restants ; ne pas y aller par défaut, seulement si le travail en cours concerne l'accueil business.
+Le module Business (`/dashboard/business/`) est entièrement migré (CRM, Commerce, Analytics). Marketing est fonctionnel de bout en bout : Campagnes + éditeur de templates par blocs (envoi, ciblage, tracking, désinscription, conversions, personnalisation) et Automatisations — 7 workflows validés en test réel (Bienvenue abonnement/perso, Abonnement en attente, Churn, Remerciement achat 4 paliers, Relance inactivité avec code promo auto, Follow-up free download). Reste : le vrai domaine d'envoi par boutique, les tests formels de Campagnes (Phase 4), les règles de combinaison entre workflows d'Automatisations (Phase 5.7/5.8, voir `ROADMAP.md`), et la page d'accueil business. `C:\Users\nicoj\crm-proto` (prototype UX mock data) ne sert plus de référence que pour ces morceaux restants ; ne pas y aller par défaut, seulement si le travail en cours concerne l'accueil business.
 
 ---
 
@@ -120,9 +120,9 @@ Tables principales :
 
 ## Module Business (`/dashboard/business/`)
 
-Pages **terminées** : contacts (Tous/Clients/Leads/Newsletter — 4 onglets), segments, listes, doublons, commandes, abonnements, plans, beats, licences, codes-promo, collabs, analytics (7 onglets : ventes, abonnements, revenus, préférences, codes-promo, beats + page détail, vue d'ensemble), marketing/campagnes + marketing/templates (envoi, ciblage, tracking ouvertures/clics, désinscription, conversions, éditeur de blocs par variables — sidebar déverrouillée).
+Pages **terminées** : contacts (Tous/Clients/Leads/Newsletter — 4 onglets), segments, listes, doublons, commandes, abonnements, plans, beats, licences, codes-promo, collabs, analytics (7 onglets : ventes, abonnements, revenus, préférences, codes-promo, beats + page détail, vue d'ensemble), marketing/campagnes + marketing/templates (envoi, ciblage, tracking ouvertures/clics, désinscription, conversions, éditeur de blocs par variables — sidebar déverrouillée), marketing/automatisations (7 workflows validés en test réel — Bienvenue abonnement/perso, Abonnement en attente, Churn, Remerciement achat 4 paliers, Relance inactivité avec code promo auto, Follow-up free download — page organisée en catégories/sous-pages).
 
-Reste **à faire** : le vrai domaine d'envoi par boutique (Phase 4.5 — actuellement un domaine fixe codé en dur dans `lib/mailing.ts`), les tests bout en bout formels (Phase 4.8), et la page d'accueil `/dashboard/business/` (Phase 8, placeholder statique, volontairement en dernier).
+Reste **à faire** : le vrai domaine d'envoi par boutique (Phase 4.5 — actuellement un domaine fixe codé en dur dans `lib/mailing.ts`), les tests bout en bout formels de Campagnes (Phase 4.8), les règles de combinaison entre workflows d'Automatisations et l'IA pour les cas rares (Phase 5.7/5.8), et la page d'accueil `/dashboard/business/` (Phase 8, placeholder statique, volontairement en dernier).
 
 Détail de l'historique et des décisions d'architecture : `ROADMAP.md` (étape 11d).
 
