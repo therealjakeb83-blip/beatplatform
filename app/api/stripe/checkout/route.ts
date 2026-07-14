@@ -204,6 +204,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ erreur: `Licence inactive pour "${beat.titre}"` }, { status: 400 })
     }
 
+    // Illimité/exclusive n'acceptent pas la remise abonné automatique (décision
+    // produit d'origine) — mais un code promo reste un choix explicite du
+    // beatmaker par code (via licences_eligibles), pas une exclusion globale.
     const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
     const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
     const remisePctItem = estIllimite ? 0 : remisePct
@@ -212,7 +215,7 @@ export async function POST(request: Request) {
     let reductionCodeCents = 0
     let codePromoAppliqueItem = false
 
-    if (promo && !estIllimite) {
+    if (promo) {
       const beatsInclus = promo.beats_inclus as string[] | null
       const beatsExclus = promo.beats_exclus as string[] | null
       const licencesEligibles = promo.licences_eligibles as string[] | null
