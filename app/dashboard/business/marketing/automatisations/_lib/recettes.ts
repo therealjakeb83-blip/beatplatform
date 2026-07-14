@@ -167,7 +167,7 @@ Jake`,
     type: 'follow_up_free_download',
     categorie: 'Engagement',
     label: 'Follow-up free download',
-    description: "Envoyé le lendemain d'un téléchargement gratuit — sauté si le client a déjà acheté le beat entre-temps.",
+    description: "Envoyé le lendemain d'un téléchargement gratuit.",
     objetDefaut: '{{prénom}}, je peux écouter ton morceau ?',
     corpsDefaut: `Salut {{prénom}}, j'espère que tu vas bien !
 J'ai vu que tu as téléchargé {{titre_beat}} hier, tu as une maquette à me faire écouter ?

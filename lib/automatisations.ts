@@ -162,34 +162,6 @@ async function creerCodePromoRelance(
   return null
 }
 
-// Garde-fous type-spécifiques : certains événements ne doivent plus partir si
-// la situation a changé entre le dépôt et l'envoi (J+1) — ex. le client a
-// déjà acheté le beat qu'il venait de télécharger gratuitement, ou un
-// achat/abonnement est arrivé le même jour que la création du compte (le
-// message "bienvenue perso" grillerait l'effet du remerciement d'achat, voir
-// règle de suppression Phase 5).
-async function doitEtreIgnore(evenement: {
-  type: TypeAutomatisation
-  reference_id: string
-  client_id: string
-  beatmaker_id: string
-  created_at: string
-}): Promise<boolean> {
-  const admin = createAdminClient()
-
-  // bienvenue_perso avait une règle de suppression ici (rien d'autre le même
-  // jour) — retirée le 2026-07-14 : Jake veut d'abord valider les 7 workflows
-  // strictement en isolation, la logique de combinaison entre workflows (dont
-  // celle-ci) revient volontairement en Phase 5.7, pas avant.
-
-  if (evenement.type === 'follow_up_free_download') {
-    const { data } = await admin.from('free_downloads').select('achete').eq('id', evenement.reference_id).maybeSingle()
-    return data?.achete === true
-  }
-
-  return false
-}
-
 // "Midnight Drive" / "Midnight Drive et Ocean Eyes" / "A, B et C" / au-delà de
 // 3 titres, compte générique ("les 4 beats") plutôt que citer + "et N autres"
 // (sonnait robotique — retour terrain de Jake).
@@ -402,11 +374,6 @@ export async function traiterEvenementAutomatisation(evenement: {
 
   const echeance = calculerEcheance(evenement.created_at, automatisation.delai_heures, automatisation.heure_cible_minutes)
   if (!options?.forcer && Date.now() < echeance.getTime()) return
-
-  if (await doitEtreIgnore(evenement)) {
-    await admin.from('automatisation_evenements').update({ traite: true }).eq('id', evenement.id)
-    return
-  }
 
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(evenement.client_id),
