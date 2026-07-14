@@ -32,7 +32,7 @@ export default function CartDrawer({ slug }: { slug: string }) {
       const res = await fetch('/api/stripe/valider-code-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, beat_ids: items.map(i => i.beatId), slug }),
+        body: JSON.stringify({ code, beat_ids: items.map(i => i.beatId), slug, email: emailAcheteur.trim() || undefined }),
       })
       const data = await res.json()
       if (data.valide) {

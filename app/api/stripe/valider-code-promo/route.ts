@@ -59,14 +59,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ valide: false, erreur: "Ce code a atteint sa limite d'utilisation" })
   }
 
-  // Vérification email si fourni (étape "Confirmer" côté boutique)
-  if (email) {
-    if (promo.emails_autorises?.length > 0 && !promo.emails_autorises.includes(email as string)) {
+  // Code réservé à des emails précis (ex. code personnel généré par la
+  // relance inactivité) — fail closed : sans email connu, impossible de
+  // vérifier la restriction, donc pas de "valide" optimiste en attendant.
+  if (promo.emails_autorises?.length > 0) {
+    if (!email) {
+      return NextResponse.json({
+        valide: false,
+        erreur: 'Ce code est personnel — indique ton email ci-dessous puis réessaie',
+        a_restriction_email: true,
+      })
+    }
+    if (!promo.emails_autorises.includes(email as string)) {
       return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
     }
-    if (promo.emails_exclus?.includes(email as string)) {
-      return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
-    }
+  }
+  if (email && promo.emails_exclus?.includes(email as string)) {
+    return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
   }
 
   return NextResponse.json({
