@@ -39,26 +39,49 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre]     = useState(false)
   const [erreur, setErreur]             = useState('')
+  const [toggleEnCours, setToggleEnCours] = useState(false)
   const champActifRef = useRef<((token: string) => void) | null>(null)
 
   function insererVariable(token: string) {
     champActifRef.current?.(token)
   }
 
-  async function handleEnregistrer() {
-    setEnregistrement(true)
+  // Partagé entre le bouton Enregistrer et le toggle — le toggle doit
+  // persister immédiatement (pas seulement changer visuellement) : un actif
+  // affiché mais jamais enregistré tant qu'on n'a pas cliqué "Enregistrer"
+  // était trompeur (retour Jake, 2026-07-14).
+  async function persister(nouvelActif: boolean): Promise<boolean> {
     setErreur('')
     const { erreur: msg } = await sauvegarder(
-      recette.type, actif, objet, corps,
+      recette.type, nouvelActif, objet, corps,
       delaiHeures, heureCibleActive ? heureVersMinutes(heureCible) : null,
       valeursConfig,
     )
+    if (msg) setErreur(msg)
+    return !msg
+  }
+
+  async function handleEnregistrer() {
+    setEnregistrement(true)
+    const ok = await persister(actif)
     setEnregistrement(false)
-    if (msg) {
-      setErreur(msg)
-    } else {
+    if (ok) {
       setEnregistre(true)
       setTimeout(() => setEnregistre(false), 2000)
+    }
+  }
+
+  async function handleToggleActif(e: React.MouseEvent) {
+    e.stopPropagation()
+    const actifPrecedent = actif
+    const nouvelActif = !actif
+    setActif(nouvelActif)
+    setToggleEnCours(true)
+    const ok = await persister(nouvelActif)
+    setToggleEnCours(false)
+    if (!ok) {
+      setActif(actifPrecedent)
+      setDepliee(true)
     }
   }
 
@@ -81,8 +104,8 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
           </div>
         </div>
         <div
-          onClick={e => { e.stopPropagation(); setActif(a => !a) }}
-          className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${actif ? 'bg-indigo-600' : 'bg-gray-700'}`}
+          onClick={handleToggleActif}
+          className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${actif ? 'bg-indigo-600' : 'bg-gray-700'} ${toggleEnCours ? 'opacity-60' : ''}`}
         >
           <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${actif ? 'translate-x-5' : 'translate-x-0.5'}`} />
         </div>
