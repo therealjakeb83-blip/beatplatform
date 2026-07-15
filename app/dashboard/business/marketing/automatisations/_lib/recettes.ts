@@ -14,13 +14,17 @@ export type Recette = {
 
 // Ordre d'affichage des catégories — reprend les "slots" déjà actés pour la
 // gestion des combinaisons (ROADMAP, Phase 5) : Abonnement/Achats/Engagement
-// sont mutuellement exclusifs par nature pour un même client.
-export const ORDRE_CATEGORIES = ['Abonnement', 'Achats', 'Engagement']
+// sont mutuellement exclusifs par nature pour un même client. "Combinaisons"
+// (5.7) contient la seule vraie combo qui a survécu à la revue — voir
+// docs/automatisations/combinaisons-5.7.md pour le raisonnement complet
+// (21 scénarios passés en revue, 1 seul débouche sur un template fusionné).
+export const ORDRE_CATEGORIES = ['Abonnement', 'Achats', 'Engagement', 'Combinaisons']
 
 const SLUGS_CATEGORIES: Record<string, string> = {
   Abonnement: 'abonnement',
   Achats: 'achats',
   Engagement: 'engagement',
+  Combinaisons: 'combinaisons',
 }
 
 export function slugCategorie(categorie: string): string {
@@ -161,6 +165,21 @@ Jake`,
       { token: 'code_promo', label: 'Code promo généré (auto)' },
       { token: 'pourcentage_remise', label: 'Pourcentage de remise (auto)' },
       { token: 'date_expiration_code', label: "Date d'expiration du code (auto)" },
+    ],
+  },
+  {
+    type: 'combo_achat_abonnement_bienvenue',
+    categorie: 'Combinaisons',
+    label: 'Achat + Bienvenue abo',
+    description: "Envoyé quand un client achète une licence ET s'abonne le même jour — un seul mail fusionné plutôt que 2 mails séparés. Reste inactif tant que non configuré : dans ce cas, l'achat et l'abonnement partent chacun de leur côté comme avant.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Merci pour ta commande d'hier, ça fait plaisir de te voir bosser sur mes prods 🙏🏼
+Au passage j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso.
+N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
   },
   {

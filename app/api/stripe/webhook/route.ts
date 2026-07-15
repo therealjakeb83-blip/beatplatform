@@ -470,6 +470,20 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
 
     await supabase.from('tentatives_paiement_lignes').update({ commande_ligne_id: ligne.id }).eq('id', tLigne.id)
 
+    // Garde-fou Follow-up free download (5.7) : si ce client avait
+    // téléchargé ce beat gratuitement, marquer achete=true — plus rien
+    // n'écrivait cette colonne avant 5.7, le garde-fou était mort-né. Vérifié
+    // à l'envoi de l'automatisation, pas ici (lib/automatisations.ts).
+    if (clientId) {
+      const { error: acheteError } = await supabase
+        .from('free_downloads')
+        .update({ achete: true })
+        .eq('client_id', clientId)
+        .eq('beat_id', tLigne.beat_id)
+        .eq('beatmaker_id', meta.beatmaker_id)
+      if (acheteError) console.error('[webhook] Erreur maj free_downloads.achete:', JSON.stringify(acheteError))
+    }
+
     // Distribuer les fonds pour cet article (le panier entier route en mode
     // "fonds retenus + transferts manuels" dès qu'un seul article a des splits)
     if (hasSplits && transferGroup) {

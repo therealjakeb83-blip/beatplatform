@@ -29,12 +29,20 @@ export async function GET(request: Request) {
   return NextResponse.json({ relance_inactivite: relances })
 }
 
-// Pour chaque beatmaker ayant activé la recette : dernière commande LICENCE
-// par client, relance si elle date de plus de X mois (config.mois_inactivite,
+// Pour chaque beatmaker ayant activé la recette : dernière activité par
+// client, relance si elle date de plus de X mois (config.mois_inactivite,
 // défaut 3). reference_id = id de cette dernière commande — la contrainte
 // UNIQUE(type, reference_id) empêche de relancer deux fois pour la même
 // commande ; un nouvel achat fait naturellement repartir le compteur puisque
 // la "dernière commande" change.
+//
+// Correctif 5.7 (docs/automatisations/combinaisons-5.7.md) : "dernière
+// activité" inclut désormais aussi les paiements d'abonnement réussis
+// (CREATION_ABONNEMENT / RENOUVELLEMENT — déjà présents dans `commandes`,
+// écrits par le webhook Stripe à chaque mensualité), pas seulement les achats
+// LICENCE. Avant ce correctif, un abonné qui payait fidèlement chaque mois
+// sans jamais acheter de licence à l'unité se faisait quand même flaguer
+// "inactif" et recevait un code promo — absurde pour quelqu'un qui paie déjà.
 async function scannerRelanceInactivite(admin: Admin): Promise<number> {
   const { data: automatisationsActives } = await admin
     .from('automatisations')
@@ -53,7 +61,7 @@ async function scannerRelanceInactivite(admin: Admin): Promise<number> {
       .from('commandes')
       .select('id, client_id, created_at')
       .eq('beatmaker_id', auto.beatmaker_id)
-      .eq('type_commande', 'LICENCE')
+      .in('type_commande', ['LICENCE', 'CREATION_ABONNEMENT', 'RENOUVELLEMENT'])
       .not('client_id', 'is', null)
       .order('created_at', { ascending: false })
 

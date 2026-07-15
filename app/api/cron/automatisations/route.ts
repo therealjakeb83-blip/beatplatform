@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { traiterEvenementAutomatisation, type TypeAutomatisation } from '@/lib/automatisations'
+import { traiterGroupeAutomatisations, jourParisISO, type TypeAutomatisation, type EvenementAutomatisation } from '@/lib/automatisations'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -26,8 +26,8 @@ export async function GET(request: Request) {
 
   const supabase = createAdminClient()
 
-  // Le délai (configurable par recette, en minutes) est vérifié événement par
-  // événement dans traiterEvenementAutomatisation — pas de filtre d'âge ici.
+  // Le délai (configurable par recette) est vérifié à l'intérieur de
+  // traiterGroupeAutomatisations — pas de filtre d'âge ici.
   const { data: evenements } = await supabase
     .from('automatisation_evenements')
     .select('id, beatmaker_id, client_id, type, reference_id, created_at')
@@ -36,17 +36,31 @@ export async function GET(request: Request) {
 
   const liste = (evenements ?? []) as { id: string; beatmaker_id: string; client_id: string; type: TypeAutomatisation; reference_id: string; created_at: string }[]
 
-  let traites = 0
-  for (let i = 0; i < liste.length; i += TAILLE_LOT_PARALLELE) {
-    const lot = liste.slice(i, i + TAILLE_LOT_PARALLELE)
-    await Promise.all(lot.map(evenement =>
-      traiterEvenementAutomatisation(evenement).catch(err =>
-        console.error('[cron] Erreur traitement événement', evenement.id, ':', err)
-      )
-    ))
-    traites += lot.length
+  // Regroupement par (beatmaker, client, jour calendaire Paris de
+  // l'événement) — les combinaisons se raisonnent sur le jour où les
+  // événements ont eu lieu, jamais événement par événement (voir
+  // docs/automatisations/combinaisons-5.7.md). Un même groupe peut mélanger
+  // des types différents (achat + abonnement le même jour, etc.).
+  const groupes = new Map<string, EvenementAutomatisation[]>()
+  for (const e of liste) {
+    const cle = `${e.beatmaker_id}:${e.client_id}:${jourParisISO(e.created_at)}`
+    const arr = groupes.get(cle) ?? []
+    arr.push(e)
+    groupes.set(cle, arr)
   }
 
-  console.log(`[cron] automatisations — événements passés en revue: ${traites}`)
-  return NextResponse.json({ traites })
+  const listeGroupes = [...groupes.values()]
+  let groupesTraites = 0
+  for (let i = 0; i < listeGroupes.length; i += TAILLE_LOT_PARALLELE) {
+    const lot = listeGroupes.slice(i, i + TAILLE_LOT_PARALLELE)
+    await Promise.all(lot.map(groupe =>
+      traiterGroupeAutomatisations(groupe).catch(err =>
+        console.error('[cron] Erreur traitement groupe', groupe[0]?.client_id, ':', err)
+      )
+    ))
+    groupesTraites += lot.length
+  }
+
+  console.log(`[cron] automatisations — événements passés en revue: ${liste.length}, groupes (client+jour): ${groupesTraites}`)
+  return NextResponse.json({ evenements: liste.length, groupes: groupesTraites })
 }
