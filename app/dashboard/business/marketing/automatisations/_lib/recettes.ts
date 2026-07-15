@@ -47,7 +47,7 @@ J'ai vu ton abonnement d'hier, merci beaucoup et bienvenue dans l'équipe 💙
 Si jamais tu cherches un style en particulier, dis moi et je te prépare une petite sélection perso de beats directement dans ton mood !
 Et si t'as besoin d'un MP3 pour maquetter un beat privé, n'hésites pas, je suis là 🦾
 À très vite,
-Jake`,
+{{signature}}`,
   },
   {
     type: 'abonnement_en_attente',
@@ -59,7 +59,7 @@ Juste pour te prévenir : le renouvellement n'est pas passé ce mois-ci (rien de
 Ton abo est en pause — tu as un mois pour le relancer via ton espace client, sinon il sera automatiquement annulé.
 Rassure-toi, ça ne bloque pas ta progression vers le prochain beat cadeau (il te reste {{mois_avant_cadeau}} mois)
 Si t'as la moindre question, je suis là :)
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'mois_avant_cadeau', label: 'Mois avant le beat cadeau' },
     ],
@@ -73,7 +73,7 @@ Jake`,
 J'ai vu que t'avais mis fin à ton abo hier, merci d'avoir tenté l'aventure✨
 Si t'as 2 minutes, ça m'aiderait vraiment d'avoir ton ressenti : ce que t'as aimé dans l'expérience, ce qui t'a déçu ou manqué, ton retour est super précieux pour moi 🙏
 À très vite,
-Jake
+{{signature}}
 PS : Et n'hésite pas à m'envoyer tes prochains morceaux, je suis toujours super chaud d'écouter ;)`,
   },
   {
@@ -86,7 +86,7 @@ Je viens de voir ton achat d'hier, merci pour la force ça fait plaisir d'avoir 
 N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
 Et si jamais ça t'intéresse, j'ai aussi quelques prods qui sont pas sur YouTube, je peux t'envoyer 2–3 extraits
 À très vite,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
@@ -100,7 +100,7 @@ Jake`,
 Merci beaucoup pour ta commande d'hier, ça fais plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
 Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un retour !
 À très vite,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
@@ -114,7 +114,7 @@ Jake`,
 Encore une commande, merci infiniment, tu fais clairement partie des habitués maintenant et ça me touche vraiment 🙏🏼
 J'ai hâte d'écouter ce que tu feras sur {{titre_beats}} !
 À très vite,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
@@ -128,7 +128,7 @@ Jake`,
 Merci pour ta dernière commande, toujours un plaisir de te voir revenir 🙏🏼
 Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
 À très vite,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
@@ -142,7 +142,7 @@ Jake`,
 Je viens de voir que tu as créé ton compte sur ma boutique, bienvenue par ici 👐
 Si t'as une question ou besoin de quoi que ce soit n'hésite pas !
 À très vite,
-Jake`,
+{{signature}}`,
   },
   {
     type: 'relance_inactivite',
@@ -160,7 +160,7 @@ Jake`,
 Tu peux utiliser le code {{code_promo}} pour profiter de -{{pourcentage_remise}} % sur le beat et la licence de ton choix (valable jusqu'au {{date_expiration_code}}).
 Et si tu cherches un style précis, n'hésite pas, je peux te faire une petite sélection 🙏
 À bientôt,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'code_promo', label: 'Code promo généré (auto)' },
       { token: 'pourcentage_remise', label: 'Pourcentage de remise (auto)' },
@@ -177,7 +177,7 @@ Je viens de voir ton achat d'hier, merci pour la force ça fait plaisir d'avoir 
 Et en plus j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso de beats directement dans ton mood !
 N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
 À très vite,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
@@ -192,7 +192,7 @@ Merci pour ta commande d'hier, ça fait plaisir de te voir bosser à nouveau sur
 Au passage j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso.
 N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
 À très vite,
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
     ],
@@ -206,7 +206,7 @@ Jake`,
     corpsDefaut: `Salut {{prénom}}, j'espère que tu vas bien !
 J'ai vu que tu as téléchargé {{titre_beat}} hier, tu as une maquette à me faire écouter ?
 Je te donnerai un feedback avec grand plaisir !
-Jake`,
+{{signature}}`,
     variablesSupplementaires: [
       { token: 'titre_beat', label: 'Titre du beat téléchargé' },
     ],

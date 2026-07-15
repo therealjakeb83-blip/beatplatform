@@ -4,9 +4,72 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { traiterGroupeAutomatisations, genererApercuGroupe, jourParisISO, type EvenementAutomatisation } from '@/lib/automatisations'
+import { RECETTES } from './recettes'
 
 const CHEMIN_INDEX = '/dashboard/business/marketing/automatisations'
 const PATTERN_CATEGORIE = '/dashboard/business/marketing/automatisations/[categorie]'
+
+// "Tout activer" — évite aux beatmakers d'activer les recettes une par une
+// (et d'en oublier une) s'ils veulent faire confiance au réglage par défaut.
+// Les recettes déjà configurées ne sont que basculées actif=true (jamais de
+// texte écrasé) ; les recettes jamais touchées sont créées avec leur texte
+// par défaut (voir _lib/recettes.ts) + activées.
+export async function activerToutesLesAutomatisations(): Promise<{ erreur?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { erreur: 'Non authentifié.' }
+
+  const { data: existantes, error: lectureError } = await supabase
+    .from('automatisations')
+    .select('type')
+    .eq('beatmaker_id', user.id)
+  if (lectureError) return { erreur: lectureError.message }
+
+  const typesExistants = new Set((existantes ?? []).map(r => r.type))
+  const nouvelles = RECETTES.filter(r => !typesExistants.has(r.type))
+
+  if (nouvelles.length > 0) {
+    const { error: insertError } = await supabase.from('automatisations').insert(
+      nouvelles.map(r => ({
+        beatmaker_id: user.id,
+        type: r.type,
+        actif: true,
+        objet: r.objetDefaut ?? null,
+        corps: r.corpsDefaut,
+        delai_heures: 10,
+        heure_cible_minutes: 615,
+        config: Object.fromEntries((r.champsConfig ?? []).map(c => [c.cle, c.defaut])),
+      }))
+    )
+    if (insertError) return { erreur: insertError.message }
+  }
+
+  if (typesExistants.size > 0) {
+    const { error: updateError } = await supabase
+      .from('automatisations')
+      .update({ actif: true })
+      .eq('beatmaker_id', user.id)
+    if (updateError) return { erreur: updateError.message }
+  }
+
+  revalidatePath(CHEMIN_INDEX)
+  revalidatePath(PATTERN_CATEGORIE, 'page')
+  return {}
+}
+
+// Signature de fin de mail — distincte du nom de boutique (nom_artiste) :
+// Jake signe "Jake" à ses clients mais "Jake B" à des labels/pros, par
+// exemple. Repli automatique sur nom_artiste si jamais configurée (voir
+// {{signature}} dans lib/mailing.ts).
+export async function sauvegarderSignature(signature: string): Promise<{ erreur?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { erreur: 'Non authentifié.' }
+  const { error } = await supabase.from('beatmakers').update({ signature_emails: signature.trim() || null }).eq('id', user.id)
+  if (error) return { erreur: error.message }
+  revalidatePath(CHEMIN_INDEX)
+  return {}
+}
 
 export async function sauvegarderAutomatisation(
   type: string, actif: boolean, objet: string, corps: string,

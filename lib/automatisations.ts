@@ -534,7 +534,7 @@ async function envoyerPourTemplate(params: {
 
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(params.clientId),
-    createAdminClient().from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url').eq('id', params.beatmakerId).single(),
+    createAdminClient().from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url, signature_emails').eq('id', params.beatmakerId).single(),
     resoudreTokensSupplementaires(params.typeTemplate, params.evenementsSources, params.beatmakerId, params.clientId),
   ])
 
@@ -730,7 +730,7 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
 
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(clientId),
-    admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url').eq('id', beatmakerId).single(),
+    admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url, signature_emails').eq('id', beatmakerId).single(),
     resoudreTokensSupplementaires(typeTemplate, evenementsSources, beatmakerId, clientId, { previsualisation: true }),
   ])
 

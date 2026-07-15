@@ -25,6 +25,7 @@ export type BrandingBoutique = {
   slug: string
   logo_url: string | null
   instagram_url: string | null
+  signature_emails: string | null
 }
 
 // ── Rendu HTML (tokens laissés tels quels — remplacés ensuite par lib/mailing.ts) ──

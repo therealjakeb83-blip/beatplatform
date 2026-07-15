@@ -17,7 +17,7 @@ export async function construireApercu(
   const admin = createAdminClient()
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, slug, logo_url, instagram_url')
+    .select('nom_artiste, slug, logo_url, instagram_url, signature_emails')
     .eq('id', beatmakerId)
     .single()
 
@@ -26,6 +26,7 @@ export async function construireApercu(
     slug: '',
     logo_url: null,
     instagram_url: null,
+    signature_emails: null,
   }
 
   const htmlBase = await rendreEmailHtml(blocs, beatmakerId, branding)

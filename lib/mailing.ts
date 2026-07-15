@@ -115,6 +115,7 @@ function valeursTokens(
     'nom_boutique':        branding.nom_artiste,
     'url_boutique':        `${APP_URL}/${branding.slug}`,
     'slug_boutique':       branding.slug,
+    'signature':           branding.signature_emails || branding.nom_artiste,
     'lien_desinscription': lienDesinscription ?? '',
   }
 }
@@ -274,7 +275,7 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
 
   const { data: beatmaker, error: beatmakerError } = await admin
     .from('beatmakers')
-    .select('nom_artiste, slug, logo_url, instagram_url')
+    .select('nom_artiste, slug, logo_url, instagram_url, signature_emails')
     .eq('id', campagne.beatmaker_id)
     .single()
   if (beatmakerError) console.error('[mailing] Erreur lecture beatmaker', campagne.beatmaker_id, ':', beatmakerError)

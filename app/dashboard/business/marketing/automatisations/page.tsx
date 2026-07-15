@@ -5,18 +5,26 @@ import Link from 'next/link'
 import { calculerEcheance, LABELS_AUTOMATISATION, type TypeAutomatisation } from '@/lib/automatisations'
 import { RECETTES, ORDRE_CATEGORIES, slugCategorie } from './_lib/recettes'
 import type { AutomatisationRow, EvenementFileAttente } from './_lib/types'
-import { executerMaintenant, previsualiser, supprimerEvenement } from './_lib/actions'
+import { executerMaintenant, previsualiser, supprimerEvenement, activerToutesLesAutomatisations, sauvegarderSignature } from './_lib/actions'
 import FileAttenteTable from './_components/FileAttenteTable'
+import ReglagesGlobaux from './_components/ReglagesGlobaux'
 
 export default async function AutomatisationsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const { data } = await supabase
-    .from('automatisations')
-    .select('id, type, actif, objet, corps, delai_heures, heure_cible_minutes, config')
-    .eq('beatmaker_id', user.id)
+  const [{ data }, { data: beatmaker }] = await Promise.all([
+    supabase
+      .from('automatisations')
+      .select('id, type, actif, objet, corps, delai_heures, heure_cible_minutes, config')
+      .eq('beatmaker_id', user.id),
+    supabase
+      .from('beatmakers')
+      .select('nom_artiste, signature_emails')
+      .eq('id', user.id)
+      .single(),
+  ])
 
   const automatisations = (data ?? []) as AutomatisationRow[]
 
@@ -58,6 +66,13 @@ export default async function AutomatisationsPage() {
             Emails envoyés automatiquement selon l&apos;activité de tes clients — jamais à l&apos;heure exacte de l&apos;événement.
           </p>
         </div>
+
+        <ReglagesGlobaux
+          signatureActuelle={beatmaker?.signature_emails ?? null}
+          nomArtiste={beatmaker?.nom_artiste ?? ''}
+          activerToutesLesAutomatisations={activerToutesLesAutomatisations}
+          sauvegarderSignature={sauvegarderSignature}
+        />
 
         <div className="space-y-3">
           {ORDRE_CATEGORIES.map(categorie => {
