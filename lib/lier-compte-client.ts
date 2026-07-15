@@ -28,7 +28,8 @@ export async function lierCompteClient(
     //     → la suppression réussit mais efface silencieusement l'historique du
     //     client au lieu de le transférer sur le nouveau compte.
     const idGuest = guestClient.id
-    await Promise.all([
+
+    const reassignerTout = () => Promise.all([
       admin.from('commandes').update({ client_id: userId }).eq('client_id', idGuest),
       admin.from('abonnements_boutique').update({ client_id: userId }).eq('client_id', idGuest),
       admin.from('leads').update({ client_id: userId }).eq('client_id', idGuest),
@@ -46,13 +47,33 @@ export async function lierCompteClient(
       admin.from('automatisation_envois').update({ client_id: userId }).eq('client_id', idGuest),
     ])
 
-    const { error: deleteError, count } = await admin.from('clients').delete({ count: 'exact' }).eq('id', idGuest)
-    if (deleteError || count === 0) {
-      // Une table qui référence clients.id sans cascade a été oubliée ci-dessus
-      // (ou une contrainte a bloqué la suppression pour une autre raison) —
-      // on arrête là plutôt que de tenter l'insert qui échouerait de toute
-      // façon en doublon d'email, en laissant les 2 fiches non fusionnées.
-      console.error('[lierCompteClient] Suppression de la fiche invité impossible (fusion incomplète) :', idGuest, JSON.stringify(deleteError))
+    // Jusqu'à 3 tentatives espacées : un paiement d'abonnement en cours de
+    // traitement (invoice.payment_succeeded, événement Stripe séparé qui
+    // peut arriver au même moment que checkout.session.completed) peut
+    // insérer une nouvelle commande référençant idGuest PILE entre notre
+    // réassignation et la suppression — on retente plutôt que d'abandonner
+    // direct (bug constaté le 2026-07-15, prochain palier après course
+    // corrigée entre le webhook et /abonnement/succes).
+    let supprime = false
+    let derniereErreur: unknown = null
+    for (let tentative = 0; tentative < 3 && !supprime; tentative++) {
+      await reassignerTout()
+      const { error: deleteError, count } = await admin.from('clients').delete({ count: 'exact' }).eq('id', idGuest)
+      if (!deleteError && count && count > 0) {
+        supprime = true
+      } else {
+        derniereErreur = deleteError
+        if (tentative < 2) await new Promise(r => setTimeout(r, 1000))
+      }
+    }
+
+    if (!supprime) {
+      // Une table qui référence clients.id sans cascade a été oubliée
+      // ci-dessus (ou une course qui n'a pas eu le temps de se résoudre en 3
+      // tentatives) — on arrête là plutôt que de tenter l'insert qui
+      // échouerait de toute façon en doublon d'email, en laissant les 2
+      // fiches non fusionnées.
+      console.error('[lierCompteClient] Suppression de la fiche invité impossible (fusion incomplète) :', idGuest, JSON.stringify(derniereErreur))
       return
     }
 
