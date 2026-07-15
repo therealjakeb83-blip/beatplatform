@@ -1,8 +1,11 @@
 -- ============================================================
 -- PHASE 5.7 — Combinaisons entre workflows d'Automatisations
 -- ============================================================
--- 1 seul nouveau type : la seule vraie combo qui a survécu à la revue
--- (docs/automatisations/combinaisons-5.7.md) est Achat + Bienvenue abo.
+-- 2 nouveaux types : la seule vraie combo qui a survécu à la revue
+-- (docs/automatisations/combinaisons-5.7.md) est Achat + Bienvenue abo,
+-- déclinée en 2 variantes selon le palier réel de l'achat (1er achat = ton
+-- "nouvel artiste", achat récurrent = ton "habitué" — décision du
+-- 2026-07-15, le côté abonnement est toujours "bienvenue" par construction).
 -- Toutes les autres combinaisons se résolvent par domination/silence entre
 -- recettes déjà existantes, sans nouveau type. Migration additive sur le
 -- CHECK existant (comme les précédentes) — uniquement sur `automatisations`
@@ -17,5 +20,5 @@ ALTER TABLE automatisations ADD CONSTRAINT automatisations_type_check
     'bienvenue_abonnement', 'abonnement_en_attente', 'churn_message_perso',
     'remerciement_1er_achat', 'remerciement_2e_achat', 'remerciement_3e_achat', 'remerciement_4e_achat_plus',
     'bienvenue_perso', 'relance_inactivite', 'follow_up_free_download', 'follow_up_favori',
-    'combo_achat_abonnement_bienvenue'
+    'combo_1er_achat_bienvenue_abo', 'combo_achat_recurrent_bienvenue_abo'
   ));

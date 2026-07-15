@@ -6,7 +6,7 @@ import type { BrandingBoutique } from './email-blocs'
 export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
   | 'remerciement_1er_achat' | 'remerciement_2e_achat' | 'remerciement_3e_achat' | 'remerciement_4e_achat_plus'
   | 'bienvenue_perso' | 'relance_inactivite' | 'follow_up_free_download'
-  | 'combo_achat_abonnement_bienvenue'
+  | 'combo_1er_achat_bienvenue_abo' | 'combo_achat_recurrent_bienvenue_abo'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
@@ -19,7 +19,8 @@ export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_perso: 'Bienvenue perso',
   relance_inactivite: 'Relance inactivité',
   follow_up_free_download: 'Follow-up free download',
-  combo_achat_abonnement_bienvenue: 'Combo — Achat + Bienvenue abo',
+  combo_1er_achat_bienvenue_abo: 'Combo — 1er achat + Bienvenue abo',
+  combo_achat_recurrent_bienvenue_abo: 'Combo — Achat récurrent + Bienvenue abo',
 }
 
 const FAMILLE_ACHAT: TypeAutomatisation[] = [
@@ -28,6 +29,14 @@ const FAMILLE_ACHAT: TypeAutomatisation[] = [
 const FAMILLE_ABONNEMENT: TypeAutomatisation[] = [
   'bienvenue_abonnement', 'abonnement_en_attente', 'churn_message_perso',
 ]
+// 2 variantes de la seule vraie combo (docs/automatisations/combinaisons-5.7.md,
+// décision du 2026-07-15) : le ton "1er achat" (nouvel artiste) est trop
+// différent du ton "achat récurrent" (habitué) pour un texte unique — même
+// logique que les 4 paliers de Remerciement achat, simplifiée à 2 puisque le
+// côté abonnement de la combo est toujours "nouveau" par construction
+// (bienvenue_abonnement ne se déclenche que sur un abonnement neuf).
+const TYPES_COMBO_ACHAT_ABO: TypeAutomatisation[] = ['combo_1er_achat_bienvenue_abo', 'combo_achat_recurrent_bienvenue_abo']
+const TOUS_TYPES_COMBO = TYPES_COMBO_ACHAT_ABO
 
 // Un événement brut, tel que déposé par un webhook/hook/scan dans
 // automatisation_evenements — voir docs/automatisations/combinaisons-5.7.md
@@ -113,10 +122,15 @@ function resoudrePasse1(evs: EvenementAutomatisation[]): ResolutionJournee {
   const achatNet = resoudreFamilleAchat(evs)
 
   if (achatNet && abonnementNet.gagnant?.type === 'bienvenue_abonnement') {
-    // #4 — seule vraie combo qui a survécu à la revue.
+    // #4 — seule vraie combo qui a survécu à la revue. 2 variantes selon le
+    // palier réel de l'achat (le côté abonnement est toujours "bienvenue",
+    // par construction) — décision du 2026-07-15.
+    const typeCombo: TypeAutomatisation = achatNet.type === 'remerciement_1er_achat'
+      ? 'combo_1er_achat_bienvenue_abo'
+      : 'combo_achat_recurrent_bienvenue_abo'
     return {
       kind: 'envoi',
-      typeTemplate: 'combo_achat_abonnement_bienvenue',
+      typeTemplate: typeCombo,
       evenementsSources: [...achatNet.evenements, ...abonnementNet.tousLesEvenements],
       repliCombo: { achat: achatNet.evenements, abonnement: abonnementNet.tousLesEvenements },
     }
@@ -287,7 +301,7 @@ async function resoudreTokensSupplementaires(
     return { mois_avant_cadeau: String(moisAvantCadeau) }
   }
 
-  if (FAMILLE_ACHAT.includes(typeTemplate) || typeTemplate === 'combo_achat_abonnement_bienvenue') {
+  if (FAMILLE_ACHAT.includes(typeTemplate) || TYPES_COMBO_ACHAT_ABO.includes(typeTemplate)) {
     const commandeIds = evenementsSources.filter(e => FAMILLE_ACHAT.includes(e.type)).map(e => e.reference_id)
     if (commandeIds.length === 0) return { titre_beats: 'ce beat' }
     const { data: lignes } = await admin.from('commande_lignes').select('beats(titre)').in('commande_id', commandeIds)
@@ -553,7 +567,7 @@ export async function traiterGroupeAutomatisations(
   const clientId = evenements[0].client_id
 
   const typesPresents = [...new Set(evenements.map(e => e.type))]
-  const configs = await chargerConfigs(beatmakerId, [...typesPresents, 'combo_achat_abonnement_bienvenue'])
+  const configs = await chargerConfigs(beatmakerId, [...typesPresents, ...TOUS_TYPES_COMBO])
 
   // 1. Recettes inactives : retirées du groupe, marquées traitées tout de
   // suite (comportement identique à avant 5.7 — un beatmaker qui n'a jamais
@@ -636,8 +650,8 @@ async function traiterGroupePret(
   // comportement identique à avant 5.7, achat et bienvenue abo partent
   // chacun séparément — jamais de régression pendant la période où la combo
   // n'est pas encore activée/enregistrée.
-  if (resolution.typeTemplate === 'combo_achat_abonnement_bienvenue' && resolution.repliCombo) {
-    const configCombo = configs.get('combo_achat_abonnement_bienvenue')
+  if (TYPES_COMBO_ACHAT_ABO.includes(resolution.typeTemplate) && resolution.repliCombo) {
+    const configCombo = configs.get(resolution.typeTemplate)
     if (!configCombo?.actif || !configCombo.objet || !configCombo.corps) {
       const configAchat = configs.get(resolution.repliCombo.achat[0].type)
       const configAbo = configs.get('bienvenue_abonnement')
@@ -686,7 +700,7 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
   const clientId = evenements[0].client_id
 
   const typesPresents = [...new Set(evenements.map(e => e.type))]
-  const configs = await chargerConfigs(beatmakerId, [...typesPresents, 'combo_achat_abonnement_bienvenue'])
+  const configs = await chargerConfigs(beatmakerId, [...typesPresents, ...TOUS_TYPES_COMBO])
   const actifs = evenements.filter(e => configs.get(e.type)?.actif)
   if (actifs.length === 0) return { erreur: "Aucune des recettes concernées par ce jour n'est activée." }
 
@@ -704,7 +718,7 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
   // Même repli qu'à l'envoi réel : si la combo n'est pas configurée, prévisualiser
   // le remerciement d'achat (le 1er des deux à s'afficher, faute de mieux dans une
   // aperçu unique).
-  if (typeTemplate === 'combo_achat_abonnement_bienvenue' && (!config?.actif || !config.objet || !config.corps) && resolution.repliCombo) {
+  if (TYPES_COMBO_ACHAT_ABO.includes(typeTemplate) && (!config?.actif || !config.objet || !config.corps) && resolution.repliCombo) {
     typeTemplate = resolution.repliCombo.achat[0].type
     evenementsSources = resolution.repliCombo.achat
     config = configs.get(typeTemplate)

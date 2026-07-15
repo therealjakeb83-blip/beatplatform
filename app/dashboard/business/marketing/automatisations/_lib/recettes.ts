@@ -168,12 +168,27 @@ Jake`,
     ],
   },
   {
-    type: 'combo_achat_abonnement_bienvenue',
+    type: 'combo_1er_achat_bienvenue_abo',
     categorie: 'Combinaisons',
-    label: 'Achat + Bienvenue abo',
-    description: "Envoyé quand un client achète une licence ET s'abonne le même jour — un seul mail fusionné plutôt que 2 mails séparés. Reste inactif tant que non configuré : dans ce cas, l'achat et l'abonnement partent chacun de leur côté comme avant.",
+    label: '1er achat + Bienvenue abo',
+    description: "Envoyé quand un client fait son tout premier achat ET s'abonne le même jour — un seul mail fusionné plutôt que 2 mails séparés. Reste inactif tant que non configuré : dans ce cas, l'achat et l'abonnement partent chacun de leur côté comme avant.",
     corpsDefaut: `Salut {{prénom}}, ça va ?
-Merci pour ta commande d'hier, ça fait plaisir de te voir bosser sur mes prods 🙏🏼
+Je viens de voir ton achat d'hier, merci pour la force ça fait plaisir d'avoir un nouvel artiste qui bosse sur mes prods 🙏🏼
+Et en plus j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso de beats directement dans ton mood !
+N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
+À très vite,
+Jake`,
+    variablesSupplementaires: [
+      { token: 'titre_beats', label: 'Titre(s) du/des beat(s) acheté(s)' },
+    ],
+  },
+  {
+    type: 'combo_achat_recurrent_bienvenue_abo',
+    categorie: 'Combinaisons',
+    label: 'Achat récurrent + Bienvenue abo',
+    description: "Envoyé quand un client déjà connu (2e achat ou plus) achète ET s'abonne le même jour — un seul mail fusionné plutôt que 2 mails séparés. Reste inactif tant que non configuré : dans ce cas, l'achat et l'abonnement partent chacun de leur côté comme avant.",
+    corpsDefaut: `Salut {{prénom}}, ça va ?
+Merci pour ta commande d'hier, ça fait plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
 Au passage j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso.
 N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
 À très vite,
