@@ -98,8 +98,7 @@ async function connecterAutomatiquementApresAbonnement(email: string, nom: strin
 
   const supabase = await createClient()
   const { error: verifyError } = await supabase.auth.verifyOtp({
-    email,
-    token: lien.properties.hashed_token,
+    token_hash: lien.properties.hashed_token,
     type: 'email',
   })
   if (verifyError) {

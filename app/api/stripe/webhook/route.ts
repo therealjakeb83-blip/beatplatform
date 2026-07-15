@@ -795,8 +795,6 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
   const { error } = await supabase.from('commandes').insert({
     client_id: abo.client_id,
     beatmaker_id: abo.beatmaker_id,
-    beat_id: null,
-    licence_id: null,
     prix_paye: prixPaye,
     devise: 'EUR',
     methode_paiement: 'stripe',
