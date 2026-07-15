@@ -151,12 +151,19 @@ export async function previsualiser(evenementId: string): Promise<{ objet: strin
   return genererApercuGroupe(groupe)
 }
 
+// Supprime tout le groupe jour+client de l'événement cliqué, pas seulement
+// lui — la file d'attente affiche maintenant 1 ligne par groupe résolu (ex.
+// une combo), supprimer juste l'événement cliqué laisserait son frère
+// traîner et repartir seul au prochain passage (résultat différent de ce
+// que le beatmaker a supprimé).
 export async function supprimerEvenement(evenementId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
   const admin = createAdminClient()
-  await admin.from('automatisation_evenements').delete().eq('id', evenementId).eq('beatmaker_id', user.id)
+  const groupe = await chargerGroupePourEvenement(admin, evenementId, user.id)
+  const ids = groupe.length > 0 ? groupe.map(e => e.id) : [evenementId]
+  await admin.from('automatisation_evenements').delete().in('id', ids).eq('beatmaker_id', user.id)
   revalidatePath(CHEMIN_INDEX)
 }

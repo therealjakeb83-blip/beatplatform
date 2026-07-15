@@ -75,7 +75,7 @@ export function jourParisISO(dateISO: string): string {
 // d'abord figé l'état net de cette famille — un abonnement qui s'est annulé
 // lui-même (silence) ne doit pas pouvoir faire taire autre chose.
 
-type ResolutionJournee =
+export type ResolutionJournee =
   | { kind: 'rien'; evenementsSources: EvenementAutomatisation[] }
   | {
       kind: 'envoi'
@@ -166,7 +166,10 @@ function resoudrePasse2(evsFaibles: EvenementAutomatisation[]): ResolutionJourne
   return { kind: 'rien', evenementsSources: [] }
 }
 
-function resoudreJournee(evs: EvenementAutomatisation[]): ResolutionJournee {
+// Exportée pour l'affichage de la file d'attente (page.tsx) — pure fonction,
+// pas d'accès DB, safe à appeler pour du rendu seulement (pas d'envoi ni de
+// marquage traité ici).
+export function resoudreJournee(evs: EvenementAutomatisation[]): ResolutionJournee {
   const passe1 = resoudrePasse1(evs)
   const evsFaibles = evs.filter(e => e.type === 'relance_inactivite' || e.type === 'follow_up_free_download' || e.type === 'bienvenue_perso')
 
