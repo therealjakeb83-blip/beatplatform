@@ -18,20 +18,48 @@ export async function lierCompteClient(
     .maybeSingle()
 
   if (guestClient && guestClient.id !== userId) {
-    await admin.from('commandes')
-      .update({ client_id: userId })
-      .eq('client_id', guestClient.id)
+    // Réassigner TOUTES les tables qui référencent clients.id avant de
+    // supprimer la fiche invité — sinon 2 problèmes selon la table :
+    // (1) FK sans cascade (tentatives_paiement, licence_downloads) → la
+    //     suppression échoue silencieusement (jamais vérifiée avant 2026-07-15),
+    //     laissant la fiche invité en place puis l'insert de la nouvelle fiche
+    //     échoue en doublon d'email (bug trouvé en testant Phase 5.7 avec Jake) ;
+    //     (2) FK en cascade (leads, favoris, free_downloads, automatisation_*...)
+    //     → la suppression réussit mais efface silencieusement l'historique du
+    //     client au lieu de le transférer sur le nouveau compte.
+    const idGuest = guestClient.id
+    await Promise.all([
+      admin.from('commandes').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('abonnements_boutique').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('leads').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('favoris').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('free_downloads').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('licence_downloads').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('tentatives_paiement').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('morceaux_clients').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('beat_plays').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('email_logs').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('listes_crm_contacts').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('doublons_ignores').update({ client_id_1: userId }).eq('client_id_1', idGuest),
+      admin.from('doublons_ignores').update({ client_id_2: userId }).eq('client_id_2', idGuest),
+      admin.from('automatisation_evenements').update({ client_id: userId }).eq('client_id', idGuest),
+      admin.from('automatisation_envois').update({ client_id: userId }).eq('client_id', idGuest),
+    ])
 
-    await admin.from('abonnements_boutique')
-      .update({ client_id: userId })
-      .eq('client_id', guestClient.id)
-
-    await admin.from('clients').delete().eq('id', guestClient.id)
+    const { error: deleteError, count } = await admin.from('clients').delete({ count: 'exact' }).eq('id', idGuest)
+    if (deleteError || count === 0) {
+      // Une table qui référence clients.id sans cascade a été oubliée ci-dessus
+      // (ou une contrainte a bloqué la suppression pour une autre raison) —
+      // on arrête là plutôt que de tenter l'insert qui échouerait de toute
+      // façon en doublon d'email, en laissant les 2 fiches non fusionnées.
+      console.error('[lierCompteClient] Suppression de la fiche invité impossible (fusion incomplète) :', idGuest, JSON.stringify(deleteError))
+      return
+    }
 
     const { error } = await admin.from('clients').insert({
       id: userId,
       email,
-      nom: nom ?? guestClient.id,
+      nom: nom ?? idGuest,
       prenom: prenom ?? null,
       ...(newsletter_consent !== undefined ? { newsletter_consent } : {}),
     })
