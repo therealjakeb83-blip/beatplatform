@@ -48,6 +48,24 @@ export async function GET(request: Request) {
   return NextResponse.redirect(`${origin}/${slug}/mon-abonnement`)
 }
 
+// Laisse au webhook Stripe le temps de créer sa fiche "invitée" (même
+// mécanique que attendreAbonnement dans le webhook, ROADMAP 5.6b) — quelques
+// tentatives espacées plutôt qu'une attente fixe, abandonne si ça traîne
+// vraiment (le webhook créera alors sa propre fiche plus tard, réutilisée
+// sans conflit par email — voir resoudreOuCreerClient).
+async function attendreClientInvite(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+  tentatives = 4,
+  delaiMs = 800,
+): Promise<void> {
+  for (let i = 0; i < tentatives; i++) {
+    const { data } = await admin.from('clients').select('id').eq('email', email).maybeSingle()
+    if (data) return
+    if (i < tentatives - 1) await new Promise(r => setTimeout(r, delaiMs))
+  }
+}
+
 // Un client qui s'abonne doit repartir connecté, pas "invité" (retour Jake,
 // 2026-07-15) — jusqu'ici seul le cookie abo_{slug} débloquait les avantages
 // abonné, sans jamais créer ni connecter de vrai compte.
@@ -63,6 +81,19 @@ async function connecterAutomatiquementApresAbonnement(email: string, nom: strin
   const parts = (nom ?? '').trim().split(' ')
   const prenom = parts[0] || undefined
   const nomFamille = parts.slice(1).join(' ') || undefined
+
+  // Attendre que le webhook Stripe (checkout.session.completed →
+  // traiterAbonnementCree) ait eu le temps de créer sa fiche "invitée" AVANT
+  // de créer le compte ici — sinon les deux tentent de créer une fiche
+  // clients pour le même email en même temps (course), l'une des deux
+  // échoue en doublon, et l'abonnement déjà créé peut se retrouver
+  // réassigné vers la mauvaise fiche puis supprimé en cascade quand celle-ci
+  // est nettoyée par lierCompteClient (bug constaté le 2026-07-15). Cette
+  // redirection dépendant du navigateur peut être plus rapide que le
+  // webhook serveur à serveur — mieux vaut patienter un peu que risquer la
+  // course, quitte à créer quand même la fiche nous-mêmes si le webhook
+  // traîne vraiment (voir attendreClientInvite, résistant aux deux ordres).
+  await attendreClientInvite(admin, email)
 
   // Mot de passe aléatoire jamais communiqué : le client n'en a pas besoin
   // tant qu'il reste sur ce navigateur, et peut en définir un plus tard via
@@ -82,9 +113,10 @@ async function connecterAutomatiquementApresAbonnement(email: string, nom: strin
   }
 
   // Fusionne avec la fiche "invitée" créée par le webhook Stripe si elle
-  // existe déjà (résiste aussi à l'ordre inverse : si le webhook n'est pas
-  // encore passé, lierCompteClient crée directement la bonne fiche, que le
-  // webhook réutilisera ensuite par email — voir traiterAbonnementCree).
+  // existe déjà (résiste aussi à l'ordre inverse : si le webhook n'est
+  // toujours pas passé après l'attente ci-dessus, lierCompteClient crée
+  // directement la bonne fiche, que le webhook réutilisera ensuite par
+  // email — voir traiterAbonnementCree/resoudreOuCreerClient).
   await lierCompteClient(created.user.id, email, nomFamille, prenom, undefined, slug)
 
   // Connexion réelle sans mot de passe : génère un lien magique côté admin,
