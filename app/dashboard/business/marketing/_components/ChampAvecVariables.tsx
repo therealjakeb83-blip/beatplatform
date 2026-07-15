@@ -19,7 +19,7 @@ export const GROUPES_VARIABLES: { groupe: string; vars: VariableInfo[] }[] = [
     { token: 'nom_boutique',  label: 'Nom de la boutique' },
     { token: 'url_boutique',  label: 'Lien de la boutique' },
     { token: 'slug_boutique', label: 'Identifiant boutique' },
-    { token: 'signature',     label: 'Ta signature (réglable en haut de la page Automatisations)' },
+    { token: 'signature',     label: 'Signature' },
   ] },
   { groupe: 'Achats & fidélité', vars: [
     { token: 'statut_client',  label: 'Statut client' },
