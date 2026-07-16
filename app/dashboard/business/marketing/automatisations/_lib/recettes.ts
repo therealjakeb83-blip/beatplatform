@@ -198,6 +198,15 @@ N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai m
     ],
   },
   {
+    type: 'combo_abo_resilie_rapidement',
+    categorie: 'Combinaisons',
+    label: 'Abo résilié rapidement',
+    description: "Envoyé quand un client s'abonne ET résilie le même jour — au lieu du silence total, une relance perso pour comprendre s'il y a eu un souci technique ou une incompréhension. Reste inactif tant que non configuré : dans ce cas, silence total comme avant.",
+    corpsDefaut: `Salut {{prénom}},
+J'ai vu que tu avais testé l'abonnement puis résilié rapidement. Je voulais juste vérifier qu'il n'y avait pas eu un problème technique ou une incompréhension sur la formule. Aucun souci pour la résiliation, mais ton retour m'aiderait beaucoup.
+{{signature}}`,
+  },
+  {
     type: 'follow_up_free_download',
     categorie: 'Engagement',
     label: 'Follow-up free download',

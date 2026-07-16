@@ -7,6 +7,7 @@ export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente
   | 'remerciement_1er_achat' | 'remerciement_2e_achat' | 'remerciement_3e_achat' | 'remerciement_4e_achat_plus'
   | 'bienvenue_perso' | 'relance_inactivite' | 'follow_up_free_download'
   | 'combo_1er_achat_bienvenue_abo' | 'combo_achat_recurrent_bienvenue_abo'
+  | 'combo_abo_resilie_rapidement'
 
 export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   bienvenue_abonnement: 'Bienvenue abonnement',
@@ -21,6 +22,7 @@ export const LABELS_AUTOMATISATION: Record<TypeAutomatisation, string> = {
   follow_up_free_download: 'Follow-up free download',
   combo_1er_achat_bienvenue_abo: 'Combo — 1er achat + Bienvenue abo',
   combo_achat_recurrent_bienvenue_abo: 'Combo — Achat récurrent + Bienvenue abo',
+  combo_abo_resilie_rapidement: 'Combo — Abo résilié rapidement',
 }
 
 const FAMILLE_ACHAT: TypeAutomatisation[] = [
@@ -36,7 +38,11 @@ const FAMILLE_ABONNEMENT: TypeAutomatisation[] = [
 // côté abonnement de la combo est toujours "nouveau" par construction
 // (bienvenue_abonnement ne se déclenche que sur un abonnement neuf).
 const TYPES_COMBO_ACHAT_ABO: TypeAutomatisation[] = ['combo_1er_achat_bienvenue_abo', 'combo_achat_recurrent_bienvenue_abo']
-const TOUS_TYPES_COMBO = TYPES_COMBO_ACHAT_ABO
+// Combo A+C (#2, révisée le 2026-07-16) : un client qui s'abonne puis résilie
+// le même jour reçoit une relance perso au lieu du silence total d'origine —
+// même repli "non configurée = comportement d'avant" que les combos achat+abo.
+const TYPE_COMBO_RESILIATION_RAPIDE: TypeAutomatisation = 'combo_abo_resilie_rapidement'
+const TOUS_TYPES_COMBO = [...TYPES_COMBO_ACHAT_ABO, TYPE_COMBO_RESILIATION_RAPIDE]
 
 // Un événement brut, tel que déposé par un webhook/hook/scan dans
 // automatisation_evenements — voir docs/automatisations/combinaisons-5.7.md
@@ -89,6 +95,7 @@ export type ResolutionJournee =
 function resoudreFamilleAbonnement(evs: EvenementAutomatisation[]): {
   gagnant: EvenementAutomatisation | null
   tousLesEvenements: EvenementAutomatisation[]
+  resiliationRapide?: boolean
 } {
   const a = evs.find(e => e.type === 'bienvenue_abonnement')
   const b = evs.find(e => e.type === 'abonnement_en_attente')
@@ -97,7 +104,11 @@ function resoudreFamilleAbonnement(evs: EvenementAutomatisation[]): {
 
   // A+B : quasi impossible (le 1er renouvellement tombe toujours le mois
   // suivant) — aucune règle spécifique, on retombe sur le cas général.
-  if (a && c) return { gagnant: null, tousLesEvenements: tous } // #2 — silence total, comme si rien ne s'était passé
+  // #2 — révisé le 2026-07-16 : silence total remplacé par une relance perso
+  // (combo_abo_resilie_rapidement) pour comprendre pourquoi le client a résilié
+  // aussi vite. Repli sur le silence d'origine si la combo n'est pas configurée
+  // (voir traiterGroupePret).
+  if (a && c) return { gagnant: null, tousLesEvenements: tous, resiliationRapide: true }
   if (c) return { gagnant: c, tousLesEvenements: tous } // #3 — B+C ou C seul : Churn gagne, vécu réel derrière
   if (b) return { gagnant: b, tousLesEvenements: tous }
   if (a) return { gagnant: a, tousLesEvenements: tous }
@@ -137,12 +148,17 @@ function resoudrePasse1(evs: EvenementAutomatisation[]): ResolutionJournee {
   }
   if (achatNet) {
     // #5, #6 — achat + (en attente | churn | abonnement déjà silencieux) :
-    // l'achat gagne seul, priorité au positif.
+    // l'achat gagne seul, priorité au positif. Couvre aussi D+A+C (achat +
+    // résiliation rapide) — l'argent domine, la relance perso reste silencieuse
+    // (confirmé par Jake, 2026-07-16).
     return {
       kind: 'envoi',
       typeTemplate: achatNet.type,
       evenementsSources: [...achatNet.evenements, ...abonnementNet.tousLesEvenements],
     }
+  }
+  if (abonnementNet.resiliationRapide) {
+    return { kind: 'envoi', typeTemplate: TYPE_COMBO_RESILIATION_RAPIDE, evenementsSources: abonnementNet.tousLesEvenements }
   }
   if (abonnementNet.gagnant) {
     return { kind: 'envoi', typeTemplate: abonnementNet.gagnant.type, evenementsSources: abonnementNet.tousLesEvenements }
@@ -681,6 +697,18 @@ async function traiterGroupePret(
           evenementsSources: resolution.repliCombo.achat, beatmakerId, clientId,
         })
       }
+      await marquerTraites(admin, [...resolution.evenementsSources, ...aTraiter])
+      return
+    }
+  }
+
+  // Repli combo_abo_resilie_rapidement (#2, révisé 2026-07-16) : pas de
+  // fallback à envoyer contrairement à la combo achat+abo — silence total,
+  // comportement d'origine tant que le beatmaker n'a pas écrit/activé cette
+  // recette lui-même.
+  if (resolution.typeTemplate === TYPE_COMBO_RESILIATION_RAPIDE) {
+    const configCombo = configs.get(resolution.typeTemplate)
+    if (!configCombo?.actif || !configCombo.objet || !configCombo.corps) {
       await marquerTraites(admin, [...resolution.evenementsSources, ...aTraiter])
       return
     }

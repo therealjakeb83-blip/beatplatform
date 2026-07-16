@@ -78,9 +78,13 @@ export default async function AutomatisationsPage() {
 
     const configResolu = configParType.get(resolution.typeTemplate)
     const comboNonConfiguree = resolution.repliCombo && (!configResolu?.actif || !configResolu.objet || !configResolu.corps)
+    const resiliationRapideNonConfiguree = resolution.typeTemplate === 'combo_abo_resilie_rapidement'
+      && (!configResolu?.actif || !configResolu.objet || !configResolu.corps)
 
     const flux = comboNonConfiguree && resolution.repliCombo
       ? `${LABELS_AUTOMATISATION[resolution.repliCombo.achat[0].type]} seul (combo non configurée — bienvenue abo silencieuse)`
+      : resiliationRapideNonConfiguree
+      ? 'Aucun envoi (combo "Abo résilié rapidement" non configurée — silence par défaut)'
       : LABELS_AUTOMATISATION[resolution.typeTemplate] ?? resolution.typeTemplate
 
     // Échéance affichée = la plus tardive des événements concernés (le mail
