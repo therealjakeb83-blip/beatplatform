@@ -10,11 +10,15 @@ export async function lierCompteClient(
   slug?: string | null,
 ) {
   const admin = createAdminClient()
+  // Normalisé en minuscule — sinon la même personne peut se retrouver
+  // dupliquée en 2 fiches clients selon la casse de l'email (bug découvert
+  // en testant Phase 5.9, 2026-07-16).
+  const emailNorm = email.toLowerCase().trim()
 
   const { data: guestClient } = await admin
     .from('clients')
     .select('id')
-    .eq('email', email)
+    .eq('email', emailNorm)
     .maybeSingle()
 
   if (guestClient && guestClient.id !== userId) {
@@ -32,7 +36,7 @@ export async function lierCompteClient(
     const { error } = await admin.rpc('fusionner_compte_client', {
       id_invite: guestClient.id,
       id_reel: userId,
-      email_reel: email,
+      email_reel: emailNorm,
       nom_reel: nom ?? null,
       prenom_reel: prenom ?? null,
       newsletter_consent_reel: newsletter_consent ?? null,
@@ -45,8 +49,8 @@ export async function lierCompteClient(
   } else if (!guestClient) {
     const { error } = await admin.from('clients').insert({
       id: userId,
-      email,
-      nom: nom ?? email.split('@')[0],
+      email: emailNorm,
+      nom: nom ?? emailNorm.split('@')[0],
       prenom: prenom ?? null,
       ...(newsletter_consent !== undefined ? { newsletter_consent } : {}),
     })
@@ -65,13 +69,13 @@ export async function lierCompteClient(
   await admin
     .from('abonnements_boutique')
     .update({ client_id: userId })
-    .eq('acheteur_email', email)
+    .eq('acheteur_email', emailNorm)
     .is('client_id', null)
 
   await admin
     .from('commandes')
     .update({ client_id: userId })
-    .eq('acheteur_email', email)
+    .eq('acheteur_email', emailNorm)
     .is('client_id', null)
 
   // Créer un lead pour le beatmaker de la boutique si on connaît le slug

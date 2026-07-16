@@ -73,33 +73,38 @@ export async function POST(request: Request) {
 
 async function resoudreClientParEmail(supabase: ReturnType<typeof createAdminClient>, email: string | null) {
   if (!email) return null
-  const { data: client } = await supabase.from('clients').select('id').eq('email', email).maybeSingle()
+  const emailNorm = email.toLowerCase().trim()
+  const { data: client } = await supabase.from('clients').select('id').eq('email', emailNorm).maybeSingle()
   return client?.id ?? null
 }
 
 // Résolution client par email — crée un compte invité si inconnu (contrairement
 // à resoudreClientParEmail qui ne fait que chercher, sans créer)
+// Email normalisé en minuscule (comparaison ET stockage) — sinon la même
+// personne peut se retrouver dupliquée en 2 fiches clients selon la casse
+// tapée au checkout (bug découvert en testant Phase 5.9, 2026-07-16).
 async function resoudreOuCreerClient(
   supabase: ReturnType<typeof createAdminClient>,
   email: string | null,
   nom: string | null,
 ): Promise<string | null> {
   if (!email) return null
+  const emailNorm = email.toLowerCase().trim()
 
   const { data: existingClient } = await supabase
     .from('clients')
     .select('id')
-    .eq('email', email)
+    .eq('email', emailNorm)
     .maybeSingle()
 
   if (existingClient) return existingClient.id
 
   const parts = (nom ?? '').trim().split(' ')
   const prenom = parts[0] || null
-  const nomFamille = parts.slice(1).join(' ') || parts[0] || email.split('@')[0]
+  const nomFamille = parts.slice(1).join(' ') || parts[0] || emailNorm.split('@')[0]
   const { data: newClient, error: clientError } = await supabase
     .from('clients')
-    .insert({ id: crypto.randomUUID(), email, nom: nomFamille, prenom })
+    .insert({ id: crypto.randomUUID(), email: emailNorm, nom: nomFamille, prenom })
     .select('id')
     .single()
   if (clientError) console.error('[webhook] Erreur insert client invité:', JSON.stringify(clientError))
@@ -108,7 +113,7 @@ async function resoudreOuCreerClient(
 
 async function traiterExpirationTentative(session: Stripe.Checkout.Session) {
   const supabase = createAdminClient()
-  const email = session.customer_details?.email ?? null
+  const email = session.customer_details?.email?.toLowerCase().trim() ?? null
   const clientId = await resoudreClientParEmail(supabase, email)
 
   const { error } = await supabase
@@ -126,7 +131,7 @@ async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
   if (!session) return
 
   const supabase = createAdminClient()
-  const email = session.customer_details?.email ?? null
+  const email = session.customer_details?.email?.toLowerCase().trim() ?? null
   const clientId = await resoudreClientParEmail(supabase, email)
 
   const { error } = await supabase
@@ -258,7 +263,10 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
   const meta = session.metadata
   if (!meta?.beatmaker_id) return
 
-  const email = session.customer_details?.email ?? null
+  // Normalisé en minuscule — stocké tel quel dans acheteur_email, sinon les
+  // comparaisons ultérieures (.eq('acheteur_email', ...)) ratent selon la
+  // casse tapée au checkout (bug découvert en testant Phase 5.9, 2026-07-16).
+  const email = session.customer_details?.email?.toLowerCase().trim() ?? null
   const nom = session.customer_details?.name ?? null
   const subscriptionId = typeof session.subscription === 'string'
     ? session.subscription
@@ -337,7 +345,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   const meta = session.metadata
   if (!meta?.beatmaker_id) return
 
-  const acheteurEmail = session.customer_details?.email ?? null
+  const acheteurEmail = session.customer_details?.email?.toLowerCase().trim() ?? null
   const acheteurNom = session.customer_details?.name ?? null
   const totalCents = session.amount_total ?? 0
   const prixPayeTotal = totalCents / 100

@@ -28,7 +28,10 @@ export async function GET(request: Request) {
 
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId)
-    const email = session.customer_details?.email
+    // Normalisé en minuscule — sinon la même personne peut se retrouver
+    // dupliquée en 2 fiches clients selon la casse tapée au checkout (bug
+    // découvert en testant Phase 5.9, 2026-07-16).
+    const email = session.customer_details?.email?.toLowerCase().trim() ?? null
     const nom = session.customer_details?.name ?? null
 
     if (email) {
