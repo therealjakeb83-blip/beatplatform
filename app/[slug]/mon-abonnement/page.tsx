@@ -77,6 +77,7 @@ export default async function MonAbonnementPage({
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
 
   const estActif = abo?.statut === 'actif'
+  const estImpaye = abo?.statut === 'impaye'
   const enEssai = abo?.en_essai ?? false
   const dateDebut = abo?.date_debut ? new Date(abo.date_debut).toLocaleDateString('fr-FR') : null
   const essaiFin = abo?.essai_fin_le ? new Date(abo.essai_fin_le).toLocaleDateString('fr-FR') : null
@@ -101,9 +102,11 @@ export default async function MonAbonnementPage({
                 ? enEssai
                   ? 'bg-green-900/40 text-green-400 border border-green-500/30'
                   : 'bg-brand-900/40 text-brand-300 border border-brand-500/30'
+                : estImpaye
+                ? 'bg-orange-900/40 text-orange-400 border border-orange-500/30'
                 : 'bg-red-900/40 text-red-400 border border-red-500/30'
             }`}>
-              {!estActif ? 'Annulé' : enEssai ? 'Essai gratuit' : 'Actif'}
+              {estActif ? (enEssai ? 'Essai gratuit' : 'Actif') : estImpaye ? 'Paiement en attente' : 'Annulé'}
             </span>
           </div>
 
@@ -116,6 +119,15 @@ export default async function MonAbonnementPage({
           </div>
         </div>
 
+        {estImpaye && (
+          <div className="bg-orange-950/30 border border-orange-500/30 rounded-2xl p-4 mb-4">
+            <p className="text-orange-400 text-sm font-semibold mb-1">Ton dernier paiement a échoué</p>
+            <p className="text-gray-400 text-xs">
+              Mets à jour ton moyen de paiement pour rester abonné — sinon ton abonnement sera annulé automatiquement.
+            </p>
+          </div>
+        )}
+
         {estActif && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-4">
             <h2 className="text-white font-semibold mb-3">Avantages inclus</h2>
@@ -127,21 +139,23 @@ export default async function MonAbonnementPage({
           </div>
         )}
 
-        {estActif && (
+        {(estActif || estImpaye) && (
           <div className="flex flex-col gap-3">
-            <Link
-              href={`/${slug}/membres`}
-              className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
-            >
-              Accéder aux beats membres
-            </Link>
+            {estActif && (
+              <Link
+                href={`/${slug}/membres`}
+                className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
+              >
+                Accéder aux beats membres
+              </Link>
+            )}
             {abo?.stripe_subscription_id && (
-              <GererAbonnementButton subscriptionId={abo.stripe_subscription_id} slug={slug} />
+              <GererAbonnementButton subscriptionId={abo.stripe_subscription_id} slug={slug} impaye={estImpaye} />
             )}
           </div>
         )}
 
-        {!estActif && (
+        {!estActif && !estImpaye && (
           <Link
             href={`/${slug}/abonnement`}
             className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center block shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"

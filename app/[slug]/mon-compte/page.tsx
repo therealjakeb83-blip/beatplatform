@@ -138,6 +138,7 @@ export default async function MonCompteBoutiquePage({
   }
 
   const estActif = abo?.statut === 'actif'
+  const estImpaye = abo?.statut === 'impaye'
   const enEssai = abo?.en_essai ?? false
   const dateDebut = abo?.date_debut ? new Date(abo.date_debut).toLocaleDateString('fr-FR') : null
   const essaiFin = abo?.essai_fin_le ? new Date(abo.essai_fin_le).toLocaleDateString('fr-FR') : null
@@ -181,9 +182,11 @@ export default async function MonCompteBoutiquePage({
                       ? enEssai
                         ? 'bg-green-900/40 text-green-400 border border-green-500/30'
                         : 'bg-brand-900/40 text-brand-300 border border-brand-500/30'
+                      : estImpaye
+                      ? 'bg-orange-900/40 text-orange-400 border border-orange-500/30'
                       : 'bg-red-900/40 text-red-400 border border-red-500/30'
                   }`}>
-                    {!estActif ? 'Annulé' : enEssai ? 'Essai' : 'Actif'}
+                    {estActif ? (enEssai ? 'Essai' : 'Actif') : estImpaye ? 'Paiement en attente' : 'Annulé'}
                   </span>
                   <Link href={`/${slug}/mon-abonnement`} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
                     Gérer →

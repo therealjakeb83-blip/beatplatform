@@ -5,13 +5,17 @@ import { useState } from 'react'
 export default function GererAbonnementButton({
   subscriptionId,
   slug,
+  impaye = false,
 }: {
   subscriptionId: string
   slug: string
+  impaye?: boolean
 }) {
   const [loading, setLoading] = useState(false)
   const [confirmer, setConfirmer] = useState(false)
   const [annule, setAnnule] = useState(false)
+  const [loadingPortail, setLoadingPortail] = useState(false)
+  const [erreurPortail, setErreurPortail] = useState<string | null>(null)
 
   async function annuler() {
     setLoading(true)
@@ -32,6 +36,28 @@ export default function GererAbonnementButton({
     } catch {
       alert('Impossible de joindre le serveur.')
       setLoading(false)
+    }
+  }
+
+  async function ouvrirPortail() {
+    setLoadingPortail(true)
+    setErreurPortail(null)
+    try {
+      const res = await fetch('/api/stripe/abonnement/portail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription_id: subscriptionId, slug }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setErreurPortail(data.erreur ?? 'Erreur lors de l\'ouverture du portail.')
+        setLoadingPortail(false)
+      }
+    } catch {
+      setErreurPortail('Impossible de joindre le serveur.')
+      setLoadingPortail(false)
     }
   }
 
@@ -70,11 +96,25 @@ export default function GererAbonnementButton({
   }
 
   return (
-    <button
-      onClick={() => setConfirmer(true)}
-      className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white text-sm font-semibold transition-colors"
-    >
-      Annuler mon abonnement
-    </button>
+    <div className="flex flex-col gap-3">
+      {impaye && (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={ouvrirPortail}
+            disabled={loadingPortail}
+            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
+          >
+            {loadingPortail ? 'Ouverture...' : 'Mettre à jour mon moyen de paiement'}
+          </button>
+          {erreurPortail && <p className="text-red-400 text-xs text-center">{erreurPortail}</p>}
+        </div>
+      )}
+      <button
+        onClick={() => setConfirmer(true)}
+        className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white text-sm font-semibold transition-colors"
+      >
+        Annuler mon abonnement
+      </button>
+    </div>
   )
 }
