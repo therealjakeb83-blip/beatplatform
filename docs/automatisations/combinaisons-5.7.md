@@ -1,6 +1,6 @@
 # Phase 5.7 — Combinaisons entre workflows d'Automatisations
 
-> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Tests 1-11 tous validés, reste 12-17.**
+> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Tests 1-12 tous validés, reste 13-17.**
 
 Liste complète et exhaustive : les 7 workflows validés en isolation sont traités comme 7 signaux qui peuvent se déclencher le même jour pour le même client. Tableau principal = **les 21 paires croisées possibles entre 2 signaux différents** (7 choix 2 = 21, toutes couvertes — la 1re passe en avait raté une, D+G, retrouvée en recomptant). Section séparée pour les répétitions d'un même signal le même jour (D+D, G+G).
 
@@ -114,7 +114,7 @@ Source de vérité pour la suite des tests — cocher au fur et à mesure. Pour 
 ### 5. Bienvenue perso
 - [x] **10.** Client complètement nouveau crée un compte → bienvenue perso part normalement. **Validé 2026-07-16** (repris après correctif du bug de connexion auto).
 - [x] **11.** Client déjà connu (achat ou téléchargement avant, même ancien) crée un compte → aucun mail bienvenue perso. **Validé 2026-07-16.**
-- [ ] **12.** Nouveau client achète ET crée un compte le même jour → seul le remerciement d'achat part, pas bienvenue perso.
+- [x] **12.** Nouveau client achète ET crée un compte le même jour → seul le remerciement d'achat part, pas bienvenue perso. **Validé 2026-07-16.**
 
 ### 6. Follow-up free download
 - [ ] **13.** 2 téléchargements gratuits le même jour → 1 mail, 2 titres cités.
