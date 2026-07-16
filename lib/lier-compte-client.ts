@@ -18,76 +18,29 @@ export async function lierCompteClient(
     .maybeSingle()
 
   if (guestClient && guestClient.id !== userId) {
-    // Réassigner TOUTES les tables qui référencent clients.id avant de
-    // supprimer la fiche invité — sinon 2 problèmes selon la table :
-    // (1) FK sans cascade (tentatives_paiement, licence_downloads) → la
-    //     suppression échoue silencieusement (jamais vérifiée avant 2026-07-15),
-    //     laissant la fiche invité en place puis l'insert de la nouvelle fiche
-    //     échoue en doublon d'email (bug trouvé en testant Phase 5.7 avec Jake) ;
-    //     (2) FK en cascade (leads, favoris, free_downloads, automatisation_*...)
-    //     → la suppression réussit mais efface silencieusement l'historique du
-    //     client au lieu de le transférer sur le nouveau compte.
-    const idGuest = guestClient.id
-
-    const reassignerTout = () => Promise.all([
-      admin.from('commandes').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('abonnements_boutique').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('leads').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('favoris').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('free_downloads').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('licence_downloads').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('tentatives_paiement').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('morceaux_clients').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('beat_plays').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('email_logs').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('listes_crm_contacts').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('doublons_ignores').update({ client_id_1: userId }).eq('client_id_1', idGuest),
-      admin.from('doublons_ignores').update({ client_id_2: userId }).eq('client_id_2', idGuest),
-      admin.from('automatisation_evenements').update({ client_id: userId }).eq('client_id', idGuest),
-      admin.from('automatisation_envois').update({ client_id: userId }).eq('client_id', idGuest),
-    ])
-
-    // Jusqu'à 5 tentatives espacées de 1,2s (~5s au total) : un paiement
-    // d'abonnement en cours de traitement (invoice.payment_succeeded,
-    // événement Stripe séparé qui peut arriver au même moment que
-    // checkout.session.completed, retardé par un démarrage à froid des
-    // fonctions Vercel) peut insérer une nouvelle commande référençant
-    // idGuest PILE entre notre réassignation et la suppression — on retente
-    // plutôt que d'abandonner direct (bug constaté le 2026-07-15/16, 3
-    // tentatives sur 3s se sont révélées insuffisantes en pratique). Budget
-    // volontairement borné : les appelants (ex. /abonnement/succes) tournent
-    // sur des fonctions Vercel plafonnées à 10s d'exécution.
-    let supprime = false
-    let derniereErreur: unknown = null
-    for (let tentative = 0; tentative < 5 && !supprime; tentative++) {
-      await reassignerTout()
-      const { error: deleteError, count } = await admin.from('clients').delete({ count: 'exact' }).eq('id', idGuest)
-      if (!deleteError && count && count > 0) {
-        supprime = true
-      } else {
-        derniereErreur = deleteError
-        if (tentative < 4) await new Promise(r => setTimeout(r, 1200))
-      }
-    }
-
-    if (!supprime) {
-      // Une table qui référence clients.id sans cascade a été oubliée
-      // ci-dessus (ou une course qui n'a pas eu le temps de se résoudre en 3
-      // tentatives) — on arrête là plutôt que de tenter l'insert qui
-      // échouerait de toute façon en doublon d'email, en laissant les 2
-      // fiches non fusionnées.
-      console.error('[lierCompteClient] Suppression de la fiche invité impossible (fusion incomplète) :', idGuest, JSON.stringify(derniereErreur))
+    // Fusion en une seule transaction Postgres atomique (supabase/
+    // fusionner_compte_client.sql) plutôt qu'en plusieurs appels JS
+    // successifs — un webhook Stripe concurrent (invoice.payment_succeeded,
+    // quasi simultané à checkout.session.completed) pouvait insérer une
+    // nouvelle commande référençant la fiche invitée PILE entre la
+    // réassignation et la suppression, aucune fenêtre de tentatives en JS
+    // ne s'est montrée fiable (bug reproductible à chaque test le
+    // 2026-07-15/16). La fonction verrouille la fiche invitée
+    // (SELECT ... FOR UPDATE) : toute transaction concurrente qui tente
+    // d'y référencer une nouvelle ligne doit attendre la fin de la fusion
+    // au lieu de risquer la course.
+    const { error } = await admin.rpc('fusionner_compte_client', {
+      id_invite: guestClient.id,
+      id_reel: userId,
+      email_reel: email,
+      nom_reel: nom ?? null,
+      prenom_reel: prenom ?? null,
+      newsletter_consent_reel: newsletter_consent ?? null,
+    })
+    if (error) {
+      console.error('[lierCompteClient] Erreur fusion de compte :', guestClient.id, JSON.stringify(error))
       return
     }
-
-    const { error } = await admin.from('clients').insert({
-      id: userId,
-      email,
-      nom: nom ?? idGuest,
-      prenom: prenom ?? null,
-      ...(newsletter_consent !== undefined ? { newsletter_consent } : {}),
-    })
-    if (error) console.error('[lierCompteClient] Erreur insert post-fusion:', JSON.stringify(error))
 
   } else if (!guestClient) {
     const { error } = await admin.from('clients').insert({
