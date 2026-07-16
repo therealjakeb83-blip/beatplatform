@@ -1,6 +1,6 @@
 # Phase 5.7 — Combinaisons entre workflows d'Automatisations
 
-> **Statut (2026-07-14 soir) : codé en autonomie d'après ce document, non testé en conditions réelles.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migration `supabase/phase5_combinaisons.sql` (à exécuter). `npx tsc --noEmit`, `npm run build` et `npm run lint` propres sur les fichiers touchés. Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Reste à faire : tester en réel (5.9 dans ROADMAP.md) avant de considérer la phase close.**
+> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Test 1 validé, reste 2 à 17.**
 
 Liste complète et exhaustive : les 7 workflows validés en isolation sont traités comme 7 signaux qui peuvent se déclencher le même jour pour le même client. Tableau principal = **les 21 paires croisées possibles entre 2 signaux différents** (7 choix 2 = 21, toutes couvertes — la 1re passe en avait raté une, D+G, retrouvée en recomptant). Section séparée pour les répétitions d'un même signal le même jour (D+D, G+G).
 
@@ -87,3 +87,40 @@ Pas construit maintenant (noté pour plus tard, après le code) : une **fiche ul
 - **Combo D+A référence 2 événements sources** (une commande_id ET un abonnement_id) — la résolution de tokens (`resoudreTokensSupplementaires`) doit être adaptée pour accepter 2 reference_id au lieu d'un seul, contrairement aux recettes existantes.
 - **Garde-fou `free_downloads.achete`** : à écrire dans le webhook Stripe au moment de l'insert `commande_lignes` (match client_id + beat_id + beatmaker_id) — actuellement rien ne met cette colonne à jour nulle part dans le code.
 - **Correctif Relance inactivité** : dans `scans-automatisations/route.ts`, élargir le filtre `.eq('type_commande', 'LICENCE')` pour inclure aussi `CREATION_ABONNEMENT`/`RENOUVELLEMENT` (déjà présents dans `commandes`, pas besoin de nouvelle colonne ni de requête sur `abonnements_boutique`).
+
+## Tests 5.9 — checklist réelle (état au 2026-07-16)
+
+Source de vérité pour la suite des tests — cocher au fur et à mesure. Pour chaque test : provoquer l'action décrite, observer le résultat attendu.
+
+### 1. La combo
+- [x] **1. 1er achat + Bienvenue abo** → 1 seul mail, ton "nouvel artiste". **Validé 2026-07-15.**
+- [ ] **2. Achat récurrent + Bienvenue abo** → 1 seul mail, ton "habitué" (2e variante ajoutée le 2026-07-15, jamais testée).
+- [ ] **3. Combo non configurée** (désactiver une des 2 recettes source) → 2 mails séparés comme avant 5.7, pas de régression.
+
+### 2. Achat — plusieurs commandes le même jour
+- [ ] **4.** Client sans historique, 2 commandes séparées le même jour → 1 mail, texte "1er achat" (pas "habitué"), 2 titres cités.
+
+### 3. Abonnement — priorités internes
+- [ ] **5.** Abo en attente + Churn le même jour → seul le mail Churn part.
+- [ ] **6.** Abo en attente redevenu actif avant l'envoi (paiement repassé) → aucun mail "en attente".
+- [ ] **7.** Bienvenue abo + Churn le même jour → silence total, aucun mail sur l'abonnement.
+
+### 4. Achat qui écrase un signal d'abonnement
+- [ ] **8.** Achat + Abo en attente le même jour → seul le remerciement d'achat part.
+- [ ] **9.** Achat + Churn le même jour → seul le remerciement d'achat part.
+
+### 5. Bienvenue perso
+- [~] **10.** Client complètement nouveau crée un compte → bienvenue perso part normalement. *(Interrompu le 2026-07-15 par la découverte du bug de connexion auto — jamais confirmé, à refaire.)*
+- [ ] **11.** Client déjà connu (achat ou téléchargement avant, même ancien) crée un compte → aucun mail bienvenue perso.
+- [ ] **12.** Nouveau client achète ET crée un compte le même jour → seul le remerciement d'achat part, pas bienvenue perso.
+
+### 6. Follow-up free download
+- [ ] **13.** 2 téléchargements gratuits le même jour → 1 mail, 2 titres cités.
+- [ ] **14.** Télécharge un gratuit puis achète ce même beat avant l'envoi → aucun mail (garde-fou `achete`, tout nouveau ce soir-là).
+- [ ] **15.** Télécharge un gratuit et achète autre chose le même jour → seul le remerciement d'achat part.
+
+### 7. Relance inactivité
+- [ ] **16.** Abonné actif qui paie chaque mois sans jamais acheter de licence → ne reçoit **jamais** de mail de relance/code promo (le correctif du 2026-07-14, le plus important à vérifier).
+- [ ] **17.** Client relancé (événement déposé par le scan) rachète avant l'envoi → aucun mail de relance ne part.
+
+**Priorité si le temps manque** : 1 (fait), 3, 14, 16 — ce sont les cas les plus susceptibles de cacher un vrai bug ou une régression.
