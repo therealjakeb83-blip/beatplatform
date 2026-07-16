@@ -42,6 +42,7 @@ export const RECETTES: Recette[] = [
     categorie: 'Abonnement',
     label: 'Bienvenue abonnement',
     description: "Envoyé le lendemain d'un nouvel abonnement.",
+    objetDefaut: 'Bienvenue {{prénom|nom_artiste}}',
     corpsDefaut: `Yo {{prénom}}, ça va ?
 J'ai vu ton abonnement d'hier, merci beaucoup et bienvenue dans l'équipe 💙
 Si jamais tu cherches un style en particulier, dis moi et je te prépare une petite sélection perso de beats directement dans ton mood !
@@ -54,6 +55,7 @@ Et si t'as besoin d'un MP3 pour maquetter un beat privé, n'hésites pas, je sui
     categorie: 'Abonnement',
     label: 'Abonnement en attente',
     description: "Envoyé le lendemain d'un renouvellement en échec (pas une annulation).",
+    objetDefaut: '{{prénom}} petit souci avec ton abo 🔵',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Juste pour te prévenir : le renouvellement n'est pas passé ce mois-ci (rien de grave 👌🏼)
 Ton abo est en pause — tu as un mois pour le relancer via ton espace client, sinon il sera automatiquement annulé.
@@ -69,6 +71,7 @@ Si t'as la moindre question, je suis là :)
     categorie: 'Abonnement',
     label: 'Churn message perso',
     description: "Envoyé le lendemain de la décision d'annuler (même si l'abonné reste actif jusqu'à la fin de sa période payée) — distinct d'un simple renouvellement en échec.",
+    objetDefaut: 'Oh non !',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 J'ai vu que t'avais mis fin à ton abo hier, merci d'avoir tenté l'aventure✨
 Si t'as 2 minutes, ça m'aiderait vraiment d'avoir ton ressenti : ce que t'as aimé dans l'expérience, ce qui t'a déçu ou manqué, ton retour est super précieux pour moi 🙏
@@ -81,6 +84,7 @@ PS : Et n'hésite pas à m'envoyer tes prochains morceaux, je suis toujours supe
     categorie: 'Achats',
     label: 'Remerciement achat — 1er achat',
     description: "Envoyé le lendemain du tout premier achat de licence d'un client.",
+    objetDefaut: 'Merci {{prénom}} 🙏🏼',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Je viens de voir ton achat d'hier, merci pour la force ça fait plaisir d'avoir un nouvel artiste qui bosse sur mes prods 🙏🏼
 N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai mon avis avec plaisir !
@@ -96,6 +100,7 @@ Et si jamais ça t'intéresse, j'ai aussi quelques prods qui sont pas sur YouTub
     categorie: 'Achats',
     label: 'Remerciement achat — 2e achat',
     description: "Envoyé le lendemain du 2e achat de licence d'un client.",
+    objetDefaut: 'Merci {{prénom}} 🙏🏼',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Merci beaucoup pour ta commande d'hier, ça fais plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
 Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un retour !
@@ -110,6 +115,7 @@ Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un
     categorie: 'Achats',
     label: 'Remerciement achat — 3e achat',
     description: "Envoyé le lendemain du 3e achat de licence d'un client.",
+    objetDefaut: '{{prénom}} merci pour ta confiance 🙏🏼',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Encore une commande, merci infiniment, tu fais clairement partie des habitués maintenant et ça me touche vraiment 🙏🏼
 J'ai hâte d'écouter ce que tu feras sur {{titre_beats}} !
@@ -124,6 +130,7 @@ J'ai hâte d'écouter ce que tu feras sur {{titre_beats}} !
     categorie: 'Achats',
     label: 'Remerciement achat — 4e achat et +',
     description: "Envoyé le lendemain du 4e achat (ou plus) de licence d'un client.",
+    objetDefaut: 'Merci {{prénom}} 💙🙏🏼',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Merci pour ta dernière commande, toujours un plaisir de te voir revenir 🙏🏼
 Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
@@ -138,6 +145,7 @@ Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
     categorie: 'Engagement',
     label: 'Bienvenue perso',
     description: "Envoyé le lendemain de la création d'un compte (inscription, ou 1re connexion à un compte existant sur cette boutique).",
+    objetDefaut: 'Salut {{prénom}} !',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Je viens de voir que tu as créé ton compte sur ma boutique, bienvenue par ici 👐
 Si t'as une question ou besoin de quoi que ce soit n'hésite pas !
@@ -172,6 +180,7 @@ Et si tu cherches un style précis, n'hésite pas, je peux te faire une petite s
     categorie: 'Combinaisons',
     label: '1er achat + Bienvenue abo',
     description: "Envoyé quand un client fait son tout premier achat ET s'abonne le même jour — un seul mail fusionné plutôt que 2 mails séparés. Reste inactif tant que non configuré : dans ce cas, l'achat et l'abonnement partent chacun de leur côté comme avant.",
+    objetDefaut: '{{prénom}} Merci et bienvenue 💙',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Je viens de voir ton achat d'hier, merci pour la force ça fait plaisir d'avoir un nouvel artiste qui bosse sur mes prods 🙏🏼
 Et en plus j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso de beats directement dans ton mood !
@@ -187,6 +196,7 @@ N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai m
     categorie: 'Combinaisons',
     label: 'Achat récurrent + Bienvenue abo',
     description: "Envoyé quand un client déjà connu (2e achat ou plus) achète ET s'abonne le même jour — un seul mail fusionné plutôt que 2 mails séparés. Reste inactif tant que non configuré : dans ce cas, l'achat et l'abonnement partent chacun de leur côté comme avant.",
+    objetDefaut: '{{prénom}} merci et bienvenue 💙',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Merci pour ta commande d'hier, ça fait plaisir de te voir bosser à nouveau sur mes prods 🙏🏼
 Au passage j'ai vu que tu t'étais aussi abonné, bienvenue dans l'équipe 💙 Si jamais tu cherches un style en particulier, dis-moi et je te prépare une petite sélection perso.
@@ -202,6 +212,7 @@ N'hésite pas à m'envoyer ce que tu feras sur {{titre_beats}}, je te donnerai m
     categorie: 'Combinaisons',
     label: 'Abo résilié rapidement',
     description: "Envoyé quand un client s'abonne ET résilie le même jour — au lieu du silence total, une relance perso pour comprendre s'il y a eu un souci technique ou une incompréhension. Reste inactif tant que non configuré : dans ce cas, silence total comme avant.",
+    objetDefaut: 'Salut {{prénom}}',
     corpsDefaut: `Salut {{prénom}},
 J'ai vu que tu avais testé l'abonnement puis résilié rapidement. Je voulais juste vérifier qu'il n'y avait pas eu un problème technique ou une incompréhension sur la formule. Aucun souci pour la résiliation, mais ton retour m'aiderait beaucoup.
 {{signature}}`,
