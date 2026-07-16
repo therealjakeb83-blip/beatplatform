@@ -47,23 +47,26 @@ export async function lierCompteClient(
       admin.from('automatisation_envois').update({ client_id: userId }).eq('client_id', idGuest),
     ])
 
-    // Jusqu'à 3 tentatives espacées : un paiement d'abonnement en cours de
-    // traitement (invoice.payment_succeeded, événement Stripe séparé qui
-    // peut arriver au même moment que checkout.session.completed) peut
-    // insérer une nouvelle commande référençant idGuest PILE entre notre
-    // réassignation et la suppression — on retente plutôt que d'abandonner
-    // direct (bug constaté le 2026-07-15, prochain palier après course
-    // corrigée entre le webhook et /abonnement/succes).
+    // Jusqu'à 5 tentatives espacées de 1,2s (~5s au total) : un paiement
+    // d'abonnement en cours de traitement (invoice.payment_succeeded,
+    // événement Stripe séparé qui peut arriver au même moment que
+    // checkout.session.completed, retardé par un démarrage à froid des
+    // fonctions Vercel) peut insérer une nouvelle commande référençant
+    // idGuest PILE entre notre réassignation et la suppression — on retente
+    // plutôt que d'abandonner direct (bug constaté le 2026-07-15/16, 3
+    // tentatives sur 3s se sont révélées insuffisantes en pratique). Budget
+    // volontairement borné : les appelants (ex. /abonnement/succes) tournent
+    // sur des fonctions Vercel plafonnées à 10s d'exécution.
     let supprime = false
     let derniereErreur: unknown = null
-    for (let tentative = 0; tentative < 3 && !supprime; tentative++) {
+    for (let tentative = 0; tentative < 5 && !supprime; tentative++) {
       await reassignerTout()
       const { error: deleteError, count } = await admin.from('clients').delete({ count: 'exact' }).eq('id', idGuest)
       if (!deleteError && count && count > 0) {
         supprime = true
       } else {
         derniereErreur = deleteError
-        if (tentative < 2) await new Promise(r => setTimeout(r, 1000))
+        if (tentative < 4) await new Promise(r => setTimeout(r, 1200))
       }
     }
 

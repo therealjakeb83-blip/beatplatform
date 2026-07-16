@@ -56,11 +56,15 @@ export async function GET(request: Request) {
 // tentatives espacées plutôt qu'une attente fixe, abandonne si ça traîne
 // vraiment (le webhook créera alors sa propre fiche plus tard, réutilisée
 // sans conflit par email — voir resoudreOuCreerClient).
+// Budget volontairement court (~1s max) : lierCompteClient a son propre
+// mécanisme de tentatives pour la partie qui s'est révélée sensible à la
+// course (reassignation + suppression), pas la peine de cumuler 2 longues
+// attentes sur une fonction Vercel plafonnée à 10s d'exécution.
 async function attendreClientInvite(
   admin: ReturnType<typeof createAdminClient>,
   email: string,
-  tentatives = 4,
-  delaiMs = 800,
+  tentatives = 2,
+  delaiMs = 500,
 ): Promise<void> {
   for (let i = 0; i < tentatives; i++) {
     const { data } = await admin.from('clients').select('id').eq('email', email).maybeSingle()
