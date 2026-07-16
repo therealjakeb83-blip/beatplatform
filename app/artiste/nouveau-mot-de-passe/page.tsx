@@ -2,10 +2,9 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 function NouveauMotDePasseArtisteForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/mon-compte'
   const bienvenue = searchParams.get('bienvenue') === '1'
@@ -55,7 +54,13 @@ function NouveauMotDePasseArtisteForm() {
       return
     }
 
-    router.push(redirect)
+    // Rechargement complet (pas router.push) — même pattern que
+    // /artiste/connexion : garantit que le serveur relit le tout nouveau
+    // cookie de session plutôt qu'une navigation douce qui pourrait servir
+    // un rendu mis en cache d'avant la connexion (bug constaté le
+    // 2026-07-16, le client atterrissait encore "invité" après avoir défini
+    // son mot de passe).
+    window.location.href = redirect
   }
 
   return (
