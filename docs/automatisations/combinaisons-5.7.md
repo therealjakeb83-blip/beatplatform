@@ -53,6 +53,7 @@ Certains événements peuvent devenir obsolètes entre leur dépôt en file et l
 | F — Relance inactivité (et le scénario #14 D+F) | Déjà couvert : si le client a racheté entre le dépôt et l'envoi, ne pas envoyer | Déjà acté |
 | G — Follow-up free download | Déjà couvert (garde-fou `achete`, à réparer — voir plan) : si le client a acheté le beat téléchargé entre-temps, ne pas envoyer | Déjà acté |
 | E — Bienvenue perso | **Règle générale (remplace le raisonnement au cas par cas des scénarios #8/#9/#13)** : avant l'envoi, vérifier si ce client a déjà une commande LICENCE, un abonnement, **ou un téléchargement gratuit** chez ce beatmaker, **à n'importe quelle date** (pas seulement le jour même) — si oui, ne jamais envoyer Bienvenue perso, peu importe l'ancienneté. Couvre le guest checkout suivi d'une inscription tardive, et le cas où le free download impose déjà la création de compte (E+G, #12, arrivent au même moment — pas un cas "plus tard" séparé) | Confirmé (Jake, portée étendue aux free downloads) |
+| C — Churn message perso | La résiliation doit être **toujours** programmée (`annulation_en_cours`) au moment de l'envoi — si le client a cliqué "Reprendre mon abonnement" entre-temps (nouveau bouton self-service, 2026-07-16), ne pas envoyer | Ajouté 2026-07-16, découvert en testant en conditions réelles (nécessaire dès qu'un bouton "annuler la résiliation" existe côté client) |
 
 ## Correctifs à la logique de base (découverts pendant la revue combinaisons)
 

@@ -208,6 +208,15 @@ async function abonnementEncoreEnAttente(abonnementId: string): Promise<boolean>
   return data?.statut === 'impaye'
 }
 
+// Churn : re-vérifier que la résiliation est TOUJOURS programmée au moment de
+// l'envoi — si le client a cliqué "Reprendre mon abonnement" entre-temps
+// (annulation_en_cours repassé à false), le mail churn ne doit pas partir.
+async function churnEncoreProgramme(abonnementId: string): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('abonnements_boutique').select('annulation_en_cours').eq('id', abonnementId).maybeSingle()
+  return data?.annulation_en_cours === true
+}
+
 // Follow-up free download : exclure les téléchargements déjà achetés
 // entre-temps (client_id + beat_id, écrit par le webhook Stripe à l'achat).
 async function filtrerDownloadsNonAchetes(evs: EvenementAutomatisation[]): Promise<{
@@ -638,6 +647,13 @@ async function traiterGroupePret(
   if (resolution.typeTemplate === 'abonnement_en_attente') {
     const aboEvenement = resolution.evenementsSources.find(e => e.type === 'abonnement_en_attente')
     if (aboEvenement && !(await abonnementEncoreEnAttente(aboEvenement.reference_id))) {
+      await marquerTraites(admin, [...resolution.evenementsSources, ...aTraiter])
+      return
+    }
+  }
+  if (resolution.typeTemplate === 'churn_message_perso') {
+    const churnEvenement = resolution.evenementsSources.find(e => e.type === 'churn_message_perso')
+    if (churnEvenement && !(await churnEncoreProgramme(churnEvenement.reference_id))) {
       await marquerTraites(admin, [...resolution.evenementsSources, ...aTraiter])
       return
     }

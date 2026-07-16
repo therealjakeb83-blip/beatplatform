@@ -6,16 +6,24 @@ export default function GererAbonnementButton({
   subscriptionId,
   slug,
   impaye = false,
+  annulationEnCours = false,
+  dateFin = null,
 }: {
   subscriptionId: string
   slug: string
   impaye?: boolean
+  annulationEnCours?: boolean
+  dateFin?: string | null
 }) {
   const [loading, setLoading] = useState(false)
   const [confirmer, setConfirmer] = useState(false)
-  const [annule, setAnnule] = useState(false)
+  // Initialisé depuis la base (annulation_en_cours) — pas juste un état local
+  // post-clic, sinon un rechargement de page perdait l'affichage "planifiée".
+  const [annule, setAnnule] = useState(annulationEnCours)
   const [loadingPortail, setLoadingPortail] = useState(false)
   const [erreurPortail, setErreurPortail] = useState<string | null>(null)
+  const [loadingReprise, setLoadingReprise] = useState(false)
+  const [repris, setRepris] = useState(false)
 
   async function annuler() {
     setLoading(true)
@@ -36,6 +44,28 @@ export default function GererAbonnementButton({
     } catch {
       alert('Impossible de joindre le serveur.')
       setLoading(false)
+    }
+  }
+
+  async function reprendre() {
+    setLoadingReprise(true)
+    try {
+      const res = await fetch('/api/stripe/abonnement/reprendre', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription_id: subscriptionId, slug }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setRepris(true)
+        setLoadingReprise(false)
+      } else {
+        alert(data.erreur ?? 'Erreur lors de la reprise.')
+        setLoadingReprise(false)
+      }
+    } catch {
+      alert('Impossible de joindre le serveur.')
+      setLoadingReprise(false)
     }
   }
 
@@ -61,11 +91,31 @@ export default function GererAbonnementButton({
     }
   }
 
+  if (repris) {
+    return (
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
+        <p className="text-green-400 text-sm font-semibold mb-1">Abonnement repris</p>
+        <p className="text-gray-400 text-xs">Ton abonnement continue normalement, il ne sera pas annulé.</p>
+      </div>
+    )
+  }
+
   if (annule) {
     return (
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 text-center">
         <p className="text-green-400 text-sm font-semibold mb-1">Annulation planifiée</p>
-        <p className="text-gray-400 text-xs">Tu garderas l&apos;accès jusqu&apos;à la fin de la période en cours.</p>
+        <p className="text-gray-400 text-xs mb-3">
+          {dateFin
+            ? <>Tu garderas l&apos;accès jusqu&apos;au <span className="text-gray-200">{dateFin}</span>.</>
+            : <>Tu garderas l&apos;accès jusqu&apos;à la fin de la période en cours.</>}
+        </p>
+        <button
+          onClick={reprendre}
+          disabled={loadingReprise}
+          className="w-full py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-60 text-gray-300 hover:text-white text-sm font-semibold transition-colors"
+        >
+          {loadingReprise ? 'Reprise...' : 'Reprendre mon abonnement'}
+        </button>
       </div>
     )
   }

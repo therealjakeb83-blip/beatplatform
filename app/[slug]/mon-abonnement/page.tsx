@@ -31,7 +31,7 @@ export default async function MonAbonnementPage({
     emailAbonne = user.email ?? null
     const { data } = await admin
       .from('abonnements_boutique')
-      .select('id, statut, en_essai, essai_fin_le, date_debut, stripe_subscription_id')
+      .select('id, statut, en_essai, essai_fin_le, date_debut, date_fin, annulation_en_cours, stripe_subscription_id')
       .eq('beatmaker_id', beatmaker.id)
       .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .order('date_debut', { ascending: false })
@@ -48,7 +48,7 @@ export default async function MonAbonnementPage({
       emailAbonne = emailCookie
       const { data } = await admin
         .from('abonnements_boutique')
-        .select('id, statut, en_essai, essai_fin_le, date_debut, stripe_subscription_id')
+        .select('id, statut, en_essai, essai_fin_le, date_debut, date_fin, annulation_en_cours, stripe_subscription_id')
         .eq('beatmaker_id', beatmaker.id)
         .eq('acheteur_email', emailCookie)
         .order('date_debut', { ascending: false })
@@ -81,6 +81,8 @@ export default async function MonAbonnementPage({
   const enEssai = abo?.en_essai ?? false
   const dateDebut = abo?.date_debut ? new Date(abo.date_debut).toLocaleDateString('fr-FR') : null
   const essaiFin = abo?.essai_fin_le ? new Date(abo.essai_fin_le).toLocaleDateString('fr-FR') : null
+  const annulationEnCours = abo?.annulation_en_cours ?? false
+  const dateFin = abo?.date_fin ? new Date(abo.date_fin).toLocaleDateString('fr-FR') : null
 
   return (
     <div className="min-h-screen bg-black px-6 py-16">
@@ -150,7 +152,13 @@ export default async function MonAbonnementPage({
               </Link>
             )}
             {abo?.stripe_subscription_id && (
-              <GererAbonnementButton subscriptionId={abo.stripe_subscription_id} slug={slug} impaye={estImpaye} />
+              <GererAbonnementButton
+                subscriptionId={abo.stripe_subscription_id}
+                slug={slug}
+                impaye={estImpaye}
+                annulationEnCours={annulationEnCours}
+                dateFin={dateFin}
+              />
             )}
           </div>
         )}
