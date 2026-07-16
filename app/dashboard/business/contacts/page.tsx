@@ -146,7 +146,7 @@ export default async function ContactsPage({
   const [commandesRes, aboRes, listesRes] = await Promise.all([
     supabase
       .from('commandes')
-      .select('client_id, created_at, prix_paye, statut, type_commande, beat_id, licence_id')
+      .select('client_id, created_at, prix_paye, statut, type_commande, commande_lignes(beat_id, licence_id)')
       .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
     supabase
@@ -182,10 +182,11 @@ export default async function ContactsPage({
     return <ContactsClient contacts={[]} listes={listes} leadsData={leadsData} newsletterData={[]} vue={vue} />
   }
 
-  // Beat IDs & Licence IDs from LICENCE commandes
+  // Beat IDs & Licence IDs from LICENCE commandes (via commande_lignes — voir phase2c_panier.sql)
   const licenceCmdsAll = commandes.filter(c => c.type_commande === 'LICENCE')
-  const beatIds    = [...new Set(licenceCmdsAll.map(c => c.beat_id).filter(Boolean) as string[])]
-  const licenceIds = [...new Set(licenceCmdsAll.map(c => c.licence_id).filter(Boolean) as string[])]
+  const lignesAll  = licenceCmdsAll.flatMap(c => c.commande_lignes ?? [])
+  const beatIds    = [...new Set(lignesAll.map(l => l.beat_id).filter(Boolean) as string[])]
+  const licenceIds = [...new Set(lignesAll.map(l => l.licence_id).filter(Boolean) as string[])]
 
   const [clientsRes, beatsRes, licencesRes, favorisClientsRes, freeDLsClientsRes, envoisNewsletterRes] = await Promise.all([
     admin
@@ -319,12 +320,14 @@ export default async function ContactsPage({
     const ambiancesArr: string[] = []
     const licenceArr: string[] = []
     for (const cmd of licenceCmds) {
-      const beat = cmd.beat_id ? beatMap.get(cmd.beat_id) : null
-      if (beat?.styles)    stylesArr.push(...beat.styles)
-      if (beat?.type_beat) typeBeatArr.push(...beat.type_beat)
-      if ((beat as any)?.ambiances) ambiancesArr.push(...(beat as any).ambiances)
-      const lic = cmd.licence_id ? licenceMap.get(cmd.licence_id) : null
-      if (lic?.modele) licenceArr.push(lic.modele)
+      for (const ligne of cmd.commande_lignes ?? []) {
+        const beat = ligne.beat_id ? beatMap.get(ligne.beat_id) : null
+        if (beat?.styles)    stylesArr.push(...beat.styles)
+        if (beat?.type_beat) typeBeatArr.push(...beat.type_beat)
+        if ((beat as any)?.ambiances) ambiancesArr.push(...(beat as any).ambiances)
+        const lic = ligne.licence_id ? licenceMap.get(ligne.licence_id) : null
+        if (lic?.modele) licenceArr.push(lic.modele)
+      }
     }
 
     const override = champsOverrideMap.get(c.id) ?? {}
