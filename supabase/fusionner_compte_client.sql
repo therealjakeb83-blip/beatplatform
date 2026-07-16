@@ -31,6 +31,18 @@ AS $$
 BEGIN
   PERFORM 1 FROM clients WHERE id = id_invite FOR UPDATE;
 
+  -- Libère temporairement l'email de la fiche invitée (contrainte unique) —
+  -- sinon l'insert de la nouvelle fiche juste en dessous échoue en doublon
+  -- tant que l'ancienne fiche existe encore.
+  UPDATE clients SET email = email || '.fusion-tmp-' || id_reel::text WHERE id = id_invite;
+
+  -- Créer la fiche du vrai compte AVANT de réassigner quoi que ce soit —
+  -- sinon les tables sans cascade (commandes...) refusent de pointer vers un
+  -- client_id qui n'existe pas encore (bug trouvé le 2026-07-16 : la 1re
+  -- version de cette fonction réassignait avant de créer la fiche).
+  INSERT INTO clients (id, email, nom, prenom, newsletter_consent)
+  VALUES (id_reel, email_reel, COALESCE(nom_reel, id_invite::text), prenom_reel, COALESCE(newsletter_consent_reel, false));
+
   UPDATE commandes SET client_id = id_reel WHERE client_id = id_invite;
   UPDATE abonnements_boutique SET client_id = id_reel WHERE client_id = id_invite;
   UPDATE leads SET client_id = id_reel WHERE client_id = id_invite;
@@ -48,9 +60,6 @@ BEGIN
   UPDATE automatisation_envois SET client_id = id_reel WHERE client_id = id_invite;
 
   DELETE FROM clients WHERE id = id_invite;
-
-  INSERT INTO clients (id, email, nom, prenom, newsletter_consent)
-  VALUES (id_reel, email_reel, COALESCE(nom_reel, id_invite::text), prenom_reel, COALESCE(newsletter_consent_reel, false));
 END;
 $$;
 
