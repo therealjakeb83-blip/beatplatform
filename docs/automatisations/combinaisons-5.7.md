@@ -1,6 +1,6 @@
 # Phase 5.7 — Combinaisons entre workflows d'Automatisations
 
-> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Tests 1, 2, 3, 4 et 10 validés, reste 5-9 et 11-17.**
+> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Tests 1, 2, 3, 4, 5 et 10 validés, reste 6-9 et 11-17.**
 
 Liste complète et exhaustive : les 7 workflows validés en isolation sont traités comme 7 signaux qui peuvent se déclencher le même jour pour le même client. Tableau principal = **les 21 paires croisées possibles entre 2 signaux différents** (7 choix 2 = 21, toutes couvertes — la 1re passe en avait raté une, D+G, retrouvée en recomptant). Section séparée pour les répétitions d'un même signal le même jour (D+D, G+G).
 
@@ -102,7 +102,7 @@ Source de vérité pour la suite des tests — cocher au fur et à mesure. Pour 
 - [x] **4.** Client sans historique, 2 commandes séparées le même jour → 1 mail, texte "1er achat" (pas "habitué"), 2 titres cités. **Validé 2026-07-16.**
 
 ### 3. Abonnement — priorités internes
-- [ ] **5.** Abo en attente + Churn le même jour → seul le mail Churn part.
+- [x] **5.** Abo en attente + Churn le même jour → seul le mail Churn part. **Validé 2026-07-16.**
 - [ ] **6.** Abo en attente redevenu actif avant l'envoi (paiement repassé) → aucun mail "en attente".
 - [ ] **7.** Bienvenue abo + Churn le même jour → silence total, aucun mail sur l'abonnement.
 
