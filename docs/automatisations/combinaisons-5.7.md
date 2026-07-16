@@ -1,6 +1,6 @@
 # Phase 5.7 — Combinaisons entre workflows d'Automatisations
 
-> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Tests 1, 2, 3, 4, 5, 6, 7 et 10 validés, reste 8-9 et 11-17.**
+> **Statut (2026-07-16) : codé et déployé, tests en cours.** Fichiers modifiés : `lib/automatisations.ts` (réécriture complète autour de la résolution par jour/client), `app/api/cron/automatisations/route.ts` (regroupement), `app/api/cron/scans-automatisations/route.ts` (correctif Relance inactivité), `app/api/stripe/webhook/route.ts` (garde-fou `achete`), `app/dashboard/business/marketing/automatisations/_lib/{recettes,actions}.ts` (recette combo + adaptation file d'attente), migrations `supabase/phase5_combinaisons.sql` et `supabase/signature_emails.sql` (exécutées). La combo D+A a été scindée en 2026-07-15 en **2 variantes** selon le palier d'achat (`combo_1er_achat_bienvenue_abo` / `combo_achat_recurrent_bienvenue_abo`, voir ligne #4). Détail technique complet dans `memory/project_phase5_combinaisons_implementation.md`. **Checklist de tests réels en bas de ce document (section "Tests 5.9") — Tests 1, 2, 3, 4, 5, 6, 7, 8 et 10 validés, reste 9 et 11-17.**
 
 Liste complète et exhaustive : les 7 workflows validés en isolation sont traités comme 7 signaux qui peuvent se déclencher le même jour pour le même client. Tableau principal = **les 21 paires croisées possibles entre 2 signaux différents** (7 choix 2 = 21, toutes couvertes — la 1re passe en avait raté une, D+G, retrouvée en recomptant). Section séparée pour les répétitions d'un même signal le même jour (D+D, G+G).
 
@@ -108,7 +108,7 @@ Source de vérité pour la suite des tests — cocher au fur et à mesure. Pour 
 - [x] **7.** Bienvenue abo + Churn le même jour → **règle révisée le 2026-07-16** (voir décision #2) : relance perso "Abo résilié rapidement" au lieu du silence total, si la combo est configurée (sinon silence, comportement d'origine). **Validé 2026-07-16.**
 
 ### 4. Achat qui écrase un signal d'abonnement
-- [ ] **8.** Achat + Abo en attente le même jour → seul le remerciement d'achat part.
+- [x] **8.** Achat + Abo en attente le même jour → seul le remerciement d'achat part. **Validé 2026-07-16.**
 - [ ] **9.** Achat + Churn le même jour → seul le remerciement d'achat part.
 
 ### 5. Bienvenue perso
