@@ -1,6 +1,5 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { lierCompteClient } from '@/lib/lier-compte-client'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -24,6 +23,9 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/`)
   }
 
+  const chemin = `/${slug}/mon-abonnement`
+  let redirection = `${origin}${chemin}`
+
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId)
     const email = session.customer_details?.email
@@ -39,13 +41,14 @@ export async function GET(request: Request) {
         sameSite: 'lax',
       })
 
-      await connecterAutomatiquementApresAbonnement(email, nom, slug)
+      const lienConnexion = await connecterAutomatiquementApresAbonnement(email, nom, slug, origin, chemin)
+      if (lienConnexion) redirection = lienConnexion
     }
   } catch (err) {
     console.error('[abo/succes]', err)
   }
 
-  return NextResponse.redirect(`${origin}/${slug}/mon-abonnement`)
+  return NextResponse.redirect(redirection)
 }
 
 // Laisse au webhook Stripe le temps de créer sa fiche "invitée" (même
@@ -75,7 +78,15 @@ async function attendreClientInvite(
 // un abonnement avec l'email de quelqu'un d'autre le connecterait sur SON
 // compte à lui (faille de sécurité). Dans ce cas il garde juste le cookie
 // (avantages abonné) et doit se connecter lui-même avec son mot de passe.
-async function connecterAutomatiquementApresAbonnement(email: string, nom: string | null, slug: string): Promise<void> {
+//
+// Connexion réelle via le mécanisme natif Supabase (lien de récupération +
+// /auth/callback existant, PKCE) plutôt qu'une vérification manuelle
+// (verifyOtp) — plus robuste, et fait aussi office de "définir ton mot de
+// passe" pour ce nouvel abonné (suggestion de Jake après plusieurs échecs de
+// la connexion silencieuse par lien magique).
+async function connecterAutomatiquementApresAbonnement(
+  email: string, nom: string | null, slug: string, origin: string, chemin: string,
+): Promise<string | null> {
   const admin = createAdminClient()
 
   const parts = (nom ?? '').trim().split(' ')
@@ -95,10 +106,9 @@ async function connecterAutomatiquementApresAbonnement(email: string, nom: strin
   // traîne vraiment (voir attendreClientInvite, résistant aux deux ordres).
   await attendreClientInvite(admin, email)
 
-  // Mot de passe aléatoire jamais communiqué : le client n'en a pas besoin
-  // tant qu'il reste sur ce navigateur, et peut en définir un plus tard via
-  // "mot de passe oublié" pour se reconnecter ailleurs. email_confirm: true
-  // car le paiement Stripe vaut déjà preuve de possession de l'email.
+  // Mot de passe aléatoire jamais communiqué : le client en définira un vrai
+  // lui-même via le lien de récupération généré ci-dessous. email_confirm:
+  // true car le paiement Stripe vaut déjà preuve de possession de l'email.
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password: crypto.randomUUID(),
@@ -109,7 +119,7 @@ async function connecterAutomatiquementApresAbonnement(email: string, nom: strin
   if (createError || !created.user) {
     // Compte déjà existant (cas le plus probable) ou erreur ponctuelle —
     // dans les deux cas, pas de connexion automatique.
-    return
+    return null
   }
 
   // Fusionne avec la fiche "invitée" créée par le webhook Stripe si elle
@@ -119,21 +129,18 @@ async function connecterAutomatiquementApresAbonnement(email: string, nom: strin
   // email — voir traiterAbonnementCree/resoudreOuCreerClient).
   await lierCompteClient(created.user.id, email, nomFamille, prenom, undefined, slug)
 
-  // Connexion réelle sans mot de passe : génère un lien magique côté admin,
-  // puis le vérifie immédiatement côté serveur pour poser une vraie session
-  // (cookies Supabase Auth) sur ce navigateur.
-  const { data: lien, error: lienError } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
+  // Lien de récupération Supabase → /auth/callback (déjà utilisé par
+  // l'inscription manuelle, exchangeCodeForSession) → mon-abonnement. Le
+  // client atterrit connecté, avec une invite à définir son mot de passe.
+  const { data: lien, error: lienError } = await admin.auth.admin.generateLink({
+    type: 'recovery',
+    email,
+    options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(chemin)}` },
+  })
   if (lienError || !lien) {
     console.error('[abo/succes] Erreur génération lien de connexion auto:', JSON.stringify(lienError))
-    return
+    return null
   }
 
-  const supabase = await createClient()
-  const { error: verifyError } = await supabase.auth.verifyOtp({
-    token_hash: lien.properties.hashed_token,
-    type: 'email',
-  })
-  if (verifyError) {
-    console.error('[abo/succes] Erreur connexion automatique:', JSON.stringify(verifyError))
-  }
+  return lien.properties.action_link
 }
