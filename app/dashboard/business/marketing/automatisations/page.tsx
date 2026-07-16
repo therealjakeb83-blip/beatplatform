@@ -80,7 +80,7 @@ export default async function AutomatisationsPage() {
     const comboNonConfiguree = resolution.repliCombo && (!configResolu?.actif || !configResolu.objet || !configResolu.corps)
 
     const flux = comboNonConfiguree && resolution.repliCombo
-      ? `${LABELS_AUTOMATISATION[resolution.repliCombo.achat[0].type]} + ${LABELS_AUTOMATISATION.bienvenue_abonnement} (2 mails séparés — combo non configurée)`
+      ? `${LABELS_AUTOMATISATION[resolution.repliCombo.achat[0].type]} seul (combo non configurée — bienvenue abo silencieuse)`
       : LABELS_AUTOMATISATION[resolution.typeTemplate] ?? resolution.typeTemplate
 
     // Échéance affichée = la plus tardive des événements concernés (le mail

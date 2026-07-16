@@ -650,24 +650,19 @@ async function traiterGroupePret(
   }
 
   // 5. Repli si la combo n'est pas (encore) configurée par le beatmaker :
-  // comportement identique à avant 5.7, achat et bienvenue abo partent
-  // chacun séparément — jamais de régression pendant la période où la combo
-  // n'est pas encore activée/enregistrée.
+  // l'achat gagne seul (l'argent domine, même logique que #5/#6), bienvenue
+  // abo reste silencieuse — jamais 2 mails le même jour, même dans ce cas.
+  // Décision Jake du 2026-07-16 (revient sur le repli "2 mails séparés" du
+  // premier passage, qui violait sans discussion explicite la règle 1
+  // mail/jour) — voir docs/automatisations/combinaisons-5.7.md #4.
   if (TYPES_COMBO_ACHAT_ABO.includes(resolution.typeTemplate) && resolution.repliCombo) {
     const configCombo = configs.get(resolution.typeTemplate)
     if (!configCombo?.actif || !configCombo.objet || !configCombo.corps) {
       const configAchat = configs.get(resolution.repliCombo.achat[0].type)
-      const configAbo = configs.get('bienvenue_abonnement')
       if (configAchat) {
         await envoyerPourTemplate({
           config: configAchat, typeTemplate: resolution.repliCombo.achat[0].type,
           evenementsSources: resolution.repliCombo.achat, beatmakerId, clientId,
-        })
-      }
-      if (configAbo) {
-        await envoyerPourTemplate({
-          config: configAbo, typeTemplate: 'bienvenue_abonnement',
-          evenementsSources: resolution.repliCombo.abonnement, beatmakerId, clientId,
         })
       }
       await marquerTraites(admin, [...resolution.evenementsSources, ...aTraiter])
@@ -718,9 +713,8 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
   let evenementsSources = resolution.evenementsSources
   let config = configs.get(typeTemplate)
 
-  // Même repli qu'à l'envoi réel : si la combo n'est pas configurée, prévisualiser
-  // le remerciement d'achat (le 1er des deux à s'afficher, faute de mieux dans une
-  // aperçu unique).
+  // Même repli qu'à l'envoi réel : si la combo n'est pas configurée, l'achat
+  // gagne seul (bienvenue abo silencieuse) — voir traiterGroupePret.
   if (TYPES_COMBO_ACHAT_ABO.includes(typeTemplate) && (!config?.actif || !config.objet || !config.corps) && resolution.repliCombo) {
     typeTemplate = resolution.repliCombo.achat[0].type
     evenementsSources = resolution.repliCombo.achat
