@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { calculerEcheance, LABELS_AUTOMATISATION, resoudreJournee, jourParisISO, type TypeAutomatisation, type EvenementAutomatisation } from '@/lib/automatisations'
 import { RECETTES, ORDRE_CATEGORIES, slugCategorie } from './_lib/recettes'
 import type { AutomatisationRow, EvenementFileAttente } from './_lib/types'
-import { executerMaintenant, previsualiser, supprimerEvenement, activerToutesLesAutomatisations, sauvegarderSignature } from './_lib/actions'
+import { executerMaintenant, previsualiser, supprimerEvenement, executerPlusieurs, supprimerPlusieurs, activerToutesLesAutomatisations, sauvegarderSignature } from './_lib/actions'
 import FileAttenteTable from './_components/FileAttenteTable'
 import ReglagesGlobaux from './_components/ReglagesGlobaux'
 
@@ -148,6 +148,8 @@ export default async function AutomatisationsPage() {
           executerMaintenant={executerMaintenant}
           previsualiser={previsualiser}
           supprimerEvenement={supprimerEvenement}
+          executerPlusieurs={executerPlusieurs}
+          supprimerPlusieurs={supprimerPlusieurs}
         />
       </div>
     </div>

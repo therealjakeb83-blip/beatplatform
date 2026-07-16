@@ -139,6 +139,20 @@ export async function executerMaintenant(evenementId: string) {
   revalidatePath(CHEMIN_INDEX)
 }
 
+// Action groupée — chaque id de la sélection représente déjà un groupe
+// jour+client complet (voir chargerGroupePourEvenement), donc on boucle
+// simplement dessus plutôt que de ré-agréger.
+export async function executerPlusieurs(evenementIds: string[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const admin = createAdminClient()
+  const groupes = await Promise.all(evenementIds.map(id => chargerGroupePourEvenement(admin, id, user.id)))
+  await Promise.all(groupes.filter(g => g.length > 0).map(g => traiterGroupeAutomatisations(g, { forcer: true })))
+  revalidatePath(CHEMIN_INDEX)
+}
+
 export async function previsualiser(evenementId: string): Promise<{ objet: string; corpsHtml: string } | { erreur: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -165,5 +179,18 @@ export async function supprimerEvenement(evenementId: string) {
   const groupe = await chargerGroupePourEvenement(admin, evenementId, user.id)
   const ids = groupe.length > 0 ? groupe.map(e => e.id) : [evenementId]
   await admin.from('automatisation_evenements').delete().in('id', ids).eq('beatmaker_id', user.id)
+  revalidatePath(CHEMIN_INDEX)
+}
+
+export async function supprimerPlusieurs(evenementIds: string[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const admin = createAdminClient()
+  const groupes = await Promise.all(evenementIds.map(id => chargerGroupePourEvenement(admin, id, user.id)))
+  const idsASupprimer = new Set<string>()
+  groupes.forEach((groupe, i) => (groupe.length > 0 ? groupe : [{ id: evenementIds[i] }]).forEach(e => idsASupprimer.add(e.id)))
+  await admin.from('automatisation_evenements').delete().in('id', [...idsASupprimer]).eq('beatmaker_id', user.id)
   revalidatePath(CHEMIN_INDEX)
 }

@@ -8,6 +8,8 @@ type Props = {
   executerMaintenant: (evenementId: string) => Promise<void>
   previsualiser: (evenementId: string) => Promise<{ objet: string; corpsHtml: string } | { erreur: string }>
   supprimerEvenement: (evenementId: string) => Promise<void>
+  executerPlusieurs: (evenementIds: string[]) => Promise<void>
+  supprimerPlusieurs: (evenementIds: string[]) => Promise<void>
 }
 
 function fmtEcheance(iso: string | null): string {
@@ -17,12 +19,14 @@ function fmtEcheance(iso: string | null): string {
 
 type ApercuState = { flux: string; client: string } & ({ objet: string; corpsHtml: string } | { erreur: string })
 
-export default function FileAttenteTable({ fileAttente, executerMaintenant, previsualiser, supprimerEvenement }: Props) {
+export default function FileAttenteTable({ fileAttente, executerMaintenant, previsualiser, supprimerEvenement, executerPlusieurs, supprimerPlusieurs }: Props) {
   const [enCours, setEnCours] = useState<string | null>(null)
   const [suppressionEnCours, setSuppressionEnCours] = useState<string | null>(null)
   const [apercuEnCours, setApercuEnCours] = useState<string | null>(null)
   const [apercu, setApercu] = useState<ApercuState | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [selection, setSelection] = useState<Set<string>>(new Set())
+  const [actionGroupeeEnCours, setActionGroupeeEnCours] = useState<'executer' | 'supprimer' | null>(null)
 
   function handleExecuter(id: string) {
     setEnCours(id)
@@ -41,6 +45,40 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
     })
   }
 
+  function toggleSelection(id: string) {
+    setSelection(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleToutSelectionner() {
+    setSelection(prev => (prev.size === fileAttente.length ? new Set() : new Set(fileAttente.map(e => e.id))))
+  }
+
+  function handleExecuterSelection() {
+    const ids = [...selection]
+    setActionGroupeeEnCours('executer')
+    startTransition(async () => {
+      await executerPlusieurs(ids)
+      setActionGroupeeEnCours(null)
+      setSelection(new Set())
+    })
+  }
+
+  function handleSupprimerSelection() {
+    if (!confirm(`Supprimer ${selection.size} événement(s) de la file d'attente ? Ils ne seront jamais envoyés.`)) return
+    const ids = [...selection]
+    setActionGroupeeEnCours('supprimer')
+    startTransition(async () => {
+      await supprimerPlusieurs(ids)
+      setActionGroupeeEnCours(null)
+      setSelection(new Set())
+    })
+  }
+
   async function handleVisualiser(e: EvenementFileAttente) {
     setApercuEnCours(e.id)
     const res = await previsualiser(e.id)
@@ -50,9 +88,30 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-800">
-        <p className="text-sm font-semibold text-white">File d&apos;attente</p>
-        <p className="text-xs text-gray-500 mt-0.5">Événements en attente d&apos;envoi. Vérifiée automatiquement chaque jour — ou exécute un envoi maintenant pour tester.</p>
+      <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-white">File d&apos;attente</p>
+          <p className="text-xs text-gray-500 mt-0.5">Événements en attente d&apos;envoi. Vérifiée automatiquement chaque jour — ou exécute un envoi maintenant pour tester.</p>
+        </div>
+        {selection.size > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-gray-400">{selection.size} sélectionné{selection.size > 1 ? 's' : ''}</span>
+            <button
+              onClick={handleExecuterSelection}
+              disabled={isPending && actionGroupeeEnCours === 'executer'}
+              className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-300 transition-colors"
+            >
+              {isPending && actionGroupeeEnCours === 'executer' ? 'Exécution...' : `Exécuter (${selection.size})`}
+            </button>
+            <button
+              onClick={handleSupprimerSelection}
+              disabled={isPending && actionGroupeeEnCours === 'supprimer'}
+              className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/40 border border-transparent hover:border-red-500/30 disabled:opacity-50 text-gray-300 hover:text-red-400 transition-colors"
+            >
+              {isPending && actionGroupeeEnCours === 'supprimer' ? 'Suppression...' : `Supprimer (${selection.size})`}
+            </button>
+          </div>
+        )}
       </div>
 
       {fileAttente.length === 0 ? (
@@ -63,7 +122,16 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-800 text-xs text-gray-500 font-medium">
-              <th className="text-left px-5 py-3">Flux de travail</th>
+              <th className="text-left pl-5 pr-2 py-3 w-0">
+                <input
+                  type="checkbox"
+                  checked={selection.size === fileAttente.length}
+                  onChange={toggleToutSelectionner}
+                  className="rounded border-gray-700 bg-gray-800"
+                  aria-label="Tout sélectionner"
+                />
+              </th>
+              <th className="text-left px-2 py-3">Flux de travail</th>
               <th className="text-left px-5 py-3">Client</th>
               <th className="text-left px-5 py-3">Date d&apos;exécution prévue</th>
               <th className="text-right px-5 py-3"></th>
@@ -72,7 +140,16 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
           <tbody className="divide-y divide-gray-800/50">
             {fileAttente.map(e => (
               <tr key={e.id}>
-                <td className="px-5 py-3 text-white">{e.flux}</td>
+                <td className="pl-5 pr-2 py-3 w-0">
+                  <input
+                    type="checkbox"
+                    checked={selection.has(e.id)}
+                    onChange={() => toggleSelection(e.id)}
+                    className="rounded border-gray-700 bg-gray-800"
+                    aria-label={`Sélectionner ${e.flux}`}
+                  />
+                </td>
+                <td className="px-2 py-3 text-white">{e.flux}</td>
                 <td className="px-5 py-3 text-gray-400">
                   {e.clientNom} <span className="text-gray-600">{e.clientEmail}</span>
                 </td>
