@@ -129,18 +129,23 @@ async function connecterAutomatiquementApresAbonnement(
   // email — voir traiterAbonnementCree/resoudreOuCreerClient).
   await lierCompteClient(created.user.id, email, nomFamille, prenom, undefined, slug)
 
-  // Lien de récupération Supabase → /auth/callback (déjà utilisé par
-  // l'inscription manuelle, exchangeCodeForSession) → mon-abonnement. Le
-  // client atterrit connecté, avec une invite à définir son mot de passe.
-  const { data: lien, error: lienError } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-    options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(chemin)}` },
-  })
+  // Lien de récupération Supabase, vérifié côté navigateur par
+  // /artiste/nouveau-mot-de-passe (même mécanisme déjà éprouvé pour les
+  // beatmakers sur /nouveau-mot-de-passe : verifyOtp(token_hash) côté client
+  // établit la session correctement, contrairement à une vérification
+  // serveur qui échouait ici de façon peu fiable). Le client atterrit
+  // connecté, invité à définir son propre mot de passe.
+  const { data: lien, error: lienError } = await admin.auth.admin.generateLink({ type: 'recovery', email })
   if (lienError || !lien) {
     console.error('[abo/succes] Erreur génération lien de connexion auto:', JSON.stringify(lienError))
     return null
   }
 
-  return lien.properties.action_link
+  const params = new URLSearchParams({
+    token_hash: lien.properties.hashed_token,
+    type: 'recovery',
+    redirect: chemin,
+    bienvenue: '1',
+  })
+  return `${origin}/artiste/nouveau-mot-de-passe?${params.toString()}`
 }
