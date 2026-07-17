@@ -237,16 +237,14 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   // restructuration que pour invoice.parent.subscription_details, voir
   // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
   const finPeriode = subscription.items.data[0]?.current_period_end
-  console.log('[webhook][diagnostic demande_annulation]', JSON.stringify({
-    demandeAnnulationProgrammee,
-    demande_annulation_notifiee_avant: abo.demande_annulation_notifiee,
-    notifierDemandeAnnulation,
-    acheteur_email: abo.acheteur_email,
-    finPeriode,
-    nbItems: subscription.items?.data?.length ?? 0,
-  }))
   if (notifierDemandeAnnulation && abo.acheteur_email && finPeriode) {
-    confirmationDemandeAnnulation({
+    // await : sinon la promesse (appel Resend + écriture email_logs) risque de
+    // ne jamais finir — c'est la dernière instruction de la fonction, rien
+    // après pour laisser le temps au fire-and-forget de compléter avant que
+    // Vercel ne gèle l'instance à la réponse du webhook (bug constaté le
+    // 2026-07-17 : conditions toutes vraies au diagnostic, mais aucun email
+    // ni aucune erreur nulle part).
+    await confirmationDemandeAnnulation({
       to: abo.acheteur_email,
       beatmakerId: abo.beatmaker_id,
       clientId: abo.client_id,
@@ -277,7 +275,7 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   // par cancel_at_period_end) — sinon le client recevrait 2 emails pour la
   // même annulation, la date étant déjà connue depuis la 1ère confirmation.
   if (abo?.acheteur_email && !abo.demande_annulation_notifiee) {
-    annulationAbonnement({
+    await annulationAbonnement({
       to: abo.acheteur_email,
       beatmakerId: abo.beatmaker_id,
       clientId: abo.client_id,
@@ -379,7 +377,7 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
   console.log('[webhook] Abonnement créé:', abonnement?.id)
 
   if (email) {
-    confirmationAbonnement({
+    await confirmationAbonnement({
       to: email,
       beatmakerId: meta.beatmaker_id,
       abonnementId: abonnement.id,
@@ -598,7 +596,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   if (tentativeError) console.error('[webhook] Erreur maj tentative_paiement:', JSON.stringify(tentativeError))
 
   if (acheteurEmail) {
-    confirmationCommande({
+    await confirmationCommande({
       to: acheteurEmail,
       beatmakerId: meta.beatmaker_id,
       commandeId: commande.id,
