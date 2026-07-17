@@ -19,3 +19,9 @@ ALTER TABLE templates_transactionnels ADD CONSTRAINT templates_transactionnels_t
     'annulation_abonnement',
     'beat_cadeau_fidelite'
   ));
+
+-- Dédoublonnage de l'email "demande d'annulation" (voir lib/emails.ts,
+-- confirmationDemandeAnnulation, et le webhook traiterMajAbonnement) — écrit
+-- uniquement par ce webhook, jamais par une route synchrone, donc sans la
+-- race qui empêche une détection de transition sur annulation_en_cours.
+ALTER TABLE abonnements_boutique ADD COLUMN IF NOT EXISTS demande_annulation_notifiee boolean NOT NULL DEFAULT false;
