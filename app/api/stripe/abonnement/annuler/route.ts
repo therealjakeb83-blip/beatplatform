@@ -51,7 +51,13 @@ export async function POST(request: Request) {
   }
 
   // Annuler à la fin de la période (cancel_at_period_end)
-  await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true })
+  try {
+    await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true })
+  } catch (err) {
+    console.error('[abonnement/annuler] Erreur Stripe:', err)
+    const message = err instanceof Error ? err.message : 'Erreur Stripe inconnue'
+    return NextResponse.json({ erreur: message }, { status: 502 })
+  }
 
   return NextResponse.json({ ok: true })
 }

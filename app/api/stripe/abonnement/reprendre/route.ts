@@ -50,7 +50,13 @@ export async function POST(request: Request) {
 
   // Annule la résiliation programmée — le webhook customer.subscription.updated
   // synchronise annulation_en_cours=false en base (voir traiterMajAbonnement).
-  await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: false })
+  try {
+    await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: false })
+  } catch (err) {
+    console.error('[abonnement/reprendre] Erreur Stripe:', err)
+    const message = err instanceof Error ? err.message : 'Erreur Stripe inconnue'
+    return NextResponse.json({ erreur: message }, { status: 502 })
+  }
 
   return NextResponse.json({ ok: true })
 }
