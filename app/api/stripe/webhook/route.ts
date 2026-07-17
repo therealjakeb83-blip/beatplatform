@@ -237,6 +237,14 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   // restructuration que pour invoice.parent.subscription_details, voir
   // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
   const finPeriode = subscription.items.data[0]?.current_period_end
+  console.log('[webhook][diagnostic demande_annulation]', JSON.stringify({
+    demandeAnnulationProgrammee,
+    demande_annulation_notifiee_avant: abo.demande_annulation_notifiee,
+    notifierDemandeAnnulation,
+    acheteur_email: abo.acheteur_email,
+    finPeriode,
+    nbItems: subscription.items?.data?.length ?? 0,
+  }))
   if (notifierDemandeAnnulation && abo.acheteur_email && finPeriode) {
     confirmationDemandeAnnulation({
       to: abo.acheteur_email,
