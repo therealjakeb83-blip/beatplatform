@@ -116,7 +116,40 @@ export default async function ContactsPage({
     }
   }
 
-  const leadsData: LeadRow[] = leadsRaw.filter(l => !archiveIds.has(l.client_id)).flatMap(l => {
+  // ── 2. Commandes + abos + listes ─────────────────────────────────────────
+  const [commandesRes, aboRes, listesRes] = await Promise.all([
+    supabase
+      .from('commandes')
+      .select('client_id, created_at, prix_paye, statut, type_commande, commande_lignes(beat_id, licence_id)')
+      .eq('beatmaker_id', beatmakerId)
+      .not('client_id', 'is', null),
+    supabase
+      .from('abonnements_boutique')
+      .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
+      .eq('beatmaker_id', beatmakerId)
+      .not('client_id', 'is', null),
+    supabase
+      .from('listes_crm')
+      .select('id, nom, listes_crm_contacts(count)')
+      .eq('beatmaker_id', beatmakerId)
+      .order('nom'),
+  ])
+
+  const commandes = commandesRes.data ?? []
+  const abos      = aboRes.data      ?? []
+  const listesRaw = listesRes.data   ?? []
+
+  // Un lead qui a depuis passé commande ou pris un abonnement (même annulé)
+  // n'est plus un lead — l'onglet Leads doit être strictement réservé aux
+  // contacts qui n'ont jamais rien acheté (bug remonté par Jake, 2026-07-16).
+  const clientsAvecCommandeOuAbo = new Set([
+    ...commandes.map(c => c.client_id as string),
+    ...abos.map(a => a.client_id as string),
+  ])
+
+  const leadsData: LeadRow[] = leadsRaw
+    .filter(l => !archiveIds.has(l.client_id) && !clientsAvecCommandeOuAbo.has(l.client_id))
+    .flatMap(l => {
     const client  = leadClientMap.get(l.client_id)
     if (!client) return []
     const beats   = favorisBeatMap.get(l.client_id) ?? []
@@ -141,29 +174,6 @@ export default async function ContactsPage({
       pref_ambiance:        topPreference(ambA),
     }]
   })
-
-  // ── 2. Commandes + abos + listes ─────────────────────────────────────────
-  const [commandesRes, aboRes, listesRes] = await Promise.all([
-    supabase
-      .from('commandes')
-      .select('client_id, created_at, prix_paye, statut, type_commande, commande_lignes(beat_id, licence_id)')
-      .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
-    supabase
-      .from('abonnements_boutique')
-      .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
-      .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
-    supabase
-      .from('listes_crm')
-      .select('id, nom, listes_crm_contacts(count)')
-      .eq('beatmaker_id', beatmakerId)
-      .order('nom'),
-  ])
-
-  const commandes = commandesRes.data ?? []
-  const abos      = aboRes.data      ?? []
-  const listesRaw = listesRes.data   ?? []
 
   const listes = (listesRaw ?? []).map(l => ({
     id:  l.id,
