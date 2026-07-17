@@ -1,10 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function MotDePasseOublieArtistePage() {
+function MotDePasseOublieArtisteForm() {
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') ?? '/mon-compte'
+
   const [email, setEmail] = useState('')
   const [envoye, setEnvoye] = useState(false)
   const [erreur, setErreur] = useState('')
@@ -17,8 +21,9 @@ export default function MotDePasseOublieArtistePage() {
 
     const supabase = createClient()
 
+    const params = new URLSearchParams({ redirect })
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/artiste/nouveau-mot-de-passe`,
+      redirectTo: `${window.location.origin}/artiste/nouveau-mot-de-passe?${params.toString()}`,
     })
 
     if (error) {
@@ -40,11 +45,11 @@ export default function MotDePasseOublieArtistePage() {
           </p>
           <p className="text-gray-500 text-sm mb-6">
             Pas encore de compte ?{' '}
-            <Link href="/artiste/inscription" className="text-indigo-400 hover:text-indigo-300">
+            <Link href={`/artiste/inscription?redirect=${encodeURIComponent(redirect)}`} className="text-indigo-400 hover:text-indigo-300">
               Crée-en un
             </Link>
           </p>
-          <Link href="/artiste/connexion" className="text-indigo-400 hover:text-indigo-300 text-sm">
+          <Link href={`/artiste/connexion?redirect=${encodeURIComponent(redirect)}`} className="text-indigo-400 hover:text-indigo-300 text-sm">
             Retour à la connexion
           </Link>
         </div>
@@ -85,11 +90,19 @@ export default function MotDePasseOublieArtistePage() {
         </form>
 
         <p className="text-gray-500 text-sm mt-6 text-center">
-          <Link href="/artiste/connexion" className="text-indigo-400 hover:text-indigo-300">
+          <Link href={`/artiste/connexion?redirect=${encodeURIComponent(redirect)}`} className="text-indigo-400 hover:text-indigo-300">
             Retour à la connexion
           </Link>
         </p>
       </div>
     </main>
+  )
+}
+
+export default function MotDePasseOublieArtistePage() {
+  return (
+    <Suspense>
+      <MotDePasseOublieArtisteForm />
+    </Suspense>
   )
 }

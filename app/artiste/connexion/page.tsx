@@ -83,7 +83,7 @@ function ConnexionArtisteForm() {
           </button>
 
           <Link
-            href="/artiste/mot-de-passe-oublie"
+            href={`/artiste/mot-de-passe-oublie?redirect=${encodeURIComponent(redirect)}`}
             className="text-sm text-gray-500 hover:text-gray-400 text-center"
           >
             Mot de passe oublié ?
