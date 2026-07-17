@@ -343,9 +343,15 @@ async function resoudreTokensSupplementaires(
     const downloadIds = evenementsSources.filter(e => e.type === 'follow_up_free_download').map(e => e.reference_id)
     if (downloadIds.length === 0) return { titre_beat: 'ce beat' }
     const { data } = await admin.from('free_downloads').select('beats(titre)').in('id', downloadIds)
-    const titres = ((data ?? []) as unknown as { beats: { titre: string } | null }[])
-      .map(d => d.beats?.titre)
-      .filter((t): t is string => !!t)
+    // Dédupliqué — un même beat téléchargé plusieurs fois (mauvaise manip,
+    // reclic...) reste un seul titre cité, contrairement aux achats où 2
+    // commandes du même beat restent 2 événements légitimes (retour Jake,
+    // 2026-07-16, découvert au Test 14).
+    const titres = [...new Set(
+      ((data ?? []) as unknown as { beats: { titre: string } | null }[])
+        .map(d => d.beats?.titre)
+        .filter((t): t is string => !!t)
+    )]
     return { titre_beat: formaterListeBeats(titres) }
   }
 
