@@ -230,12 +230,19 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
   }
 
-  if (notifierDemandeAnnulation && abo.acheteur_email && subscription.cancel_at) {
+  // cancel_at_period_end=true ne remplit PAS cancel_at (mécanismes séparés
+  // côté Stripe, vérifié le 2026-07-17 — cancel_at sert uniquement à annuler
+  // à un timestamp choisi explicitement). La vraie date de fin est
+  // current_period_end, déplacé sur l'item dans cette version de l'API (même
+  // restructuration que pour invoice.parent.subscription_details, voir
+  // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
+  const finPeriode = subscription.items.data[0]?.current_period_end
+  if (notifierDemandeAnnulation && abo.acheteur_email && finPeriode) {
     confirmationDemandeAnnulation({
       to: abo.acheteur_email,
       beatmakerId: abo.beatmaker_id,
       clientId: abo.client_id,
-      dateFin: new Date(subscription.cancel_at * 1000),
+      dateFin: new Date(finPeriode * 1000),
     }).catch(err => console.error('[webhook] Erreur envoi email demande annulation:', err))
   }
 }
@@ -245,7 +252,7 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
 
   const { data: abo } = await supabase
     .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, acheteur_email')
+    .select('id, beatmaker_id, client_id, acheteur_email, demande_annulation_notifiee')
     .eq('stripe_subscription_id', subscription.id)
     .maybeSingle()
 
@@ -257,7 +264,11 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
   if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement annulé:', subscription.id)
 
-  if (abo?.acheteur_email) {
+  // Filet réservé au cas où aucune demande_annulation_abonnement n'a été
+  // envoyée avant (ex. abo impayé résilié directement, sans jamais passer
+  // par cancel_at_period_end) — sinon le client recevrait 2 emails pour la
+  // même annulation, la date étant déjà connue depuis la 1ère confirmation.
+  if (abo?.acheteur_email && !abo.demande_annulation_notifiee) {
     annulationAbonnement({
       to: abo.acheteur_email,
       beatmakerId: abo.beatmaker_id,
