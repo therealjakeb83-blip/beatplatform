@@ -158,12 +158,17 @@ type BrandingTransactionnel = {
   logo_url: string | null
   signature_emails: string | null
   couleur_marque: string | null
+  instagram_url: string | null
+  youtube_url: string | null
+  tiktok_url: string | null
 }
+
+const SELECT_BRANDING = 'nom_artiste, slug, logo_url, signature_emails, couleur_marque, instagram_url, youtube_url, tiktok_url'
 
 async function chargerBrandingEtIntro(beatmakerId: string, type: TypeTemplateTransactionnel) {
   const admin = createAdminClient()
   const [{ data: branding }, { data: template }] = await Promise.all([
-    admin.from('beatmakers').select('nom_artiste, slug, logo_url, signature_emails, couleur_marque').eq('id', beatmakerId).single(),
+    admin.from('beatmakers').select(SELECT_BRANDING).eq('id', beatmakerId).single(),
     admin.from('templates_transactionnels').select('intro').eq('beatmaker_id', beatmakerId).eq('type', type).maybeSingle(),
   ])
   return { branding: branding as BrandingTransactionnel | null, intro: template?.intro ?? null }
@@ -215,6 +220,18 @@ function rendreEmailTransactionnel({
   const couleur = branding.couleur_marque || COULEUR_DEFAUT
   const signature = branding.signature_emails || branding.nom_artiste
 
+  const reseaux: { lien: string; label: string; initiales: string }[] = [
+    branding.instagram_url ? { lien: branding.instagram_url, label: 'Instagram', initiales: 'IG' } : null,
+    branding.youtube_url ? { lien: branding.youtube_url, label: 'YouTube', initiales: 'YT' } : null,
+    branding.tiktok_url ? { lien: branding.tiktok_url, label: 'TikTok', initiales: 'TK' } : null,
+  ].filter((r): r is { lien: string; label: string; initiales: string } => r !== null)
+
+  const blocReseaux = reseaux.length ? `
+      <tr><td style="padding:16px 24px 0;text-align:center;">
+        ${reseaux.map(r => `
+          <a href="${r.lien}" aria-label="${r.label}" style="display:inline-block;width:32px;height:32px;line-height:32px;margin:0 4px;border-radius:50%;background:#f3f4f6;color:#374151;text-decoration:none;font-size:11px;font-weight:700;text-align:center;">${r.initiales}</a>`).join('')}
+      </td></tr>` : ''
+
   return `
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;font-family:Arial,sans-serif;">
   <tr><td align="center">
@@ -231,7 +248,7 @@ function rendreEmailTransactionnel({
         ${cta ? `<div style="text-align:center;margin-top:24px;">
           <a href="${cta.lien}" style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">${echapper(cta.texte)}</a>
         </div>` : ''}
-      </td></tr>
+      </td></tr>${blocReseaux}
       <tr><td style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;">
         <p style="font-size:12px;color:#9ca3af;margin:0;">${echapper(signature)}</p>
       </td></tr>
@@ -443,7 +460,7 @@ export async function genererApercuTransactionnel(
   const admin = createAdminClient()
   const { data: brandingDb } = await admin
     .from('beatmakers')
-    .select('nom_artiste, slug, logo_url, signature_emails, couleur_marque')
+    .select(SELECT_BRANDING)
     .eq('id', beatmakerId)
     .single()
   if (!brandingDb) return ''
