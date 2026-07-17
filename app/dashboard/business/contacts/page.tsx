@@ -66,6 +66,7 @@ export default async function ContactsPage({
 
   let leadClientMap    = new Map<string, LeadClient>()
   let favorisBeatMap   = new Map<string, FavBeat[]>()
+  let freeDLBeatMap    = new Map<string, FavBeat[]>()
   let freeDLCountMap   = new Map<string, number>()
   let leadDerniereMap  = new Map<string, { at: string; type: string }>()
 
@@ -78,7 +79,7 @@ export default async function ContactsPage({
         .select('client_id, created_at, beats(styles, type_beat, ambiances)')
         .in('client_id', leadClientIds),
       admin.from('free_downloads')
-        .select('client_id, downloaded_at')
+        .select('client_id, downloaded_at, beats(styles, type_beat, ambiances)')
         .eq('beatmaker_id', beatmakerId)
         .in('client_id', leadClientIds),
     ])
@@ -97,6 +98,9 @@ export default async function ContactsPage({
     const leadDLDatesMap = new Map<string, Date[]>()
     for (const dl of freeDLsRes.data ?? []) {
       freeDLCountMap.set(dl.client_id, (freeDLCountMap.get(dl.client_id) ?? 0) + 1)
+      const arr = freeDLBeatMap.get(dl.client_id) ?? []
+      arr.push(dl.beats as unknown as FavBeat)
+      freeDLBeatMap.set(dl.client_id, arr)
       const dates = leadDLDatesMap.get(dl.client_id) ?? []
       dates.push(new Date(dl.downloaded_at))
       leadDLDatesMap.set(dl.client_id, dates)
@@ -147,16 +151,32 @@ export default async function ContactsPage({
     ...abos.map(a => a.client_id as string),
   ])
 
+  // Free download ×2, favori ×1 (même ratio que le reste du CRM — décision
+  // Jake, 2026-07-16) : un free download reste un signal plus fort qu'un
+  // simple favori.
+  function pousserPrefsLead(beats: FavBeat[], poids: number, stylesA: string[], typeA: string[], ambA: string[]) {
+    for (const b of beats) {
+      for (let i = 0; i < poids; i++) {
+        stylesA.push(...(b?.styles    ?? []))
+        typeA.push(...(b?.type_beat  ?? []))
+        ambA.push(...(b?.ambiances   ?? []))
+      }
+    }
+  }
+
   const leadsData: LeadRow[] = leadsRaw
     .filter(l => !archiveIds.has(l.client_id) && !clientsAvecCommandeOuAbo.has(l.client_id))
     .flatMap(l => {
     const client  = leadClientMap.get(l.client_id)
     if (!client) return []
     const beats   = favorisBeatMap.get(l.client_id) ?? []
+    const dlBeats = freeDLBeatMap.get(l.client_id)  ?? []
     const derniere = leadDerniereMap.get(l.client_id) ?? { at: l.created_at, type: 'Inscription' }
-    const stylesA = beats.flatMap(b => b?.styles    ?? [])
-    const typeA   = beats.flatMap(b => b?.type_beat  ?? [])
-    const ambA    = beats.flatMap(b => b?.ambiances  ?? [])
+    const stylesA: string[] = []
+    const typeA: string[] = []
+    const ambA: string[] = []
+    pousserPrefsLead(dlBeats, 2, stylesA, typeA, ambA)
+    pousserPrefsLead(beats,   1, stylesA, typeA, ambA)
     return [{
       id:                   l.client_id,
       prenom:               client.prenom,
