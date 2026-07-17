@@ -81,6 +81,8 @@ const NOMS_CARTES: Record<TypeTemplateTransactionnel, string> = {
   beat_cadeau_fidelite: 'Beat cadeau de fidélité',
 }
 
+type SectionId = 'branding' | 'footer' | TypeTemplateTransactionnel
+
 export default function TransactionnelsClient({
   nomArtiste,
   logoUrl,
@@ -96,6 +98,7 @@ export default function TransactionnelsClient({
   genererApercu,
 }: Props) {
   const [typeActif, setTypeActif] = useState<TypeTemplateTransactionnel>('confirmation_commande')
+  const [sectionOuverte, setSectionOuverte] = useState<SectionId | null>('confirmation_commande')
   const [couleur, setCouleur] = useState(couleurMarque ?? COULEUR_DEFAUT)
   const [signature, setSignature] = useState(signatureTransactionnels ?? '')
   const [footerTitre, setFooterTitre] = useState(titreFooterReseaux ?? '')
@@ -123,7 +126,10 @@ export default function TransactionnelsClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeActif, templateActif.titre, templateActif.intro, couleur, signature, footerMessage, footerTitre])
 
-  const carteActive = CARTES.find(c => c.type === typeActif)!
+  function ouvrirSection(id: SectionId) {
+    setSectionOuverte(prev => (prev === id ? null : id))
+    if (id !== 'branding' && id !== 'footer') setTypeActif(id)
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -136,57 +142,68 @@ export default function TransactionnelsClient({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Colonne réglages */}
-          <div className="space-y-4">
-            <CarteBranding
-              logoUrl={logoUrl}
-              couleur={couleur}
-              onChangeCouleur={setCouleur}
-              sauvegarderCouleurMarque={sauvegarderCouleurMarque}
-              signature={signature}
-              onChangeSignature={setSignature}
-              nomArtiste={nomArtiste}
-              sauvegarderSignatureTransactionnels={sauvegarderSignatureTransactionnels}
-            />
+          {/* Colonne réglages — accordéon, une section ouverte à la fois */}
+          <div className="space-y-2">
+            <AccordionSection
+              titre="Branding"
+              sousTitre="Couleur et signature, partagées par tous les emails"
+              ouvert={sectionOuverte === 'branding'}
+              onToggle={() => ouvrirSection('branding')}
+            >
+              <CarteBranding
+                logoUrl={logoUrl}
+                couleur={couleur}
+                onChangeCouleur={setCouleur}
+                sauvegarderCouleurMarque={sauvegarderCouleurMarque}
+                signature={signature}
+                onChangeSignature={setSignature}
+                nomArtiste={nomArtiste}
+                sauvegarderSignatureTransactionnels={sauvegarderSignatureTransactionnels}
+              />
+            </AccordionSection>
 
-            <CarteFooterReseaux
-              footerTitre={footerTitre}
-              onChangeFooterTitre={setFooterTitre}
-              footerMessage={footerMessage}
-              onChangeFooterMessage={setFooterMessage}
-              sauvegarderFooterReseaux={sauvegarderFooterReseaux}
-            />
+            <AccordionSection
+              titre="Footer réseaux sociaux"
+              sousTitre="Titre et phrase affichés en bas de chaque email"
+              ouvert={sectionOuverte === 'footer'}
+              onToggle={() => ouvrirSection('footer')}
+            >
+              <CarteFooterReseaux
+                footerTitre={footerTitre}
+                onChangeFooterTitre={setFooterTitre}
+                footerMessage={footerMessage}
+                onChangeFooterMessage={setFooterMessage}
+                sauvegarderFooterReseaux={sauvegarderFooterReseaux}
+              />
+            </AccordionSection>
 
-            <div className="flex flex-wrap gap-2">
-              {CARTES.map(carte => (
-                <button
-                  key={carte.type}
-                  onClick={() => setTypeActif(carte.type)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    typeActif === carte.type
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
-                  }`}
-                >
-                  {NOMS_CARTES[carte.type]}
-                </button>
-              ))}
+            <div className="pt-2 pb-1">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide px-1">Les emails</p>
             </div>
 
-            <CarteTemplate
-              key={carteActive.type}
-              carte={carteActive}
-              template={templateActif}
-              onChangeTemplate={valeur => setTemplatesDraft(prev => ({ ...prev, [carteActive.type]: valeur }))}
-              sauvegarderTemplate={sauvegarderTemplate}
-            />
+            {CARTES.map(carte => (
+              <AccordionSection
+                key={carte.type}
+                titre={NOMS_CARTES[carte.type]}
+                sousTitre={carte.description}
+                ouvert={sectionOuverte === carte.type}
+                onToggle={() => ouvrirSection(carte.type)}
+              >
+                <CarteTemplate
+                  carte={carte}
+                  template={templatesDraft[carte.type]}
+                  onChangeTemplate={valeur => setTemplatesDraft(prev => ({ ...prev, [carte.type]: valeur }))}
+                  sauvegarderTemplate={sauvegarderTemplate}
+                />
+              </AccordionSection>
+            ))}
           </div>
 
           {/* Colonne aperçu live */}
           <div className="lg:sticky lg:top-6">
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
-                <p className="text-sm font-bold text-white">Aperçu en direct</p>
+                <p className="text-sm font-bold text-white">Aperçu en direct — {NOMS_CARTES[typeActif]}</p>
                 {chargementApercu && <span className="text-[11px] text-gray-500">Mise à jour…</span>}
               </div>
               <div className="bg-gray-950 flex justify-center py-6 px-4 min-h-[70vh]">
@@ -205,6 +222,45 @@ export default function TransactionnelsClient({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function AccordionSection({
+  titre,
+  sousTitre,
+  ouvert,
+  onToggle,
+  children,
+}: {
+  titre: string
+  sousTitre: string
+  ouvert: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left hover:bg-gray-800/40 transition-colors"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{titre}</p>
+          <p className="text-xs text-gray-500 mt-0.5 truncate">{sousTitre}</p>
+        </div>
+        <span
+          className="text-gray-500 text-xs flex-shrink-0 transition-transform duration-150"
+          style={{ transform: ouvert ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          ▾
+        </span>
+      </button>
+      {ouvert && (
+        <div className="px-5 pb-5 pt-1 border-t border-gray-800">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -303,9 +359,7 @@ function CarteBranding({
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-4">
-      <p className="text-sm font-semibold text-white">Branding — partagé par les 4 emails</p>
-
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end gap-3">
         <div className="flex-1">
           <label className="block text-xs font-medium text-gray-400 mb-1">Couleur de marque</label>
@@ -386,11 +440,8 @@ function CarteFooterReseaux({
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
-      <div>
-        <p className="text-sm font-semibold text-white">Footer réseaux sociaux</p>
-        <p className="text-xs text-gray-500 mt-0.5">Affiché en bas de chaque email si au moins un réseau est renseigné sur ton profil.</p>
-      </div>
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500">Affiché en bas de chaque email si au moins un réseau est renseigné sur ton profil.</p>
 
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">Titre</label>
@@ -457,12 +508,8 @@ function CarteTemplate({
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
-      <div>
-        <p className="text-sm font-semibold text-white">{NOMS_CARTES[carte.type]}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{carte.description}</p>
-        <p className="text-[11px] text-gray-600 mt-1">{carte.declencheur}</p>
-      </div>
+    <div className="space-y-3">
+      <p className="text-[11px] text-gray-600">{carte.declencheur}</p>
 
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">Titre personnalisé</label>
