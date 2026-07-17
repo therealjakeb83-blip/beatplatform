@@ -162,20 +162,25 @@ type BrandingTransactionnel = {
   youtube_url: string | null
   tiktok_url: string | null
   footer_message_reseaux: string | null
+  titre_footer_reseaux: string | null
 }
 
 // signature_emails (Automatisations/Campagnes) reste séparée : Jake signe
 // différemment selon le canal ("Jake" en automatisation, plus personnel,
 // "Jake B" en transactionnel, plus officiel) — voir demande du 2026-07-17.
-const SELECT_BRANDING = 'nom_artiste, slug, logo_url, signature_transactionnels, couleur_marque, instagram_url, youtube_url, tiktok_url, footer_message_reseaux'
+const SELECT_BRANDING = 'nom_artiste, slug, logo_url, signature_transactionnels, couleur_marque, instagram_url, youtube_url, tiktok_url, footer_message_reseaux, titre_footer_reseaux'
 
-async function chargerBrandingEtIntro(beatmakerId: string, type: TypeTemplateTransactionnel) {
+async function chargerBrandingEtTemplate(beatmakerId: string, type: TypeTemplateTransactionnel) {
   const admin = createAdminClient()
   const [{ data: branding }, { data: template }] = await Promise.all([
     admin.from('beatmakers').select(SELECT_BRANDING).eq('id', beatmakerId).single(),
-    admin.from('templates_transactionnels').select('intro').eq('beatmaker_id', beatmakerId).eq('type', type).maybeSingle(),
+    admin.from('templates_transactionnels').select('titre, intro').eq('beatmaker_id', beatmakerId).eq('type', type).maybeSingle(),
   ])
-  return { branding: branding as BrandingTransactionnel | null, intro: template?.intro ?? null }
+  return {
+    branding: branding as BrandingTransactionnel | null,
+    titre: template?.titre ?? null,
+    intro: template?.intro ?? null,
+  }
 }
 
 function echapper(s: string): string {
@@ -216,6 +221,7 @@ const SVG_INSTAGRAM = '<svg width="16" height="16" viewBox="0 0 24 24" style="ve
 const SVG_YOUTUBE = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;"><path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
 
 const FOOTER_MESSAGE_DEFAUT = 'Rejoins-moi sur mes réseaux pour rester à jour et me contacter facilement !'
+const FOOTER_TITRE_DEFAUT = 'Suis-moi sur les réseaux sociaux'
 
 function rendreEmailTransactionnel({
   branding,
@@ -240,6 +246,7 @@ function rendreEmailTransactionnel({
   ].filter((r): r is { lien: string; label: string; svg: string } => r !== null)
 
   const footerMessage = branding.footer_message_reseaux || FOOTER_MESSAGE_DEFAUT
+  const footerTitre = branding.titre_footer_reseaux || FOOTER_TITRE_DEFAUT
 
   const blocFooter = `
       <tr><td style="background:#ffffff;padding:24px;border-top:1px solid #e5e7eb;">
@@ -251,7 +258,7 @@ function rendreEmailTransactionnel({
           </td>
           <td style="vertical-align:middle;padding-left:16px;">
             ${reseaux.length ? `
-            <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px;">Suis-moi sur les réseaux sociaux</p>
+            <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px;">${echapper(footerTitre)}</p>
             <p style="font-size:12px;color:#6b7280;margin:0 0 12px;">${echapper(footerMessage)}</p>
             <div>
               ${reseaux.map(r => `
@@ -295,8 +302,8 @@ export async function confirmationCommande({
   commandeId: string
   clientId?: string | null
 }) {
-  const [{ branding, intro }, { data: lignes }] = await Promise.all([
-    chargerBrandingEtIntro(beatmakerId, 'confirmation_commande'),
+  const [{ branding, titre, intro }, { data: lignes }] = await Promise.all([
+    chargerBrandingEtTemplate(beatmakerId, 'confirmation_commande'),
     createAdminClient()
       .from('commande_lignes')
       .select('prix_paye, beats(titre), licences(nom)')
@@ -331,7 +338,7 @@ export async function confirmationCommande({
     subject: `Confirmation de ta commande — ${branding.nom_artiste}`,
     html: rendreEmailTransactionnel({
       branding,
-      titre: TITRE_DEFAUT.confirmation_commande,
+      titre: titre || TITRE_DEFAUT.confirmation_commande,
       intro: intro || introDefaut('confirmation_commande', branding.nom_artiste),
       corpsHtml,
       cta: { texte: 'Télécharger mes fichiers', lien: `${APP_URL}/telechargement/${commandeId}` },
@@ -350,8 +357,8 @@ export async function confirmationAbonnement({
   abonnementId: string
   clientId?: string | null
 }) {
-  const [{ branding, intro }, { data: abo }] = await Promise.all([
-    chargerBrandingEtIntro(beatmakerId, 'confirmation_abonnement'),
+  const [{ branding, titre, intro }, { data: abo }] = await Promise.all([
+    chargerBrandingEtTemplate(beatmakerId, 'confirmation_abonnement'),
     createAdminClient().from('abonnements_boutique').select('prix, devise, periode').eq('id', abonnementId).maybeSingle(),
   ])
   if (!branding) return
@@ -374,7 +381,7 @@ export async function confirmationAbonnement({
     subject: `Bienvenue dans l'abonnement ${branding.nom_artiste} !`,
     html: rendreEmailTransactionnel({
       branding,
-      titre: TITRE_DEFAUT.confirmation_abonnement,
+      titre: titre || TITRE_DEFAUT.confirmation_abonnement,
       intro: intro || introDefaut('confirmation_abonnement', branding.nom_artiste),
       corpsHtml,
       cta: { texte: 'Accéder à mon espace membre', lien: `${APP_URL}/${branding.slug}/mon-compte` },
@@ -399,7 +406,7 @@ export async function confirmationDemandeAnnulation({
   clientId?: string | null
   dateFin: Date
 }) {
-  const { branding, intro } = await chargerBrandingEtIntro(beatmakerId, 'demande_annulation_abonnement')
+  const { branding, titre, intro } = await chargerBrandingEtTemplate(beatmakerId, 'demande_annulation_abonnement')
   if (!branding) return
 
   const dateFinFormatee = dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -419,7 +426,7 @@ export async function confirmationDemandeAnnulation({
     subject: `Ta demande d'annulation — ${branding.nom_artiste}`,
     html: rendreEmailTransactionnel({
       branding,
-      titre: TITRE_DEFAUT.demande_annulation_abonnement,
+      titre: titre || TITRE_DEFAUT.demande_annulation_abonnement,
       intro: intro || introDefaut('demande_annulation_abonnement', branding.nom_artiste),
       corpsHtml,
     }),
@@ -435,7 +442,7 @@ export async function annulationAbonnement({
   beatmakerId: string
   clientId?: string | null
 }) {
-  const { branding, intro } = await chargerBrandingEtIntro(beatmakerId, 'annulation_abonnement')
+  const { branding, titre, intro } = await chargerBrandingEtTemplate(beatmakerId, 'annulation_abonnement')
   if (!branding) return
 
   await envoyerEmailUnique({
@@ -447,7 +454,7 @@ export async function annulationAbonnement({
     subject: `Ton abonnement ${branding.nom_artiste} a été annulé`,
     html: rendreEmailTransactionnel({
       branding,
-      titre: TITRE_DEFAUT.annulation_abonnement,
+      titre: titre || TITRE_DEFAUT.annulation_abonnement,
       intro: intro || introDefaut('annulation_abonnement', branding.nom_artiste),
       corpsHtml: '',
     }),
@@ -485,6 +492,8 @@ export async function genererApercuTransactionnel(
   couleurDraft?: string,
   signatureDraft?: string,
   footerMessageDraft?: string,
+  titreDraft?: string,
+  footerTitreDraft?: string,
 ): Promise<string> {
   const admin = createAdminClient()
   const { data: brandingDb } = await admin
@@ -494,18 +503,21 @@ export async function genererApercuTransactionnel(
     .single()
   if (!brandingDb) return ''
 
-  // Aperçu interactif : reflète la couleur et la signature en cours de
-  // saisie, pas seulement ce qui est déjà enregistré — sinon le beatmaker ne
-  // voit jamais l'effet de son changement avant d'avoir cliqué "Enregistrer".
+  // Aperçu interactif : reflète la couleur, la signature et les titres en
+  // cours de saisie, pas seulement ce qui est déjà enregistré — sinon le
+  // beatmaker ne voit jamais l'effet de son changement avant d'avoir cliqué
+  // "Enregistrer".
   const couleurValide = couleurDraft && /^#[0-9a-fA-F]{6}$/.test(couleurDraft) ? couleurDraft : null
   const branding = {
     ...brandingDb,
     ...(couleurValide ? { couleur_marque: couleurValide } : {}),
     ...(signatureDraft !== undefined ? { signature_transactionnels: signatureDraft.trim() || null } : {}),
     ...(footerMessageDraft !== undefined ? { footer_message_reseaux: footerMessageDraft.trim() || null } : {}),
+    ...(footerTitreDraft !== undefined ? { titre_footer_reseaux: footerTitreDraft.trim() || null } : {}),
   }
 
   const intro = introDraft.trim() || introDefaut(type, branding.nom_artiste)
+  const titre = titreDraft?.trim() || TITRE_DEFAUT[type]
 
   const parType: Record<TypeTemplateTransactionnel, { corpsHtml: string; cta?: { texte: string; lien: string } }> = {
     confirmation_commande: { corpsHtml: CORPS_EXEMPLE_COMMANDE, cta: { texte: 'Télécharger mes fichiers', lien: '#' } },
@@ -517,7 +529,7 @@ export async function genererApercuTransactionnel(
 
   return rendreEmailTransactionnel({
     branding,
-    titre: TITRE_DEFAUT[type],
+    titre,
     intro,
     ...parType[type],
   })

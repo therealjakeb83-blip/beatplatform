@@ -31,24 +31,27 @@ export async function sauvegarderSignatureTransactionnels(signature: string): Pr
   return {}
 }
 
-export async function sauvegarderFooterMessage(message: string): Promise<{ erreur?: string }> {
+export async function sauvegarderFooterReseaux(titre: string, message: string): Promise<{ erreur?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { erreur: 'Non authentifié.' }
 
-  const { error } = await supabase.from('beatmakers').update({ footer_message_reseaux: message.trim() || null }).eq('id', user.id)
+  const { error } = await supabase.from('beatmakers').update({
+    titre_footer_reseaux: titre.trim() || null,
+    footer_message_reseaux: message.trim() || null,
+  }).eq('id', user.id)
   if (error) return { erreur: error.message }
   revalidatePath(CHEMIN)
   return {}
 }
 
-export async function sauvegarderIntro(type: TypeTemplateTransactionnel, intro: string): Promise<{ erreur?: string }> {
+export async function sauvegarderTemplate(type: TypeTemplateTransactionnel, titre: string, intro: string): Promise<{ erreur?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { erreur: 'Non authentifié.' }
 
   const { error } = await supabase.from('templates_transactionnels').upsert(
-    { beatmaker_id: user.id, type, intro: intro.trim() || null, updated_at: new Date().toISOString() },
+    { beatmaker_id: user.id, type, titre: titre.trim() || null, intro: intro.trim() || null, updated_at: new Date().toISOString() },
     { onConflict: 'beatmaker_id,type' },
   )
   if (error) return { erreur: error.message }
@@ -62,9 +65,11 @@ export async function genererApercu(
   couleurDraft?: string,
   signatureDraft?: string,
   footerMessageDraft?: string,
+  titreDraft?: string,
+  footerTitreDraft?: string,
 ): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return ''
-  return genererApercuTransactionnel(user.id, type, introDraft, couleurDraft, signatureDraft, footerMessageDraft)
+  return genererApercuTransactionnel(user.id, type, introDraft, couleurDraft, signatureDraft, footerMessageDraft, titreDraft, footerTitreDraft)
 }

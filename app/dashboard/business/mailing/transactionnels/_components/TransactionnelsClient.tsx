@@ -4,49 +4,68 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { TypeTemplateTransactionnel } from '@/lib/emails'
 
+type Template = { titre: string; intro: string }
+
 type Props = {
   nomArtiste: string
   logoUrl: string | null
   couleurMarque: string | null
   signatureTransactionnels: string | null
   footerMessageReseaux: string | null
-  intros: Record<TypeTemplateTransactionnel, string>
+  titreFooterReseaux: string | null
+  templates: Record<TypeTemplateTransactionnel, Template>
   sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
   sauvegarderSignatureTransactionnels: (signature: string) => Promise<{ erreur?: string }>
-  sauvegarderFooterMessage: (message: string) => Promise<{ erreur?: string }>
-  sauvegarderIntro: (type: TypeTemplateTransactionnel, intro: string) => Promise<{ erreur?: string }>
-  genererApercu: (type: TypeTemplateTransactionnel, introDraft: string, couleurDraft?: string, signatureDraft?: string, footerMessageDraft?: string) => Promise<string>
+  sauvegarderFooterReseaux: (titre: string, message: string) => Promise<{ erreur?: string }>
+  sauvegarderTemplate: (type: TypeTemplateTransactionnel, titre: string, intro: string) => Promise<{ erreur?: string }>
+  genererApercu: (
+    type: TypeTemplateTransactionnel,
+    introDraft: string,
+    couleurDraft?: string,
+    signatureDraft?: string,
+    footerMessageDraft?: string,
+    titreDraft?: string,
+    footerTitreDraft?: string,
+  ) => Promise<string>
 }
 
 const COULEUR_DEFAUT = '#4f46e5'
 const DEBOUNCE_MS = 400
 
-const CARTES: { type: TypeTemplateTransactionnel; titre: string; description: string; declencheur: string }[] = [
+const CARTES: { type: TypeTemplateTransactionnel; titrePlaceholder: string; description: string; declencheur: string }[] = [
   {
     type: 'confirmation_commande',
-    titre: 'Confirmation de commande',
+    titrePlaceholder: 'Merci pour ton achat !',
     description: 'Envoyé automatiquement juste après un achat de licence.',
     declencheur: "Déclencheur : paiement d'une commande confirmé",
   },
   {
     type: 'confirmation_abonnement',
-    titre: "Confirmation d'abonnement",
+    titrePlaceholder: 'Ton abonnement est actif !',
     description: 'Envoyé automatiquement à la création d\'un nouvel abonnement.',
     declencheur: 'Déclencheur : nouvel abonnement créé',
   },
   {
     type: 'demande_annulation_abonnement',
-    titre: "Demande d'annulation",
+    titrePlaceholder: "Ta demande d'annulation est prise en compte",
     description: "Envoyé immédiatement quand le client annule — confirme la prise en compte et la date de fin d'accès.",
     declencheur: 'Déclencheur : décision d\'annuler (accès encore actif jusqu\'à la fin de la période payée)',
   },
   {
     type: 'annulation_abonnement',
-    titre: "Fin d'abonnement",
+    titrePlaceholder: 'Abonnement annulé',
     description: "Envoyé uniquement quand un abonnement se termine sans demande préalable (ex. abonnement impayé résilié directement).",
     declencheur: 'Déclencheur : fin réelle de période sans demande préalable',
   },
 ]
+
+const NOMS_CARTES: Record<TypeTemplateTransactionnel, string> = {
+  confirmation_commande: 'Confirmation de commande',
+  confirmation_abonnement: "Confirmation d'abonnement",
+  demande_annulation_abonnement: "Demande d'annulation",
+  annulation_abonnement: "Fin d'abonnement",
+  beat_cadeau_fidelite: 'Beat cadeau de fidélité',
+}
 
 export default function TransactionnelsClient({
   nomArtiste,
@@ -54,38 +73,41 @@ export default function TransactionnelsClient({
   couleurMarque,
   signatureTransactionnels,
   footerMessageReseaux,
-  intros,
+  titreFooterReseaux,
+  templates,
   sauvegarderCouleurMarque,
   sauvegarderSignatureTransactionnels,
-  sauvegarderFooterMessage,
-  sauvegarderIntro,
+  sauvegarderFooterReseaux,
+  sauvegarderTemplate,
   genererApercu,
 }: Props) {
   const [typeActif, setTypeActif] = useState<TypeTemplateTransactionnel>('confirmation_commande')
   const [couleur, setCouleur] = useState(couleurMarque ?? COULEUR_DEFAUT)
   const [signature, setSignature] = useState(signatureTransactionnels ?? '')
+  const [footerTitre, setFooterTitre] = useState(titreFooterReseaux ?? '')
   const [footerMessage, setFooterMessage] = useState(footerMessageReseaux ?? '')
-  const [introsDraft, setIntrosDraft] = useState(intros)
+  const [templatesDraft, setTemplatesDraft] = useState(templates)
   const [apercuHtml, setApercuHtml] = useState('')
   const [chargementApercu, setChargementApercu] = useState(true)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const templateActif = templatesDraft[typeActif]
 
   // Aperçu live : régénéré automatiquement (avec un léger délai anti-rafale)
-  // à chaque changement de couleur, signature, phrase du footer, intro ou
-  // type sélectionné — pas besoin de bouton "Aperçu" ni d'enregistrer avant
-  // de voir le résultat.
+  // à chaque changement de couleur, signature, footer, titre/intro ou type
+  // sélectionné — pas besoin de bouton "Aperçu" ni d'enregistrer avant de
+  // voir le résultat.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     setChargementApercu(true)
     debounceRef.current = setTimeout(async () => {
-      const html = await genererApercu(typeActif, introsDraft[typeActif], couleur, signature, footerMessage)
+      const html = await genererApercu(typeActif, templateActif.intro, couleur, signature, footerMessage, templateActif.titre, footerTitre)
       setApercuHtml(html)
       setChargementApercu(false)
     }, DEBOUNCE_MS)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeActif, introsDraft[typeActif], couleur, signature, footerMessage])
+  }, [typeActif, templateActif.titre, templateActif.intro, couleur, signature, footerMessage, footerTitre])
 
   const carteActive = CARTES.find(c => c.type === typeActif)!
 
@@ -114,9 +136,11 @@ export default function TransactionnelsClient({
             />
 
             <CarteFooterReseaux
+              footerTitre={footerTitre}
+              onChangeFooterTitre={setFooterTitre}
               footerMessage={footerMessage}
               onChangeFooterMessage={setFooterMessage}
-              sauvegarderFooterMessage={sauvegarderFooterMessage}
+              sauvegarderFooterReseaux={sauvegarderFooterReseaux}
             />
 
             <div className="flex flex-wrap gap-2">
@@ -130,7 +154,7 @@ export default function TransactionnelsClient({
                       : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
                   }`}
                 >
-                  {carte.titre}
+                  {NOMS_CARTES[carte.type]}
                 </button>
               ))}
             </div>
@@ -138,9 +162,9 @@ export default function TransactionnelsClient({
             <CarteTemplate
               key={carteActive.type}
               carte={carteActive}
-              intro={introsDraft[carteActive.type]}
-              onChangeIntro={valeur => setIntrosDraft(prev => ({ ...prev, [carteActive.type]: valeur }))}
-              sauvegarderIntro={sauvegarderIntro}
+              template={templateActif}
+              onChangeTemplate={valeur => setTemplatesDraft(prev => ({ ...prev, [carteActive.type]: valeur }))}
+              sauvegarderTemplate={sauvegarderTemplate}
             />
           </div>
 
@@ -184,7 +208,7 @@ function ChampAvecEnregistrer({
   valeur: string
   onChange: (v: string) => void
   placeholder?: string
-  onSauvegarder: (v: string) => Promise<{ erreur?: string }>
+  onSauvegarder: () => Promise<{ erreur?: string }>
 }) {
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre] = useState(false)
@@ -194,7 +218,7 @@ function ChampAvecEnregistrer({
     setEnregistrement(true)
     setErreur('')
     setEnregistre(false)
-    const { erreur: err } = await onSauvegarder(valeur)
+    const { erreur: err } = await onSauvegarder()
     setEnregistrement(false)
     if (err) setErreur(err)
     else {
@@ -305,7 +329,7 @@ function CarteBranding({
           valeur={signature}
           onChange={onChangeSignature}
           placeholder={nomArtiste}
-          onSauvegarder={sauvegarderSignatureTransactionnels}
+          onSauvegarder={() => sauvegarderSignatureTransactionnels(signature)}
         />
       </div>
 
@@ -318,42 +342,17 @@ function CarteBranding({
 }
 
 function CarteFooterReseaux({
+  footerTitre,
+  onChangeFooterTitre,
   footerMessage,
   onChangeFooterMessage,
-  sauvegarderFooterMessage,
+  sauvegarderFooterReseaux,
 }: {
+  footerTitre: string
+  onChangeFooterTitre: (titre: string) => void
   footerMessage: string
   onChangeFooterMessage: (message: string) => void
-  sauvegarderFooterMessage: (message: string) => Promise<{ erreur?: string }>
-}) {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
-      <div>
-        <p className="text-sm font-semibold text-white">Footer réseaux sociaux</p>
-        <p className="text-xs text-gray-500 mt-0.5">Affiché en bas de chaque email si au moins un réseau est renseigné sur ton profil.</p>
-      </div>
-      <ChampAvecEnregistrer
-        label="Phrase sous « Suis-moi sur les réseaux sociaux »"
-        aide="Laisse vide pour utiliser le texte par défaut."
-        valeur={footerMessage}
-        onChange={onChangeFooterMessage}
-        placeholder="Rejoins-moi sur mes réseaux pour rester à jour et me contacter facilement !"
-        onSauvegarder={sauvegarderFooterMessage}
-      />
-    </div>
-  )
-}
-
-function CarteTemplate({
-  carte,
-  intro,
-  onChangeIntro,
-  sauvegarderIntro,
-}: {
-  carte: { type: TypeTemplateTransactionnel; titre: string; description: string; declencheur: string }
-  intro: string
-  onChangeIntro: (intro: string) => void
-  sauvegarderIntro: (type: TypeTemplateTransactionnel, intro: string) => Promise<{ erreur?: string }>
+  sauvegarderFooterReseaux: (titre: string, message: string) => Promise<{ erreur?: string }>
 }) {
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre] = useState(false)
@@ -363,7 +362,7 @@ function CarteTemplate({
     setEnregistrement(true)
     setErreur('')
     setEnregistre(false)
-    const { erreur: err } = await sauvegarderIntro(carte.type, intro)
+    const { erreur: err } = await sauvegarderFooterReseaux(footerTitre, footerMessage)
     setEnregistrement(false)
     if (err) setErreur(err)
     else {
@@ -375,16 +374,98 @@ function CarteTemplate({
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
       <div>
-        <p className="text-sm font-semibold text-white">{carte.titre}</p>
+        <p className="text-sm font-semibold text-white">Footer réseaux sociaux</p>
+        <p className="text-xs text-gray-500 mt-0.5">Affiché en bas de chaque email si au moins un réseau est renseigné sur ton profil.</p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-400 mb-1">Titre</label>
+        <input
+          type="text"
+          value={footerTitre}
+          onChange={e => onChangeFooterTitre(e.target.value)}
+          placeholder="Suis-moi sur les réseaux sociaux"
+          className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-400 mb-1">Phrase</label>
+        <input
+          type="text"
+          value={footerMessage}
+          onChange={e => onChangeFooterMessage(e.target.value)}
+          placeholder="Rejoins-moi sur mes réseaux pour rester à jour et me contacter facilement !"
+          className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+        />
+        <p className="text-xs text-gray-500 mt-1">Laisse les deux champs vides pour utiliser le texte par défaut.</p>
+      </div>
+
+      {erreur && <p className="text-xs text-red-400">{erreur}</p>}
+
+      <button
+        onClick={handleSauvegarder}
+        disabled={enregistrement}
+        className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors disabled:opacity-50"
+      >
+        {enregistrement ? 'Enregistrement…' : enregistre ? 'Enregistré ✓' : 'Enregistrer'}
+      </button>
+    </div>
+  )
+}
+
+function CarteTemplate({
+  carte,
+  template,
+  onChangeTemplate,
+  sauvegarderTemplate,
+}: {
+  carte: { type: TypeTemplateTransactionnel; titrePlaceholder: string; description: string; declencheur: string }
+  template: Template
+  onChangeTemplate: (template: Template) => void
+  sauvegarderTemplate: (type: TypeTemplateTransactionnel, titre: string, intro: string) => Promise<{ erreur?: string }>
+}) {
+  const [enregistrement, setEnregistrement] = useState(false)
+  const [enregistre, setEnregistre] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  async function handleSauvegarder() {
+    setEnregistrement(true)
+    setErreur('')
+    setEnregistre(false)
+    const { erreur: err } = await sauvegarderTemplate(carte.type, template.titre, template.intro)
+    setEnregistrement(false)
+    if (err) setErreur(err)
+    else {
+      setEnregistre(true)
+      setTimeout(() => setEnregistre(false), 2000)
+    }
+  }
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-white">{NOMS_CARTES[carte.type]}</p>
         <p className="text-xs text-gray-500 mt-0.5">{carte.description}</p>
         <p className="text-[11px] text-gray-600 mt-1">{carte.declencheur}</p>
       </div>
 
       <div>
+        <label className="block text-xs font-medium text-gray-400 mb-1">Titre personnalisé</label>
+        <input
+          type="text"
+          value={template.titre}
+          onChange={e => onChangeTemplate({ ...template, titre: e.target.value })}
+          placeholder={carte.titrePlaceholder}
+          className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+        />
+      </div>
+
+      <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">Texte d&apos;intro personnalisé</label>
         <textarea
-          value={intro}
-          onChange={e => onChangeIntro(e.target.value)}
+          value={template.intro}
+          onChange={e => onChangeTemplate({ ...template, intro: e.target.value })}
           rows={3}
           placeholder="Laisse vide pour utiliser le texte par défaut de My Producer"
           className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 resize-none"
