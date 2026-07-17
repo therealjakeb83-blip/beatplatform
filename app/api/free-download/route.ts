@@ -4,7 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { r2, R2_BUCKET } from '@/lib/r2'
-import { envoyerEmailUnique } from '@/lib/email-logger'
+import { telechargementGratuit } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
 
 export const runtime = 'nodejs'
@@ -168,33 +168,13 @@ export async function POST(req: Request) {
     { expiresIn: 3600 }
   )
 
-  // 6. Email avec le lien (non-bloquant)
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'telechargement_gratuit',
-    clientId,
+  // 6. Email avec le lien (branding boutique, personnalisable — Phase 6.9)
+  await telechargementGratuit({
     to: clientEmail,
-    subject: `Ton free download — ${beat.titre}`,
-    html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#111;">
-          <h2 style="color:#4f46e5;">Ton free download est prêt !</h2>
-          <p>Voici ton téléchargement gratuit pour le beat <strong>${beat.titre}</strong> de ${beatmaker.nom_artiste}.</p>
-          <p style="margin:24px 0;">
-            <a href="${downloadUrl}"
-               style="background:#16a34a;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
-              ↓ Télécharger ${beat.titre}
-            </a>
-          </p>
-          <p style="color:#888;font-size:12px;border-top:1px solid #eee;padding-top:12px;">
-            Ce lien expire dans 1 heure. Télécharge le fichier rapidement !
-          </p>
-          <p style="color:#888;font-size:12px;">
-            Rappel : usage personnel uniquement — maquettes et réseaux sociaux OK.
-            Diffusion sur plateformes de streaming interdite sans achat de licence.
-          </p>
-        </div>
-      `,
+    beatmakerId,
+    clientId,
+    titreBeat: beat.titre,
+    downloadUrl,
   })
 
   return NextResponse.json({ downloadUrl, beatTitre: beat.titre })

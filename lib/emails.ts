@@ -150,6 +150,8 @@ export type TypeTemplateTransactionnel =
   | 'confirmation_abonnement'
   | 'demande_annulation_abonnement'
   | 'annulation_abonnement'
+  | 'confirmation_compte_artiste'
+  | 'telechargement_gratuit'
   | 'beat_cadeau_fidelite'
 
 type BrandingTransactionnel = {
@@ -195,6 +197,8 @@ const TITRE_DEFAUT: Record<TypeTemplateTransactionnel, string> = {
   confirmation_abonnement: 'Ton abonnement est actif !',
   demande_annulation_abonnement: "Ta demande d'annulation est prise en compte",
   annulation_abonnement: 'Abonnement annulé',
+  confirmation_compte_artiste: 'Ton compte est prêt !',
+  telechargement_gratuit: 'Ton free download est prêt !',
   beat_cadeau_fidelite: 'Un cadeau pour toi 🎁',
 }
 
@@ -208,6 +212,10 @@ function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): stri
       return 'On confirme que ta demande d\'annulation a bien été prise en compte. Tu gardes accès à tous les avantages membres jusqu\'à la date ci-dessous.'
     case 'annulation_abonnement':
       return `Nous te confirmons l'annulation de ton abonnement à ${nomArtiste}. Tu n'as plus accès au catalogue privé à partir de maintenant.`
+    case 'confirmation_compte_artiste':
+      return `Bienvenue ! Ton compte est activé, tu peux dès maintenant accéder à tes achats, favoris et abonnements sur ${nomArtiste}.`
+    case 'telechargement_gratuit':
+      return 'Voici ton téléchargement gratuit. Le lien expire dans 1 heure, télécharge-le rapidement !'
     case 'beat_cadeau_fidelite':
       return 'Merci pour ta fidélité ! Voici un code pour un beat gratuit.'
   }
@@ -461,6 +469,88 @@ export async function annulationAbonnement({
   })
 }
 
+// Compte artiste (acheteur) — global à la plateforme, pas propre à une
+// boutique, contrairement aux autres emails transactionnels. Brandé quand
+// même à la boutique de départ (celle depuis laquelle l'inscription a eu
+// lieu, via /artiste/inscription?redirect=/{slug}) plutôt qu'un générique
+// "My Producer" : envoyer les deux aurait fait doublon pour une seule
+// action (décision Jake, 2026-07-17). Si aucune boutique de départ n'est
+// identifiable, aucun email n'est envoyé (voir /auth/callback).
+export async function confirmationCompteArtiste({
+  to,
+  beatmakerId,
+  clientId,
+  lienCompte,
+}: {
+  to: string
+  beatmakerId: string
+  clientId?: string | null
+  lienCompte: string
+}) {
+  const { branding, titre, intro } = await chargerBrandingEtTemplate(beatmakerId, 'confirmation_compte_artiste')
+  if (!branding) return
+
+  // Ligne fixe, non personnalisable : le compte est un compte My Producer
+  // global (pas propre à cette boutique) — doit rester claire quel que soit
+  // le texte d'intro choisi par le beatmaker (décision Jake, 2026-07-17).
+  const corpsHtml = `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">
+      Ceci est un compte My Producer artiste : il te permettra de te connecter sur toutes les boutiques My Producer, pas seulement celle-ci.
+    </p>`
+
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'confirmation_compte_artiste',
+    to,
+    clientId,
+    subject: `Bienvenue sur ${branding.nom_artiste} !`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: titre || TITRE_DEFAUT.confirmation_compte_artiste,
+      intro: intro || introDefaut('confirmation_compte_artiste', branding.nom_artiste),
+      corpsHtml,
+      cta: { texte: 'Accéder à mon compte', lien: lienCompte },
+    }),
+  })
+}
+
+export async function telechargementGratuit({
+  to,
+  beatmakerId,
+  clientId,
+  titreBeat,
+  downloadUrl,
+}: {
+  to: string
+  beatmakerId: string
+  clientId?: string | null
+  titreBeat: string
+  downloadUrl: string
+}) {
+  const { branding, titre, intro } = await chargerBrandingEtTemplate(beatmakerId, 'telechargement_gratuit')
+  if (!branding) return
+
+  const corpsHtml = `<p style="font-size:13px;color:#6b7280;margin:0 0 20px;">
+      Usage personnel uniquement — maquettes et réseaux sociaux OK. Diffusion sur plateformes de streaming interdite sans achat de licence.
+    </p>`
+
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'telechargement_gratuit',
+    to,
+    clientId,
+    subject: `Ton free download — ${titreBeat}`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: titre || TITRE_DEFAUT.telechargement_gratuit,
+      intro: intro || `${introDefaut('telechargement_gratuit', branding.nom_artiste)} Beat : ${titreBeat}.`,
+      corpsHtml,
+      cta: { texte: `Télécharger ${titreBeat}`, lien: downloadUrl },
+    }),
+  })
+}
+
 // ── Aperçu (page réglages) — mêmes titre/intro par défaut que l'envoi réel,
 // données d'exemple à la place des vraies commandes/abonnements. Ne passe
 // jamais par envoyerEmailUnique (pas d'envoi, pas de log).
@@ -524,6 +614,14 @@ export async function genererApercuTransactionnel(
     confirmation_abonnement: { corpsHtml: CORPS_EXEMPLE_ABONNEMENT, cta: { texte: 'Accéder à mon espace membre', lien: '#' } },
     demande_annulation_abonnement: { corpsHtml: CORPS_EXEMPLE_DEMANDE_ANNULATION },
     annulation_abonnement: { corpsHtml: '' },
+    confirmation_compte_artiste: {
+      corpsHtml: `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">Ceci est un compte My Producer artiste : il te permettra de te connecter sur toutes les boutiques My Producer, pas seulement celle-ci.</p>`,
+      cta: { texte: 'Accéder à mon compte', lien: '#' },
+    },
+    telechargement_gratuit: {
+      corpsHtml: `<p style="font-size:13px;color:#6b7280;margin:0 0 20px;">Usage personnel uniquement — maquettes et réseaux sociaux OK. Diffusion sur plateformes de streaming interdite sans achat de licence.</p>`,
+      cta: { texte: 'Télécharger Midnight Drive', lien: '#' },
+    },
     beat_cadeau_fidelite: { corpsHtml: '' },
   }
 

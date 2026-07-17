@@ -19,29 +19,21 @@ export default async function TransactionnelsPage() {
   const templatesParType = new Map(
     (templatesRaw ?? []).map(t => [t.type as TypeTemplateTransactionnel, { titre: t.titre as string | null, intro: t.intro as string | null }]),
   )
-  const vide = { titre: '', intro: '' }
-  const templates: Record<TypeTemplateTransactionnel, { titre: string; intro: string }> = {
-    confirmation_commande: {
-      titre: templatesParType.get('confirmation_commande')?.titre ?? vide.titre,
-      intro: templatesParType.get('confirmation_commande')?.intro ?? vide.intro,
-    },
-    confirmation_abonnement: {
-      titre: templatesParType.get('confirmation_abonnement')?.titre ?? vide.titre,
-      intro: templatesParType.get('confirmation_abonnement')?.intro ?? vide.intro,
-    },
-    demande_annulation_abonnement: {
-      titre: templatesParType.get('demande_annulation_abonnement')?.titre ?? vide.titre,
-      intro: templatesParType.get('demande_annulation_abonnement')?.intro ?? vide.intro,
-    },
-    annulation_abonnement: {
-      titre: templatesParType.get('annulation_abonnement')?.titre ?? vide.titre,
-      intro: templatesParType.get('annulation_abonnement')?.intro ?? vide.intro,
-    },
-    beat_cadeau_fidelite: {
-      titre: templatesParType.get('beat_cadeau_fidelite')?.titre ?? vide.titre,
-      intro: templatesParType.get('beat_cadeau_fidelite')?.intro ?? vide.intro,
-    },
-  }
+  const TYPES: TypeTemplateTransactionnel[] = [
+    'confirmation_commande',
+    'confirmation_abonnement',
+    'demande_annulation_abonnement',
+    'annulation_abonnement',
+    'confirmation_compte_artiste',
+    'telechargement_gratuit',
+    'beat_cadeau_fidelite',
+  ]
+  const templates = Object.fromEntries(
+    TYPES.map(type => [type, {
+      titre: templatesParType.get(type)?.titre ?? '',
+      intro: templatesParType.get(type)?.intro ?? '',
+    }]),
+  ) as Record<TypeTemplateTransactionnel, { titre: string; intro: string }>
 
   return (
     <TransactionnelsClient

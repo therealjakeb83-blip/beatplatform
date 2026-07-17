@@ -57,6 +57,18 @@ const CARTES: { type: TypeTemplateTransactionnel; titrePlaceholder: string; desc
     description: "Envoyé uniquement quand un abonnement se termine sans demande préalable (ex. abonnement impayé résilié directement).",
     declencheur: 'Déclencheur : fin réelle de période sans demande préalable',
   },
+  {
+    type: 'confirmation_compte_artiste',
+    titrePlaceholder: 'Ton compte est prêt !',
+    description: "Envoyé quand un artiste confirme son inscription depuis cette boutique. Une ligne fixe (non modifiable) rappelle que c'est un compte My Producer global.",
+    declencheur: "Déclencheur : confirmation d'email après inscription artiste",
+  },
+  {
+    type: 'telechargement_gratuit',
+    titrePlaceholder: 'Ton free download est prêt !',
+    description: 'Envoyé automatiquement avec le lien de téléchargement après un free download.',
+    declencheur: 'Déclencheur : demande de téléchargement gratuit',
+  },
 ]
 
 const NOMS_CARTES: Record<TypeTemplateTransactionnel, string> = {
@@ -64,6 +76,8 @@ const NOMS_CARTES: Record<TypeTemplateTransactionnel, string> = {
   confirmation_abonnement: "Confirmation d'abonnement",
   demande_annulation_abonnement: "Demande d'annulation",
   annulation_abonnement: "Fin d'abonnement",
+  confirmation_compte_artiste: 'Confirmation de compte',
+  telechargement_gratuit: 'Free download',
   beat_cadeau_fidelite: 'Beat cadeau de fidélité',
 }
 
