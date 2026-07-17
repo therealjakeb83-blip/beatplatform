@@ -221,12 +221,16 @@ function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): stri
   }
 }
 
-// Icônes SVG inline (pas de dépendance à un hébergement d'images externe) —
-// glyphes standards des 3 réseaux, 18x18, une seule couleur de marque par
-// icône pour rester lisible sur le fond blanc de la pastille.
-const SVG_TIKTOK = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;"><path fill="#000000" d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>'
-const SVG_INSTAGRAM = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;"><path fill="#E4405F" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>'
-const SVG_YOUTUBE = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;"><path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+// Icônes en PNG intégrées en base64 (pas d'hébergement externe requis) —
+// Gmail et la plupart des clients email strippent les balises <svg> inline
+// par sécurité (constaté le 2026-07-17 : les pastilles s'affichaient vides
+// dans un vrai email malgré un aperçu correct, l'aperçu passant par un vrai
+// navigateur qui supporte le SVG, contrairement aux clients mail). Générées
+// une fois via sharp (32x32, mêmes glyphes qu'avant), jamais régénérées à
+// l'envoi.
+const PNG_TIKTOK = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABs0lEQVR4nOWWyysFURzHPy7JwsqOkve/QOnW1V3YcD1LbKywkKxkY4GysrG7e5ESG9lISYpsRHksSO4SWUnK++rUUdNtfmfOzNzHwrd+m5nf43Nmzu93DoRXB5DOsHcgQp7U6QKgrL7QAOP5AkgIABf5+g0JAUDZWKEB3oD2XAN0GQCUfQGzQHmhANLanoCk/mI12QTotgRw2v2/AHjNBUDE5VmPUKQZWAI+wgCU6BVuALfAt57z2xYATfp9te6CEx1vDRAHUkLyfYdfr+DT6JKzVD+PehWfB34M/3AvIICV5ix28a7Dv0/waQhSPOax8j/bsQDwfRwXAVeGogrsGjgDNnMBEDcU3zKMz34hps4vQFJItA4UG+KyBnAsTLNKj7hBAaDWL0DKo90kDQsAvk+8O5ckagJ6aVQAqPILcOCS5NQibka4CZn2jasWhZWo2SCpTLdmZswhAdQmADwY5vqaEDNFQB0JCVU3LACtQAswApwLvs9ARVCAKPBpMYpNNklITYQovqJHemhNB/gSy/oCkzXFhB2eaY/AUDYLO6V6WV25VoEb4EX3+KUeUgO6GwLrF9hcaepCBTc5AAAAAElFTkSuQmCC'
+const PNG_INSTAGRAM = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAADn0lEQVR4nLVXS08UQRBujR7Vkw+M+H57Um7G3eqBJXoi+LgtW7WsBo2of8Ef4etqiJ6Eo6i/QEEOxJioByJs9+4iGA4mYAgCpmamZ3t3Z2dGZDvpZHe6p7+qr76qrhEiZFRSfUeUpAcacEQBTWiJFS1pwUwl8ZeWtG5P/1mwh99x3wUcLgLdrwAdFnFjJlPYrwFfKKA/9QD/O70zcWg6lW0LBS871KEllZseUOehkjSvAad4ur9jGAomYKnUmb/Q6LmsgivARSXpkYZcptLdt0dscMx23txbSue7laSnWtKSbUQNExrwpeXplyL0HRebPHRX7qQC+lZlA4fcBVdwfszZ880E57O0zN2dcfCcMUJL/G004QrTVXtVKE82C1yn8u2BFoCWjRFK4jODx9nB9I+YBxyvpABTmYFd5c7+szz5d/26ArxRKz6647Iic5ctLQwLL8+9B+VL/bujQCc6BrbzQVriuJK0VtUNrWmgMeXQwDrANiNAJXHOZNCMg8fMc8uwj0IDaf+QlXUhtkTGE+hzfM7jJxuMmVCQPWDOYQzG8lnRIrAScDEK3M91G6ysAV9rSaN+pbRrxpwxImwwltkn/OLh0hRBe9VzZszBHputdfFwawmol/PbZsKEo8GAaqFaqP0TMryYW+CpfHszz3jNNoI1EbrPdlr7FcqlI3QzjgcGONgjYkYxjVctgz80YcANO2Ozh8s+ZZX6jZxegdoBS1EitcNhNKEAV39eye4MccrTDNCysNJJ1W/k4mGJazQOPAAAehukdjp3ptEAUsZAEWUAFxlLVG+SGqCA3gXFDeh0pAE6aQgklZnefw3B/MXCjsgQ6DgRAo1Z3vTGei/pusXa+1gRqpg0VBJv2/d4VBqWMrmDdl9RBLyVJA0XogoRFxMuKrYRnGp2OPi3cvLXajoqwMmkhWgurhRzWbVoM/RWWJg8FeBsXf/3g/uMZKUYkl1GbEQNE817vsmZrv6jzc5pvIwg+XXMlHJ55QrHCrd6yFUWHMe8Ge1mhFzHOFy1PpcRCQdXONOQhKVas1HTkEh6Jbgtsjx5LFo87JZMSxoU3BjaTalK50+0Clw7hVNBUypppewUDnkLEocsFr62wggGt9tyBfQ8WPwOtK+2maAl/pjgePHaRkH5XT7Do93z3KifxVizmT+X6oxo0acZaZ3OnQ+1eDqVbeNwtOTjVNIK097gedhgYZYA73GacK5u9PPce9c9Y5DviTCwv29P9nWvCAhzAAAAAElFTkSuQmCC'
+const PNG_YOUTUBE = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABSklEQVR4nO2WPUoDURSFP+xCGgPaaWOnTQKWIWDhAsQFTONGrCWFbsEF2EQL4w4U1N7fzkYLf4ImikcuvIFhSDR58/ClmAO3Gu45H8y8NwdKlfpFgqpgXrAkaAhW3bQE67lpZZ433I7tVscNWxHsCU4E14KBQIFm4DzNe1ewnA/fFHwEDPxr3gUbaXhN8PKP4ek8C2YNIIkQnk5iAO2IADsGcBQRoGMAZxMuXQoOAgGcGsD9hEvH7uNdE5wXBLg1oycfAAcxI9gSPHgCPJpJzxcgd2Nuu/M9idebLX8VBciALAj2Bd9jen2GBlj0AehFfAWvU/ER3hU4hheewencTMVFdBjIzPsqbsf+GSWxf8e1qIXEZPXI4wyHqWSprCi6wtgVXAn6AQP7zrM7tJSOkqAimHMVu56p3c0htbyZeV53O7ZbGRlQqhTwAy3GNotEg7/+AAAAAElFTkSuQmCC'
 
 const FOOTER_MESSAGE_DEFAUT = 'Rejoins-moi sur mes réseaux pour rester à jour et me contacter facilement !'
 const FOOTER_TITRE_DEFAUT = 'Suis-moi sur les réseaux sociaux'
@@ -247,11 +251,11 @@ function rendreEmailTransactionnel({
   const couleur = branding.couleur_marque || COULEUR_DEFAUT
   const signature = branding.signature_transactionnels || branding.nom_artiste
 
-  const reseaux: { lien: string; label: string; svg: string }[] = [
-    branding.tiktok_url ? { lien: branding.tiktok_url, label: 'TikTok', svg: SVG_TIKTOK } : null,
-    branding.instagram_url ? { lien: branding.instagram_url, label: 'Instagram', svg: SVG_INSTAGRAM } : null,
-    branding.youtube_url ? { lien: branding.youtube_url, label: 'YouTube', svg: SVG_YOUTUBE } : null,
-  ].filter((r): r is { lien: string; label: string; svg: string } => r !== null)
+  const reseaux: { lien: string; label: string; png: string }[] = [
+    branding.tiktok_url ? { lien: branding.tiktok_url, label: 'TikTok', png: PNG_TIKTOK } : null,
+    branding.instagram_url ? { lien: branding.instagram_url, label: 'Instagram', png: PNG_INSTAGRAM } : null,
+    branding.youtube_url ? { lien: branding.youtube_url, label: 'YouTube', png: PNG_YOUTUBE } : null,
+  ].filter((r): r is { lien: string; label: string; png: string } => r !== null)
 
   const footerMessage = branding.footer_message_reseaux || FOOTER_MESSAGE_DEFAUT
   const footerTitre = branding.titre_footer_reseaux || FOOTER_TITRE_DEFAUT
@@ -270,7 +274,7 @@ function rendreEmailTransactionnel({
             <p style="font-size:12px;color:#6b7280;margin:0 0 12px;">${echapper(footerMessage)}</p>
             <div>
               ${reseaux.map(r => `
-                <a href="${r.lien}" aria-label="${r.label}" style="display:inline-block;width:32px;height:32px;line-height:32px;margin-right:8px;border-radius:50%;background:#f3f4f6;text-align:center;vertical-align:middle;">${r.svg}</a>`).join('')}
+                <a href="${r.lien}" aria-label="${r.label}" style="display:inline-block;width:32px;height:32px;line-height:32px;margin-right:8px;border-radius:50%;background:#f3f4f6;text-align:center;vertical-align:middle;"><img src="data:image/png;base64,${r.png}" width="16" height="16" alt="${r.label}" style="vertical-align:middle;" /></a>`).join('')}
             </div>` : `<p style="font-size:15px;font-weight:700;color:#111827;margin:0;">${echapper(branding.nom_artiste)}</p>`}
           </td>
         </tr></table>
