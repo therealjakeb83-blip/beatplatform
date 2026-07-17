@@ -21,9 +21,13 @@ function MotDePasseOublieArtisteForm() {
 
     const supabase = createClient()
 
-    const params = new URLSearchParams({ redirect })
+    // Contexte boutique passé par le chemin, pas en ?redirect= : Supabase
+    // colle son propre ?token_hash=...&type=recovery à la fin du redirectTo
+    // sans vérifier s'il contient déjà un "?", ce qui produisait un lien à
+    // double "?" invalide (bug constaté le 2026-07-17, voir
+    // /artiste/nouveau-mot-de-passe/[[...redirect]]).
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/artiste/nouveau-mot-de-passe?${params.toString()}`,
+      redirectTo: `${window.location.origin}/artiste/nouveau-mot-de-passe${redirect}`,
     })
 
     if (error) {

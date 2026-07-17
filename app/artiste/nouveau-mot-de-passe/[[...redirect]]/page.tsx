@@ -2,11 +2,21 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 
 function NouveauMotDePasseArtisteForm() {
+  const params = useParams<{ redirect?: string[] }>()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') ?? '/mon-compte'
+  // Contexte boutique passé par le chemin (/artiste/nouveau-mot-de-passe/{slug})
+  // plutôt que par ?redirect= : resetPasswordForEmail() de Supabase colle son
+  // propre ?token_hash=...&type=recovery à la fin du redirectTo SANS vérifier
+  // s'il contient déjà un "?", ce qui produisait un lien à double "?" où
+  // token_hash finissait avalé dans la valeur de redirect (bug constaté le
+  // 2026-07-17). Repli sur ?redirect= pour la connexion auto après abonnement
+  // (/api/stripe/abonnement/succes), qui construit son URL à la main et n'a
+  // jamais eu ce problème.
+  const redirectSegments = params.redirect
+  const redirect = redirectSegments?.length ? `/${redirectSegments.join('/')}` : searchParams.get('redirect') ?? '/mon-compte'
   const bienvenue = searchParams.get('bienvenue') === '1'
 
   const [password, setPassword] = useState('')
