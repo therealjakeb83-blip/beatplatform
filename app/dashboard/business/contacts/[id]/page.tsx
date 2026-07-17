@@ -201,7 +201,7 @@ export default async function FicheClientPage({
       .maybeSingle(),
     admin
       .from('favoris')
-      .select('beat_id, beats(titre, image_url)')
+      .select('beat_id, beats(titre, image_url, styles, type_beat, ambiances, instruments)')
       .in('client_id', allClientIds),
     supabase
       .from('morceaux_clients')
@@ -211,7 +211,7 @@ export default async function FicheClientPage({
       .order('created_at', { ascending: false }),
     supabase
       .from('free_downloads')
-      .select('beat_id, downloaded_at, beats(titre)')
+      .select('beat_id, downloaded_at, beats(titre, styles, type_beat, ambiances, instruments)')
       .in('client_id', allClientIds)
       .eq('beatmaker_id', beatmakerId)
       .order('downloaded_at', { ascending: false }),
@@ -231,10 +231,11 @@ export default async function FicheClientPage({
       .order('envoye_at', { ascending: false }),
   ])
 
-  type FreeDL = { beat_id: string; downloaded_at: string; beats: { titre: string } | null }
+  type BeatAvecTitre = { titre?: string; image_url?: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null; instruments: string[] | null } | null
+  type FreeDL = { beat_id: string; downloaded_at: string; beats: BeatAvecTitre }
 
   const commandes = (commandesRaw ?? []) as unknown as Commande[]
-  const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: { titre?: string; image_url?: string } | null }>
+  const favoris   = (favorisRaw   ?? []) as unknown as Array<{ beat_id: string; beats: BeatAvecTitre }>
   const morceaux  = morceauxRaw ?? []
   const freeDLs   = (freeDLRaw   ?? []) as unknown as FreeDL[]
 
@@ -284,14 +285,20 @@ export default async function FicheClientPage({
     ? (abonnement?.mensualites_payees ?? 0)
     : moisAboCommandes || 0
 
-  // Préférences (achats ×2, favoris ×1)
+  // Préférences pondérées par signal — achat ×10, free download ×2, favori ×1
+  // (un achat engage vraiment, un téléchargement gratuit est une simple
+  // curiosité qui ne débouche pas forcément sur un achat — décision Jake,
+  // 2026-07-16, ratio choisi pour qu'un seul achat pèse plus que plusieurs
+  // maquettes téléchargées dans un style différent).
   const prefCounts = {
     styles:      new Map<string, number>(),
     typeBeat:    new Map<string, number>(),
     ambiances:   new Map<string, number>(),
     instruments: new Map<string, number>(),
   }
-  for (const c of payees) for (const l of c.commande_lignes ?? []) accumPrefs(prefCounts, l.beats, 2)
+  for (const c of payees) for (const l of c.commande_lignes ?? []) accumPrefs(prefCounts, l.beats, 10)
+  for (const dl of freeDLs) accumPrefs(prefCounts, dl.beats, 2)
+  for (const fav of favoris) accumPrefs(prefCounts, fav.beats, 1)
 
   const topStyles      = topN(prefCounts.styles,      5)
   const topTypeBeat    = topN(prefCounts.typeBeat,    3)

@@ -126,11 +126,11 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       .in('id', clientIds),
     admin
       .from('favoris')
-      .select('client_id')
+      .select('client_id, beat_id')
       .in('client_id', clientIds),
     admin
       .from('free_downloads')
-      .select('client_id')
+      .select('client_id, beat_id')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', clientIds),
   ])
@@ -154,8 +154,16 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
 
   const favorisCount = new Map<string, number>()
   const freeDLCount  = new Map<string, number>()
-  for (const f of favorisRes.data ?? []) favorisCount.set(f.client_id, (favorisCount.get(f.client_id) ?? 0) + 1)
-  for (const d of freeDLRes.data  ?? []) freeDLCount.set(d.client_id,  (freeDLCount.get(d.client_id)  ?? 0) + 1)
+  const favorisParClient = new Map<string, string[]>()
+  const freeDLParClient  = new Map<string, string[]>()
+  for (const f of favorisRes.data ?? []) {
+    favorisCount.set(f.client_id, (favorisCount.get(f.client_id) ?? 0) + 1)
+    if (f.beat_id) favorisParClient.set(f.client_id, [...(favorisParClient.get(f.client_id) ?? []), f.beat_id])
+  }
+  for (const d of freeDLRes.data ?? []) {
+    freeDLCount.set(d.client_id, (freeDLCount.get(d.client_id) ?? 0) + 1)
+    if (d.beat_id) freeDLParClient.set(d.client_id, [...(freeDLParClient.get(d.client_id) ?? []), d.beat_id])
+  }
 
   const contacts: ContactEnrichi[] = (clientsRes.data ?? [])
     .filter(c => !archiveIds.has(c.id))
@@ -193,17 +201,28 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       const ambiancesArr: string[] = []
       const instrumentsArr: string[] = []
       const licenceArr: string[] = []
+      // Pondéré par signal — achat ×10, free download ×2, favori ×1 (décision
+      // Jake, 2026-07-16) : un achat engage vraiment, un free download est une
+      // simple curiosité qui ne débouche pas forcément sur un achat.
+      function ajouterPref(beatId: string | null, poids: number) {
+        const beat = beatId ? beatMap.get(beatId) : null
+        if (!beat) return
+        for (let i = 0; i < poids; i++) {
+          if (beat.styles)    stylesArr.push(...beat.styles)
+          if (beat.type_beat) typeBeatArr.push(...beat.type_beat)
+          if ((beat as Record<string, unknown>).ambiances)   ambiancesArr.push(...((beat as Record<string, unknown>).ambiances as string[] ?? []))
+          if ((beat as Record<string, unknown>).instruments) instrumentsArr.push(...((beat as Record<string, unknown>).instruments as string[] ?? []))
+        }
+      }
       for (const cmd of licenceCmds) {
         for (const ligne of cmd.commande_lignes ?? []) {
-          const beat = ligne.beat_id ? beatMap.get(ligne.beat_id) : null
-          if (beat?.styles)      stylesArr.push(...beat.styles)
-          if (beat?.type_beat)   typeBeatArr.push(...beat.type_beat)
-          if ((beat as Record<string, unknown>)?.ambiances)   ambiancesArr.push(...((beat as Record<string, unknown>).ambiances as string[] ?? []))
-          if ((beat as Record<string, unknown>)?.instruments) instrumentsArr.push(...((beat as Record<string, unknown>).instruments as string[] ?? []))
+          ajouterPref(ligne.beat_id, 10)
           const lic = ligne.licence_id ? licenceMap.get(ligne.licence_id) : null
           if (lic?.modele) licenceArr.push(lic.modele)
         }
       }
+      for (const beatId of freeDLParClient.get(c.id)  ?? []) ajouterPref(beatId, 2)
+      for (const beatId of favorisParClient.get(c.id) ?? []) ajouterPref(beatId, 1)
 
       const nbFavoris     = favorisCount.get(c.id) ?? 0
       const nbFreeDL      = freeDLCount.get(c.id)  ?? 0

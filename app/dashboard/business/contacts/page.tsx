@@ -198,22 +198,19 @@ export default async function ContactsPage({
   const beatIds    = [...new Set(lignesAll.map(l => l.beat_id).filter(Boolean) as string[])]
   const licenceIds = [...new Set(lignesAll.map(l => l.licence_id).filter(Boolean) as string[])]
 
-  const [clientsRes, beatsRes, licencesRes, favorisClientsRes, freeDLsClientsRes, envoisNewsletterRes] = await Promise.all([
+  const [clientsRes, licencesRes, favorisClientsRes, freeDLsClientsRes, envoisNewsletterRes] = await Promise.all([
     admin
       .from('clients')
       .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
       .in('id', clientIds),
-    beatIds.length > 0
-      ? supabase.from('beats').select('id, styles, type_beat, ambiances').in('id', beatIds)
-      : Promise.resolve({ data: [] as { id: string; styles: string[] | null; type_beat: string[] | null }[] }),
     licenceIds.length > 0
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
       : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
     admin.from('favoris')
-      .select('client_id, created_at')
+      .select('client_id, beat_id, created_at')
       .in('client_id', clientIds),
     admin.from('free_downloads')
-      .select('client_id, downloaded_at')
+      .select('client_id, beat_id, downloaded_at')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', clientIds),
     // RLS : visible seulement pour les campagnes de ce beatmaker — inclut les archivés (fusion)
@@ -225,8 +222,17 @@ export default async function ContactsPage({
   ])
 
   const clientsRaw = clientsRes.data ?? []
-  const beatMap    = new Map((beatsRes.data ?? []).map(b => [b.id, b]))
   const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
+
+  // Beats du catalogue nécessaires aux préférences pondérées — achats +
+  // favoris + free downloads, pas seulement les achats (voir plus bas).
+  const beatIdsFavoris = [...new Set((favorisClientsRes.data ?? []).map(f => f.beat_id).filter(Boolean) as string[])]
+  const beatIdsFreeDL  = [...new Set((freeDLsClientsRes.data ?? []).map(d => d.beat_id).filter(Boolean) as string[])]
+  const beatIdsPourPrefs = [...new Set([...beatIds, ...beatIdsFavoris, ...beatIdsFreeDL])]
+  const { data: beatsData } = beatIdsPourPrefs.length > 0
+    ? await supabase.from('beats').select('id, styles, type_beat, ambiances').in('id', beatIdsPourPrefs)
+    : { data: [] as { id: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }[] }
+  const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
 
   type EnvoiNwt = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
   const envoisParClient = new Map<string, EnvoiNwt[]>()
@@ -259,15 +265,19 @@ export default async function ContactsPage({
   // Map d'événements extra (favoris + free_downloads) par client
   type ExtraEvent = { date: Date; type: string }
   const extraEventsParClient = new Map<string, ExtraEvent[]>()
+  const favorisBeatIdsParClient = new Map<string, string[]>()
+  const freeDLBeatIdsParClient  = new Map<string, string[]>()
   for (const fav of favorisClientsRes.data ?? []) {
     const arr = extraEventsParClient.get(fav.client_id) ?? []
     arr.push({ date: new Date(fav.created_at), type: 'Favori' })
     extraEventsParClient.set(fav.client_id, arr)
+    if (fav.beat_id) favorisBeatIdsParClient.set(fav.client_id, [...(favorisBeatIdsParClient.get(fav.client_id) ?? []), fav.beat_id])
   }
   for (const dl of freeDLsClientsRes.data ?? []) {
     const arr = extraEventsParClient.get(dl.client_id) ?? []
     arr.push({ date: new Date(dl.downloaded_at), type: 'Free DL' })
     extraEventsParClient.set(dl.client_id, arr)
+    if (dl.beat_id) freeDLBeatIdsParClient.set(dl.client_id, [...(freeDLBeatIdsParClient.get(dl.client_id) ?? []), dl.beat_id])
   }
 
   function leadSourceLabel(source: string | null): string {
@@ -329,16 +339,27 @@ export default async function ContactsPage({
     const typeBeatArr: string[] = []
     const ambiancesArr: string[] = []
     const licenceArr: string[] = []
+    // Pondéré par signal — achat ×10, free download ×2, favori ×1 (décision
+    // Jake, 2026-07-16) : un achat engage vraiment, un free download est une
+    // simple curiosité qui ne débouche pas forcément sur un achat.
+    function ajouterPref(beatId: string | null, poids: number) {
+      const beat = beatId ? beatMap.get(beatId) : null
+      if (!beat) return
+      for (let i = 0; i < poids; i++) {
+        if (beat.styles)    stylesArr.push(...beat.styles)
+        if (beat.type_beat) typeBeatArr.push(...beat.type_beat)
+        if ((beat as any).ambiances) ambiancesArr.push(...(beat as any).ambiances)
+      }
+    }
     for (const cmd of licenceCmds) {
       for (const ligne of cmd.commande_lignes ?? []) {
-        const beat = ligne.beat_id ? beatMap.get(ligne.beat_id) : null
-        if (beat?.styles)    stylesArr.push(...beat.styles)
-        if (beat?.type_beat) typeBeatArr.push(...beat.type_beat)
-        if ((beat as any)?.ambiances) ambiancesArr.push(...(beat as any).ambiances)
+        ajouterPref(ligne.beat_id, 10)
         const lic = ligne.licence_id ? licenceMap.get(ligne.licence_id) : null
         if (lic?.modele) licenceArr.push(lic.modele)
       }
     }
+    for (const beatId of freeDLBeatIdsParClient.get(c.id)  ?? []) ajouterPref(beatId, 2)
+    for (const beatId of favorisBeatIdsParClient.get(c.id) ?? []) ajouterPref(beatId, 1)
 
     const override = champsOverrideMap.get(c.id) ?? {}
     return {
