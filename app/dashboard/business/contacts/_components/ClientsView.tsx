@@ -9,6 +9,14 @@ function initiales(prenom: string | null, nom: string | null) {
   return `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`.toUpperCase() || '?'
 }
 
+// Coupe au nombre de caractères plutôt que de compter sur le troncage CSS
+// (`truncate`) — un nom anormalement long (ex. un id de test resté en guise
+// de prénom/nom) peut forcer la cellule à s'élargir et décaler toutes les
+// colonnes suivantes, `truncate` seul ne suffit pas dans ce tableau.
+function tronquer(texte: string, max: number): string {
+  return texte.length > max ? `${texte.slice(0, max)}…` : texte
+}
+
 function scoreRF(nb_achats: number, dernier_achat_iso: string | null): { label: string; cls: string } {
   const frequent = nb_achats >= 3
   const recent   = dernier_achat_iso ? joursDepuis(dernier_achat_iso) <= 180 : false
@@ -346,12 +354,12 @@ export default function ClientsView({
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="px-5 py-3 w-10">
+                <th className="px-3 py-2.5 w-10">
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                 </th>
 
                 {/* Contact */}
-                <th className="text-left px-3 py-3">
+                <th className="text-left px-2 py-2.5">
                   <div ref={refContact} className="relative inline-block">
                     <button onClick={() => setOpenPopover(p => p === 'contact' ? null : 'contact')} className={hBtn(hasFilterContact)}>
                       Contact {hasFilterContact && dot} {chevron}
@@ -377,7 +385,7 @@ export default function ClientsView({
                 </th>
 
                 {/* Abonnement */}
-                <th className="text-left px-3 py-3">
+                <th className="text-left px-2 py-2.5">
                   <div ref={refAbo} className="relative inline-block">
                     <button onClick={() => setOpenPopover(p => p === 'abo' ? null : 'abo')} className={hBtn(hasFilterAbo)}>
                       Abonnement {hasFilterAbo && dot} {chevron}
@@ -396,7 +404,7 @@ export default function ClientsView({
                 </th>
 
                 {/* Préférences */}
-                <th className="text-left px-3 py-3">
+                <th className="text-left px-2 py-2.5">
                   <div ref={refPrefs} className="relative inline-block">
                     <button onClick={() => setOpenPopover(p => p === 'prefs' ? null : 'prefs')} className={hBtn(hasFilterPrefs)}>
                       Préférences {hasFilterPrefs && dot} {chevron}
@@ -420,7 +428,7 @@ export default function ClientsView({
                 </th>
 
                 {/* Licences */}
-                <th className="text-right px-3 py-3">
+                <th className="text-right px-2 py-2.5">
                   <div ref={refCommandes} className="relative inline-flex justify-end">
                     <button onClick={() => setOpenPopover(p => p === 'commandes' ? null : 'commandes')} className={hBtn(hasFilterCommandes)}>
                       Licences {hasFilterCommandes && dot} {chevron}
@@ -441,7 +449,7 @@ export default function ClientsView({
                 </th>
 
                 {/* Panier moy. */}
-                <th className="text-right px-3 py-3">
+                <th className="text-right px-2 py-2.5">
                   <div ref={refPanier} className="relative inline-flex justify-end">
                     <button onClick={() => setOpenPopover(p => p === 'panier' ? null : 'panier')} className={hBtn(hasFilterPanier)}>
                       Panier moy. {hasFilterPanier && dot} {chevron}
@@ -465,7 +473,7 @@ export default function ClientsView({
                 </th>
 
                 {/* Dernier achat */}
-                <th className="text-right px-3 py-3">
+                <th className="text-right px-2 py-2.5">
                   <div ref={refLast} className="relative inline-flex justify-end">
                     <button onClick={() => setOpenPopover(p => p === 'last' ? null : 'last')} className={hBtn(hasFilterLast)}>
                       Dernier achat {hasFilterLast && dot} {chevron}
@@ -491,7 +499,7 @@ export default function ClientsView({
                 </th>
 
                 {/* LTV */}
-                <th className="text-right px-3 py-3">
+                <th className="text-right px-2 py-2.5">
                   <div ref={refLtv} className="relative inline-flex justify-end">
                     <button onClick={() => setOpenPopover(p => p === 'ltv' ? null : 'ltv')} className={hBtn(hasFilterLtv)}>
                       LTV {hasFilterLtv && dot} {chevron}
@@ -522,10 +530,10 @@ export default function ClientsView({
                 const sel = selected.has(c.id)
                 return (
                   <tr key={c.id} className={`border-b border-gray-800 last:border-0 transition-colors ${sel ? 'bg-indigo-950/30' : 'hover:bg-gray-800/40'}`}>
-                    <td className="px-5 py-3 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       <input type="checkbox" checked={sel} onChange={() => toggle(c.id)} className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-2.5">
                       <Link href={`/dashboard/business/contacts/${c.id}`} className="flex items-center gap-3 group">
                         <div className="relative flex-shrink-0">
                           <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center">
@@ -537,19 +545,19 @@ export default function ClientsView({
                           {c.newsletter_consent && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-gray-950" />}
                         </div>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">{c.prenom} {c.nom}</span>
+                          <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">{tronquer(`${c.prenom} ${c.nom}`, 25)}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0 ${rf.cls}`}>
                             {rf.label === 'Occasionnel' ? 'Occas.' : rf.label}
                           </span>
                         </div>
                       </Link>
                     </td>
-                    <td className="px-3 py-3 text-xs">
+                    <td className="px-2 py-2.5 text-xs">
                       {c.statut === 'abonne' ? <span className="text-gray-300">Actif</span>
                        : c.statut === 'ancien' ? <span className="text-gray-500">Inactif</span>
                        : <span className="text-gray-700">—</span>}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-2.5">
                       {c.pref_style || c.pref_type_beat || c.pref_ambiance || c.pref_licence ? (
                         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
                           <span className="text-gray-300 truncate">{c.pref_style     ?? <span className="text-gray-700">—</span>}</span>
@@ -559,15 +567,15 @@ export default function ClientsView({
                         </div>
                       ) : <span className="text-gray-700 text-xs">—</span>}
                     </td>
-                    <td className="px-3 py-3 text-right font-semibold text-white">{c.nb_achats}</td>
-                    <td className="px-3 py-3 text-right text-gray-400 text-xs whitespace-nowrap">
+                    <td className="px-2 py-2.5 text-right font-semibold text-white">{c.nb_achats}</td>
+                    <td className="px-2 py-2.5 text-right text-gray-400 text-xs whitespace-nowrap">
                       {c.panier_moyen !== null ? fmt(c.panier_moyen) : <span className="text-gray-700">—</span>}
                     </td>
-                    <td className="px-3 py-3 text-right text-gray-400 text-xs whitespace-nowrap">
+                    <td className="px-2 py-2.5 text-right text-gray-400 text-xs whitespace-nowrap">
                       {c.dernier_achat_iso ? dateRel(c.dernier_achat_iso) : <span className="text-gray-700">—</span>}
                     </td>
-                    <td className="px-3 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(c.ltv)}</td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-2 py-2.5 text-right font-semibold text-white whitespace-nowrap">{fmt(c.ltv)}</td>
+                    <td className="px-2 py-2.5 text-center">
                       <Link href={`/dashboard/business/contacts/${c.id}`} className="text-gray-600 hover:text-indigo-400 transition-colors">→</Link>
                     </td>
                   </tr>
