@@ -446,9 +446,9 @@ Envoi de campagnes directement depuis My Producer via Resend, sans export/import
 
 ---
 
-### Sprint 5 — Écoutes intégrées ⬜ À faire (après étape 13)
+### Sprint 5 — Écoutes intégrées ❌ Abandonné (2026-07-16)
 
-Quand le compteur de plays (étape 13) sera implémenté : les écoutes alimentent automatiquement les préférences musicales comme 3ème signal (poids faible).
+> **Décision Jake :** ne pas ajouter les écoutes (`beat_plays`) comme signal de préférence par client — reste uniquement au niveau Analytics (tracking invités + par client, déjà en place). Contexte : en corrigeant le même jour un bug voisin (favoris/free download jamais branchés dans les préférences malgré le plan d'origine — voir 11d Contacts), la question s'est reposée d'ajouter aussi les écoutes en 4ème signal. Jake a jugé qu'un historique d'écoute brut n'est pas actionnable seul (contrairement à un achat ou un favori), et que la seule vraie utilité (débloquer une préférence pour les purs auditeurs jamais convertis) ne correspond pas à un usage qu'il compte faire. Le compteur de plays **public** (cartes beat/page détail — objectif d'origine de l'étape 13) reste un sujet séparé, non tranché ici.
 
 ---
 
