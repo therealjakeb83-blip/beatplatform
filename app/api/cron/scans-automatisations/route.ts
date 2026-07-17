@@ -71,8 +71,26 @@ async function scannerRelanceInactivite(admin: Admin): Promise<number> {
       if (!derniereParClient.has(clientId)) derniereParClient.set(clientId, { id: c.id, created_at: c.created_at })
     }
 
+    // Anti-spam : ne jamais relancer 2 fois pour la même "dernière commande"
+    // — indépendant du statut traité de l'événement. La contrainte DB
+    // (index unique partiel, "sauf si déjà traité") suffit pour
+    // abonnement_en_attente/churn (référence = un abonnement qui peut
+    // légitimement repasser par le même état) mais PAS ici : tant que le
+    // client reste inactif, sa "dernière commande" ne change jamais — sans
+    // ce filtre, le mail traité de la veille libère la contrainte et le scan
+    // du lendemain le redéposerait, un envoi par jour à l'infini (bug
+    // découvert avec Jake, 2026-07-16, juste après avoir posé l'index
+    // partiel pour un autre besoin).
+    const { data: dejaRelances } = await admin
+      .from('automatisation_evenements')
+      .select('reference_id')
+      .eq('beatmaker_id', auto.beatmaker_id)
+      .eq('type', 'relance_inactivite')
+    const referencesDejaRelancees = new Set((dejaRelances ?? []).map(e => e.reference_id))
+
     for (const [clientId, derniere] of derniereParClient) {
       if (new Date(derniere.created_at) > seuil) continue // encore actif
+      if (referencesDejaRelancees.has(derniere.id)) continue // déjà relancé pour cette même dernière commande
 
       const { error } = await admin.from('automatisation_evenements').insert({
         beatmaker_id: auto.beatmaker_id,
@@ -81,8 +99,6 @@ async function scannerRelanceInactivite(admin: Admin): Promise<number> {
         reference_id: derniere.id,
       })
       if (!error) deposes++
-      // Erreur silencieuse attendue si déjà relancé pour cette dernière
-      // commande (contrainte UNIQUE) — pas un vrai échec.
     }
   }
 
