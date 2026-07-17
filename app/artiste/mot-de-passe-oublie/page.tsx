@@ -35,8 +35,14 @@ export default function MotDePasseOublieArtistePage() {
       <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
         <div className="w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Email envoyé</h1>
-          <p className="text-gray-400 mb-6">
-            Vérifie ta boîte mail — tu as reçu un lien pour réinitialiser ton mot de passe.
+          <p className="text-gray-400 mb-2">
+            Si un compte existe avec cet email, tu vas recevoir un lien pour réinitialiser ton mot de passe.
+          </p>
+          <p className="text-gray-500 text-sm mb-6">
+            Pas encore de compte ?{' '}
+            <Link href="/artiste/inscription" className="text-indigo-400 hover:text-indigo-300">
+              Crée-en un
+            </Link>
           </p>
           <Link href="/artiste/connexion" className="text-indigo-400 hover:text-indigo-300 text-sm">
             Retour à la connexion
