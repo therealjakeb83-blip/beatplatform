@@ -135,7 +135,7 @@ export default function ClientsView({
 
   const displayed = useMemo(() => clients.filter(c => {
     const rf = scoreRF(c.nb_achats, c.dernier_achat_iso)
-    if (filtreSearch && !`${c.prenom} ${c.nom}`.toLowerCase().includes(filtreSearch.toLowerCase())) return false
+    if (filtreSearch && !`${c.prenom} ${c.nom} ${c.email}`.toLowerCase().includes(filtreSearch.toLowerCase())) return false
     if (filtreFidelite && rf.label !== filtreFidelite) return false
     if (filtreNewsletter === 'inscrit' && !c.newsletter_consent) return false
     if (filtreNewsletter === 'non'     &&  c.newsletter_consent) return false
