@@ -19,6 +19,13 @@ export default async function TransactionnelsPage() {
   const introParType = new Map(
     (templatesRaw ?? []).map(t => [t.type as TypeTemplateTransactionnel, t.intro as string | null]),
   )
+  const intros: Record<TypeTemplateTransactionnel, string> = {
+    confirmation_commande: introParType.get('confirmation_commande') ?? '',
+    confirmation_abonnement: introParType.get('confirmation_abonnement') ?? '',
+    demande_annulation_abonnement: introParType.get('demande_annulation_abonnement') ?? '',
+    annulation_abonnement: introParType.get('annulation_abonnement') ?? '',
+    beat_cadeau_fidelite: introParType.get('beat_cadeau_fidelite') ?? '',
+  }
 
   return (
     <TransactionnelsClient
@@ -26,9 +33,7 @@ export default async function TransactionnelsPage() {
       logoUrl={beatmaker.logo_url}
       signatureEmails={beatmaker.signature_emails}
       couleurMarque={beatmaker.couleur_marque}
-      introConfirmationCommande={introParType.get('confirmation_commande') ?? null}
-      introConfirmationAbonnement={introParType.get('confirmation_abonnement') ?? null}
-      introAnnulationAbonnement={introParType.get('annulation_abonnement') ?? null}
+      intros={intros}
       sauvegarderCouleurMarque={sauvegarderCouleurMarque}
       sauvegarderIntro={sauvegarderIntro}
       genererApercu={genererApercu}

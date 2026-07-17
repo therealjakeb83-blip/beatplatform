@@ -9,9 +9,7 @@ type Props = {
   logoUrl: string | null
   signatureEmails: string | null
   couleurMarque: string | null
-  introConfirmationCommande: string | null
-  introConfirmationAbonnement: string | null
-  introAnnulationAbonnement: string | null
+  intros: Record<TypeTemplateTransactionnel, string>
   sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
   sauvegarderIntro: (type: TypeTemplateTransactionnel, intro: string) => Promise<{ erreur?: string }>
   genererApercu: (type: TypeTemplateTransactionnel, introDraft: string) => Promise<string>
@@ -33,10 +31,16 @@ const CARTES: { type: TypeTemplateTransactionnel; titre: string; description: st
     declencheur: 'Déclencheur : nouvel abonnement créé',
   },
   {
+    type: 'demande_annulation_abonnement',
+    titre: "Demande d'annulation",
+    description: "Envoyé immédiatement quand le client annule — confirme la prise en compte et la date de fin d'accès.",
+    declencheur: 'Déclencheur : décision d\'annuler (accès encore actif jusqu\'à la fin de la période payée)',
+  },
+  {
     type: 'annulation_abonnement',
-    titre: "Annulation d'abonnement",
-    description: "Envoyé automatiquement quand un abonnement se termine réellement (fin de période payée).",
-    declencheur: 'Déclencheur : fin réelle de période, abonnement résilié',
+    titre: "Fin d'abonnement",
+    description: "Envoyé uniquement quand un abonnement se termine sans demande préalable (ex. abonnement impayé résilié directement).",
+    declencheur: 'Déclencheur : fin réelle de période sans demande préalable',
   },
 ]
 
@@ -45,20 +49,11 @@ export default function TransactionnelsClient({
   logoUrl,
   signatureEmails,
   couleurMarque,
-  introConfirmationCommande,
-  introConfirmationAbonnement,
-  introAnnulationAbonnement,
+  intros,
   sauvegarderCouleurMarque,
   sauvegarderIntro,
   genererApercu,
 }: Props) {
-  const introsInitiaux: Record<TypeTemplateTransactionnel, string> = {
-    confirmation_commande: introConfirmationCommande ?? '',
-    confirmation_abonnement: introConfirmationAbonnement ?? '',
-    annulation_abonnement: introAnnulationAbonnement ?? '',
-    beat_cadeau_fidelite: '',
-  }
-
   const [apercuOuvert, setApercuOuvert] = useState<{ html: string; chargement: boolean } | null>(null)
 
   async function handleApercu(type: TypeTemplateTransactionnel, introDraft: string) {
@@ -90,7 +85,7 @@ export default function TransactionnelsClient({
             <CarteTemplate
               key={carte.type}
               carte={carte}
-              introInitial={introsInitiaux[carte.type]}
+              introInitial={intros[carte.type]}
               sauvegarderIntro={sauvegarderIntro}
               onApercu={introDraft => handleApercu(carte.type, introDraft)}
             />

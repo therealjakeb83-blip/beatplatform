@@ -2,7 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
-import { envoyerFondsEnAttente, confirmationCommande, confirmationAbonnement, annulationAbonnement } from '@/lib/emails'
+import { envoyerFondsEnAttente, confirmationCommande, confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { headers } from 'next/headers'
@@ -155,7 +155,7 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
 
   const { data: abo } = await supabase
     .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, statut')
+    .select('id, beatmaker_id, client_id, statut, acheteur_email, demande_annulation_notifiee')
     .eq('stripe_subscription_id', subscription.id)
     .maybeSingle()
 
@@ -179,6 +179,14 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
   // mécanisme que pour abonnement_en_attente).
   const demandeAnnulationProgrammee = subscription.cancel_at_period_end === true
 
+  // Contrairement au churn (ci-dessus), demande_annulation_notifiee n'est
+  // écrit QUE par ce webhook — pas de race avec une route synchrone — donc
+  // une vraie détection de transition est possible et nécessaire ici (sinon
+  // Stripe redéliverait cet email à chaque nouvel événement "updated" reçu
+  // tant que l'abo reste en cancel_at_period_end, ex. tout autre changement
+  // sur l'abonnement pendant cette période).
+  const notifierDemandeAnnulation = demandeAnnulationProgrammee && !abo.demande_annulation_notifiee
+
   const { error } = await supabase
     .from('abonnements_boutique')
     .update({
@@ -188,6 +196,10 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
       // (/api/stripe/abonnement/annuler), qui ne le mettait jusqu'ici jamais à
       // jour en base — seul le bouton Business le faisait.
       annulation_en_cours: subscription.cancel_at_period_end,
+      // Reset dès que l'abo n'est plus en cancel_at_period_end (annulation
+      // annulée ou déjà passée) — une future demande d'annulation renverra
+      // à nouveau l'email de confirmation.
+      demande_annulation_notifiee: demandeAnnulationProgrammee,
       // Ne pose la date que la première fois (pas à chaque relance Stripe tant
       // qu'on reste en impaye) ; la efface si le paiement est finalement repassé.
       ...(entreEnImpaye ? { impaye_depuis: new Date().toISOString() } : {}),
@@ -216,6 +228,15 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
       reference_id: abo.id,
     })
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
+  }
+
+  if (notifierDemandeAnnulation && abo.acheteur_email && subscription.cancel_at) {
+    confirmationDemandeAnnulation({
+      to: abo.acheteur_email,
+      beatmakerId: abo.beatmaker_id,
+      clientId: abo.client_id,
+      dateFin: new Date(subscription.cancel_at * 1000),
+    }).catch(err => console.error('[webhook] Erreur envoi email demande annulation:', err))
   }
 }
 

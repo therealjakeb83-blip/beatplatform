@@ -148,6 +148,7 @@ export async function envoyerConfirmationExpiration({
 export type TypeTemplateTransactionnel =
   | 'confirmation_commande'
   | 'confirmation_abonnement'
+  | 'demande_annulation_abonnement'
   | 'annulation_abonnement'
   | 'beat_cadeau_fidelite'
 
@@ -178,6 +179,7 @@ function echapper(s: string): string {
 const TITRE_DEFAUT: Record<TypeTemplateTransactionnel, string> = {
   confirmation_commande: 'Merci pour ton achat !',
   confirmation_abonnement: 'Ton abonnement est actif !',
+  demande_annulation_abonnement: "Ta demande d'annulation est prise en compte",
   annulation_abonnement: 'Abonnement annulé',
   beat_cadeau_fidelite: 'Un cadeau pour toi 🎁',
 }
@@ -188,6 +190,8 @@ function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): stri
       return 'Voici le récapitulatif de ta commande. Tes fichiers sont prêts à télécharger.'
     case 'confirmation_abonnement':
       return 'Ton abonnement vient d\'être activé. Tu as désormais accès au catalogue privé et à tous les avantages membres.'
+    case 'demande_annulation_abonnement':
+      return 'On confirme que ta demande d\'annulation a bien été prise en compte. Tu gardes accès à tous les avantages membres jusqu\'à la date ci-dessous.'
     case 'annulation_abonnement':
       return `Nous te confirmons l'annulation de ton abonnement à ${nomArtiste}. Tu n'as plus accès au catalogue privé à partir de maintenant.`
     case 'beat_cadeau_fidelite':
@@ -334,6 +338,50 @@ export async function confirmationAbonnement({
   })
 }
 
+// Envoyé au moment de la DÉCISION d'annuler (cancel_at_period_end passe à
+// true), pas à la fin réelle de la période — le client garde son accès
+// jusqu'à dateFin et doit le savoir immédiatement, pas seulement des jours
+// plus tard quand l'abonnement se termine vraiment (voir annulationAbonnement
+// ci-dessous, réservée au cas rare où aucune demande n'a précédé la
+// suppression, ex. abo impayé résilié directement).
+export async function confirmationDemandeAnnulation({
+  to,
+  beatmakerId,
+  clientId,
+  dateFin,
+}: {
+  to: string
+  beatmakerId: string
+  clientId?: string | null
+  dateFin: Date
+}) {
+  const { branding, intro } = await chargerBrandingEtIntro(beatmakerId, 'demande_annulation_abonnement')
+  if (!branding) return
+
+  const dateFinFormatee = dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const corpsHtml = `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Accès jusqu'au</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(dateFinFormatee)}</td>
+      </tr>
+    </table>`
+
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'demande_annulation_abonnement',
+    to,
+    clientId,
+    subject: `Ta demande d'annulation — ${branding.nom_artiste}`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: TITRE_DEFAUT.demande_annulation_abonnement,
+      intro: intro || introDefaut('demande_annulation_abonnement', branding.nom_artiste),
+      corpsHtml,
+    }),
+  })
+}
+
 export async function annulationAbonnement({
   to,
   beatmakerId,
@@ -379,6 +427,13 @@ const CORPS_EXEMPLE_ABONNEMENT = `<table width="100%" cellpadding="0" cellspacin
   </tr>
 </table>`
 
+const CORPS_EXEMPLE_DEMANDE_ANNULATION = `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+  <tr>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Accès jusqu'au</td>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">15 août 2026</td>
+  </tr>
+</table>`
+
 export async function genererApercuTransactionnel(
   beatmakerId: string,
   type: TypeTemplateTransactionnel,
@@ -397,6 +452,7 @@ export async function genererApercuTransactionnel(
   const parType: Record<TypeTemplateTransactionnel, { corpsHtml: string; cta?: { texte: string; lien: string } }> = {
     confirmation_commande: { corpsHtml: CORPS_EXEMPLE_COMMANDE, cta: { texte: 'Télécharger mes fichiers', lien: '#' } },
     confirmation_abonnement: { corpsHtml: CORPS_EXEMPLE_ABONNEMENT, cta: { texte: 'Accéder à mon espace membre', lien: '#' } },
+    demande_annulation_abonnement: { corpsHtml: CORPS_EXEMPLE_DEMANDE_ANNULATION },
     annulation_abonnement: { corpsHtml: '' },
     beat_cadeau_fidelite: { corpsHtml: '' },
   }
