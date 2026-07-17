@@ -221,16 +221,15 @@ function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): stri
   }
 }
 
-// Icônes en PNG intégrées en base64 (pas d'hébergement externe requis) —
-// Gmail et la plupart des clients email strippent les balises <svg> inline
-// par sécurité (constaté le 2026-07-17 : les pastilles s'affichaient vides
-// dans un vrai email malgré un aperçu correct, l'aperçu passant par un vrai
-// navigateur qui supporte le SVG, contrairement aux clients mail). Générées
-// une fois via sharp (32x32, mêmes glyphes qu'avant), jamais régénérées à
-// l'envoi.
-const PNG_TIKTOK = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABs0lEQVR4nOWWyysFURzHPy7JwsqOkve/QOnW1V3YcD1LbKywkKxkY4GysrG7e5ESG9lISYpsRHksSO4SWUnK++rUUdNtfmfOzNzHwrd+m5nf43Nmzu93DoRXB5DOsHcgQp7U6QKgrL7QAOP5AkgIABf5+g0JAUDZWKEB3oD2XAN0GQCUfQGzQHmhANLanoCk/mI12QTotgRw2v2/AHjNBUDE5VmPUKQZWAI+wgCU6BVuALfAt57z2xYATfp9te6CEx1vDRAHUkLyfYdfr+DT6JKzVD+PehWfB34M/3AvIICV5ix28a7Dv0/waQhSPOax8j/bsQDwfRwXAVeGogrsGjgDNnMBEDcU3zKMz34hps4vQFJItA4UG+KyBnAsTLNKj7hBAaDWL0DKo90kDQsAvk+8O5ckagJ6aVQAqPILcOCS5NQibka4CZn2jasWhZWo2SCpTLdmZswhAdQmADwY5vqaEDNFQB0JCVU3LACtQAswApwLvs9ARVCAKPBpMYpNNklITYQovqJHemhNB/gSy/oCkzXFhB2eaY/AUDYLO6V6WV25VoEb4EX3+KUeUgO6GwLrF9hcaepCBTc5AAAAAElFTkSuQmCC'
-const PNG_INSTAGRAM = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAADn0lEQVR4nLVXS08UQRBujR7Vkw+M+H57Um7G3eqBJXoi+LgtW7WsBo2of8Ef4etqiJ6Eo6i/QEEOxJioByJs9+4iGA4mYAgCpmamZ3t3Z2dGZDvpZHe6p7+qr76qrhEiZFRSfUeUpAcacEQBTWiJFS1pwUwl8ZeWtG5P/1mwh99x3wUcLgLdrwAdFnFjJlPYrwFfKKA/9QD/O70zcWg6lW0LBS871KEllZseUOehkjSvAad4ur9jGAomYKnUmb/Q6LmsgivARSXpkYZcptLdt0dscMx23txbSue7laSnWtKSbUQNExrwpeXplyL0HRebPHRX7qQC+lZlA4fcBVdwfszZ880E57O0zN2dcfCcMUJL/G004QrTVXtVKE82C1yn8u2BFoCWjRFK4jODx9nB9I+YBxyvpABTmYFd5c7+szz5d/26ArxRKz6647Iic5ctLQwLL8+9B+VL/bujQCc6BrbzQVriuJK0VtUNrWmgMeXQwDrANiNAJXHOZNCMg8fMc8uwj0IDaf+QlXUhtkTGE+hzfM7jJxuMmVCQPWDOYQzG8lnRIrAScDEK3M91G6ysAV9rSaN+pbRrxpwxImwwltkn/OLh0hRBe9VzZszBHputdfFwawmol/PbZsKEo8GAaqFaqP0TMryYW+CpfHszz3jNNoI1EbrPdlr7FcqlI3QzjgcGONgjYkYxjVctgz80YcANO2Ozh8s+ZZX6jZxegdoBS1EitcNhNKEAV39eye4MccrTDNCysNJJ1W/k4mGJazQOPAAAehukdjp3ptEAUsZAEWUAFxlLVG+SGqCA3gXFDeh0pAE6aQgklZnefw3B/MXCjsgQ6DgRAo1Z3vTGei/pusXa+1gRqpg0VBJv2/d4VBqWMrmDdl9RBLyVJA0XogoRFxMuKrYRnGp2OPi3cvLXajoqwMmkhWgurhRzWbVoM/RWWJg8FeBsXf/3g/uMZKUYkl1GbEQNE817vsmZrv6jzc5pvIwg+XXMlHJ55QrHCrd6yFUWHMe8Ge1mhFzHOFy1PpcRCQdXONOQhKVas1HTkEh6Jbgtsjx5LFo87JZMSxoU3BjaTalK50+0Clw7hVNBUypppewUDnkLEocsFr62wggGt9tyBfQ8WPwOtK+2maAl/pjgePHaRkH5XT7Do93z3KifxVizmT+X6oxo0acZaZ3OnQ+1eDqVbeNwtOTjVNIK097gedhgYZYA73GacK5u9PPce9c9Y5DviTCwv29P9nWvCAhzAAAAAElFTkSuQmCC'
-const PNG_YOUTUBE = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABSklEQVR4nO2WPUoDURSFP+xCGgPaaWOnTQKWIWDhAsQFTONGrCWFbsEF2EQL4w4U1N7fzkYLf4ImikcuvIFhSDR58/ClmAO3Gu45H8y8NwdKlfpFgqpgXrAkaAhW3bQE67lpZZ433I7tVscNWxHsCU4E14KBQIFm4DzNe1ewnA/fFHwEDPxr3gUbaXhN8PKP4ek8C2YNIIkQnk5iAO2IADsGcBQRoGMAZxMuXQoOAgGcGsD9hEvH7uNdE5wXBLg1oycfAAcxI9gSPHgCPJpJzxcgd2Nuu/M9idebLX8VBciALAj2Bd9jen2GBlj0AehFfAWvU/ER3hU4hheewencTMVFdBjIzPsqbsf+GSWxf8e1qIXEZPXI4wyHqWSprCi6wtgVXAn6AQP7zrM7tJSOkqAimHMVu56p3c0htbyZeV53O7ZbGRlQqhTwAy3GNotEg7/+AAAAAElFTkSuQmCC'
+// Icônes hébergées en fichiers statiques (public/icons/) — Gmail (et la
+// plupart des clients email) strippe à la fois les <svg> inline ET les
+// images en data URI dans les emails REÇUS par sécurité, contrairement à
+// l'aperçu qui passe par un vrai navigateur (constaté le 2026-07-17, les
+// deux approches ont échoué avant celle-ci). Seule une vraie URL http(s)
+// fonctionne de façon fiable.
+const ICONE_TIKTOK = `${APP_URL}/icons/tiktok.png`
+const ICONE_INSTAGRAM = `${APP_URL}/icons/instagram.png`
+const ICONE_YOUTUBE = `${APP_URL}/icons/youtube.png`
 
 const FOOTER_MESSAGE_DEFAUT = 'Rejoins-moi sur mes réseaux pour rester à jour et me contacter facilement !'
 const FOOTER_TITRE_DEFAUT = 'Suis-moi sur les réseaux sociaux'
@@ -251,11 +250,11 @@ function rendreEmailTransactionnel({
   const couleur = branding.couleur_marque || COULEUR_DEFAUT
   const signature = branding.signature_transactionnels || branding.nom_artiste
 
-  const reseaux: { lien: string; label: string; png: string }[] = [
-    branding.tiktok_url ? { lien: branding.tiktok_url, label: 'TikTok', png: PNG_TIKTOK } : null,
-    branding.instagram_url ? { lien: branding.instagram_url, label: 'Instagram', png: PNG_INSTAGRAM } : null,
-    branding.youtube_url ? { lien: branding.youtube_url, label: 'YouTube', png: PNG_YOUTUBE } : null,
-  ].filter((r): r is { lien: string; label: string; png: string } => r !== null)
+  const reseaux: { lien: string; label: string; icone: string }[] = [
+    branding.tiktok_url ? { lien: branding.tiktok_url, label: 'TikTok', icone: ICONE_TIKTOK } : null,
+    branding.instagram_url ? { lien: branding.instagram_url, label: 'Instagram', icone: ICONE_INSTAGRAM } : null,
+    branding.youtube_url ? { lien: branding.youtube_url, label: 'YouTube', icone: ICONE_YOUTUBE } : null,
+  ].filter((r): r is { lien: string; label: string; icone: string } => r !== null)
 
   const footerMessage = branding.footer_message_reseaux || FOOTER_MESSAGE_DEFAUT
   const footerTitre = branding.titre_footer_reseaux || FOOTER_TITRE_DEFAUT
@@ -274,7 +273,7 @@ function rendreEmailTransactionnel({
             <p style="font-size:12px;color:#6b7280;margin:0 0 12px;">${echapper(footerMessage)}</p>
             <div>
               ${reseaux.map(r => `
-                <a href="${r.lien}" aria-label="${r.label}" style="display:inline-block;width:32px;height:32px;line-height:32px;margin-right:8px;border-radius:50%;background:#f3f4f6;text-align:center;vertical-align:middle;"><img src="data:image/png;base64,${r.png}" width="16" height="16" alt="${r.label}" style="vertical-align:middle;" /></a>`).join('')}
+                <a href="${r.lien}" aria-label="${r.label}" style="display:inline-block;width:32px;height:32px;line-height:32px;margin-right:8px;border-radius:50%;background:#f3f4f6;text-align:center;vertical-align:middle;"><img src="${r.icone}" width="16" height="16" alt="${r.label}" style="vertical-align:middle;" /></a>`).join('')}
             </div>` : `<p style="font-size:15px;font-weight:700;color:#111827;margin:0;">${echapper(branding.nom_artiste)}</p>`}
           </td>
         </tr></table>
