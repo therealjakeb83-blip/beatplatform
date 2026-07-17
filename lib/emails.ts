@@ -341,6 +341,7 @@ export async function confirmationCommande({
 
   await envoyerEmailUnique({
     beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
     evenement: 'confirmation_commande',
     to,
@@ -385,6 +386,7 @@ export async function confirmationAbonnement({
 
   await envoyerEmailUnique({
     beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
     evenement: 'confirmation_abonnement',
     to,
@@ -430,6 +432,7 @@ export async function confirmationDemandeAnnulation({
 
   await envoyerEmailUnique({
     beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
     evenement: 'demande_annulation_abonnement',
     to,
@@ -458,6 +461,7 @@ export async function annulationAbonnement({
 
   await envoyerEmailUnique({
     beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
     evenement: 'annulation_abonnement',
     to,
@@ -502,6 +506,7 @@ export async function confirmationCompteArtiste({
 
   await envoyerEmailUnique({
     beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
     evenement: 'confirmation_compte_artiste',
     to,
@@ -539,6 +544,7 @@ export async function telechargementGratuit({
 
   await envoyerEmailUnique({
     beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
     evenement: 'telechargement_gratuit',
     to,
