@@ -20,6 +20,28 @@ export async function sauvegarderCouleurMarque(couleur: string): Promise<{ erreu
   return {}
 }
 
+export async function sauvegarderSignatureTransactionnels(signature: string): Promise<{ erreur?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { erreur: 'Non authentifié.' }
+
+  const { error } = await supabase.from('beatmakers').update({ signature_transactionnels: signature.trim() || null }).eq('id', user.id)
+  if (error) return { erreur: error.message }
+  revalidatePath(CHEMIN)
+  return {}
+}
+
+export async function sauvegarderFooterMessage(message: string): Promise<{ erreur?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { erreur: 'Non authentifié.' }
+
+  const { error } = await supabase.from('beatmakers').update({ footer_message_reseaux: message.trim() || null }).eq('id', user.id)
+  if (error) return { erreur: error.message }
+  revalidatePath(CHEMIN)
+  return {}
+}
+
 export async function sauvegarderIntro(type: TypeTemplateTransactionnel, intro: string): Promise<{ erreur?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -34,9 +56,15 @@ export async function sauvegarderIntro(type: TypeTemplateTransactionnel, intro: 
   return {}
 }
 
-export async function genererApercu(type: TypeTemplateTransactionnel, introDraft: string, couleurDraft?: string): Promise<string> {
+export async function genererApercu(
+  type: TypeTemplateTransactionnel,
+  introDraft: string,
+  couleurDraft?: string,
+  signatureDraft?: string,
+  footerMessageDraft?: string,
+): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return ''
-  return genererApercuTransactionnel(user.id, type, introDraft, couleurDraft)
+  return genererApercuTransactionnel(user.id, type, introDraft, couleurDraft, signatureDraft, footerMessageDraft)
 }

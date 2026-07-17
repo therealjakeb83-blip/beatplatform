@@ -7,12 +7,15 @@ import type { TypeTemplateTransactionnel } from '@/lib/emails'
 type Props = {
   nomArtiste: string
   logoUrl: string | null
-  signatureEmails: string | null
   couleurMarque: string | null
+  signatureTransactionnels: string | null
+  footerMessageReseaux: string | null
   intros: Record<TypeTemplateTransactionnel, string>
   sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
+  sauvegarderSignatureTransactionnels: (signature: string) => Promise<{ erreur?: string }>
+  sauvegarderFooterMessage: (message: string) => Promise<{ erreur?: string }>
   sauvegarderIntro: (type: TypeTemplateTransactionnel, intro: string) => Promise<{ erreur?: string }>
-  genererApercu: (type: TypeTemplateTransactionnel, introDraft: string, couleurDraft?: string) => Promise<string>
+  genererApercu: (type: TypeTemplateTransactionnel, introDraft: string, couleurDraft?: string, signatureDraft?: string, footerMessageDraft?: string) => Promise<string>
 }
 
 const COULEUR_DEFAUT = '#4f46e5'
@@ -48,15 +51,20 @@ const CARTES: { type: TypeTemplateTransactionnel; titre: string; description: st
 export default function TransactionnelsClient({
   nomArtiste,
   logoUrl,
-  signatureEmails,
   couleurMarque,
+  signatureTransactionnels,
+  footerMessageReseaux,
   intros,
   sauvegarderCouleurMarque,
+  sauvegarderSignatureTransactionnels,
+  sauvegarderFooterMessage,
   sauvegarderIntro,
   genererApercu,
 }: Props) {
   const [typeActif, setTypeActif] = useState<TypeTemplateTransactionnel>('confirmation_commande')
   const [couleur, setCouleur] = useState(couleurMarque ?? COULEUR_DEFAUT)
+  const [signature, setSignature] = useState(signatureTransactionnels ?? '')
+  const [footerMessage, setFooterMessage] = useState(footerMessageReseaux ?? '')
   const [introsDraft, setIntrosDraft] = useState(intros)
   const [apercuHtml, setApercuHtml] = useState('')
   const [chargementApercu, setChargementApercu] = useState(true)
@@ -64,19 +72,20 @@ export default function TransactionnelsClient({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Aperçu live : régénéré automatiquement (avec un léger délai anti-rafale)
-  // à chaque changement de couleur, d'intro ou de type sélectionné — pas
-  // besoin de bouton "Aperçu" ni d'enregistrer avant de voir le résultat.
+  // à chaque changement de couleur, signature, phrase du footer, intro ou
+  // type sélectionné — pas besoin de bouton "Aperçu" ni d'enregistrer avant
+  // de voir le résultat.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     setChargementApercu(true)
     debounceRef.current = setTimeout(async () => {
-      const html = await genererApercu(typeActif, introsDraft[typeActif], couleur)
+      const html = await genererApercu(typeActif, introsDraft[typeActif], couleur, signature, footerMessage)
       setApercuHtml(html)
       setChargementApercu(false)
     }, DEBOUNCE_MS)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeActif, introsDraft[typeActif], couleur])
+  }, [typeActif, introsDraft[typeActif], couleur, signature, footerMessage])
 
   const carteActive = CARTES.find(c => c.type === typeActif)!
 
@@ -94,12 +103,20 @@ export default function TransactionnelsClient({
           {/* Colonne réglages */}
           <div className="space-y-4">
             <CarteBranding
-              nomArtiste={nomArtiste}
               logoUrl={logoUrl}
-              signatureEmails={signatureEmails}
               couleur={couleur}
               onChangeCouleur={setCouleur}
               sauvegarderCouleurMarque={sauvegarderCouleurMarque}
+              signature={signature}
+              onChangeSignature={setSignature}
+              nomArtiste={nomArtiste}
+              sauvegarderSignatureTransactionnels={sauvegarderSignatureTransactionnels}
+            />
+
+            <CarteFooterReseaux
+              footerMessage={footerMessage}
+              onChangeFooterMessage={setFooterMessage}
+              sauvegarderFooterMessage={sauvegarderFooterMessage}
             />
 
             <div className="flex flex-wrap gap-2">
@@ -154,26 +171,87 @@ export default function TransactionnelsClient({
   )
 }
 
-function CarteBranding({
-  nomArtiste,
-  logoUrl,
-  signatureEmails,
-  couleur,
-  onChangeCouleur,
-  sauvegarderCouleurMarque,
+function ChampAvecEnregistrer({
+  label,
+  aide,
+  valeur,
+  onChange,
+  placeholder,
+  onSauvegarder,
 }: {
-  nomArtiste: string
-  logoUrl: string | null
-  signatureEmails: string | null
-  couleur: string
-  onChangeCouleur: (couleur: string) => void
-  sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
+  label: string
+  aide: string
+  valeur: string
+  onChange: (v: string) => void
+  placeholder?: string
+  onSauvegarder: (v: string) => Promise<{ erreur?: string }>
 }) {
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre] = useState(false)
   const [erreur, setErreur] = useState('')
 
   async function handleSauvegarder() {
+    setEnregistrement(true)
+    setErreur('')
+    setEnregistre(false)
+    const { erreur: err } = await onSauvegarder(valeur)
+    setEnregistrement(false)
+    if (err) setErreur(err)
+    else {
+      setEnregistre(true)
+      setTimeout(() => setEnregistre(false), 2000)
+    }
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+      <div className="flex-1">
+        <label className="block text-xs font-medium text-gray-400 mb-1">{label}</label>
+        <input
+          type="text"
+          value={valeur}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+        />
+        <p className="text-xs text-gray-500 mt-1">{aide}</p>
+        {erreur && <p className="text-xs text-red-400 mt-1">{erreur}</p>}
+      </div>
+      <button
+        onClick={handleSauvegarder}
+        disabled={enregistrement}
+        className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors disabled:opacity-50 whitespace-nowrap"
+      >
+        {enregistrement ? 'Enregistrement…' : enregistre ? 'Enregistré ✓' : 'Enregistrer'}
+      </button>
+    </div>
+  )
+}
+
+function CarteBranding({
+  logoUrl,
+  couleur,
+  onChangeCouleur,
+  sauvegarderCouleurMarque,
+  signature,
+  onChangeSignature,
+  nomArtiste,
+  sauvegarderSignatureTransactionnels,
+}: {
+  logoUrl: string | null
+  couleur: string
+  onChangeCouleur: (couleur: string) => void
+  sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
+  signature: string
+  onChangeSignature: (signature: string) => void
+  nomArtiste: string
+  sauvegarderSignatureTransactionnels: (signature: string) => Promise<{ erreur?: string }>
+}) {
+  const [enregistrement, setEnregistrement] = useState(false)
+  const [enregistre, setEnregistre] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  async function handleSauvegarderCouleur() {
     setEnregistrement(true)
     setErreur('')
     setEnregistre(false)
@@ -208,10 +286,10 @@ function CarteBranding({
               className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">Utilisée pour l&apos;en-tête et le bouton des emails — vide = indigo par défaut. L&apos;aperçu à droite se met à jour automatiquement.</p>
+          <p className="text-xs text-gray-500 mt-1">Utilisée pour l&apos;en-tête et le bouton des emails — vide = indigo par défaut.</p>
         </div>
         <button
-          onClick={handleSauvegarder}
+          onClick={handleSauvegarderCouleur}
           disabled={enregistrement}
           className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors disabled:opacity-50 whitespace-nowrap"
         >
@@ -220,12 +298,48 @@ function CarteBranding({
       </div>
       {erreur && <p className="text-xs text-red-400">{erreur}</p>}
 
+      <div className="pt-3 border-t border-gray-800">
+        <ChampAvecEnregistrer
+          label="Signature de fin d'email"
+          aide={`Propre aux emails transactionnels — vide = ton nom d'artiste (${nomArtiste}). La signature des Automatisations reste séparée, modifiable sur Automatisations.`}
+          valeur={signature}
+          onChange={onChangeSignature}
+          placeholder={nomArtiste}
+          onSauvegarder={sauvegarderSignatureTransactionnels}
+        />
+      </div>
+
       <p className="text-xs text-gray-500 pt-3 border-t border-gray-800">
         Logo ({logoUrl ? 'configuré' : 'non configuré'}) : modifiable sur{' '}
-        <Link href="/dashboard/profil" className="text-indigo-400 hover:underline">ton profil</Link>.{' '}
-        Signature ({signatureEmails || nomArtiste}) : modifiable sur{' '}
-        <Link href="/dashboard/business/marketing/automatisations" className="text-indigo-400 hover:underline">Automatisations</Link>.
+        <Link href="/dashboard/profil" className="text-indigo-400 hover:underline">ton profil</Link>.
       </p>
+    </div>
+  )
+}
+
+function CarteFooterReseaux({
+  footerMessage,
+  onChangeFooterMessage,
+  sauvegarderFooterMessage,
+}: {
+  footerMessage: string
+  onChangeFooterMessage: (message: string) => void
+  sauvegarderFooterMessage: (message: string) => Promise<{ erreur?: string }>
+}) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-white">Footer réseaux sociaux</p>
+        <p className="text-xs text-gray-500 mt-0.5">Affiché en bas de chaque email si au moins un réseau est renseigné sur ton profil.</p>
+      </div>
+      <ChampAvecEnregistrer
+        label="Phrase sous « Suis-moi sur les réseaux sociaux »"
+        aide="Laisse vide pour utiliser le texte par défaut."
+        valeur={footerMessage}
+        onChange={onChangeFooterMessage}
+        placeholder="Rejoins-moi sur mes réseaux pour rester à jour et me contacter facilement !"
+        onSauvegarder={sauvegarderFooterMessage}
+      />
     </div>
   )
 }

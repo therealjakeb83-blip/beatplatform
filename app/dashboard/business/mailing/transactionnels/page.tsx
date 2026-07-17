@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { sauvegarderCouleurMarque, sauvegarderIntro, genererApercu } from './_lib/actions'
+import { sauvegarderCouleurMarque, sauvegarderSignatureTransactionnels, sauvegarderFooterMessage, sauvegarderIntro, genererApercu } from './_lib/actions'
 import TransactionnelsClient from './_components/TransactionnelsClient'
 import type { TypeTemplateTransactionnel } from '@/lib/emails'
 
@@ -10,7 +10,7 @@ export default async function TransactionnelsPage() {
   if (!user) redirect('/connexion')
 
   const [{ data: beatmaker }, { data: templatesRaw }] = await Promise.all([
-    supabase.from('beatmakers').select('nom_artiste, logo_url, signature_emails, couleur_marque').eq('id', user.id).single(),
+    supabase.from('beatmakers').select('nom_artiste, logo_url, couleur_marque, signature_transactionnels, footer_message_reseaux').eq('id', user.id).single(),
     supabase.from('templates_transactionnels').select('type, intro').eq('beatmaker_id', user.id),
   ])
 
@@ -31,10 +31,13 @@ export default async function TransactionnelsPage() {
     <TransactionnelsClient
       nomArtiste={beatmaker.nom_artiste}
       logoUrl={beatmaker.logo_url}
-      signatureEmails={beatmaker.signature_emails}
       couleurMarque={beatmaker.couleur_marque}
+      signatureTransactionnels={beatmaker.signature_transactionnels}
+      footerMessageReseaux={beatmaker.footer_message_reseaux}
       intros={intros}
       sauvegarderCouleurMarque={sauvegarderCouleurMarque}
+      sauvegarderSignatureTransactionnels={sauvegarderSignatureTransactionnels}
+      sauvegarderFooterMessage={sauvegarderFooterMessage}
       sauvegarderIntro={sauvegarderIntro}
       genererApercu={genererApercu}
     />
