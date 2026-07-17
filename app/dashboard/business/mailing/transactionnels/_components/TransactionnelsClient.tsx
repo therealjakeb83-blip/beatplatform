@@ -256,7 +256,7 @@ function CarteTemplate({
 function ModaleApercu({ html, chargement, onClose }: { html: string; chargement: boolean; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
           <p className="text-sm font-bold text-white">Aperçu</p>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">×</button>
@@ -265,7 +265,7 @@ function ModaleApercu({ html, chargement, onClose }: { html: string; chargement:
           {chargement ? (
             <p className="text-xs text-gray-500 self-center">Génération…</p>
           ) : (
-            <iframe srcDoc={html} title="Aperçu de l'email" className="bg-white" style={{ width: 480, height: '100%', minHeight: '60vh' }} />
+            <iframe srcDoc={html} title="Aperçu de l'email" className="bg-white" style={{ width: 600, height: '100%', minHeight: '60vh' }} />
           )}
         </div>
       </div>
