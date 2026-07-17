@@ -9,6 +9,7 @@ const BASE = '/dashboard/business'
 
 const CRM_ROUTES       = [`${BASE}/contacts`, `${BASE}/doublons`, `${BASE}/listes`, `${BASE}/segments`]
 const MARKETING_ROUTES = [`${BASE}/marketing`]
+const MAILING_ROUTES   = [`${BASE}/mailing`]
 const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/licences`, `${BASE}/collabs`]
 const ANALYTICS_ROUTE  = `${BASE}/analytics`
 
@@ -17,11 +18,13 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
 
   const isCrm       = CRM_ROUTES.some(r => pathname.startsWith(r))
   const isMarketing = MARKETING_ROUTES.some(r => pathname.startsWith(r))
+  const isMailing   = MAILING_ROUTES.some(r => pathname.startsWith(r))
   const isCommerce  = COMMERCE_ROUTES.some(r => pathname.startsWith(r))
   const isAnalytics = pathname.startsWith(ANALYTICS_ROUTE)
 
   const [crmOpen,       setCrmOpen]       = useState(isCrm)
   const [marketingOpen, setMarketingOpen] = useState(isMarketing)
+  const [mailingOpen,   setMailingOpen]   = useState(isMailing)
   const [commerceOpen,  setCommerceOpen]  = useState(isCommerce)
   const [analyticsOpen, setAnalyticsOpen] = useState(isAnalytics)
 
@@ -161,6 +164,23 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
             {subItem(`${BASE}/marketing/templates`, 'Templates', pathname.startsWith(`${BASE}/marketing/templates`))}
             {subItem(`${BASE}/marketing/automatisations`, 'Automatisations', pathname.startsWith(`${BASE}/marketing/automatisations`))}
             {subItem(`${BASE}/marketing/logs`, 'Logs emails', pathname.startsWith(`${BASE}/marketing/logs`))}
+          </>
+        )}
+
+        <div className="my-3 border-t border-gray-800" />
+
+        {/* Mailing */}
+        {sectionHeader(
+          `${BASE}/mailing/transactionnels`,
+          'Mailing',
+          isMailing,
+          mailingOpen,
+          () => setMailingOpen(o => !o),
+          () => setMailingOpen(true),
+        )}
+        {mailingOpen && (
+          <>
+            {subItem(`${BASE}/mailing/transactionnels`, 'Transactionnels', pathname.startsWith(`${BASE}/mailing/transactionnels`))}
           </>
         )}
 

@@ -1,6 +1,8 @@
+import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
+const COULEUR_DEFAUT = '#4f46e5'
 
 export async function envoyerInvitationCollab({
   to,
@@ -132,5 +134,277 @@ export async function envoyerConfirmationExpiration({
       ``,
       `— L'équipe My Producer`,
     ].join('\n'),
+  })
+}
+
+// ── Transactionnels (Phase 6) — confirmation d'achat, d'abonnement, d'annulation ──
+//
+// Personnalisation volontairement limitée (pas d'éditeur HTML libre) : le
+// branding (logo, couleur, signature) vit sur `beatmakers` et est partagé par
+// les 3 emails pour rester cohérent avec le reste de la plateforme (Campagnes,
+// Automatisations) ; seule l'intro est personnalisable par type, dans
+// `templates_transactionnels`. Absence de ligne = texte par défaut.
+
+export type TypeTemplateTransactionnel =
+  | 'confirmation_commande'
+  | 'confirmation_abonnement'
+  | 'annulation_abonnement'
+  | 'beat_cadeau_fidelite'
+
+type BrandingTransactionnel = {
+  nom_artiste: string
+  slug: string
+  logo_url: string | null
+  signature_emails: string | null
+  couleur_marque: string | null
+}
+
+async function chargerBrandingEtIntro(beatmakerId: string, type: TypeTemplateTransactionnel) {
+  const admin = createAdminClient()
+  const [{ data: branding }, { data: template }] = await Promise.all([
+    admin.from('beatmakers').select('nom_artiste, slug, logo_url, signature_emails, couleur_marque').eq('id', beatmakerId).single(),
+    admin.from('templates_transactionnels').select('intro').eq('beatmaker_id', beatmakerId).eq('type', type).maybeSingle(),
+  ])
+  return { branding: branding as BrandingTransactionnel | null, intro: template?.intro ?? null }
+}
+
+function echapper(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Titre + intro par défaut — source unique utilisée à la fois par l'envoi
+// réel et par l'aperçu (page réglages), pour que l'aperçu ne mente jamais
+// sur ce qui sera vraiment envoyé sans personnalisation.
+const TITRE_DEFAUT: Record<TypeTemplateTransactionnel, string> = {
+  confirmation_commande: 'Merci pour ton achat !',
+  confirmation_abonnement: 'Ton abonnement est actif !',
+  annulation_abonnement: 'Abonnement annulé',
+  beat_cadeau_fidelite: 'Un cadeau pour toi 🎁',
+}
+
+function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): string {
+  switch (type) {
+    case 'confirmation_commande':
+      return 'Voici le récapitulatif de ta commande. Tes fichiers sont prêts à télécharger.'
+    case 'confirmation_abonnement':
+      return 'Ton abonnement vient d\'être activé. Tu as désormais accès au catalogue privé et à tous les avantages membres.'
+    case 'annulation_abonnement':
+      return `Nous te confirmons l'annulation de ton abonnement à ${nomArtiste}. Tu n'as plus accès au catalogue privé à partir de maintenant.`
+    case 'beat_cadeau_fidelite':
+      return 'Merci pour ta fidélité ! Voici un code pour un beat gratuit.'
+  }
+}
+
+function rendreEmailTransactionnel({
+  branding,
+  titre,
+  intro,
+  corpsHtml,
+  cta,
+}: {
+  branding: BrandingTransactionnel
+  titre: string
+  intro: string
+  corpsHtml: string
+  cta?: { texte: string; lien: string }
+}): string {
+  const couleur = branding.couleur_marque || COULEUR_DEFAUT
+  const signature = branding.signature_emails || branding.nom_artiste
+
+  return `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;font-family:Arial,sans-serif;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;">
+      <tr><td style="background:${couleur};padding:24px;text-align:center;">
+        ${branding.logo_url
+          ? `<img src="${branding.logo_url}" alt="${echapper(branding.nom_artiste)}" height="40" style="display:inline-block;" />`
+          : `<span style="color:#ffffff;font-weight:700;font-size:18px;">${echapper(branding.nom_artiste)}</span>`}
+      </td></tr>
+      <tr><td style="padding:32px 24px;">
+        <h1 style="font-size:18px;color:#111827;margin:0 0 16px;">${echapper(titre)}</h1>
+        <p style="font-size:14px;color:#374151;line-height:1.6;margin:0 0 20px;white-space:pre-line;">${echapper(intro)}</p>
+        ${corpsHtml}
+        ${cta ? `<div style="text-align:center;margin-top:24px;">
+          <a href="${cta.lien}" style="display:inline-block;background:${couleur};color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">${echapper(cta.texte)}</a>
+        </div>` : ''}
+      </td></tr>
+      <tr><td style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;">
+        <p style="font-size:12px;color:#9ca3af;margin:0;">${echapper(signature)}</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>`
+}
+
+export async function confirmationCommande({
+  to,
+  beatmakerId,
+  commandeId,
+  clientId,
+}: {
+  to: string
+  beatmakerId: string
+  commandeId: string
+  clientId?: string | null
+}) {
+  const [{ branding, intro }, { data: lignes }] = await Promise.all([
+    chargerBrandingEtIntro(beatmakerId, 'confirmation_commande'),
+    createAdminClient()
+      .from('commande_lignes')
+      .select('prix_paye, beats(titre), licences(nom)')
+      .eq('commande_id', commandeId),
+  ])
+  if (!branding) return
+
+  type LigneRow = { prix_paye: number; beats: { titre: string } | null; licences: { nom: string } | null }
+  const items = (lignes ?? []) as unknown as LigneRow[]
+
+  const corpsHtml = items.length
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+        ${items.map(l => `
+          <tr>
+            <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">
+              ${echapper(l.beats?.titre ?? 'Beat')} <span style="color:#9ca3af;">— ${echapper(l.licences?.nom ?? '')}</span>
+            </td>
+            <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">
+              ${Number(l.prix_paye).toFixed(2)}€
+            </td>
+          </tr>`).join('')}
+      </table>`
+    : ''
+
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'confirmation_commande',
+    to,
+    clientId,
+    commandeId,
+    subject: `Confirmation de ta commande — ${branding.nom_artiste}`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: TITRE_DEFAUT.confirmation_commande,
+      intro: intro || introDefaut('confirmation_commande', branding.nom_artiste),
+      corpsHtml,
+      cta: { texte: 'Télécharger mes fichiers', lien: `${APP_URL}/telechargement/${commandeId}` },
+    }),
+  })
+}
+
+export async function confirmationAbonnement({
+  to,
+  beatmakerId,
+  abonnementId,
+  clientId,
+}: {
+  to: string
+  beatmakerId: string
+  abonnementId: string
+  clientId?: string | null
+}) {
+  const [{ branding, intro }, { data: abo }] = await Promise.all([
+    chargerBrandingEtIntro(beatmakerId, 'confirmation_abonnement'),
+    createAdminClient().from('abonnements_boutique').select('prix, devise, periode').eq('id', abonnementId).maybeSingle(),
+  ])
+  if (!branding) return
+
+  const corpsHtml = abo
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Abonnement ${echapper(abo.periode)}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${Number(abo.prix).toFixed(2)}€</td>
+        </tr>
+      </table>`
+    : ''
+
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'confirmation_abonnement',
+    to,
+    clientId,
+    subject: `Bienvenue dans l'abonnement ${branding.nom_artiste} !`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: TITRE_DEFAUT.confirmation_abonnement,
+      intro: intro || introDefaut('confirmation_abonnement', branding.nom_artiste),
+      corpsHtml,
+      cta: { texte: 'Accéder à mon espace membre', lien: `${APP_URL}/${branding.slug}/mon-compte` },
+    }),
+  })
+}
+
+export async function annulationAbonnement({
+  to,
+  beatmakerId,
+  clientId,
+}: {
+  to: string
+  beatmakerId: string
+  clientId?: string | null
+}) {
+  const { branding, intro } = await chargerBrandingEtIntro(beatmakerId, 'annulation_abonnement')
+  if (!branding) return
+
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'annulation_abonnement',
+    to,
+    clientId,
+    subject: `Ton abonnement ${branding.nom_artiste} a été annulé`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: TITRE_DEFAUT.annulation_abonnement,
+      intro: intro || introDefaut('annulation_abonnement', branding.nom_artiste),
+      corpsHtml: '',
+    }),
+  })
+}
+
+// ── Aperçu (page réglages) — mêmes titre/intro par défaut que l'envoi réel,
+// données d'exemple à la place des vraies commandes/abonnements. Ne passe
+// jamais par envoyerEmailUnique (pas d'envoi, pas de log).
+const CORPS_EXEMPLE_COMMANDE = `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+  <tr>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Midnight Drive <span style="color:#9ca3af;">— Licence MP3</span></td>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">29.99€</td>
+  </tr>
+</table>`
+
+const CORPS_EXEMPLE_ABONNEMENT = `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+  <tr>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Abonnement mensuel</td>
+    <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">9.99€</td>
+  </tr>
+</table>`
+
+export async function genererApercuTransactionnel(
+  beatmakerId: string,
+  type: TypeTemplateTransactionnel,
+  introDraft: string,
+): Promise<string> {
+  const admin = createAdminClient()
+  const { data: branding } = await admin
+    .from('beatmakers')
+    .select('nom_artiste, slug, logo_url, signature_emails, couleur_marque')
+    .eq('id', beatmakerId)
+    .single()
+  if (!branding) return ''
+
+  const intro = introDraft.trim() || introDefaut(type, branding.nom_artiste)
+
+  const parType: Record<TypeTemplateTransactionnel, { corpsHtml: string; cta?: { texte: string; lien: string } }> = {
+    confirmation_commande: { corpsHtml: CORPS_EXEMPLE_COMMANDE, cta: { texte: 'Télécharger mes fichiers', lien: '#' } },
+    confirmation_abonnement: { corpsHtml: CORPS_EXEMPLE_ABONNEMENT, cta: { texte: 'Accéder à mon espace membre', lien: '#' } },
+    annulation_abonnement: { corpsHtml: '' },
+    beat_cadeau_fidelite: { corpsHtml: '' },
+  }
+
+  return rendreEmailTransactionnel({
+    branding,
+    titre: TITRE_DEFAUT[type],
+    intro,
+    ...parType[type],
   })
 }

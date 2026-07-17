@@ -2,7 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
-import { envoyerFondsEnAttente } from '@/lib/emails'
+import { envoyerFondsEnAttente, confirmationCommande, confirmationAbonnement, annulationAbonnement } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { headers } from 'next/headers'
@@ -224,7 +224,7 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
 
   const { data: abo } = await supabase
     .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id')
+    .select('id, beatmaker_id, client_id, acheteur_email')
     .eq('stripe_subscription_id', subscription.id)
     .maybeSingle()
 
@@ -235,6 +235,14 @@ async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
 
   if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
   else console.log('[webhook] Abonnement annulé:', subscription.id)
+
+  if (abo?.acheteur_email) {
+    annulationAbonnement({
+      to: abo.acheteur_email,
+      beatmakerId: abo.beatmaker_id,
+      clientId: abo.client_id,
+    }).catch(err => console.error('[webhook] Erreur envoi email annulation abonnement:', err))
+  }
 
   // Filet pour les annulations immédiates (ex. abo impaye annulé directement,
   // sans être passé par cancel_at_period_end) — le cas normal (décision
@@ -329,6 +337,15 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
   }
 
   console.log('[webhook] Abonnement créé:', abonnement?.id)
+
+  if (email) {
+    confirmationAbonnement({
+      to: email,
+      beatmakerId: meta.beatmaker_id,
+      abonnementId: abonnement.id,
+      clientId,
+    }).catch(err => console.error('[webhook] Erreur envoi email confirmation abonnement:', err))
+  }
 
   if (await automatisationActive(meta.beatmaker_id, 'bienvenue_abonnement')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
@@ -539,6 +556,15 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     .update({ statut: 'complete', commande_id: commande.id, client_id: clientId, email: acheteurEmail })
     .eq('id', tentative.id)
   if (tentativeError) console.error('[webhook] Erreur maj tentative_paiement:', JSON.stringify(tentativeError))
+
+  if (acheteurEmail) {
+    confirmationCommande({
+      to: acheteurEmail,
+      beatmakerId: meta.beatmaker_id,
+      commandeId: commande.id,
+      clientId,
+    }).catch(err => console.error('[webhook] Erreur envoi email confirmation commande:', err))
+  }
 
   // 4. "Remerciement achat" par palier — évalué une seule fois par session
   // (pas par article), sinon l'automation se déclencherait N fois pour un
