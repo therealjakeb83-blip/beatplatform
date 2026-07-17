@@ -10,7 +10,7 @@ const BASE = '/dashboard/business'
 const CRM_ROUTES       = [`${BASE}/contacts`, `${BASE}/doublons`, `${BASE}/listes`, `${BASE}/segments`]
 const MARKETING_ROUTES = [`${BASE}/marketing`]
 const MAILING_ROUTES   = [`${BASE}/mailing`]
-const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/licences`, `${BASE}/collabs`]
+const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/licences`, `${BASE}/collabs`, `${BASE}/categories`]
 const ANALYTICS_ROUTE  = `${BASE}/analytics`
 
 export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
@@ -201,6 +201,7 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
             {subItem(`${BASE}/abonnements`, 'Abonnements', pathname.startsWith(`${BASE}/abonnements`))}
             {subItem(`${BASE}/plans`,       'Plans',       pathname.startsWith(`${BASE}/plans`))}
             {subItem(`${BASE}/beats`,       'Beats',       pathname.startsWith(`${BASE}/beats`))}
+            {subItem(`${BASE}/categories`,  'Catégories',  pathname.startsWith(`${BASE}/categories`))}
             {subItem(`${BASE}/codes-promo`, 'Codes promo', pathname.startsWith(`${BASE}/codes-promo`))}
             {subItem(`${BASE}/licences`,    'Licences',    pathname.startsWith(`${BASE}/licences`))}
             {subItem(`${BASE}/collabs`,     'Collabs',     pathname.startsWith(`${BASE}/collabs`))}

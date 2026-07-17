@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerInvitationCollab } from '@/lib/emails'
+import { synchroniserCategoriesPersonnalisees } from '@/lib/categories'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
@@ -61,6 +62,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq('beatmaker_id', user.id)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  await synchroniserCategoriesPersonnalisees(supabase, user.id, { styles, typeBeat: type_beat })
 
   if (collaborateurs) {
     await supabase.from('beat_splits').delete().eq('beat_id', id)

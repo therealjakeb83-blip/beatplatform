@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import { chargerOptionsCategories } from '@/lib/categories'
 import ModifierBeatClient from './ModifierBeatClient'
 
 export default async function ModifierBeatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,7 +29,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
     beatmakers: Array.isArray(s.beatmakers) ? (s.beatmakers[0] ?? null) : s.beatmakers,
   }))
 
-  const [{ data: licences }, { data: beatLicences }] = await Promise.all([
+  const [{ data: licences }, { data: beatLicences }, categories] = await Promise.all([
     supabase
       .from('licences')
       .select('id, nom, prix, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive, streams_limite')
@@ -39,6 +40,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
       .from('beat_licences')
       .select('licence_id, actif, prix_override, sur_demande')
       .eq('beat_id', id),
+    chargerOptionsCategories(supabase),
   ])
 
   const hasEntries = (beatLicences ?? []).length > 0
@@ -73,6 +75,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
       licencesActives={licencesActives}
       exclusifSurDemande={exclusifBeatLicence?.sur_demande ?? false}
       exclusifPrixOverride={exclusifBeatLicence?.prix_override ? String(exclusifBeatLicence.prix_override) : ''}
+      categories={categories}
     />
   )
 }

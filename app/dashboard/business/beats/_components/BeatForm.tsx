@@ -6,23 +6,16 @@ import Link from 'next/link'
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const MODES = ['majeur', 'mineur']
 
-const TYPE_BEAT_OPTIONS = [
-  'SCH', 'Werenoi', 'Zamdane', 'Tiakola', 'Gazo', 'SDM', 'Hamza', 'Niaks',
-  'Makar', 'Ven1', 'Bouss', 'Ninho', 'Damso', 'Saïf', 'Timar',
-  'Green Montana', 'Lacrim', 'Vacra', 'US Type Beat',
-]
-const STYLES_OPTIONS = [
-  'Trap', 'Drill', 'UK Drill', 'Afro Trap', 'Afrobeat', 'R&B', 'Pop',
-  'Boom Bap', 'Lo-Fi', 'Dancehall', 'Reggaeton', 'Cloud Rap', 'Pluggnb', 'Jersey Club',
-]
-const AMBIANCES_OPTIONS = [
-  'Dark', 'Chill', 'Energetic', 'Mélancolique', 'Hype', 'Romantique',
-  'Mystérieux', 'Épique', 'Festif', 'Introspectif',
-]
-const INSTRUMENTS_OPTIONS = [
-  'Piano', 'Guitare', 'Cordes', '808', 'Flûte', 'Violon',
-  'Basse', 'Synthé', 'Cuivres', 'Harpe', 'Orgue', 'Marimba',
-]
+// Options des tags — désormais chargées depuis la table `categories` (Phase
+// 7) plutôt que codées en dur, pour permettre l'ajout libre + certification
+// sur Styles/Type beat. Voir CategoriesOptions plus bas et
+// app/dashboard/business/categories/.
+export type CategoriesOptions = {
+  styles: string[]
+  ambiances: string[]
+  instruments: string[]
+  typeBeat: string[]
+}
 
 export type Collaborateur = {
   id: string
@@ -288,6 +281,7 @@ export default function BeatForm({
   initialValues,
   existingUrls = {},
   licences = [],
+  categories,
   submitLabel,
   onSubmit,
   onDelete,
@@ -296,6 +290,7 @@ export default function BeatForm({
   initialValues: BeatFormValues
   existingUrls?: ExistingUrls
   licences?: LicenceInfo[]
+  categories: CategoriesOptions
   submitLabel: string
   onSubmit: (values: BeatFormValues, urls: Record<string, string>) => Promise<void>
   onDelete?: () => Promise<void>
@@ -464,10 +459,14 @@ export default function BeatForm({
       {/* Tags */}
       <section className="flex flex-col gap-6">
         <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">Tags</h2>
-        <HybridTagSelector label="Styles" options={STYLES_OPTIONS} selected={styles} onChange={setStyles} placeholder="Ajouter un style..." />
-        <TagSelector label="Ambiances" options={AMBIANCES_OPTIONS} selected={ambiances} onChange={setAmbiances} />
-        <TagSelector label="Instruments" options={INSTRUMENTS_OPTIONS} selected={instruments} onChange={setInstruments} />
-        <HybridTagSelector label="Type Beat" options={TYPE_BEAT_OPTIONS} selected={typeBeat} onChange={setTypeBeat} placeholder="Ajouter un artiste..." />
+        <HybridTagSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} placeholder="Ajouter un style..." />
+        <TagSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} />
+        <TagSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} />
+        <HybridTagSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} placeholder="Ajouter un artiste..." />
+        <p className="text-xs text-gray-500 -mt-2">
+          Styles et Type Beat personnalisés : gérables (renommer, demander la certification) sur{' '}
+          <Link href="/dashboard/business/categories" className="text-indigo-400 hover:underline">la page Catégories</Link>.
+        </p>
       </section>
 
       {/* Collaborateurs */}

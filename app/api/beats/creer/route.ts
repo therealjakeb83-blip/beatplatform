@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerInvitationCollab } from '@/lib/emails'
+import { synchroniserCategoriesPersonnalisees } from '@/lib/categories'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -37,6 +38,11 @@ export async function POST(request: Request) {
   })
 
   if (beatError) return Response.json({ error: beatError.message }, { status: 500 })
+
+  // Styles/Type beat tapés à la main deviennent des catégories personnelles
+  // (source=beatmaker) réutilisables sur les prochains beats — jamais pour
+  // Ambiances/Instruments (lecture seule, Phase 7).
+  await synchroniserCategoriesPersonnalisees(supabase, user.id, { styles, typeBeat: type_beat })
 
   if (collaborateurs?.length) {
     const splits = collaborateurs.map((c: { beatmaker_id?: string; email_invite?: string; pourcentage: number }) => ({

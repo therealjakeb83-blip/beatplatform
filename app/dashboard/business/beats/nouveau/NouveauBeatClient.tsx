@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import BeatForm, { BeatFormValues, LicenceInfo } from '../_components/BeatForm'
+import BeatForm, { BeatFormValues, LicenceInfo, CategoriesOptions } from '../_components/BeatForm'
 
-export default function NouveauBeatClient({ beatId, licences }: { beatId: string; licences: LicenceInfo[] }) {
+export default function NouveauBeatClient({ beatId, licences, categories }: { beatId: string; licences: LicenceInfo[]; categories: CategoriesOptions }) {
   const router = useRouter()
 
   const initialValues: BeatFormValues = {
@@ -47,7 +47,7 @@ export default function NouveauBeatClient({ beatId, licences }: { beatId: string
           <Link href="/dashboard/business/beats" className="text-gray-400 hover:text-white transition-colors text-sm">← Mes beats</Link>
           <h1 className="text-2xl font-bold">Ajouter un beat</h1>
         </div>
-        <BeatForm beatId={beatId} initialValues={initialValues} licences={licences} submitLabel="Enregistrer le beat" onSubmit={handleSubmit} />
+        <BeatForm beatId={beatId} initialValues={initialValues} licences={licences} categories={categories} submitLabel="Enregistrer le beat" onSubmit={handleSubmit} />
       </div>
     </main>
   )
