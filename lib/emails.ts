@@ -438,14 +438,21 @@ export async function genererApercuTransactionnel(
   beatmakerId: string,
   type: TypeTemplateTransactionnel,
   introDraft: string,
+  couleurDraft?: string,
 ): Promise<string> {
   const admin = createAdminClient()
-  const { data: branding } = await admin
+  const { data: brandingDb } = await admin
     .from('beatmakers')
     .select('nom_artiste, slug, logo_url, signature_emails, couleur_marque')
     .eq('id', beatmakerId)
     .single()
-  if (!branding) return ''
+  if (!brandingDb) return ''
+
+  // Aperçu interactif : reflète la couleur en cours de saisie, pas seulement
+  // celle déjà enregistrée — sinon le beatmaker ne voit jamais l'effet de son
+  // changement avant d'avoir cliqué "Enregistrer".
+  const couleurValide = couleurDraft && /^#[0-9a-fA-F]{6}$/.test(couleurDraft) ? couleurDraft : null
+  const branding = couleurValide ? { ...brandingDb, couleur_marque: couleurValide } : brandingDb
 
   const intro = introDraft.trim() || introDefaut(type, branding.nom_artiste)
 

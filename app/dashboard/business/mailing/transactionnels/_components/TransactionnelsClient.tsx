@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { TypeTemplateTransactionnel } from '@/lib/emails'
 
@@ -12,10 +12,11 @@ type Props = {
   intros: Record<TypeTemplateTransactionnel, string>
   sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
   sauvegarderIntro: (type: TypeTemplateTransactionnel, intro: string) => Promise<{ erreur?: string }>
-  genererApercu: (type: TypeTemplateTransactionnel, introDraft: string) => Promise<string>
+  genererApercu: (type: TypeTemplateTransactionnel, introDraft: string, couleurDraft?: string) => Promise<string>
 }
 
 const COULEUR_DEFAUT = '#4f46e5'
+const DEBOUNCE_MS = 400
 
 const CARTES: { type: TypeTemplateTransactionnel; titre: string; description: string; declencheur: string }[] = [
   {
@@ -54,17 +55,34 @@ export default function TransactionnelsClient({
   sauvegarderIntro,
   genererApercu,
 }: Props) {
-  const [apercuOuvert, setApercuOuvert] = useState<{ html: string; chargement: boolean } | null>(null)
+  const [typeActif, setTypeActif] = useState<TypeTemplateTransactionnel>('confirmation_commande')
+  const [couleur, setCouleur] = useState(couleurMarque ?? COULEUR_DEFAUT)
+  const [introsDraft, setIntrosDraft] = useState(intros)
+  const [apercuHtml, setApercuHtml] = useState('')
+  const [chargementApercu, setChargementApercu] = useState(true)
 
-  async function handleApercu(type: TypeTemplateTransactionnel, introDraft: string) {
-    setApercuOuvert({ html: '', chargement: true })
-    const html = await genererApercu(type, introDraft)
-    setApercuOuvert({ html, chargement: false })
-  }
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Aperçu live : régénéré automatiquement (avec un léger délai anti-rafale)
+  // à chaque changement de couleur, d'intro ou de type sélectionné — pas
+  // besoin de bouton "Aperçu" ni d'enregistrer avant de voir le résultat.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setChargementApercu(true)
+    debounceRef.current = setTimeout(async () => {
+      const html = await genererApercu(typeActif, introsDraft[typeActif], couleur)
+      setApercuHtml(html)
+      setChargementApercu(false)
+    }, DEBOUNCE_MS)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeActif, introsDraft[typeActif], couleur])
+
+  const carteActive = CARTES.find(c => c.type === typeActif)!
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
         <div>
           <h1 className="text-xl font-bold text-white">Mailing — Transactionnels</h1>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -72,34 +90,66 @@ export default function TransactionnelsClient({
           </p>
         </div>
 
-        <CarteBranding
-          nomArtiste={nomArtiste}
-          logoUrl={logoUrl}
-          signatureEmails={signatureEmails}
-          couleurMarque={couleurMarque}
-          sauvegarderCouleurMarque={sauvegarderCouleurMarque}
-        />
-
-        <div className="space-y-3">
-          {CARTES.map(carte => (
-            <CarteTemplate
-              key={carte.type}
-              carte={carte}
-              introInitial={intros[carte.type]}
-              sauvegarderIntro={sauvegarderIntro}
-              onApercu={introDraft => handleApercu(carte.type, introDraft)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Colonne réglages */}
+          <div className="space-y-4">
+            <CarteBranding
+              nomArtiste={nomArtiste}
+              logoUrl={logoUrl}
+              signatureEmails={signatureEmails}
+              couleur={couleur}
+              onChangeCouleur={setCouleur}
+              sauvegarderCouleurMarque={sauvegarderCouleurMarque}
             />
-          ))}
+
+            <div className="flex flex-wrap gap-2">
+              {CARTES.map(carte => (
+                <button
+                  key={carte.type}
+                  onClick={() => setTypeActif(carte.type)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    typeActif === carte.type
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+                  }`}
+                >
+                  {carte.titre}
+                </button>
+              ))}
+            </div>
+
+            <CarteTemplate
+              key={carteActive.type}
+              carte={carteActive}
+              intro={introsDraft[carteActive.type]}
+              onChangeIntro={valeur => setIntrosDraft(prev => ({ ...prev, [carteActive.type]: valeur }))}
+              sauvegarderIntro={sauvegarderIntro}
+            />
+          </div>
+
+          {/* Colonne aperçu live */}
+          <div className="lg:sticky lg:top-6">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+                <p className="text-sm font-bold text-white">Aperçu en direct</p>
+                {chargementApercu && <span className="text-[11px] text-gray-500">Mise à jour…</span>}
+              </div>
+              <div className="bg-gray-950 flex justify-center py-6 px-4 min-h-[70vh]">
+                {apercuHtml ? (
+                  <iframe
+                    srcDoc={apercuHtml}
+                    title="Aperçu de l'email"
+                    className="bg-white rounded-lg transition-opacity"
+                    style={{ width: '100%', maxWidth: 600, height: '70vh', opacity: chargementApercu ? 0.5 : 1 }}
+                  />
+                ) : (
+                  <p className="text-xs text-gray-500 self-center">Génération…</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {apercuOuvert && (
-        <ModaleApercu
-          html={apercuOuvert.html}
-          chargement={apercuOuvert.chargement}
-          onClose={() => setApercuOuvert(null)}
-        />
-      )}
     </div>
   )
 }
@@ -108,16 +158,17 @@ function CarteBranding({
   nomArtiste,
   logoUrl,
   signatureEmails,
-  couleurMarque,
+  couleur,
+  onChangeCouleur,
   sauvegarderCouleurMarque,
 }: {
   nomArtiste: string
   logoUrl: string | null
   signatureEmails: string | null
-  couleurMarque: string | null
+  couleur: string
+  onChangeCouleur: (couleur: string) => void
   sauvegarderCouleurMarque: (couleur: string) => Promise<{ erreur?: string }>
 }) {
-  const [couleur, setCouleur] = useState(couleurMarque ?? COULEUR_DEFAUT)
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre] = useState(false)
   const [erreur, setErreur] = useState('')
@@ -137,7 +188,7 @@ function CarteBranding({
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-4">
-      <p className="text-sm font-semibold text-white">Branding — partagé par les 3 emails</p>
+      <p className="text-sm font-semibold text-white">Branding — partagé par les 4 emails</p>
 
       <div className="flex flex-col sm:flex-row sm:items-end gap-3">
         <div className="flex-1">
@@ -146,18 +197,18 @@ function CarteBranding({
             <input
               type="color"
               value={/^#[0-9a-fA-F]{6}$/.test(couleur) ? couleur : COULEUR_DEFAUT}
-              onChange={e => setCouleur(e.target.value)}
+              onChange={e => onChangeCouleur(e.target.value)}
               className="w-10 h-10 rounded-lg bg-gray-950 border border-gray-800 cursor-pointer"
             />
             <input
               type="text"
               value={couleur}
-              onChange={e => setCouleur(e.target.value)}
+              onChange={e => onChangeCouleur(e.target.value)}
               placeholder={COULEUR_DEFAUT}
               className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">Utilisée pour l&apos;en-tête et le bouton des emails — vide = indigo par défaut.</p>
+          <p className="text-xs text-gray-500 mt-1">Utilisée pour l&apos;en-tête et le bouton des emails — vide = indigo par défaut. L&apos;aperçu à droite se met à jour automatiquement.</p>
         </div>
         <button
           onClick={handleSauvegarder}
@@ -181,16 +232,15 @@ function CarteBranding({
 
 function CarteTemplate({
   carte,
-  introInitial,
+  intro,
+  onChangeIntro,
   sauvegarderIntro,
-  onApercu,
 }: {
   carte: { type: TypeTemplateTransactionnel; titre: string; description: string; declencheur: string }
-  introInitial: string
+  intro: string
+  onChangeIntro: (intro: string) => void
   sauvegarderIntro: (type: TypeTemplateTransactionnel, intro: string) => Promise<{ erreur?: string }>
-  onApercu: (introDraft: string) => void
 }) {
-  const [intro, setIntro] = useState(introInitial)
   const [enregistrement, setEnregistrement] = useState(false)
   const [enregistre, setEnregistre] = useState(false)
   const [erreur, setErreur] = useState('')
@@ -220,50 +270,23 @@ function CarteTemplate({
         <label className="block text-xs font-medium text-gray-400 mb-1">Texte d&apos;intro personnalisé</label>
         <textarea
           value={intro}
-          onChange={e => setIntro(e.target.value)}
+          onChange={e => onChangeIntro(e.target.value)}
           rows={3}
           placeholder="Laisse vide pour utiliser le texte par défaut de My Producer"
           className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 resize-none"
         />
+        <p className="text-xs text-gray-500 mt-1">L&apos;aperçu à droite se met à jour automatiquement pendant que tu écris.</p>
       </div>
 
       {erreur && <p className="text-xs text-red-400">{erreur}</p>}
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleSauvegarder}
-          disabled={enregistrement}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors disabled:opacity-50"
-        >
-          {enregistrement ? 'Enregistrement…' : enregistre ? 'Enregistré ✓' : 'Enregistrer'}
-        </button>
-        <button
-          onClick={() => onApercu(intro)}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800/60 hover:bg-gray-700 text-gray-300 transition-colors"
-        >
-          Aperçu
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ModaleApercu({ html, chargement, onClose }: { html: string; chargement: boolean; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
-          <p className="text-sm font-bold text-white">Aperçu</p>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-lg leading-none">×</button>
-        </div>
-        <div className="flex-1 overflow-auto bg-gray-950 flex justify-center py-4">
-          {chargement ? (
-            <p className="text-xs text-gray-500 self-center">Génération…</p>
-          ) : (
-            <iframe srcDoc={html} title="Aperçu de l'email" className="bg-white" style={{ width: 600, height: '100%', minHeight: '60vh' }} />
-          )}
-        </div>
-      </div>
+      <button
+        onClick={handleSauvegarder}
+        disabled={enregistrement}
+        className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors disabled:opacity-50"
+      >
+        {enregistrement ? 'Enregistrement…' : enregistre ? 'Enregistré ✓' : 'Enregistrer'}
+      </button>
     </div>
   )
 }

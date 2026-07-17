@@ -34,9 +34,9 @@ export async function sauvegarderIntro(type: TypeTemplateTransactionnel, intro: 
   return {}
 }
 
-export async function genererApercu(type: TypeTemplateTransactionnel, introDraft: string): Promise<string> {
+export async function genererApercu(type: TypeTemplateTransactionnel, introDraft: string, couleurDraft?: string): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return ''
-  return genererApercuTransactionnel(user.id, type, introDraft)
+  return genererApercuTransactionnel(user.id, type, introDraft, couleurDraft)
 }
