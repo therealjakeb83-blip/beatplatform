@@ -120,35 +120,52 @@ function ModerationSection({
     <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 space-y-3">
       <p className="text-sm font-semibold text-amber-300">Demandes de certification en attente ({demandes.length})</p>
       {erreur && <p className="text-xs text-red-400">{erreur}</p>}
-      <div className="flex flex-col gap-2">
-        {demandes.map(d => (
-          <div key={d.id} className="flex items-center justify-between bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-white font-medium">{d.nom}</span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{NOMS_TYPE[d.type]}</span>
-              <span className="text-xs text-gray-500">par {d.nom_artiste ?? '—'}</span>
-              <span className="text-[11px] text-gray-500">
-                {d.nb_beats} beat{d.nb_beats > 1 ? 's' : ''} · {d.ventes} vente{d.ventes > 1 ? 's' : ''} · {d.ecoutes} écoute{d.ecoutes > 1 ? 's' : ''} · <span className="text-green-400">{fmtEuroDisplay(d.ca_net)}</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => traiter(d.id, approuverCertification)}
-                disabled={traitementId === d.id}
-                className="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-50"
-              >
-                Approuver
-              </button>
-              <button
-                onClick={() => traiter(d.id, rejeterCertification)}
-                disabled={traitementId === d.id}
-                className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
-              >
-                Rejeter
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-wide text-amber-300/60 border-b border-amber-500/20">
+              <th className="pb-2 font-medium">Nom</th>
+              <th className="pb-2 font-medium">Type</th>
+              <th className="pb-2 font-medium">Demandeur</th>
+              <th className="pb-2 font-medium text-right">Beats</th>
+              <th className="pb-2 font-medium text-right">Ventes</th>
+              <th className="pb-2 font-medium text-right">Écoutes</th>
+              <th className="pb-2 font-medium text-right">CA net</th>
+              <th className="pb-2 font-medium w-40"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...demandes].sort((a, b) => b.ca_net - a.ca_net).map(d => (
+              <tr key={d.id} className="border-b border-amber-500/10 last:border-0">
+                <td className="py-2 text-white font-medium">{d.nom}</td>
+                <td className="py-2 text-gray-400">{NOMS_TYPE[d.type]}</td>
+                <td className="py-2 text-gray-500">{d.nom_artiste ?? '—'}</td>
+                <td className="py-2 text-right text-gray-400">{d.nb_beats}</td>
+                <td className="py-2 text-right text-gray-400">{d.ventes}</td>
+                <td className="py-2 text-right text-gray-400">{d.ecoutes}</td>
+                <td className="py-2 text-right text-green-400 font-medium">{fmtEuroDisplay(d.ca_net)}</td>
+                <td className="py-2 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => traiter(d.id, approuverCertification)}
+                      disabled={traitementId === d.id}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-50"
+                    >
+                      Approuver
+                    </button>
+                    <button
+                      onClick={() => traiter(d.id, rejeterCertification)}
+                      disabled={traitementId === d.id}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
+                    >
+                      Rejeter
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
