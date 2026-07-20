@@ -92,7 +92,7 @@ export default function BoutiqueHeader({
         <Link href={`/${slug}#parcourir-styles`} className="shop-pill">Styles</Link>
         <Link href={`/${slug}#parcourir-instruments`} className="shop-pill">Instruments</Link>
         <Link href={`/${slug}#parcourir-ambiances`} className="shop-pill">Ambiances</Link>
-        <Link href={`/${slug}/membres`} className="shop-pill is-private">Beats privés🔒</Link>
+        <Link href={`/${slug}/membres`} className="shop-pill is-private">Beats privés 🔒</Link>
       </nav>
     </header>
   )

@@ -255,7 +255,6 @@
   background: transparent;
   font-size: 15px;
   font-weight: 900;
-  text-transform: capitalize;
   cursor: pointer;
   transition: background .15s ease, color .15s ease;
   display: inline-flex;
