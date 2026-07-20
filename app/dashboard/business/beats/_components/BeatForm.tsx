@@ -72,12 +72,24 @@ export type LicenceInfo = {
   streams_limite: number | null
 }
 
-function CategorieChips({ tags, onRemove }: { tags: string[]; onRemove: (tag: string) => void }) {
+// Badge "certifié" façon réseaux sociaux — signal visuel fort et immédiat,
+// en plus de la séparation déjà faite entre les sections Certifiés/Mes X.
+function BadgeCertifie() {
+  return (
+    <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 flex-shrink-0" aria-label="Certifié" role="img">
+      <circle cx="10" cy="10" r="10" className="fill-sky-400" />
+      <path d="M6 10.2l2.4 2.4L14 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  )
+}
+
+function CategorieChips({ tags, onRemove, certifie }: { tags: string[]; onRemove: (tag: string) => void; certifie?: boolean }) {
   if (tags.length === 0) return null
   return (
     <div className="flex flex-wrap gap-2 mb-2">
       {tags.map(tag => (
         <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white">
+          {certifie && <BadgeCertifie />}
           {tag}
           <button type="button" onClick={() => onRemove(tag)} className="hover:text-indigo-200">×</button>
         </span>
@@ -89,16 +101,17 @@ function CategorieChips({ tags, onRemove }: { tags: string[]; onRemove: (tag: st
 // Dropdown de résultats sous une barre de recherche — n'apparaît que si
 // l'utilisateur a tapé quelque chose (même pattern que la recherche
 // beatmaker de CollaborateursSection un peu plus bas dans ce fichier).
-function RechercheDropdown({ recherche, resultats, creation, onChoisir, onCreer }: {
+function RechercheDropdown({ recherche, resultats, creation, onChoisir, onCreer, certifie }: {
   recherche: string; resultats: string[]; creation?: string | null
-  onChoisir: (tag: string) => void; onCreer?: (nom: string) => void
+  onChoisir: (tag: string) => void; onCreer?: (nom: string) => void; certifie?: boolean
 }) {
   if (!recherche.trim() || (resultats.length === 0 && !creation)) return null
   return (
     <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden z-10 max-h-56 overflow-y-auto">
       {resultats.map(tag => (
         <button key={tag} type="button" onClick={() => onChoisir(tag)}
-          className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors">
+          className="w-full flex items-center gap-1.5 text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors">
+          {certifie && <BadgeCertifie />}
           {tag}
         </button>
       ))}
@@ -153,12 +166,12 @@ function CategorieSelector({ label, options, selected, onChange, hybride, placeh
 
       <div>
         <label className="block text-xs text-gray-500 mb-2">Certifié{label === 'Ambiances' ? 'es' : 's'}</label>
-        <CategorieChips tags={selectedCert} onRemove={toggle} />
+        <CategorieChips tags={selectedCert} onRemove={toggle} certifie />
         <div className="relative">
           <input type="text" value={rechercheCert} onChange={e => setRechercheCert(e.target.value)}
             placeholder="Rechercher..."
             className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
-          <RechercheDropdown recherche={rechercheCert} resultats={resultatsCert}
+          <RechercheDropdown recherche={rechercheCert} resultats={resultatsCert} certifie
             onChoisir={tag => { ajouter(tag); setRechercheCert('') }} />
         </div>
       </div>
