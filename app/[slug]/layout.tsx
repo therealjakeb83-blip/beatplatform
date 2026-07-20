@@ -5,6 +5,7 @@ import PlayerBar from './_components/PlayerBar'
 import { CartProvider } from './_components/CartContext'
 import CartDrawer from './_components/CartDrawer'
 import BoutiqueNavBar from './_components/BoutiqueNavBar'
+import BoutiqueFooter from './_components/BoutiqueFooter'
 
 export default async function BoutiqueLayout({
   children,
@@ -16,10 +17,10 @@ export default async function BoutiqueLayout({
   const { slug } = await params
 
   const supabase = await createClient()
+  const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   let clientUser: { prenom: string; nom: string } | null = null
   if (user) {
-    const admin = createAdminClient()
     const { data: client } = await admin
       .from('clients')
       .select('prenom, nom')
@@ -28,12 +29,27 @@ export default async function BoutiqueLayout({
     clientUser = client
   }
 
+  const { data: beatmaker } = await admin
+    .from('beatmakers')
+    .select('nom_artiste, instagram_url, youtube_url, tiktok_url')
+    .eq('slug', slug)
+    .maybeSingle()
+
   return (
     <PlayerProvider>
       <CartProvider>
-        <div className="min-h-screen bg-black text-white pb-28">
+        <div className="min-h-screen bg-black text-white pb-28 flex flex-col">
           <BoutiqueNavBar slug={slug} clientUser={clientUser} />
-          {children}
+          <div className="flex-1">{children}</div>
+          {beatmaker && (
+            <BoutiqueFooter
+              slug={slug}
+              nomArtiste={beatmaker.nom_artiste}
+              instagramUrl={beatmaker.instagram_url}
+              youtubeUrl={beatmaker.youtube_url}
+              tiktokUrl={beatmaker.tiktok_url}
+            />
+          )}
         </div>
         <PlayerBar />
         <CartDrawer slug={slug} />

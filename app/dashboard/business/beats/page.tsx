@@ -15,6 +15,7 @@ export type BeatRow = {
   styles: string[] | null
   type_beat: string[] | null
   mp3_tague_url: string | null
+  mis_en_avant: boolean
 }
 
 export default async function BeatsPage() {
@@ -26,7 +27,7 @@ export default async function BeatsPage() {
 
   const { data: rawBeats } = await admin
     .from('beats')
-    .select('id, titre, bpm, cle, statut, image_url, couleur, created_at, styles, type_beat, mp3_tague_url')
+    .select('id, titre, bpm, cle, statut, image_url, couleur, created_at, styles, type_beat, mp3_tague_url, mis_en_avant')
     .eq('beatmaker_id', user.id)
     .is('supprime_le', null)
     .order('created_at', { ascending: false })
@@ -44,6 +45,7 @@ export default async function BeatsPage() {
     styles:        b.styles as string[] | null,
     type_beat:     b.type_beat as string[] | null,
     mp3_tague_url: b.mp3_tague_url as string | null,
+    mis_en_avant:  (b as Record<string, unknown>).mis_en_avant as boolean ?? false,
   }))
 
   return <BeatsClient beats={beats} />

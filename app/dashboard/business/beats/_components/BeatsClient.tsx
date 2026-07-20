@@ -63,14 +63,29 @@ function Cover({ beat }: { beat: BeatRow }) {
 
 /* ─── composant ─────────────────────────────────────────────────── */
 
-export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
+export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[] }) {
   const router = useRouter()
 
+  const [beats,        setBeats]        = useState(beatsInitiaux)
   const [filtreStatut, setFiltreStatut] = useState('')
   const [filtreGenre,  setFiltreGenre]  = useState('')
   const [search,       setSearch]       = useState('')
   const [sortKey,      setSortKey]      = useState<SortKey>('created_at')
   const [sortDir,      setSortDir]      = useState<'asc' | 'desc'>('desc')
+
+  async function toggleMisEnAvant(e: React.MouseEvent, beat: BeatRow) {
+    e.stopPropagation()
+    const prochain = !beat.mis_en_avant
+    setBeats(prev => prev.map(b => b.id === beat.id ? { ...b, mis_en_avant: prochain } : b))
+    const res = await fetch(`/api/beats/${beat.id}/mis-en-avant`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mis_en_avant: prochain }),
+    })
+    if (!res.ok) {
+      setBeats(prev => prev.map(b => b.id === beat.id ? { ...b, mis_en_avant: !prochain } : b))
+    }
+  }
 
   const genres = useMemo(() => {
     const set = new Set<string>()
@@ -193,6 +208,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-800">
+                <th className="w-10 px-3 py-3" />
                 <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Beat</th>
                 <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">
                   <button onClick={() => handleSort('created_at')} className="hover:text-gray-400 transition-colors">
@@ -210,6 +226,16 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
                   onClick={() => router.push(`/dashboard/business/beats/${b.id}/modifier`)}
                   className="hover:bg-gray-800/40 transition-colors cursor-pointer"
                 >
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      onClick={e => toggleMisEnAvant(e, b)}
+                      aria-label={b.mis_en_avant ? 'Retirer de la sélection' : 'Mettre en avant sur la boutique'}
+                      title={b.mis_en_avant ? 'Retirer de la sélection' : 'Mettre en avant sur la boutique'}
+                      className={`text-lg transition-colors ${b.mis_en_avant ? 'text-yellow-400' : 'text-gray-700 hover:text-gray-500'}`}
+                    >
+                      {b.mis_en_avant ? '★' : '☆'}
+                    </button>
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <Cover beat={b} />
@@ -236,7 +262,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
 
               {displayed.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-5 py-16 text-center text-xs text-gray-700">
+                  <td colSpan={4} className="px-5 py-16 text-center text-xs text-gray-700">
                     Aucun beat trouvé
                   </td>
                 </tr>
@@ -246,7 +272,7 @@ export default function BeatsClient({ beats }: { beats: BeatRow[] }) {
             {displayed.length > 0 && (
               <tfoot>
                 <tr className="border-t border-gray-800 bg-gray-900/50">
-                  <td className="px-5 py-3 text-xs text-gray-600 font-semibold" colSpan={3}>
+                  <td className="px-5 py-3 text-xs text-gray-600 font-semibold" colSpan={4}>
                     {displayed.length} beat{displayed.length > 1 ? 's' : ''}
                   </td>
                 </tr>

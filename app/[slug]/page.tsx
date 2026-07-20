@@ -6,7 +6,10 @@ import { Suspense } from 'react'
 import BoutiqueHeader from './_components/BoutiqueHeader'
 import BeatCatalogue from './_components/BeatCatalogue'
 import SuccessBanner from './_components/SuccessBanner'
+import CategorieBrowseSection from './_components/CategorieBrowseSection'
 import type { BeatPublic, LicencePublic } from './_components/BeatCard'
+import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
+import type { TypeCategorieDb } from './_lib/categories-urls'
 
 export default async function BoutiquePage({
   params,
@@ -63,7 +66,7 @@ export default async function BoutiquePage({
   const { data: rawBeats } = await supabase
     .from('beats')
     .select(`
-      id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif,
+      id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, mis_en_avant,
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
@@ -78,8 +81,8 @@ export default async function BoutiquePage({
 
   // mp3_tague_url inclus uniquement pour les abonnés (sinon le player est bloqué côté client)
   const selectPrives = estAbonne
-    ? `id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
-    : `id, titre, bpm, cle, image_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+    ? `id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+    : `id, titre, bpm, cle, image_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
 
   const { data: rawBeatsPrives } = await supabase
     .from('beats')
@@ -97,6 +100,7 @@ export default async function BoutiquePage({
     image_url: string | null
     mp3_tague_url: string | null
     free_download_actif: boolean
+    mis_en_avant: boolean
     styles: string[] | null
     ambiances: string[] | null
     instruments: string[] | null
@@ -141,8 +145,60 @@ export default async function BoutiquePage({
     }
   }
 
-  const beats: BeatPublic[] = (rawBeats as unknown as RawBeat[] ?? []).map(b => mapBeat(b, false))
-  const beatsPrives: BeatPublic[] = (rawBeatsPrives as unknown as RawBeat[] ?? []).map(b => mapBeat(b, true))
+  const rawBeatsArr = rawBeats as unknown as RawBeat[] ?? []
+  const rawBeatsPrivesArr = rawBeatsPrives as unknown as RawBeat[] ?? []
+
+  const beats: BeatPublic[] = rawBeatsArr.map(b => mapBeat(b, false))
+  const beatsPrives: BeatPublic[] = rawBeatsPrivesArr.map(b => mapBeat(b, true))
+  const selection: BeatPublic[] = [
+    ...rawBeatsArr.filter(b => b.mis_en_avant).map(b => mapBeat(b, false)),
+    ...rawBeatsPrivesArr.filter(b => b.mis_en_avant).map(b => mapBeat(b, true)),
+  ]
+
+  // Compteurs par tag (styles/ambiances/instruments/type beats) — uniquement
+  // sur les beats publics, cohérent avec ce qu'un visiteur non-abonné peut
+  // réellement parcourir sans compte.
+  const statsParTag = agregerStatsParCategorie(rawBeatsArr, [], [])
+
+  // Images des cartes catégories — best-effort : si la table `categories`
+  // (Phase 7) n'existe pas encore en base, ces requêtes renvoient
+  // simplement des tableaux vides et les cartes retombent sur l'avatar-initiales.
+  const [{ data: categoriesRaw }, { data: overridesRaw }] = await Promise.all([
+    admin
+      .from('categories')
+      .select('id, type, nom, image_url')
+      .or(`source.eq.plateforme,beatmaker_id.eq.${beatmaker.id},statut.eq.certifiee`),
+    admin
+      .from('categories_images_boutique')
+      .select('categorie_id, image_url')
+      .eq('beatmaker_id', beatmaker.id),
+  ])
+
+  const overridesById = new Map(
+    (overridesRaw ?? []).map(o => [o.categorie_id as string, o.image_url as string])
+  )
+  const imageParTag = new Map<string, string>()
+  for (const c of (categoriesRaw ?? []) as { id: string; type: TypeCategorieDb; nom: string; image_url: string | null }[]) {
+    const image = overridesById.get(c.id) ?? c.image_url
+    if (image) imageParTag.set(`${c.type}|${c.nom}`, image)
+  }
+
+  function listePourType(type: TypeCategorieDb, get: (b: RawBeat) => string[] | null) {
+    const noms = new Set<string>()
+    rawBeatsArr.forEach(b => get(b)?.forEach(n => noms.add(n)))
+    return [...noms]
+      .map(nom => ({
+        nom,
+        count: statsPour(statsParTag, type, nom).nb_beats,
+        imageUrl: imageParTag.get(`${type}|${nom}`) ?? null,
+      }))
+      .sort((a, b) => b.count - a.count)
+  }
+
+  const stylesCartes = listePourType('styles', b => b.styles)
+  const ambiancesCartes = listePourType('ambiances', b => b.ambiances)
+  const instrumentsCartes = listePourType('instruments', b => b.instruments)
+  const typeBeatCartes = listePourType('type_beat', b => b.type_beat)
 
   return (
     <>
@@ -163,10 +219,17 @@ export default async function BoutiquePage({
       <BeatCatalogue
         beats={beats}
         beatsPrives={beatsPrives}
+        selection={selection}
         slug={slug}
         estAbonne={estAbonne}
         clientId={user?.id ?? null}
       />
+      <div className="max-w-5xl mx-auto px-6 space-y-14 pb-10">
+        <CategorieBrowseSection id="parcourir-styles" type="styles" slug={slug} cartes={stylesCartes} />
+        <CategorieBrowseSection id="parcourir-type-beat" type="type_beat" slug={slug} cartes={typeBeatCartes} />
+        <CategorieBrowseSection id="parcourir-instruments" type="instruments" slug={slug} cartes={instrumentsCartes} />
+        <CategorieBrowseSection id="parcourir-ambiances" type="ambiances" slug={slug} cartes={ambiancesCartes} />
+      </div>
     </>
   )
 }
