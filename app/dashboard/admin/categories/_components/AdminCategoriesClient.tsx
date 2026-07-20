@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import type { CategorieRow, TypeCategorie } from '@/lib/categories'
+import { fmtEuroDisplay } from '@/app/dashboard/business/analytics/_lib/periode'
+import type { StatsCategorie } from '../_lib/stats'
 
-type CategorieAvecArtiste = CategorieRow & { nom_artiste: string | null }
+type CategorieAvecArtiste = CategorieRow & { nom_artiste: string | null } & StatsCategorie
 
 type Props = {
   categories: CategorieAvecArtiste[]
@@ -33,7 +35,9 @@ export default function AdminCategoriesClient({
 }: Props) {
   const [ongletActif, setOngletActif] = useState<TypeCategorie>('styles')
   const demandesEnAttente = categories.filter(c => c.statut === 'en_attente_certification')
-  const officielles = categories.filter(c => c.type === ongletActif && c.source === 'plateforme')
+  const officielles = categories
+    .filter(c => c.type === ongletActif && c.source === 'plateforme')
+    .sort((a, b) => b.ca_net - a.ca_net)
 
   return (
     <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
@@ -68,15 +72,38 @@ export default function AdminCategoriesClient({
 
       <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
         <p className="text-sm font-semibold text-white">Catégories officielles — {ONGLETS.find(o => o.type === ongletActif)!.label}</p>
-        <div className="flex flex-wrap gap-2">
-          {officielles.length === 0 && <p className="text-xs text-gray-600">Aucune catégorie pour l&apos;instant.</p>}
-          {officielles.map(c => (
-            <span key={c.id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-gray-800 text-gray-300">
-              {c.nom}
-              <SupprimerBouton categorieId={c.id} supprimerCategoriePlateforme={supprimerCategoriePlateforme} />
-            </span>
-          ))}
-        </div>
+        {officielles.length === 0 ? (
+          <p className="text-xs text-gray-600">Aucune catégorie pour l&apos;instant.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 border-b border-gray-800">
+                  <th className="pb-2 font-medium">Nom</th>
+                  <th className="pb-2 font-medium text-right">Beats</th>
+                  <th className="pb-2 font-medium text-right">Ventes</th>
+                  <th className="pb-2 font-medium text-right">Écoutes</th>
+                  <th className="pb-2 font-medium text-right">CA net</th>
+                  <th className="pb-2 font-medium w-8"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {officielles.map(c => (
+                  <tr key={c.id} className="border-b border-gray-800/60 last:border-0">
+                    <td className="py-2 text-white font-medium">{c.nom}</td>
+                    <td className="py-2 text-right text-gray-400">{c.nb_beats}</td>
+                    <td className="py-2 text-right text-gray-400">{c.ventes}</td>
+                    <td className="py-2 text-right text-gray-400">{c.ecoutes}</td>
+                    <td className="py-2 text-right text-green-400 font-medium">{fmtEuroDisplay(c.ca_net)}</td>
+                    <td className="py-2 text-right">
+                      <SupprimerBouton categorieId={c.id} supprimerCategoriePlateforme={supprimerCategoriePlateforme} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         <AjouterForm type={ongletActif} ajouterCategoriePlateforme={ajouterCategoriePlateforme} />
       </div>
     </div>
@@ -114,6 +141,9 @@ function ModerationSection({
               <span className="text-sm text-white font-medium">{d.nom}</span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{NOMS_TYPE[d.type]}</span>
               <span className="text-xs text-gray-500">par {d.nom_artiste ?? '—'}</span>
+              <span className="text-[11px] text-gray-500">
+                {d.nb_beats} beat{d.nb_beats > 1 ? 's' : ''} · {d.ventes} vente{d.ventes > 1 ? 's' : ''} · {d.ecoutes} écoute{d.ecoutes > 1 ? 's' : ''} · <span className="text-green-400">{fmtEuroDisplay(d.ca_net)}</span>
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <button
