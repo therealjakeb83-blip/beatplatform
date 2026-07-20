@@ -13,19 +13,29 @@ export type CategorieRow = {
   statut: 'active' | 'en_attente_certification' | 'certifiee'
 }
 
+export type CategorieOptions = { certifiees: string[]; perso: string[] }
+
 // Options visibles par ce beatmaker pour chaque type de tag (utilisé par
-// BeatForm) : tout le catalogue plateforme + certifié + ses propres
-// catégories, dédupliquées. Respecte déjà la RLS (source=plateforme OR
-// beatmaker_id=auth.uid() OR statut=certifiee) — appelable avec un client
-// RLS-bound.
+// BeatForm), séparées en deux pools : `certifiees` (catalogue plateforme +
+// tout ce qui a été certifié, peu importe qui l'a soumis à l'origine) et
+// `perso` (ses propres catégories pas encore certifiées). Respecte déjà la
+// RLS (source=plateforme OR beatmaker_id=auth.uid() OR statut=certifiee)
+// — un beatmaker-id ne peut donc jamais apparaître ici que si c'est le sien,
+// pas besoin de le filtrer explicitement. Appelable avec un client RLS-bound.
 export async function chargerOptionsCategories(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-): Promise<{ styles: string[]; ambiances: string[]; instruments: string[]; typeBeat: string[] }> {
-  const { data } = await supabase.from('categories').select('type, nom').order('nom')
-  const rows = (data ?? []) as { type: TypeCategorie; nom: string }[]
+): Promise<{ styles: CategorieOptions; ambiances: CategorieOptions; instruments: CategorieOptions; typeBeat: CategorieOptions }> {
+  const { data } = await supabase.from('categories').select('type, nom, source, statut').order('nom')
+  const rows = (data ?? []) as { type: TypeCategorie; nom: string; source: 'plateforme' | 'beatmaker'; statut: string }[]
 
-  const parType = (type: TypeCategorie) => [...new Set(rows.filter(r => r.type === type).map(r => r.nom))]
+  const parType = (type: TypeCategorie): CategorieOptions => {
+    const deType = rows.filter(r => r.type === type)
+    return {
+      certifiees: [...new Set(deType.filter(r => r.source === 'plateforme' || r.statut === 'certifiee').map(r => r.nom))],
+      perso: [...new Set(deType.filter(r => r.source === 'beatmaker' && r.statut !== 'certifiee').map(r => r.nom))],
+    }
+  }
 
   return {
     styles: parType('styles'),

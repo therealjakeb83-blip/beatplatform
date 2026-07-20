@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import type { CategorieOptions } from '@/lib/categories'
 
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const MODES = ['majeur', 'mineur']
@@ -11,10 +12,10 @@ export const MODES = ['majeur', 'mineur']
 // sur Styles/Type beat. Voir CategoriesOptions plus bas et
 // app/dashboard/business/categories/.
 export type CategoriesOptions = {
-  styles: string[]
-  ambiances: string[]
-  instruments: string[]
-  typeBeat: string[]
+  styles: CategorieOptions
+  ambiances: CategorieOptions
+  instruments: CategorieOptions
+  typeBeat: CategorieOptions
 }
 
 export type Collaborateur = {
@@ -64,31 +65,30 @@ export type LicenceInfo = {
   streams_limite: number | null
 }
 
-function TagSelector({ label, options, selected, onChange }: {
-  label: string; options: string[]; selected: string[]; onChange: (v: string[]) => void
-}) {
-  function toggle(tag: string) {
-    onChange(selected.includes(tag) ? selected.filter(t => t !== tag) : [...selected, tag])
-  }
+function PillsRow({ tags, selected, onToggle }: { tags: string[]; selected: string[]; onToggle: (tag: string) => void }) {
   return (
-    <div>
-      <label className="block text-sm text-gray-300 mb-2">{label}</label>
-      <div className="flex flex-wrap gap-2">
-        {options.map(tag => (
-          <button key={tag} type="button" onClick={() => toggle(tag)}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selected.includes(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
-            {tag}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-2">
+      {tags.map(tag => (
+        <button key={tag} type="button" onClick={() => onToggle(tag)}
+          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selected.includes(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+          {tag}
+        </button>
+      ))}
     </div>
   )
 }
 
-function HybridTagSelector({ label, options, selected, onChange, placeholder }: {
-  label: string; options: string[]; selected: string[]; onChange: (v: string[]) => void; placeholder: string
+// Sélecteur unique pour les 4 types de tags : une section "certifiés"
+// toujours présente (catalogue plateforme + certifié, lecture seule), et
+// pour Styles/Type Beat (hybride=true) une section "Mes X" en plus avec les
+// catégories perso du beatmaker + le champ d'ajout libre. Ambiances/
+// Instruments restent lecture seule (pas de section "Mes X").
+function CategorieSelector({ label, options, selected, onChange, hybride, placeholder }: {
+  label: string; options: CategorieOptions; selected: string[]; onChange: (v: string[]) => void
+  hybride: boolean; placeholder?: string
 }) {
   const [input, setInput] = useState('')
+
   function toggle(tag: string) {
     onChange(selected.includes(tag) ? selected.filter(t => t !== tag) : [...selected, tag])
   }
@@ -97,33 +97,36 @@ function HybridTagSelector({ label, options, selected, onChange, placeholder }: 
     if (val && !selected.includes(val)) onChange([...selected, val])
     setInput('')
   }
+
+  // Perso sélectionnées mais pas (encore) dans la liste perso chargée —
+  // vient d'être tapée à l'instant, pas encore synchronisée en base.
+  const persoAffichable = [...new Set([...options.perso, ...selected.filter(t => !options.certifiees.includes(t) && !options.perso.includes(t))])]
+
   return (
-    <div>
-      <label className="block text-sm text-gray-300 mb-2">{label}</label>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {options.map(tag => (
-          <button key={tag} type="button" onClick={() => toggle(tag)}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selected.includes(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
-            {tag}
-          </button>
-        ))}
+    <div className="space-y-3">
+      <div>
+        <label className="block text-sm text-gray-300 mb-2">{label} certifié{label === 'Ambiances' ? 'es' : 's'}</label>
+        {options.certifiees.length === 0
+          ? <p className="text-xs text-gray-600">Aucune catégorie officielle pour l&apos;instant.</p>
+          : <PillsRow tags={options.certifiees} selected={selected} onToggle={toggle} />}
       </div>
-      {selected.filter(t => !options.includes(t)).map(tag => (
-        <span key={tag} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white mr-2 mb-2">
-          {tag}
-          <button type="button" onClick={() => toggle(tag)} className="ml-1 hover:text-indigo-200">×</button>
-        </span>
-      ))}
-      <div className="flex gap-2 mt-1">
-        <input type="text" value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustom())}
-          placeholder={placeholder}
-          className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
-        <button type="button" onClick={addCustom}
-          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors">
-          Ajouter
-        </button>
-      </div>
+
+      {hybride && (
+        <div>
+          <label className="block text-sm text-gray-300 mb-2">Mes {label}</label>
+          {persoAffichable.length > 0 && <PillsRow tags={persoAffichable} selected={selected} onToggle={toggle} />}
+          <div className="flex gap-2 mt-2">
+            <input type="text" value={input} onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustom())}
+              placeholder={placeholder}
+              className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
+            <button type="button" onClick={addCustom}
+              className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors">
+              Ajouter
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -459,10 +462,10 @@ export default function BeatForm({
       {/* Tags */}
       <section className="flex flex-col gap-6">
         <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">Tags</h2>
-        <HybridTagSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} placeholder="Ajouter un style..." />
-        <TagSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} />
-        <TagSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} />
-        <HybridTagSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} placeholder="Ajouter un artiste..." />
+        <CategorieSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} hybride placeholder="Ajouter un style..." />
+        <CategorieSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} hybride={false} />
+        <CategorieSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} hybride={false} />
+        <CategorieSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} hybride placeholder="Ajouter un artiste..." />
         <p className="text-xs text-gray-500 -mt-2">
           Styles et Type Beat personnalisés : gérables (renommer, demander la certification) sur{' '}
           <Link href="/dashboard/business/categories" className="text-indigo-400 hover:underline">la page Catégories</Link>.
