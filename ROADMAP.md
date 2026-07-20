@@ -1,6 +1,11 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-07-17 — **Phase 7 (Catégories & Certification) codée en autonomie, 7.1 à 7.7, pas encore testée par Jake.** Suite directe de la Phase 6 dans la même session (Jake a demandé d'enchaîner sur le plus gros chantier codable sans nouvelle question, en s'appuyant sur les décisions déjà actées le 2026-07-02). Table `categories` remplace les 4 listes hardcodées de `BeatForm.tsx` ; Ambiances/Instruments restent lecture seule, Styles/Type beat passent en mode hybride (ajout libre + demande de certification) via `lib/categories.ts`. Page `/dashboard/business/categories/` regroupe la demande de certification (côté beatmaker) et la modération V1 (réservée à Jake par email, pas de vrai système de rôles avant l'étape 15). Détail complet dans la section Phase 7 plus bas — **liste de tests à effectuer par Jake à la prochaine session**, y compris la migration SQL `phase7_categories.sql` à exécuter avant tout test.
+> Dernière mise à jour : 2026-07-17 — **Phase 7 (Catégories & Certification) + amorce Admin (étape 15) codées en autonomie, RIEN N'EST TESTÉ PAR JAKE.** Suite directe de la Phase 6 dans la même session (Jake a demandé d'enchaîner sur le plus gros chantier codable sans nouvelle question, en s'appuyant sur les décisions déjà actées le 2026-07-02) :
+> - Table `categories` remplace les 4 listes hardcodées de `BeatForm.tsx` ; Ambiances/Instruments restent lecture seule, Styles/Type beat passent en mode hybride (ajout libre + demande de certification) via `lib/categories.ts`.
+> - **Restructuration en cours de session** : la modération vivait d'abord dans `/dashboard/business/categories/` (page beatmaker) — Jake a fait remarquer qu'il n'avait aucun moyen d'ajouter/gérer les catégories officielles (plateforme) sans SQL, et a demandé une vraie zone Admin plutôt qu'un bricolage dans la page beatmaker. Créé `/dashboard/admin/` (layout gardé, minimaliste — un seul outil pour l'instant), `lib/admin.ts` (`estAdmin()`, gate par **slug de boutique** `jakeb-test`, pas par email — le premier essai avec l'email supposé de Jake était faux, corrigé en cours de session). `/dashboard/business/categories/` simplifiée pour ne garder que les actions beatmaker.
+> - Roadmap elle-même retravaillée : Jake a signalé 5 trous de scope (refonte UX/UI, vrai back-office Admin autonome, templates de branding, personnalisation boutique, nouvelles pages boutique) — regroupés en une nouvelle **Étape 5v2 (Refonte Boutique publique & Design System)**, périmètre de l'**Étape 15 (Admin) élargi**. Ordre validé avec Jake : Admin d'abord, Étape 5v2 ensuite. Détail dans "Ordre de priorité actuel" et section Phase 7 plus bas.
+>
+> ⚠️ **Rien de tout ça n'a encore été testé.** Jake a interrompu les tests dès le premier essai (ajout d'une catégorie officielle) sur une erreur `Could not find the table 'public.categories'` — **pas un bug de code, la migration `supabase/phase7_categories.sql` n'a jamais été exécutée**. C'est la toute première chose à faire à la prochaine session, avant quoi que ce soit d'autre. Checklist de tests complète en fin de doc (section "Checklist tests Phase 7 + Admin").
 >
 > Dernière mise à jour : 2026-07-17 — **Phase 6 (Mailing transactionnels) validée : 6.1 à 6.6, 6.8 et 6.9, testées bout en bout par Jake.** 6 emails temps réel fonctionnels et personnalisables (confirmation commande, confirmation abonnement, demande d'annulation avec date de fin d'accès, fin d'abonnement en filet, confirmation de compte artiste, free download), page de réglages en accordéon avec aperçu en direct. Périmètre élargi en 4 vagues dans la même session (titre par email, signature dédiée aux transactionnels distincte de celle des Automatisations, footer réseaux sociaux personnalisable, expéditeur brandé à la boutique) et 11 bugs trouvés et corrigés, dont un vrai bug de fiabilité (emails envoyés en fire-and-forget tués en vol par le runtime serverless Vercel avant de partir) et un problème de compatibilité email découvert en toute fin de session (Gmail bloque le SVG inline ET les images en data URI dans les emails reçus — seule une vraie image hébergée fonctionne). Détail complet dans la section Phase 6 plus bas. **Seule 6.7 reste ouverte** (beat cadeau de fidélité, reporté à une session dédiée — 2 décisions produit encore à trancher avec Jake).
 >
@@ -798,18 +803,49 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 | # | Sous-étape | Statut |
 |---|-----------|--------|
-| 7.1 | Migration SQL : table `categories` (type, nom, source plateforme/beatmaker, beatmaker_id nullable, statut actif/en_attente_certification/certifiee) + seed des 4 listes hardcodées en `source=plateforme` + RLS/GRANT | ✅ |
+| 7.1 | Migration SQL : table `categories` (type, nom, source plateforme/beatmaker, beatmaker_id nullable, statut actif/en_attente_certification/certifiee) + seed des 4 listes hardcodées en `source=plateforme` + RLS/GRANT — **`supabase/phase7_categories.sql`, ⚠️ PAS ENCORE EXÉCUTÉE PAR JAKE, voir note ci-dessous** | ✅ *(codé)* |
 | 7.2 | Rebrancher `BeatForm.tsx` (`TagSelector`/`HybridTagSelector`) sur la table `categories` au lieu des constantes hardcodées — `lib/categories.ts` (chargement + synchronisation) | ✅ |
 | 7.3 | Ambiances/Instruments : lecture seule (source=plateforme uniquement) | ✅ |
 | 7.4 | Styles/Type beat : ajout libre par beatmaker → insert `categories` en `source=beatmaker` (au moment de sauvegarder le beat, pas à la frappe), visible uniquement par lui | ✅ |
 | 7.5 | Bouton "Demander la certification" sur une catégorie custom → statut `en_attente_certification` | ✅ |
-| 7.6 | Page de validation manuelle (interne, accès Jake) : approuver/rejeter → une fois certifiée, catégorie globale + non modifiable | ✅ |
+| 7.6 | Page de validation manuelle (interne, accès Jake) : approuver/rejeter → une fois certifiée, catégorie globale + non modifiable | ✅ *(déplacée vers `/dashboard/admin/categories/` en cours de session, voir note)* |
 | 7.7 | Page `/dashboard/business/categories/` : 4 onglets (Styles/Ambiances/Instruments/Type beat) | ✅ |
 | 7.8 | Dashboard tendances *(V2, après volume de données suffisant)* : agrégation commandes × catégories certifiées | ⬜ *(V2, volontairement pas construit)* |
 
-> **Implémentation (2026-07-17, codée sans nouvelle question à Jake — décisions déjà actées le 2026-07-02) :** `lib/categories.ts` centralise le chargement des options (`chargerOptionsCategories`, RLS-scoped : plateforme + certifié + ses propres catégories) et la synchronisation des ajouts libres (`synchroniserCategoriesPersonnalisees`, appelée dans `/api/beats/creer` et `/api/beats/[id]/modifier` après la sauvegarde du beat, pas en direct pendant la frappe). Deux index uniques séparés sur `categories` (un partiel pour les lignes plateforme à `beatmaker_id NULL`, un plein pour les lignes beatmaker) — un seul index partiel aurait cassé l'upsert de `synchroniserCategoriesPersonnalisees` (Postgres n'infère pas `ON CONFLICT` sur un index partiel sans répéter sa clause `WHERE`, que le client Supabase ne permet pas de passer). RLS interdit explicitement à un beatmaker de passer sa propre catégorie à `certifiee` (`WITH CHECK` sur la policy `UPDATE`) — seule la modération (service_role) le peut. Page `/dashboard/business/categories/` regroupe demande ET modération (7.5+7.6+7.7 en un seul chantier) : la modération n'apparaît que pour le compte dont l'email correspond à celui de Jake (`EMAIL_MODERATEUR` dans `_lib/actions.ts`, à remplacer par un vrai système de rôles à l'étape 15 — pas de round-trip DB supplémentaire pour les autres beatmakers).
+> **Implémentation (2026-07-17, codée sans nouvelle question à Jake — décisions déjà actées le 2026-07-02) :** `lib/categories.ts` centralise le chargement des options (`chargerOptionsCategories`, RLS-scoped : plateforme + certifié + ses propres catégories) et la synchronisation des ajouts libres (`synchroniserCategoriesPersonnalisees`, appelée dans `/api/beats/creer` et `/api/beats/[id]/modifier` après la sauvegarde du beat, pas en direct pendant la frappe). Deux index uniques séparés sur `categories` (un partiel pour les lignes plateforme à `beatmaker_id NULL`, un plein pour les lignes beatmaker) — un seul index partiel aurait cassé l'upsert de `synchroniserCategoriesPersonnalisees` (Postgres n'infère pas `ON CONFLICT` sur un index partiel sans répéter sa clause `WHERE`, que le client Supabase ne permet pas de passer). RLS interdit explicitement à un beatmaker de passer sa propre catégorie à `certifiee` (`WITH CHECK` sur la policy `UPDATE`) — seule la modération (service_role) le peut.
 >
-> **Non testé par Jake au moment du commit** — voir liste de tests à effectuer en fin de session.
+> **Restructuration 7.6 en cours de session (2026-07-17) :** la modération vivait initialement dans `/dashboard/business/categories/` (page beatmaker), gardée par email. Jake a remonté un vrai trou : aucun moyen d'ajouter/gérer les catégories **officielles** (source=plateforme) sans passer par SQL — demande explicite d'une vraie zone Admin plutôt qu'un bricolage dans la page beatmaker, amorçant l'étape 15. Créé :
+> - `lib/admin.ts` — `estAdmin()`, un seul admin (Jake), gardé par **slug de boutique** (`jakeb-test`), pas par email. Le premier essai (email supposé `contact@jakebmusic.com`) était faux — ce n'est pas l'email du compte beatmaker réel de Jake — corrigé en cours de session sans jamais avoir eu besoin de connaître l'email réel.
+> - `/dashboard/admin/` — layout gardé (redirige les non-admins vers `/dashboard/business`), landing minimaliste avec un seul outil pour l'instant (Catégories), pensée pour accueillir le reste du périmètre Admin élargi plus tard.
+> - `/dashboard/admin/categories/` — modération plateforme-wide (toutes boutiques, via service_role) + ajout/suppression des catégories officielles.
+> - `/dashboard/business/categories/` simplifiée en conséquence : ne garde que les actions beatmaker (demander/annuler certification, gérer ses propres catégories perso) — plus aucune trace de modération ni de gestion des catégories officielles côté beatmaker.
+> - Lien "Admin" ajouté sur `/dashboard` (tableau de bord principal, pas `/dashboard/business`), visible seulement si `estAdmin()`.
+>
+> ⚠️ **RIEN DE TOUT ÇA N'EST TESTÉ.** Jake a interrompu son premier test (ajout d'une catégorie officielle sur `/dashboard/admin/categories`) sur l'erreur `Could not find the table 'public.categories' in the schema cache` — **la migration `supabase/phase7_categories.sql` n'a jamais été exécutée dans Supabase**, ce n'est pas un bug de code. Première action de la prochaine session : exécuter cette migration, PUIS suivre la checklist ci-dessous.
+
+#### Checklist tests Phase 7 + Admin (à faire à la prochaine session)
+
+**Préalable — bloquant, à faire en tout premier :**
+- [ ] **T0** — Exécuter `supabase/phase7_categories.sql` dans l'éditeur SQL Supabase (table `categories` + RLS/GRANT + seed des 4 listes existantes)
+
+**Côté beatmaker (`/dashboard/business/categories`, `/dashboard/business/beats/nouveau`) :**
+- [ ] **T1** — Les tags Styles/Ambiances/Instruments/Type Beat s'affichent normalement sur `/dashboard/business/beats/nouveau` (chargés depuis la DB maintenant, pas de régression visuelle attendue)
+- [ ] **T2** — Ajoute un style personnalisé (ex. "Phonk") sur un beat via le champ libre, sauvegarde le beat
+- [ ] **T3** — Sur `/dashboard/business/categories`, onglet Styles → "Phonk" apparaît dans "Tes catégories personnalisées" avec le badge "Perso"
+- [ ] **T4** — Retourne sur `/dashboard/business/beats/nouveau` (ou modifier un autre beat) → "Phonk" apparaît maintenant comme option cliquable dans la liste Styles (pas besoin de le retaper)
+- [ ] **T5** — Clique "Demander la certification" sur "Phonk" → badge passe à "En attente de validation"
+- [ ] **T6** — Ambiances/Instruments : vérifie qu'il n'y a aucun moyen d'ajouter une catégorie perso (doit rester lecture seule, comme avant)
+- [ ] **T7** — Non-régression : un beat existant avec des styles déjà enregistrés (avant la migration) s'affiche toujours correctement
+
+**Côté admin (`/dashboard/admin`) :**
+- [ ] **T8** — Sur `/dashboard`, le bouton "Admin" apparaît (connecté sur le compte de boutique `jakeb-test`)
+- [ ] **T9** — `/dashboard/admin/categories` affiche la demande "Phonk" en attente, avec le nom du beatmaker demandeur
+- [ ] **T10** — Approuve-la → elle disparaît de la liste d'attente, "Phonk" apparaît dans "Catégories officielles" de l'onglet Styles
+- [ ] **T11** — Retourne sur `/dashboard/business/categories` → "Phonk" est bien listée en officielle ET toujours dans "Tes catégories personnalisées" avec le badge "Certifiée ✓"
+- [ ] **T12** — Ajoute une catégorie officielle directement depuis le formulaire admin (ex. un nouveau style) → apparaît immédiatement dans le sélecteur sur `/dashboard/business/beats/nouveau`
+- [ ] **T13** — Supprime-la depuis l'admin → disparaît du formulaire beat
+- [ ] **T14** — Teste aussi un rejet de certification (pas juste une approbation) — la catégorie repasse en "Perso" côté beatmaker, redemandable plus tard
+- [ ] **T15** — Sécurité : si tu te déconnectes et testes avec un autre compte beatmaker (si tu en as un), `/dashboard/admin` doit rediriger vers `/dashboard/business` (pas d'accès)
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
