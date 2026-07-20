@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import BoutiqueHeader from './_components/BoutiqueHeader'
+import Hero from './_components/Hero'
 import BeatCatalogue from './_components/BeatCatalogue'
 import SuccessBanner from './_components/SuccessBanner'
 import CategorieBrowseSection from './_components/CategorieBrowseSection'
@@ -23,7 +23,7 @@ export default async function BoutiquePage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, slug, tagline, logo_url, instagram_url, youtube_url, tiktok_url')
+    .select('id, nom_artiste, slug, tagline, logo_url, instagram_url, youtube_url, tiktok_url, hero_titre, hero_sous_titre, abo_actif')
     .eq('slug', slug)
     .single()
 
@@ -202,17 +202,16 @@ export default async function BoutiquePage({
 
   return (
     <>
-      <BoutiqueHeader
+      <Hero
+        slug={slug}
         nomArtiste={beatmaker.nom_artiste}
+        heroTitre={beatmaker.hero_titre}
+        heroSousTitre={beatmaker.hero_sous_titre}
         tagline={beatmaker.tagline}
-        logoUrl={beatmaker.logo_url}
-        instagramUrl={beatmaker.instagram_url}
-        youtubeUrl={beatmaker.youtube_url}
-        tiktokUrl={beatmaker.tiktok_url}
-        nbBeats={beats.length}
+        aboActif={beatmaker.abo_actif}
       />
       <Suspense>
-        <div className="max-w-5xl mx-auto px-6 pt-6">
+        <div className="shop-container pt-6">
           <SuccessBanner />
         </div>
       </Suspense>
@@ -224,7 +223,7 @@ export default async function BoutiquePage({
         estAbonne={estAbonne}
         clientId={user?.id ?? null}
       />
-      <div className="max-w-5xl mx-auto px-6 space-y-14 pb-10">
+      <div className="shop-container">
         <CategorieBrowseSection id="parcourir-styles" type="styles" slug={slug} cartes={stylesCartes} />
         <CategorieBrowseSection id="parcourir-type-beat" type="type_beat" slug={slug} cartes={typeBeatCartes} />
         <CategorieBrowseSection id="parcourir-instruments" type="instruments" slug={slug} cartes={instrumentsCartes} />

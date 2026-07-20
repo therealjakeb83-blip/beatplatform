@@ -15,62 +15,54 @@ export default function BoutiqueFooter({
   tiktokUrl: string | null
 }) {
   return (
-    <footer className="border-t border-gray-800 bg-black mt-14">
-      <div className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-2 sm:grid-cols-4 gap-8">
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Beats</h3>
-          <ul className="space-y-2 text-sm">
-            <li><Link href={`/${slug}/beats`} className="text-gray-400 hover:text-white transition-colors">Nouveautés</Link></li>
-            <li><Link href={`/${slug}/selection`} className="text-gray-400 hover:text-white transition-colors">Sélection</Link></li>
-            <li><Link href={`/${slug}/membres`} className="text-gray-400 hover:text-white transition-colors">Réservés aux membres</Link></li>
-            <li><Link href={`/${slug}#parcourir-styles`} className="text-gray-400 hover:text-white transition-colors">Styles</Link></li>
-            <li><Link href={`/${slug}#parcourir-type-beat`} className="text-gray-400 hover:text-white transition-colors">Type beats</Link></li>
-            <li><Link href={`/${slug}#parcourir-instruments`} className="text-gray-400 hover:text-white transition-colors">Instruments</Link></li>
-            <li><Link href={`/${slug}#parcourir-ambiances`} className="text-gray-400 hover:text-white transition-colors">Ambiances</Link></li>
-          </ul>
+    <footer className="shop-footer">
+      <div className="shop-container shop-footer-grid">
+        <div className="shop-footer-col">
+          <h4>Beats</h4>
+          <Link href={`/${slug}/beats`}>Nouveautés</Link>
+          <Link href={`/${slug}/selection`}>Sélection</Link>
+          <Link href={`/${slug}/membres`}>Réservés aux membres</Link>
+          <Link href={`/${slug}#parcourir-styles`}>Styles</Link>
+          <Link href={`/${slug}#parcourir-type-beat`}>Type beats</Link>
+          <Link href={`/${slug}#parcourir-instruments`}>Instruments</Link>
+          <Link href={`/${slug}#parcourir-ambiances`}>Ambiances</Link>
         </div>
 
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Compte</h3>
-          <ul className="space-y-2 text-sm">
-            <li><Link href={`/${slug}/abonnement`} className="text-gray-400 hover:text-white transition-colors">Devenir membre</Link></li>
-            <li><Link href={`/${slug}/mon-compte`} className="text-gray-400 hover:text-white transition-colors">Mon compte</Link></li>
-            <li><Link href={`/${slug}/mon-compte/favoris`} className="text-gray-400 hover:text-white transition-colors">Favoris</Link></li>
-          </ul>
+        <div className="shop-footer-col">
+          <h4>Compte</h4>
+          <Link href={`/${slug}/abonnement`}>Devenir membre</Link>
+          <Link href={`/${slug}/mon-compte`}>Mon compte</Link>
+          <Link href={`/${slug}/mon-compte/favoris`}>Favoris</Link>
         </div>
 
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Légal</h3>
-          <ul className="space-y-2 text-sm">
-            <li><Link href={`/${slug}/mentions-legales`} className="text-gray-400 hover:text-white transition-colors">Mentions légales</Link></li>
-            <li><Link href={`/${slug}/cgv`} className="text-gray-400 hover:text-white transition-colors">CGV</Link></li>
-            <li><Link href={`/${slug}/confidentialite`} className="text-gray-400 hover:text-white transition-colors">Confidentialité</Link></li>
-          </ul>
+        <div className="shop-footer-col">
+          <h4>Légal</h4>
+          <Link href={`/${slug}/mentions-legales`}>Mentions légales</Link>
+          <Link href={`/${slug}/cgv`}>CGV</Link>
+          <Link href={`/${slug}/confidentialite`}>Confidentialité</Link>
           {(instagramUrl || youtubeUrl || tiktokUrl) && (
-            <div className="flex gap-2 mt-4">
+            <div className="shop-socials">
               {instagramUrl && (
-                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-xs font-bold">IG</a>
+                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="shop-social-icon">IG</a>
               )}
               {youtubeUrl && (
-                <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-xs font-bold">YT</a>
+                <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="shop-social-icon">YT</a>
               )}
               {tiktokUrl && (
-                <a href={tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-xs font-bold">TK</a>
+                <a href={tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="shop-social-icon">TK</a>
               )}
             </div>
           )}
         </div>
 
-        <div className="col-span-2 sm:col-span-1">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Newsletter</h3>
+        <div className="shop-footer-col">
+          <h4>Newsletter</h4>
           <NewsletterForm slug={slug} />
         </div>
       </div>
 
-      <div className="border-t border-gray-900">
-        <div className="max-w-5xl mx-auto px-6 py-5 text-xs text-gray-600">
-          © {new Date().getFullYear()} {nomArtiste}
-        </div>
+      <div className="shop-container shop-footer-bottom">
+        © {new Date().getFullYear()} {nomArtiste}
       </div>
     </footer>
   )

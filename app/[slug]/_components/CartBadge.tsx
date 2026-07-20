@@ -6,16 +6,12 @@ export default function CartBadge() {
   const { items, open } = useCart()
 
   return (
-    <button
-      onClick={open}
-      className="relative flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-    >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+    <button onClick={open} className="shop-icon-btn" aria-label="Panier">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+        <path d="M6 8h12l-1 12H7L6 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path>
       </svg>
-      <span>Panier</span>
       {items.length > 0 && (
-        <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-brand-600 text-white text-[10px] font-bold flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white text-[10px] font-bold flex items-center justify-center" style={{ color: 'var(--shop-primary)' }}>
           {items.length}
         </span>
       )}

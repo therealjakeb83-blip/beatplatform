@@ -126,6 +126,7 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
       {/* Navigation */}
       <nav className="px-3 py-4 flex flex-col gap-0.5 flex-1 overflow-y-auto">
         {navItem(`${BASE}`, "Vue d'ensemble", pathname === BASE || pathname === `${BASE}/`)}
+        {navItem(`${BASE}/personnalisation`, 'Personnalisation', pathname.startsWith(`${BASE}/personnalisation`))}
 
         <div className="my-3 border-t border-gray-800" />
 

@@ -1,0 +1,163 @@
+'use client'
+
+import { useState } from 'react'
+
+const THEMES: { valeur: string; label: string; couleur: string }[] = [
+  { valeur: 'blue', label: 'Bleu', couleur: '#063cff' },
+  { valeur: 'red', label: 'Rouge', couleur: '#ff263c' },
+  { valeur: 'green', label: 'Vert', couleur: '#19d67c' },
+  { valeur: 'purple', label: 'Violet néon', couleur: '#f02bc8' },
+]
+
+export default function PersonnalisationClient({
+  slug,
+  heroTitreInitial,
+  heroSousTitreInitial,
+  themeInitial,
+}: {
+  slug: string
+  heroTitreInitial: string
+  heroSousTitreInitial: string
+  themeInitial: string
+}) {
+  const [heroTitre, setHeroTitre] = useState(heroTitreInitial)
+  const [heroSousTitre, setHeroSousTitre] = useState(heroSousTitreInitial)
+  const [savingHero, setSavingHero] = useState(false)
+  const [succesHero, setSuccesHero] = useState(false)
+
+  const [couleurApercu, setCouleurApercu] = useState(themeInitial)
+  const [couleurSauvegardee, setCouleurSauvegardee] = useState(themeInitial)
+  const [savingTheme, setSavingTheme] = useState(false)
+
+  async function enregistrerHero(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingHero(true)
+    setSuccesHero(false)
+    await fetch('/api/business/personnalisation', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hero_titre: heroTitre, hero_sous_titre: heroSousTitre }),
+    })
+    setSavingHero(false)
+    setSuccesHero(true)
+  }
+
+  async function enregistrerTheme() {
+    setSavingTheme(true)
+    await fetch('/api/business/personnalisation', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme_couleur: couleurApercu }),
+    })
+    setSavingTheme(false)
+    setCouleurSauvegardee(couleurApercu)
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-8 py-8 space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-white">Personnalisation</h1>
+        <p className="text-sm text-gray-500 mt-1">L&apos;apparence de ta boutique publique</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Message d'accueil */}
+          <form onSubmit={enregistrerHero} className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">Message d&apos;accueil</h2>
+
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Titre</label>
+              <input
+                type="text"
+                value={heroTitre}
+                onChange={e => { setHeroTitre(e.target.value); setSuccesHero(false) }}
+                placeholder="Trouve une instru composée par..., pour ton projet"
+                className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Sous-titre</label>
+              <textarea
+                value={heroSousTitre}
+                onChange={e => { setHeroSousTitre(e.target.value); setSuccesHero(false) }}
+                placeholder="Des beats de qualité pour donner vie à tes projets."
+                rows={2}
+                className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 resize-none"
+              />
+            </div>
+
+            <p className="text-xs text-gray-600">
+              Laisse vide pour garder le texte par défaut généré automatiquement.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={savingHero}
+                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+              >
+                {savingHero ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+              {succesHero && <span className="text-sm text-green-400">Enregistré ✓</span>}
+            </div>
+          </form>
+
+          {/* Thème couleur */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">Couleur de la boutique</h2>
+
+            <div className="flex gap-3 flex-wrap">
+              {THEMES.map(theme => (
+                <button
+                  key={theme.valeur}
+                  onClick={() => setCouleurApercu(theme.valeur)}
+                  className={`flex flex-col items-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
+                    couleurApercu === theme.valeur ? 'border-indigo-500 bg-gray-800' : 'border-transparent hover:bg-gray-800/50'
+                  }`}
+                >
+                  <span
+                    className="w-8 h-8 rounded-full"
+                    style={{ backgroundColor: theme.couleur, boxShadow: couleurApercu === theme.valeur ? `0 0 0 3px ${theme.couleur}55` : undefined }}
+                  />
+                  <span className="text-xs text-gray-300 font-medium">{theme.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-600">
+              L&apos;aperçu à droite se met à jour instantanément. Rien n&apos;est sauvegardé tant que tu n&apos;as pas cliqué sur Enregistrer.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={enregistrerTheme}
+                disabled={savingTheme || couleurApercu === couleurSauvegardee}
+                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+              >
+                {savingTheme ? 'Enregistrement...' : 'Enregistrer le thème'}
+              </button>
+              {couleurApercu === couleurSauvegardee && (
+                <span className="text-sm text-gray-500">Thème actuel de la boutique</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Aperçu live */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-gray-800 text-xs text-gray-500 font-medium">
+            Aperçu en direct — {slug}
+          </div>
+          <iframe
+            key={slug}
+            src={`/${slug}?theme_apercu=${couleurApercu}`}
+            className="w-full flex-1 min-h-[600px] bg-black"
+            title="Aperçu de la boutique"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}

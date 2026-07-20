@@ -24,7 +24,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
   }
 
   if (statut === 'ok') {
-    return <p className="text-sm text-brand-400">Inscription confirmée, merci !</p>
+    return <p className="text-sm" style={{ color: 'var(--shop-primary)' }}>Inscription confirmée, merci !</p>
   }
 
   return (
@@ -36,17 +36,18 @@ export default function NewsletterForm({ slug }: { slug: string }) {
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder="Ton email"
-          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-brand-500 transition-colors"
+          className="shop-newsletter-input"
         />
         <button
           type="submit"
           disabled={!accepte || statut === 'envoi'}
-          className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors whitespace-nowrap"
+          className="shop-newsletter-submit"
+          style={!accepte || statut === 'envoi' ? { opacity: .4, cursor: 'not-allowed' } : undefined}
         >
           S&apos;inscrire
         </button>
       </div>
-      <label className="flex items-start gap-2 text-xs text-gray-500">
+      <label className="flex items-start gap-2 text-xs" style={{ color: 'rgba(248, 248, 251, .5)' }}>
         <input
           type="checkbox"
           checked={accepte}
@@ -55,7 +56,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
         />
         <span>
           J&apos;accepte de recevoir des emails et j&apos;ai lu la{' '}
-          <Link href={`/${slug}/confidentialite`} className="underline hover:text-gray-300">
+          <Link href={`/${slug}/confidentialite`} className="underline hover:text-white">
             politique de confidentialité
           </Link>
           .

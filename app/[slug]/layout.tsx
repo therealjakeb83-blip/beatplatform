@@ -1,11 +1,14 @@
+import { Suspense } from 'react'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
 import { CartProvider } from './_components/CartContext'
 import CartDrawer from './_components/CartDrawer'
-import BoutiqueNavBar from './_components/BoutiqueNavBar'
+import BoutiqueHeader from './_components/BoutiqueHeader'
 import BoutiqueFooter from './_components/BoutiqueFooter'
+import BoutiqueThemeRoot from './_components/BoutiqueThemeRoot'
+import './boutique-theme.css'
 
 export default async function BoutiqueLayout({
   children,
@@ -31,26 +34,36 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, instagram_url, youtube_url, tiktok_url')
+    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, theme_couleur')
     .eq('slug', slug)
     .maybeSingle()
 
   return (
     <PlayerProvider>
       <CartProvider>
-        <div className="min-h-screen bg-black text-white pb-28 flex flex-col">
-          <BoutiqueNavBar slug={slug} clientUser={clientUser} />
-          <div className="flex-1">{children}</div>
-          {beatmaker && (
-            <BoutiqueFooter
-              slug={slug}
-              nomArtiste={beatmaker.nom_artiste}
-              instagramUrl={beatmaker.instagram_url}
-              youtubeUrl={beatmaker.youtube_url}
-              tiktokUrl={beatmaker.tiktok_url}
-            />
-          )}
-        </div>
+        <Suspense>
+          <BoutiqueThemeRoot themeDb={beatmaker?.theme_couleur ?? 'blue'}>
+            {beatmaker && (
+              <BoutiqueHeader
+                slug={slug}
+                nomArtiste={beatmaker.nom_artiste}
+                logoUrl={beatmaker.logo_url}
+                aboActif={beatmaker.abo_actif}
+                clientUser={clientUser}
+              />
+            )}
+            <div className="flex-1">{children}</div>
+            {beatmaker && (
+              <BoutiqueFooter
+                slug={slug}
+                nomArtiste={beatmaker.nom_artiste}
+                instagramUrl={beatmaker.instagram_url}
+                youtubeUrl={beatmaker.youtube_url}
+                tiktokUrl={beatmaker.tiktok_url}
+              />
+            )}
+          </BoutiqueThemeRoot>
+        </Suspense>
         <PlayerBar />
         <CartDrawer slug={slug} />
       </CartProvider>

@@ -1,90 +1,99 @@
-type BoutiqueHeaderProps = {
-  nomArtiste: string
-  tagline: string | null
-  logoUrl: string | null
-  instagramUrl: string | null
-  youtubeUrl: string | null
-  tiktokUrl: string | null
-  nbBeats: number
-}
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import CartBadge from './CartBadge'
+import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
 
 export default function BoutiqueHeader({
+  slug,
   nomArtiste,
-  tagline,
   logoUrl,
-  instagramUrl,
-  youtubeUrl,
-  tiktokUrl,
-  nbBeats,
-}: BoutiqueHeaderProps) {
+  aboActif,
+  clientUser,
+}: {
+  slug: string
+  nomArtiste: string
+  logoUrl: string | null
+  aboActif: boolean
+  clientUser: { prenom: string; nom: string } | null
+}) {
+  const router = useRouter()
+  const [sticky, setSticky] = useState(false)
+  const [recherche, setRecherche] = useState('')
+
+  useEffect(() => {
+    function onScroll() {
+      setSticky(window.scrollY > 60)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const afficherCta = peutAfficherCtaAbonnement({ abo_actif: aboActif })
+
+  function soumettreRecherche(e: React.FormEvent) {
+    e.preventDefault()
+    router.push(`/${slug}/beats${recherche ? `?q=${encodeURIComponent(recherche)}` : ''}`)
+  }
+
   return (
-    <header className="relative overflow-hidden border-b border-gray-800 bg-black">
-      {/* Lueur de marque en fond */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-brand-600/25 rounded-full blur-[120px]" />
-
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-        <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
-          {/* Logo / initiales */}
-          <div className="w-20 h-20 rounded-2xl bg-gray-800 flex-shrink-0 overflow-hidden">
-            {logoUrl ? (
-              <img src={logoUrl} alt={nomArtiste} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl font-black text-gray-400">
-                {nomArtiste.slice(0, 2).toUpperCase()}
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 text-center sm:text-left">
-            <h1 className="text-3xl font-black text-white">{nomArtiste}</h1>
-            {tagline && (
-              <p className="text-gray-400 mt-1 text-base">{tagline}</p>
-            )}
-            <p className="text-gray-600 text-sm mt-2">
-              {nbBeats} beat{nbBeats !== 1 ? 's' : ''}
-            </p>
-          </div>
-
-          {/* Réseaux sociaux */}
-          {(instagramUrl || youtubeUrl || tiktokUrl) && (
-            <div className="flex gap-3">
-              {instagramUrl && (
-                <a
-                  href={instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
-                  aria-label="Instagram"
-                >
-                  IG
-                </a>
-              )}
-              {youtubeUrl && (
-                <a
-                  href={youtubeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
-                  aria-label="YouTube"
-                >
-                  YT
-                </a>
-              )}
-              {tiktokUrl && (
-                <a
-                  href={tiktokUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
-                  aria-label="TikTok"
-                >
-                  TK
-                </a>
-              )}
-            </div>
+    <header className={`shop-header ${sticky ? 'is-sticky' : ''}`}>
+      <div className="shop-container shop-header-main">
+        <Link href={`/${slug}`} aria-label="Accueil">
+          {logoUrl ? (
+            <img className="shop-logo" src={logoUrl} alt={nomArtiste} />
+          ) : (
+            <div className="shop-logo-fallback">{nomArtiste.slice(0, 2).toUpperCase()}</div>
           )}
+        </Link>
+
+        <form className="shop-search" onSubmit={soumettreRecherche}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2}>
+            <circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path>
+          </svg>
+          <input
+            type="search"
+            placeholder="Recherche de produits..."
+            value={recherche}
+            onChange={e => setRecherche(e.target.value)}
+          />
+        </form>
+
+        <nav className="shop-header-links">
+          <Link href={`/${slug}/comment-ca-marche`}>Comment ça marche ?</Link>
+          <Link href={`/${slug}/licences`}>Licences</Link>
+        </nav>
+
+        {afficherCta && (
+          <Link href={`/${slug}/abonnement`} className="shop-cta">
+            ＋ Devenir membre gratuitement👑
+          </Link>
+        )}
+
+        <div className="shop-header-icons">
+          <CartBadge />
+          <Link
+            href={clientUser ? `/${slug}/mon-compte` : `/artiste/connexion?redirect=/${slug}`}
+            className="shop-icon-btn"
+            aria-label="Compte"
+          >
+            <svg viewBox="0 0 24 24" fill="white">
+              <circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path>
+            </svg>
+          </Link>
         </div>
       </div>
+
+      <nav className="shop-container shop-header-sub">
+        <Link href={`/${slug}#parcourir-type-beat`} className="shop-pill">Artistes</Link>
+        <Link href={`/${slug}#parcourir-styles`} className="shop-pill">Styles</Link>
+        <Link href={`/${slug}#parcourir-instruments`} className="shop-pill">Instruments</Link>
+        <Link href={`/${slug}#parcourir-ambiances`} className="shop-pill">Ambiances</Link>
+        <Link href={`/${slug}/membres`} className="shop-pill is-private">Beats privés🔒</Link>
+      </nav>
     </header>
   )
 }
