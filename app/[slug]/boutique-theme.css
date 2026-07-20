@@ -791,7 +791,6 @@
     gap: 15px;
   }
 
-  .shop-header-icons { display: none; }
   .shop-header-links { gap: 22px; font-size: 13px; }
   .shop-mood-card { flex-basis: 820px; }
   .shop-footer-grid { grid-template-columns: 1.3fr 1fr 1fr 1fr; }
@@ -811,19 +810,11 @@
   .shop-logo, .shop-logo-fallback { width: 42px; height: 42px; }
   .shop-search { display: none; }
   .shop-header-links { display: none; }
-  .shop-cta { padding: 10px 14px; font-size: 12px; }
-
-  .shop-header-sub {
-    min-height: 54px;
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 12px;
-    scrollbar-width: none;
-  }
-  .shop-header-sub::-webkit-scrollbar { display: none; }
-
-  .shop-pill { flex: 0 0 auto; min-width: auto; padding: 7px 15px; font-size: 12px; }
+  /* CTA + sous-nav de pills masqués sur mobile, comme sur le vrai site —
+     seuls logo + panier/compte restent dans le header. */
+  .shop-header-main .shop-cta { display: none; }
+  .shop-header-icons { grid-column: 3; }
+  .shop-header-sub { display: none; }
 
   .shop-hero { padding: 28px 0 32px; }
   .shop-hero h1 { font-size: 28px; }
