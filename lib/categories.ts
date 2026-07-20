@@ -56,9 +56,27 @@ export async function synchroniserCategoriesPersonnalisees(
   beatmakerId: string,
   valeurs: { styles?: string[]; typeBeat?: string[] },
 ): Promise<void> {
-  const lignes: { type: TypeCategorie; nom: string; source: 'beatmaker'; beatmaker_id: string }[] = []
-  for (const nom of valeurs.styles ?? []) lignes.push({ type: 'styles', nom, source: 'beatmaker', beatmaker_id: beatmakerId })
-  for (const nom of valeurs.typeBeat ?? []) lignes.push({ type: 'type_beat', nom, source: 'beatmaker', beatmaker_id: beatmakerId })
+  const candidats: { type: TypeCategorie; nom: string }[] = []
+  for (const nom of valeurs.styles ?? []) candidats.push({ type: 'styles', nom })
+  for (const nom of valeurs.typeBeat ?? []) candidats.push({ type: 'type_beat', nom })
+  if (candidats.length === 0) return
+
+  // Ne jamais recréer en "perso" un nom déjà officiel/certifié — sinon
+  // sélectionner un style déjà certifié (ex. "Drill") sur un beat suffit à
+  // faire apparaître un faux doublon personnel du même nom.
+  const { data: existantes } = await supabase
+    .from('categories')
+    .select('type, nom')
+    .or('source.eq.plateforme,statut.eq.certifiee')
+    .in('type', ['styles', 'type_beat'])
+
+  const dejaOfficielles = new Set(
+    ((existantes ?? []) as { type: TypeCategorie; nom: string }[]).map(c => `${c.type}|${c.nom.toLowerCase()}`)
+  )
+
+  const lignes = candidats
+    .filter(c => !dejaOfficielles.has(`${c.type}|${c.nom.toLowerCase()}`))
+    .map(c => ({ ...c, source: 'beatmaker' as const, beatmaker_id: beatmakerId }))
   if (lignes.length === 0) return
 
   const { error } = await supabase.from('categories').upsert(lignes, {
