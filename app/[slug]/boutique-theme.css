@@ -272,46 +272,45 @@
   background: #fff;
 }
 
-/* HERO */
+/* HERO — compact, collé sous le header (pas de plein écran) */
 .shop-hero {
-  min-height: 90vh;
-  padding-top: 40px;
-  display: grid;
-  place-items: center;
-  position: relative;
+  padding: 44px 0 40px;
+  text-align: center;
 }
 
 .shop-hero-content { text-align: center; }
 
 .shop-hero h1 {
-  max-width: 860px;
+  max-width: 780px;
   margin: 0 auto;
-  font-size: clamp(38px, 4.1vw, 59px);
-  line-height: 1.05;
-  letter-spacing: -.038em;
+  font-size: clamp(28px, 3.1vw, 44px);
+  line-height: 1.12;
+  letter-spacing: -.03em;
   font-weight: 950;
 }
 
 .shop-hero p {
   max-width: 620px;
-  margin: 24px auto;
-  font-size: 16px;
+  margin: 18px auto 0;
+  font-size: 15px;
+  line-height: 1.5;
   font-weight: 650;
   color: rgba(248, 248, 251, .85);
 }
 
+.shop-hero .shop-cta { margin-top: 22px; }
+
 .shop-down-arrow {
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  width: 18px;
-  height: 18px;
-  border-right: 5px solid #fff;
-  border-bottom: 5px solid #fff;
-  transform: translateX(-50%) rotate(45deg);
+  display: block;
+  margin: 26px auto 0;
+  width: 16px;
+  height: 16px;
+  border-right: 4px solid #fff;
+  border-bottom: 4px solid #fff;
+  transform: rotate(45deg);
   border-radius: 2px;
   cursor: pointer;
-  opacity: .85;
+  opacity: .7;
 }
 
 /* SECTIONS */
@@ -826,10 +825,9 @@
 
   .shop-pill { flex: 0 0 auto; min-width: auto; padding: 7px 15px; font-size: 12px; }
 
-  .shop-hero { min-height: 74vh; padding-top: 30px; }
-  .shop-hero h1 { font-size: 38px; }
+  .shop-hero { padding: 28px 0 32px; }
+  .shop-hero h1 { font-size: 28px; }
   .shop-hero p { font-size: 14px; line-height: 1.5; }
-  .shop-down-arrow { bottom: 30px; }
 
   .shop-catalogue { padding-top: 20px; }
   .shop-members-box { padding: 12px; }
@@ -854,8 +852,7 @@
 }
 
 @media (max-width: 520px) {
-  .shop-hero { min-height: 68vh; }
-  .shop-hero h1 { font-size: 30px; }
+  .shop-hero h1 { font-size: 24px; }
   .shop-hero p { max-width: 320px; margin-inline: auto; }
 
   .shop-section-heading h2 { font-size: 22px; }
