@@ -6,9 +6,11 @@ const THEMES_VALIDES = ['blue', 'red', 'green', 'purple']
 
 export default function BoutiqueThemeRoot({
   themeDb,
+  fontClassName,
   children,
 }: {
   themeDb: string
+  fontClassName: string
   children: React.ReactNode
 }) {
   const searchParams = useSearchParams()
@@ -16,7 +18,7 @@ export default function BoutiqueThemeRoot({
   const theme = themeApercu && THEMES_VALIDES.includes(themeApercu) ? themeApercu : themeDb
 
   return (
-    <div data-shop-theme={theme} className="shop-root min-h-screen text-white pb-28 flex flex-col">
+    <div data-shop-theme={theme} className={`shop-root ${fontClassName} min-h-screen text-white pb-28 flex flex-col`}>
       {children}
     </div>
   )

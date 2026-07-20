@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { Nunito_Sans } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { PlayerProvider } from './_components/PlayerContext'
@@ -9,6 +10,14 @@ import BoutiqueHeader from './_components/BoutiqueHeader'
 import BoutiqueFooter from './_components/BoutiqueFooter'
 import BoutiqueThemeRoot from './_components/BoutiqueThemeRoot'
 import './boutique-theme.css'
+
+// Police de jakebmusic.com (--wp--preset--font-family--nunito-sans), variable
+// donc compatible avec les graisses non-standard du CSS porté (650/750/850/950).
+const nunitoSans = Nunito_Sans({
+  variable: '--font-nunito-sans',
+  subsets: ['latin'],
+  weight: 'variable',
+})
 
 export default async function BoutiqueLayout({
   children,
@@ -42,7 +51,7 @@ export default async function BoutiqueLayout({
     <PlayerProvider>
       <CartProvider>
         <Suspense>
-          <BoutiqueThemeRoot themeDb={beatmaker?.theme_couleur ?? 'blue'}>
+          <BoutiqueThemeRoot themeDb={beatmaker?.theme_couleur ?? 'blue'} fontClassName={nunitoSans.variable}>
             {beatmaker && (
               <BoutiqueHeader
                 slug={slug}

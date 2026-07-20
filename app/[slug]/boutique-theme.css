@@ -100,7 +100,7 @@
       var(--shop-bg-middle) 45%,
       var(--shop-bg-extra) 70%,
       var(--shop-bg-right) 100%);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-nunito-sans), Arial, Helvetica, sans-serif;
   font-weight: 500;
   position: relative;
 }
@@ -115,7 +115,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  transition: background .22s ease, box-shadow .22s ease, backdrop-filter .22s ease;
+  transition: background .22s ease, box-shadow .22s ease;
 }
 
 .shop-header.is-sticky {
@@ -123,8 +123,7 @@
     radial-gradient(circle at 76% 16%, var(--shop-header-glow-a), transparent 29%),
     radial-gradient(circle at 30% 30%, var(--shop-header-glow-b), transparent 28%),
     linear-gradient(90deg, var(--shop-header-start), var(--shop-header-middle), var(--shop-header-end));
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
-  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .3);
 }
 
 .shop-header-main {
@@ -463,9 +462,9 @@
   border-radius: 50%;
   color: #fff;
   background: var(--shop-play-background);
-  /* Ombre resserrée — un flou de 15px sur un bouton de 27px créait un
-     halo flou disproportionné (visible sur mobile). */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+  /* Pas d'ombre du tout : un simple box-shadow flou créait un halo
+     visible sur mobile (bouton petit, ombre disproportionnée). */
+  box-shadow: none;
   cursor: pointer;
 }
 
