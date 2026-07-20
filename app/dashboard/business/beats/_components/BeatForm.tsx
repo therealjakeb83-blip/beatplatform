@@ -7,6 +7,13 @@ import type { CategorieOptions } from '@/lib/categories'
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const MODES = ['majeur', 'mineur']
 
+const TAGS_ONGLETS: { key: 'styles' | 'ambiances' | 'instruments' | 'typeBeat'; label: string }[] = [
+  { key: 'styles', label: 'Styles' },
+  { key: 'ambiances', label: 'Ambiances' },
+  { key: 'instruments', label: 'Instruments' },
+  { key: 'typeBeat', label: 'Type Beat' },
+]
+
 // Options des tags — désormais chargées depuis la table `categories` (Phase
 // 7) plutôt que codées en dur, pour permettre l'ajout libre + certification
 // sur Styles/Type beat. Voir CategoriesOptions plus bas et
@@ -358,6 +365,7 @@ export default function BeatForm({
   const [ambiances, setAmbiances] = useState(initialValues.ambiances)
   const [instruments, setInstruments] = useState(initialValues.instruments)
   const [typeBeat, setTypeBeat] = useState(initialValues.typeBeat)
+  const [ongletTag, setOngletTag] = useState<'styles' | 'ambiances' | 'instruments' | 'typeBeat'>('styles')
   const [freeDownload, setFreeDownload] = useState(initialValues.freeDownload)
   const [collaborateurs, setCollaborateurs] = useState(initialValues.collaborateurs)
   const [licencesActives, setLicencesActives] = useState<string[]>(initialValues.licencesActives)
@@ -512,12 +520,22 @@ export default function BeatForm({
       {/* Tags */}
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">Tags</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CategorieSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} hybride placeholder="Ajouter un style..." />
-          <CategorieSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} hybride={false} />
-          <CategorieSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} hybride={false} />
-          <CategorieSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} hybride placeholder="Ajouter un artiste..." />
+        <div className="flex flex-wrap gap-2">
+          {TAGS_ONGLETS.map(o => (
+            <button key={o.key} type="button" onClick={() => setOngletTag(o.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                ongletTag === o.key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              }`}>
+              {o.label}
+            </button>
+          ))}
         </div>
+        {ongletTag === 'styles' && <CategorieSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} hybride placeholder="Ajouter un style..." />}
+        {ongletTag === 'ambiances' && <CategorieSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} hybride={false} />}
+        {ongletTag === 'instruments' && <CategorieSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} hybride={false} />}
+        {ongletTag === 'typeBeat' && <CategorieSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} hybride placeholder="Ajouter un artiste..." />}
         <p className="text-xs text-gray-500">
           Styles et Type Beat personnalisés : gérables (renommer, demander la certification) sur{' '}
           <Link href="/dashboard/business/categories" className="text-indigo-400 hover:underline">la page Catégories</Link>.
