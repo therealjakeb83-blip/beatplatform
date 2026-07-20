@@ -84,7 +84,11 @@ export default function BeatCard({
             style={!hasAudio ? { opacity: .5, cursor: 'not-allowed' } : undefined}
             aria-label={isActive && isPlaying ? 'Pause' : 'Écouter'}
           >
-            {isActive && isPlaying ? '⏸' : '▶'}
+            {isActive && isPlaying ? (
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="white"><path d="M7 5.5v13a1 1 0 0 0 1.53.85l10.5-6.5a1 1 0 0 0 0-1.7l-10.5-6.5A1 1 0 0 0 7 5.5Z" /></svg>
+            )}
           </button>
         )}
 
