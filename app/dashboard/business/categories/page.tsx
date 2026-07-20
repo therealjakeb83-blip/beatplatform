@@ -13,12 +13,16 @@ export default async function CategoriesPage() {
   const [
     { data: categoriesRaw },
     { data: overridesRaw },
+    { data: demandesRaw },
     { data: beatsData },
     { data: lignesData },
     { data: playsData },
   ] = await Promise.all([
     supabase.from('categories').select('id, type, nom, source, beatmaker_id, statut, image_url').order('nom'),
     supabase.from('categories_images_boutique').select('categorie_id, image_url').eq('beatmaker_id', user.id),
+    // Demandes en attente vivent dans leur propre table (Phase 7.9) — plus
+    // dans categories.statut, pour garder l'historique des rejets.
+    supabase.from('demandes_certification').select('categorie_id').eq('beatmaker_id', user.id).eq('statut', 'en_attente'),
     // Scope propre boutique — contrairement à l'admin (plateforme-wide),
     // ces stats ne portent que sur les beats de ce beatmaker.
     supabase.from('beats').select('id, styles, ambiances, instruments, type_beat').eq('beatmaker_id', user.id),
@@ -31,11 +35,13 @@ export default async function CategoriesPage() {
 
   const statsParTag = agregerStatsParCategorie(beatsData ?? [], lignesData ?? [], playsData ?? [])
   const overrides = new Map((overridesRaw ?? []).map(o => [o.categorie_id, o.image_url as string]))
+  const demandesEnAttente = new Set((demandesRaw ?? []).map(d => d.categorie_id as string))
 
   const categories = ((categoriesRaw ?? []) as CategorieRow[]).map(c => ({
     ...c,
     ...statsPour(statsParTag, c.type, c.nom),
     image_override: overrides.get(c.id) ?? null,
+    demande_en_attente: demandesEnAttente.has(c.id),
   }))
 
   return (

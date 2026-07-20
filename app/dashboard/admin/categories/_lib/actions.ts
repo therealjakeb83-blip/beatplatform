@@ -13,29 +13,24 @@ const CHEMIN = '/dashboard/admin/categories'
 // RLS-bound (WITH CHECK sur la policy UPDATE de `categories`) — seule la
 // modération explicite, gardée par estAdmin(), peut le faire.
 
-export async function approuverCertification(categorieId: string): Promise<{ erreur?: string }> {
+// Approuver/rejeter passe par une fonction Postgres atomique (met à jour la
+// demande ET categories.statut ensemble, jamais l'un sans l'autre) — voir
+// supabase/phase7_9_demandes_certification.sql.
+export async function approuverCertification(demandeId: string): Promise<{ erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
 
   const admin = createAdminClient()
-  const { error } = await admin
-    .from('categories')
-    .update({ statut: 'certifiee' })
-    .eq('id', categorieId)
-    .eq('statut', 'en_attente_certification')
+  const { error } = await admin.rpc('traiter_demande_certification', { p_demande_id: demandeId, p_approuver: true })
   if (error) return { erreur: error.message }
   revalidatePath(CHEMIN)
   return {}
 }
 
-export async function rejeterCertification(categorieId: string): Promise<{ erreur?: string }> {
+export async function rejeterCertification(demandeId: string): Promise<{ erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
 
   const admin = createAdminClient()
-  const { error } = await admin
-    .from('categories')
-    .update({ statut: 'active' })
-    .eq('id', categorieId)
-    .eq('statut', 'en_attente_certification')
+  const { error } = await admin.rpc('traiter_demande_certification', { p_demande_id: demandeId, p_approuver: false })
   if (error) return { erreur: error.message }
   revalidatePath(CHEMIN)
   return {}

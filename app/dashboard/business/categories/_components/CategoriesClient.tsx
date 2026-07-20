@@ -8,6 +8,7 @@ import { estOfficielle } from '@/lib/categories'
 type CategorieAvecDonnees = CategorieRow & {
   nb_beats: number; ventes: number; ca_net: number; ecoutes: number
   image_override: string | null
+  demande_en_attente: boolean
 }
 
 type Props = {
@@ -209,10 +210,10 @@ function CategoriePersonnelleRow({
             <span className="text-sm text-white font-medium">{categorie.nom}</span>
           )}
           <span className="text-xs text-gray-500">{categorie.nb_beats} beat{categorie.nb_beats !== 1 ? 's' : ''}</span>
-          {categorie.statut === 'active' && (
+          {categorie.statut === 'active' && !categorie.demande_en_attente && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">Perso</span>
           )}
-          {categorie.statut === 'en_attente_certification' && (
+          {categorie.statut === 'active' && categorie.demande_en_attente && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">En attente de validation</span>
           )}
           {categorie.statut === 'certifiee' && (
@@ -221,7 +222,7 @@ function CategoriePersonnelleRow({
         </div>
         <div className="flex items-center gap-3">
           {erreur && <span className="text-xs text-red-400">{erreur}</span>}
-          {categorie.statut === 'active' && (
+          {categorie.statut === 'active' && !categorie.demande_en_attente && (
             <>
               <button
                 onClick={() => action(demanderCertification)}
@@ -240,7 +241,7 @@ function CategoriePersonnelleRow({
               </button>
             </>
           )}
-          {categorie.statut === 'en_attente_certification' && (
+          {categorie.statut === 'active' && categorie.demande_en_attente && (
             <button
               onClick={() => action(annulerDemandeCertification)}
               disabled={enCours}

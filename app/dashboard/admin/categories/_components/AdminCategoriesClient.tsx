@@ -16,10 +16,17 @@ function avecImage(type: TypeCategorie) {
 
 type CategorieAvecArtiste = CategorieRow & { nom_artiste: string | null } & StatsCategorie
 
+// Une demande (table dédiée, Phase 7.9) — id = id de la demande, pas de la
+// catégorie, puisqu'approuver/rejeter agit sur la demande elle-même.
+type DemandeAvecStats = StatsCategorie & {
+  id: string; categorie_id: string; nom: string; type: TypeCategorie; nom_artiste: string | null
+}
+
 type Props = {
   categories: CategorieAvecArtiste[]
-  approuverCertification: (id: string) => Promise<{ erreur?: string }>
-  rejeterCertification: (id: string) => Promise<{ erreur?: string }>
+  demandes: DemandeAvecStats[]
+  approuverCertification: (demandeId: string) => Promise<{ erreur?: string }>
+  rejeterCertification: (demandeId: string) => Promise<{ erreur?: string }>
   ajouterCategoriePlateforme: (type: TypeCategorie, nom: string) => Promise<{ erreur?: string }>
   supprimerCategoriePlateforme: (id: string) => Promise<{ erreur?: string }>
 }
@@ -37,13 +44,13 @@ const NOMS_TYPE: Record<TypeCategorie, string> = {
 
 export default function AdminCategoriesClient({
   categories,
+  demandes,
   approuverCertification,
   rejeterCertification,
   ajouterCategoriePlateforme,
   supprimerCategoriePlateforme,
 }: Props) {
   const [ongletActif, setOngletActif] = useState<TypeCategorie>('styles')
-  const demandesEnAttente = categories.filter(c => c.statut === 'en_attente_certification')
   const officielles = categories
     .filter(c => c.type === ongletActif && estOfficielle(c))
     .sort((a, b) => b.ca_net - a.ca_net)
@@ -55,9 +62,9 @@ export default function AdminCategoriesClient({
         <p className="text-sm text-gray-500 mt-0.5">Modération des demandes de certification et gestion des catégories officielles (source plateforme).</p>
       </div>
 
-      {demandesEnAttente.length > 0 && (
+      {demandes.length > 0 && (
         <ModerationSection
-          demandes={demandesEnAttente}
+          demandes={demandes}
           approuverCertification={approuverCertification}
           rejeterCertification={rejeterCertification}
         />
@@ -101,9 +108,9 @@ function ModerationSection({
   approuverCertification,
   rejeterCertification,
 }: {
-  demandes: CategorieAvecArtiste[]
-  approuverCertification: (id: string) => Promise<{ erreur?: string }>
-  rejeterCertification: (id: string) => Promise<{ erreur?: string }>
+  demandes: DemandeAvecStats[]
+  approuverCertification: (demandeId: string) => Promise<{ erreur?: string }>
+  rejeterCertification: (demandeId: string) => Promise<{ erreur?: string }>
 }) {
   const [traitementId, setTraitementId] = useState<string | null>(null)
   const [erreur, setErreur] = useState('')

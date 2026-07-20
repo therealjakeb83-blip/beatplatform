@@ -10,8 +10,20 @@ export type CategorieRow = {
   nom: string
   source: 'plateforme' | 'beatmaker'
   beatmaker_id: string | null
-  statut: 'active' | 'en_attente_certification' | 'certifiee'
+  statut: 'active' | 'certifiee'
   image_url: string | null
+}
+
+// Le workflow de demande de certification vit dans sa propre table
+// (supabase/phase7_9_demandes_certification.sql), pas dans categories.statut
+// — un rejet ne doit pas effacer la trace de la demande.
+export type DemandeCertification = {
+  id: string
+  categorie_id: string
+  beatmaker_id: string
+  statut: 'en_attente' | 'approuvee' | 'rejetee'
+  created_at: string
+  traite_le: string | null
 }
 
 // Vrai pour une catégorie du pool global (plateforme d'origine, ou perso
