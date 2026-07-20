@@ -50,10 +50,10 @@ export default function AdminCategoriesClient({
   ajouterCategoriePlateforme,
   supprimerCategoriePlateforme,
 }: Props) {
-  const [ongletActif, setOngletActif] = useState<TypeCategorie>('styles')
-  const officielles = categories
-    .filter(c => c.type === ongletActif && estOfficielle(c))
-    .sort((a, b) => b.ca_net - a.ca_net)
+  const [ongletActif, setOngletActif] = useState<TypeCategorie | 'demandes'>('styles')
+  const officielles = ongletActif === 'demandes'
+    ? []
+    : categories.filter(c => c.type === ongletActif && estOfficielle(c)).sort((a, b) => b.ca_net - a.ca_net)
 
   return (
     <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
@@ -61,14 +61,6 @@ export default function AdminCategoriesClient({
         <h1 className="text-xl font-bold text-white">Catégories</h1>
         <p className="text-sm text-gray-500 mt-0.5">Modération des demandes de certification et gestion des catégories officielles (source plateforme).</p>
       </div>
-
-      {demandes.length > 0 && (
-        <ModerationSection
-          demandes={demandes}
-          approuverCertification={approuverCertification}
-          rejeterCertification={rejeterCertification}
-        />
-      )}
 
       <div className="flex flex-wrap gap-2">
         {ONGLETS.map(o => (
@@ -84,8 +76,25 @@ export default function AdminCategoriesClient({
             {o.label}
           </button>
         ))}
+        <button
+          onClick={() => setOngletActif('demandes')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            ongletActif === 'demandes'
+              ? 'bg-amber-500 text-gray-950'
+              : 'bg-gray-900 border border-gray-800 text-amber-400 hover:text-amber-300 hover:border-gray-700'
+          }`}
+        >
+          Demandes{demandes.length > 0 ? ` (${demandes.length})` : ''}
+        </button>
       </div>
 
+      {ongletActif === 'demandes' ? (
+        <ModerationSection
+          demandes={demandes}
+          approuverCertification={approuverCertification}
+          rejeterCertification={rejeterCertification}
+        />
+      ) : (
       <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
         <p className="text-sm font-semibold text-white">Catégories officielles — {ONGLETS.find(o => o.type === ongletActif)!.label}</p>
         {officielles.length === 0 ? (
@@ -99,6 +108,7 @@ export default function AdminCategoriesClient({
         )}
         <AjouterForm type={ongletActif} ajouterCategoriePlateforme={ajouterCategoriePlateforme} />
       </div>
+      )}
     </div>
   )
 }
@@ -127,6 +137,9 @@ function ModerationSection({
     <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 space-y-3">
       <p className="text-sm font-semibold text-amber-300">Demandes de certification en attente ({demandes.length})</p>
       {erreur && <p className="text-xs text-red-400">{erreur}</p>}
+      {demandes.length === 0 ? (
+        <p className="text-xs text-amber-300/60">Aucune demande en attente pour l&apos;instant.</p>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -174,6 +187,7 @@ function ModerationSection({
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }
