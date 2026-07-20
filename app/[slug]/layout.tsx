@@ -66,6 +66,7 @@ export default async function BoutiqueLayout({
               <BoutiqueFooter
                 slug={slug}
                 nomArtiste={beatmaker.nom_artiste}
+                logoUrl={beatmaker.logo_url}
                 instagramUrl={beatmaker.instagram_url}
                 youtubeUrl={beatmaker.youtube_url}
                 tiktokUrl={beatmaker.tiktok_url}

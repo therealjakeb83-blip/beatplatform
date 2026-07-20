@@ -53,7 +53,7 @@ export default function BeatCard({
     play(beat, queue)
   }
 
-  const genre = beat.styles?.[0] ?? beat.type_beat?.[0] ?? null
+  const genres = beat.styles?.length ? beat.styles : beat.type_beat?.[0] ? [beat.type_beat[0]] : []
 
   return (
     <Link
@@ -68,7 +68,11 @@ export default function BeatCard({
           <div className="shop-beat-fallback">{beat.titre.slice(0, 2).toUpperCase()}</div>
         )}
 
-        {genre && <span className="shop-beat-genre">{genre}</span>}
+        {genres.length > 0 && (
+          <div className="shop-beat-genres">
+            {genres.map(g => <span key={g} className="shop-beat-genre">{g}</span>)}
+          </div>
+        )}
 
         {/* Bouton favori */}
         {!estVerrouille && (
