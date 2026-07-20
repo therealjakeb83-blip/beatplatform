@@ -88,7 +88,7 @@ export default function BoutiqueHeader({
       </div>
 
       <nav className="shop-container shop-header-sub">
-        <Link href={`/${slug}#parcourir-type-beat`} className="shop-pill">Artistes</Link>
+        <Link href={`/${slug}#parcourir-type-beat`} className="shop-pill">Type beat</Link>
         <Link href={`/${slug}#parcourir-styles`} className="shop-pill">Styles</Link>
         <Link href={`/${slug}#parcourir-instruments`} className="shop-pill">Instruments</Link>
         <Link href={`/${slug}#parcourir-ambiances`} className="shop-pill">Ambiances</Link>

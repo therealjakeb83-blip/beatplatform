@@ -455,17 +455,22 @@
   top: 10px;
   left: 10px;
   z-index: 6;
-  width: 27px;
-  height: 27px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
   color: #fff;
   background: var(--shop-play-background);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, .24);
+  /* Ombre resserrée — un flou de 15px sur un bouton de 27px créait un
+     halo flou disproportionné (visible sur mobile). */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
   cursor: pointer;
 }
+
+.shop-play svg,
+.shop-play { font-size: 15px; }
 
 .shop-beat-card h3 {
   margin: 8px 0 0;
