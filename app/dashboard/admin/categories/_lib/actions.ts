@@ -4,6 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { estAdmin } from '@/lib/admin'
 import type { TypeCategorie } from '@/lib/categories'
+import { envoyerCategorieCertifiee } from '@/lib/emails'
 
 const CHEMIN = '/dashboard/admin/categories'
 
@@ -13,24 +14,57 @@ const CHEMIN = '/dashboard/admin/categories'
 // RLS-bound (WITH CHECK sur la policy UPDATE de `categories`) — seule la
 // modération explicite, gardée par estAdmin(), peut le faire.
 
-// Approuver/rejeter passe par une fonction Postgres atomique (met à jour la
-// demande ET categories.statut ensemble, jamais l'un sans l'autre) — voir
-// supabase/phase7_9_demandes_certification.sql.
-export async function approuverCertification(demandeId: string): Promise<{ erreur?: string }> {
+// Approuver/rejeter agit sur un GROUPE de demandes (même nom, casse
+// ignorée) via une fonction Postgres atomique — voir
+// supabase/phase7_10_regroupement_certification.sql. `nomGroupe` sert
+// uniquement à retrouver le groupe (n'importe quelle casse du groupe
+// fonctionne, la fonction normalise) ; `nomFinal` est la casse définitive
+// choisie par l'admin, qui écrase toutes les variantes.
+export async function approuverCertificationGroupe(type: TypeCategorie, nomGroupe: string, nomFinal: string): Promise<{ erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
+  const valeur = nomFinal.trim()
+  if (!valeur) return { erreur: 'Nom final requis.' }
 
   const admin = createAdminClient()
-  const { error } = await admin.rpc('traiter_demande_certification', { p_demande_id: demandeId, p_approuver: true })
+
+  // Beatmakers concernés AVANT la fusion (perso, même nom) — prévenus après
+  // coup qu'ils aient explicitement demandé la certification ou juste
+  // utilisé le même nom sans jamais rien demander.
+  const { data: lignesRaw } = await admin
+    .from('categories')
+    .select('beatmaker_id, beatmakers(email)')
+    .eq('type', type)
+    .eq('source', 'beatmaker')
+    .eq('statut', 'active')
+    .ilike('nom', nomGroupe)
+
+  const { error } = await admin.rpc('traiter_groupe_certification', {
+    p_type: type, p_nom_groupe: nomGroupe, p_nom_final: valeur, p_approuver: true,
+  })
   if (error) return { erreur: error.message }
+
+  type LigneJoin = { beatmaker_id: string; beatmakers: { email: string } | null }
+  const destinataires = new Map<string, string>()
+  for (const l of (lignesRaw ?? []) as unknown as LigneJoin[]) {
+    if (l.beatmakers?.email) destinataires.set(l.beatmaker_id, l.beatmakers.email)
+  }
+  await Promise.all(
+    [...destinataires.entries()].map(([beatmakerId, email]) =>
+      envoyerCategorieCertifiee({ to: email, nomCategorie: valeur, beatmakerId }).catch(() => {})
+    )
+  )
+
   revalidatePath(CHEMIN)
   return {}
 }
 
-export async function rejeterCertification(demandeId: string): Promise<{ erreur?: string }> {
+export async function rejeterCertificationGroupe(type: TypeCategorie, nomGroupe: string): Promise<{ erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
 
   const admin = createAdminClient()
-  const { error } = await admin.rpc('traiter_demande_certification', { p_demande_id: demandeId, p_approuver: false })
+  const { error } = await admin.rpc('traiter_groupe_certification', {
+    p_type: type, p_nom_groupe: nomGroupe, p_nom_final: '', p_approuver: false,
+  })
   if (error) return { erreur: error.message }
   revalidatePath(CHEMIN)
   return {}

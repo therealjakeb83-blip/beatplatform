@@ -106,6 +106,32 @@ export async function envoyerRappelFonds({
   })
 }
 
+export async function envoyerCategorieCertifiee({
+  to,
+  nomCategorie,
+  beatmakerId,
+}: {
+  to: string
+  nomCategorie: string
+  beatmakerId: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'categorie_certifiee',
+    to,
+    subject: `Votre catégorie "${nomCategorie}" est maintenant officielle`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `Votre catégorie "${nomCategorie}" est maintenant officielle sur My Producer.`,
+      `Elle est désormais disponible pour tous les beatmakers de la plateforme.`,
+      ``,
+      `— L'équipe My Producer`,
+    ].join('\n'),
+  })
+}
+
 export async function envoyerConfirmationExpiration({
   to,
   titreBeat,

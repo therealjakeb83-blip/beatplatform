@@ -16,17 +16,18 @@ function avecImage(type: TypeCategorie) {
 
 type CategorieAvecArtiste = CategorieRow & { nom_artiste: string | null } & StatsCategorie
 
-// Une demande (table dédiée, Phase 7.9) — id = id de la demande, pas de la
-// catégorie, puisqu'approuver/rejeter agit sur la demande elle-même.
-type DemandeAvecStats = StatsCategorie & {
-  id: string; categorie_id: string; nom: string; type: TypeCategorie; nom_artiste: string | null
+// Un groupe de demandes (Phase 7.10) : "Jerk"/"JERK"/"jerk" partagent une
+// seule ligne — approuver/rejeter agit sur type+nom (n'importe quelle casse
+// du groupe, la fonction Postgres normalise), pas sur une demande précise.
+type GroupeDemande = StatsCategorie & {
+  type: TypeCategorie; nom: string; demandeurs: string[]; nb_demandes: number
 }
 
 type Props = {
   categories: CategorieAvecArtiste[]
-  demandes: DemandeAvecStats[]
-  approuverCertification: (demandeId: string) => Promise<{ erreur?: string }>
-  rejeterCertification: (demandeId: string) => Promise<{ erreur?: string }>
+  demandes: GroupeDemande[]
+  approuverCertificationGroupe: (type: TypeCategorie, nomGroupe: string, nomFinal: string) => Promise<{ erreur?: string }>
+  rejeterCertificationGroupe: (type: TypeCategorie, nomGroupe: string) => Promise<{ erreur?: string }>
   ajouterCategoriePlateforme: (type: TypeCategorie, nom: string) => Promise<{ erreur?: string }>
   supprimerCategoriePlateforme: (id: string) => Promise<{ erreur?: string }>
 }
@@ -45,8 +46,8 @@ const NOMS_TYPE: Record<TypeCategorie, string> = {
 export default function AdminCategoriesClient({
   categories,
   demandes,
-  approuverCertification,
-  rejeterCertification,
+  approuverCertificationGroupe,
+  rejeterCertificationGroupe,
   ajouterCategoriePlateforme,
   supprimerCategoriePlateforme,
 }: Props) {
@@ -91,8 +92,8 @@ export default function AdminCategoriesClient({
       {ongletActif === 'demandes' ? (
         <ModerationSection
           demandes={demandes}
-          approuverCertification={approuverCertification}
-          rejeterCertification={rejeterCertification}
+          approuverCertificationGroupe={approuverCertificationGroupe}
+          rejeterCertificationGroupe={rejeterCertificationGroupe}
         />
       ) : (
       <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
@@ -115,22 +116,49 @@ export default function AdminCategoriesClient({
 
 function ModerationSection({
   demandes,
-  approuverCertification,
-  rejeterCertification,
+  approuverCertificationGroupe,
+  rejeterCertificationGroupe,
 }: {
-  demandes: DemandeAvecStats[]
-  approuverCertification: (demandeId: string) => Promise<{ erreur?: string }>
-  rejeterCertification: (demandeId: string) => Promise<{ erreur?: string }>
+  demandes: GroupeDemande[]
+  approuverCertificationGroupe: (type: TypeCategorie, nomGroupe: string, nomFinal: string) => Promise<{ erreur?: string }>
+  rejeterCertificationGroupe: (type: TypeCategorie, nomGroupe: string) => Promise<{ erreur?: string }>
 }) {
-  const [traitementId, setTraitementId] = useState<string | null>(null)
+  const router = useRouter()
+  const [traitementCle, setTraitementCle] = useState<string | null>(null)
+  const [confirmationCle, setConfirmationCle] = useState<string | null>(null)
+  const [nomFinal, setNomFinal] = useState('')
   const [erreur, setErreur] = useState('')
 
-  async function traiter(id: string, fn: (id: string) => Promise<{ erreur?: string }>) {
-    setTraitementId(id)
+  function ouvrirConfirmation(g: GroupeDemande) {
+    setConfirmationCle(`${g.type}|${g.nom}`)
+    setNomFinal(g.nom)
     setErreur('')
-    const { erreur: err } = await fn(id)
-    setTraitementId(null)
+  }
+
+  async function confirmerApprobation(g: GroupeDemande) {
+    const cle = `${g.type}|${g.nom}`
+    setTraitementCle(cle)
+    setErreur('')
+    const { erreur: err } = await approuverCertificationGroupe(g.type, g.nom, nomFinal)
+    setTraitementCle(null)
     if (err) setErreur(err)
+    else { setConfirmationCle(null); router.refresh() }
+  }
+
+  async function rejeter(g: GroupeDemande) {
+    const cle = `${g.type}|${g.nom}`
+    setTraitementCle(cle)
+    setErreur('')
+    const { erreur: err } = await rejeterCertificationGroupe(g.type, g.nom)
+    setTraitementCle(null)
+    if (err) setErreur(err)
+    else router.refresh()
+  }
+
+  function demandeursAffiches(demandeurs: string[]) {
+    if (demandeurs.length === 0) return '—'
+    const visibles = demandeurs.slice(0, 2).join(', ')
+    return demandeurs.length > 2 ? `${visibles} +${demandeurs.length - 2} autres` : visibles
   }
 
   return (
@@ -146,44 +174,79 @@ function ModerationSection({
             <tr className="text-left text-[11px] uppercase tracking-wide text-amber-300/60 border-b border-amber-500/20">
               <th className="pb-2 font-medium">Nom</th>
               <th className="pb-2 font-medium">Type</th>
-              <th className="pb-2 font-medium">Demandeur</th>
+              <th className="pb-2 font-medium">Demandes</th>
+              <th className="pb-2 font-medium">Demandeurs</th>
               <th className="pb-2 font-medium text-right">Beats</th>
               <th className="pb-2 font-medium text-right">Ventes</th>
               <th className="pb-2 font-medium text-right">Écoutes</th>
               <th className="pb-2 font-medium text-right">CA net</th>
-              <th className="pb-2 font-medium w-40"></th>
+              <th className="pb-2 font-medium w-56"></th>
             </tr>
           </thead>
           <tbody>
-            {[...demandes].sort((a, b) => b.ca_net - a.ca_net).map(d => (
-              <tr key={d.id} className="border-b border-amber-500/10 last:border-0">
-                <td className="py-2 text-white font-medium">{d.nom}</td>
-                <td className="py-2 text-gray-400">{NOMS_TYPE[d.type]}</td>
-                <td className="py-2 text-gray-500">{d.nom_artiste ?? '—'}</td>
-                <td className="py-2 text-right text-gray-400">{d.nb_beats}</td>
-                <td className="py-2 text-right text-gray-400">{d.ventes}</td>
-                <td className="py-2 text-right text-gray-400">{d.ecoutes}</td>
-                <td className="py-2 text-right text-green-400 font-medium">{fmtEuroDisplay(d.ca_net)}</td>
-                <td className="py-2 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => traiter(d.id, approuverCertification)}
-                      disabled={traitementId === d.id}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-50"
-                    >
-                      Approuver
-                    </button>
-                    <button
-                      onClick={() => traiter(d.id, rejeterCertification)}
-                      disabled={traitementId === d.id}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
-                    >
-                      Rejeter
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {[...demandes].sort((a, b) => b.ca_net - a.ca_net).map(g => {
+              const cle = `${g.type}|${g.nom}`
+              return (
+                <Fragment key={cle}>
+                  <tr className="border-b border-amber-500/10 last:border-0">
+                    <td className="py-2 text-white font-medium">{g.nom}</td>
+                    <td className="py-2 text-gray-400">{NOMS_TYPE[g.type]}</td>
+                    <td className="py-2 text-gray-400">{g.nb_demandes}</td>
+                    <td className="py-2 text-gray-500">{demandeursAffiches(g.demandeurs)}</td>
+                    <td className="py-2 text-right text-gray-400">{g.nb_beats}</td>
+                    <td className="py-2 text-right text-gray-400">{g.ventes}</td>
+                    <td className="py-2 text-right text-gray-400">{g.ecoutes}</td>
+                    <td className="py-2 text-right text-green-400 font-medium">{fmtEuroDisplay(g.ca_net)}</td>
+                    <td className="py-2 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => ouvrirConfirmation(g)}
+                          disabled={traitementCle === cle}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-50"
+                        >
+                          Approuver
+                        </button>
+                        <button
+                          onClick={() => rejeter(g)}
+                          disabled={traitementCle === cle}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
+                        >
+                          Rejeter
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {confirmationCle === cle && (
+                    <tr>
+                      <td colSpan={9} className="bg-gray-950 border-b border-amber-500/10 px-2 py-3">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-gray-500">Nom définitif :</p>
+                          <input
+                            type="text"
+                            value={nomFinal}
+                            onChange={e => setNomFinal(e.target.value)}
+                            className="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-white text-sm focus:outline-none focus:border-indigo-500"
+                          />
+                          <button
+                            onClick={() => confirmerApprobation(g)}
+                            disabled={traitementCle === cle || !nomFinal.trim()}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-50"
+                          >
+                            Confirmer la certification
+                          </button>
+                          <button
+                            onClick={() => setConfirmationCle(null)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>
