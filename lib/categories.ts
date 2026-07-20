@@ -11,6 +11,13 @@ export type CategorieRow = {
   source: 'plateforme' | 'beatmaker'
   beatmaker_id: string | null
   statut: 'active' | 'en_attente_certification' | 'certifiee'
+  image_url: string | null
+}
+
+// Vrai pour une catégorie du pool global (plateforme d'origine, ou perso
+// certifiée devenue globale) — jamais renommable, gérée uniquement en admin.
+export function estOfficielle(c: Pick<CategorieRow, 'source' | 'statut'>): boolean {
+  return c.source === 'plateforme' || c.statut === 'certifiee'
 }
 
 export type CategorieOptions = { certifiees: string[]; perso: string[] }

@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import type { CategorieRow } from '@/lib/categories'
-import { agregerStatsParCategorie, statsPour } from './_lib/stats'
+import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
 import {
   approuverCertification,
   rejeterCertification,
@@ -16,7 +16,7 @@ export default async function AdminCategoriesPage() {
   const admin = createAdminClient()
 
   const [{ data }, { data: beatsData }, { data: lignesData }, { data: playsData }] = await Promise.all([
-    admin.from('categories').select('id, type, nom, source, beatmaker_id, statut, beatmakers(nom_artiste)').order('nom'),
+    admin.from('categories').select('id, type, nom, source, beatmaker_id, statut, image_url, beatmakers(nom_artiste)').order('nom'),
     admin.from('beats').select('id, styles, ambiances, instruments, type_beat'),
     admin.from('commande_lignes')
       .select('beat_id, prix_paye, reduction_montant, commandes!inner(statut)')

@@ -1,9 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, Fragment } from 'react'
+import { useRouter } from 'next/navigation'
 import type { CategorieRow, TypeCategorie } from '@/lib/categories'
+import { estOfficielle } from '@/lib/categories'
 import { fmtEuroDisplay } from '@/app/dashboard/business/analytics/_lib/periode'
-import type { StatsCategorie } from '../_lib/stats'
+import type { StatsCategorie } from '@/lib/categories-stats'
+
+// Les images ne sont pour l'instant proposées que sur Type Beat (photo
+// d'artiste) — décision Jake du 2026-07-20, facile à ouvrir aux autres
+// types plus tard en retirant cette condition.
+function avecImage(type: TypeCategorie) {
+  return type === 'type_beat'
+}
 
 type CategorieAvecArtiste = CategorieRow & { nom_artiste: string | null } & StatsCategorie
 
@@ -36,7 +45,7 @@ export default function AdminCategoriesClient({
   const [ongletActif, setOngletActif] = useState<TypeCategorie>('styles')
   const demandesEnAttente = categories.filter(c => c.statut === 'en_attente_certification')
   const officielles = categories
-    .filter(c => c.type === ongletActif && c.source === 'plateforme')
+    .filter(c => c.type === ongletActif && estOfficielle(c))
     .sort((a, b) => b.ca_net - a.ca_net)
 
   return (
@@ -75,34 +84,11 @@ export default function AdminCategoriesClient({
         {officielles.length === 0 ? (
           <p className="text-xs text-gray-600">Aucune catégorie pour l&apos;instant.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 border-b border-gray-800">
-                  <th className="pb-2 font-medium">Nom</th>
-                  <th className="pb-2 font-medium text-right">Beats</th>
-                  <th className="pb-2 font-medium text-right">Ventes</th>
-                  <th className="pb-2 font-medium text-right">Écoutes</th>
-                  <th className="pb-2 font-medium text-right">CA net</th>
-                  <th className="pb-2 font-medium w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {officielles.map(c => (
-                  <tr key={c.id} className="border-b border-gray-800/60 last:border-0">
-                    <td className="py-2 text-white font-medium">{c.nom}</td>
-                    <td className="py-2 text-right text-gray-400">{c.nb_beats}</td>
-                    <td className="py-2 text-right text-gray-400">{c.ventes}</td>
-                    <td className="py-2 text-right text-gray-400">{c.ecoutes}</td>
-                    <td className="py-2 text-right text-green-400 font-medium">{fmtEuroDisplay(c.ca_net)}</td>
-                    <td className="py-2 text-right">
-                      <SupprimerBouton categorieId={c.id} supprimerCategoriePlateforme={supprimerCategoriePlateforme} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TableOfficielles
+            categories={officielles}
+            avecImage={avecImage(ongletActif)}
+            supprimerCategoriePlateforme={supprimerCategoriePlateforme}
+          />
         )}
         <AjouterForm type={ongletActif} ajouterCategoriePlateforme={ajouterCategoriePlateforme} />
       </div>
@@ -163,6 +149,99 @@ function ModerationSection({
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function TableOfficielles({ categories, avecImage, supprimerCategoriePlateforme }: {
+  categories: CategorieAvecArtiste[]; avecImage: boolean
+  supprimerCategoriePlateforme: (id: string) => Promise<{ erreur?: string }>
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-[11px] uppercase tracking-wide text-gray-500 border-b border-gray-800">
+            <th className="pb-2 font-medium">Nom</th>
+            <th className="pb-2 font-medium text-right">Beats</th>
+            <th className="pb-2 font-medium text-right">Ventes</th>
+            <th className="pb-2 font-medium text-right">Écoutes</th>
+            <th className="pb-2 font-medium text-right">CA net</th>
+            <th className="pb-2 font-medium w-8"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {categories.map(c => (
+            <Fragment key={c.id}>
+              <tr className="border-b border-gray-800/60 last:border-0">
+                <td className="py-2 text-white font-medium">
+                  {avecImage ? (
+                    <button type="button" onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
+                      className="hover:text-indigo-400 transition-colors text-left">
+                      {c.nom}
+                    </button>
+                  ) : c.nom}
+                </td>
+                <td className="py-2 text-right text-gray-400">{c.nb_beats}</td>
+                <td className="py-2 text-right text-gray-400">{c.ventes}</td>
+                <td className="py-2 text-right text-gray-400">{c.ecoutes}</td>
+                <td className="py-2 text-right text-green-400 font-medium">{fmtEuroDisplay(c.ca_net)}</td>
+                <td className="py-2 text-right">
+                  <SupprimerBouton categorieId={c.id} supprimerCategoriePlateforme={supprimerCategoriePlateforme} />
+                </td>
+              </tr>
+              {avecImage && expandedId === c.id && (
+                <tr>
+                  <td colSpan={6} className="bg-gray-950 border-b border-gray-800 px-2 py-3">
+                    <p className="text-xs text-gray-500 mb-1">Image officielle</p>
+                    <ImageUploader categorieId={c.id} imageUrl={c.image_url} label={c.image_url ? 'Changer' : 'Ajouter une image'} />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ImageUploader({ categorieId, imageUrl, label }: { categorieId: string; imageUrl: string | null; label: string }) {
+  const router = useRouter()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setEnCours(true)
+    setErreur('')
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('categorieId', categorieId)
+    const res = await fetch('/api/upload/categorie-image', { method: 'POST', body: formData })
+    const data = await res.json()
+    setEnCours(false)
+    if (!res.ok) { setErreur(data.error ?? 'Erreur upload'); return }
+    if (inputRef.current) inputRef.current.value = ''
+    router.refresh()
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      {imageUrl
+        ? <img src={imageUrl} alt="" className="w-14 h-14 rounded-lg object-cover border border-gray-800" />
+        : <div className="w-14 h-14 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-600 text-xs">—</div>}
+      <div>
+        <label className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 cursor-pointer transition-colors inline-block">
+          {enCours ? 'Envoi...' : label}
+          <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={enCours} />
+        </label>
+        {erreur && <p className="text-xs text-red-400 mt-1">{erreur}</p>}
       </div>
     </div>
   )

@@ -16,9 +16,10 @@ const COLONNES_TAGS: { type: TypeCategorie; get: (b: BeatTags) => string[] | nul
 ]
 
 // Regroupe par (type, nom) plutôt que par beatmaker_id : une demande de
-// certification porte sur un nom de tag, et savoir combien de beats
-// (tous beatmakers confondus) portent déjà ce nom donne un signal de
-// popularité plus utile pour décider qu'une vue limitée au seul demandeur.
+// certification porte sur un nom de tag, et savoir combien de beats portent
+// déjà ce nom donne un signal utile pour décider. Utilisé à la fois par
+// l'admin (scope plateforme-wide) et par la page business (scope propre
+// beatmaker) — seule la requête SQL en amont diffère, pas cette agrégation.
 export function agregerStatsParCategorie(
   beats: BeatTags[],
   lignes: LigneVente[],
