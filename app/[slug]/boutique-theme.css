@@ -389,8 +389,10 @@
 
 /* Beat cards */
 .shop-beat-card {
-  flex: 0 0 200px;
-  min-width: 200px;
+  /* Jamais plus de 5 cartes visibles par ligne sur desktop, quelle que
+     soit la largeur du conteneur (4 espacements de shop-row entre 5 cartes). */
+  flex: 0 0 calc((100% - 48px) / 5);
+  min-width: 190px;
   padding: 10px 10px 13px;
   overflow: hidden;
   border-radius: 17px;
