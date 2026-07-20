@@ -6,13 +6,9 @@ import type { CategorieRow, TypeCategorie } from '@/lib/categories'
 type Props = {
   categories: CategorieRow[]
   beatmakerId: string
-  moderateur: boolean
-  demandesEnAttente: (CategorieRow & { nom_artiste: string | null })[]
   demanderCertification: (id: string) => Promise<{ erreur?: string }>
   annulerDemandeCertification: (id: string) => Promise<{ erreur?: string }>
   supprimerCategoriePersonnelle: (id: string) => Promise<{ erreur?: string }>
-  approuverCertification: (id: string) => Promise<{ erreur?: string }>
-  rejeterCertification: (id: string) => Promise<{ erreur?: string }>
 }
 
 const ONGLETS: { type: TypeCategorie; label: string; hybride: boolean }[] = [
@@ -25,13 +21,9 @@ const ONGLETS: { type: TypeCategorie; label: string; hybride: boolean }[] = [
 export default function CategoriesClient({
   categories,
   beatmakerId,
-  moderateur,
-  demandesEnAttente,
   demanderCertification,
   annulerDemandeCertification,
   supprimerCategoriePersonnelle,
-  approuverCertification,
-  rejeterCertification,
 }: Props) {
   const [ongletActif, setOngletActif] = useState<TypeCategorie>('styles')
   const onglet = ONGLETS.find(o => o.type === ongletActif)!
@@ -48,14 +40,6 @@ export default function CategoriesClient({
             Ambiances et Instruments sont fixés par la plateforme. Styles et Type Beat sont libres : ajoute les tiens depuis la fiche d&apos;un beat, puis demande leur certification ici pour les rendre officielles.
           </p>
         </div>
-
-        {moderateur && demandesEnAttente.length > 0 && (
-          <ModerationSection
-            demandes={demandesEnAttente}
-            approuverCertification={approuverCertification}
-            rejeterCertification={rejeterCertification}
-          />
-        )}
 
         <div className="flex flex-wrap gap-2">
           {ONGLETS.map(o => (
@@ -182,68 +166,6 @@ function CategoriePersonnelleRow({
             Annuler la demande
           </button>
         )}
-      </div>
-    </div>
-  )
-}
-
-function ModerationSection({
-  demandes,
-  approuverCertification,
-  rejeterCertification,
-}: {
-  demandes: (CategorieRow & { nom_artiste: string | null })[]
-  approuverCertification: (id: string) => Promise<{ erreur?: string }>
-  rejeterCertification: (id: string) => Promise<{ erreur?: string }>
-}) {
-  const [traitementId, setTraitementId] = useState<string | null>(null)
-  const [erreur, setErreur] = useState('')
-
-  async function traiter(id: string, fn: (id: string) => Promise<{ erreur?: string }>) {
-    setTraitementId(id)
-    setErreur('')
-    const { erreur: err } = await fn(id)
-    setTraitementId(null)
-    if (err) setErreur(err)
-  }
-
-  const NOMS_TYPE: Record<TypeCategorie, string> = {
-    styles: 'Style', ambiances: 'Ambiance', instruments: 'Instrument', type_beat: 'Type Beat',
-  }
-
-  return (
-    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 space-y-3">
-      <div>
-        <p className="text-sm font-semibold text-amber-300">Demandes de certification en attente ({demandes.length})</p>
-        <p className="text-xs text-amber-400/70 mt-0.5">Modération interne V1 — à remplacer par un vrai back-office Admin (étape 15).</p>
-      </div>
-      {erreur && <p className="text-xs text-red-400">{erreur}</p>}
-      <div className="flex flex-col gap-2">
-        {demandes.map(d => (
-          <div key={d.id} className="flex items-center justify-between bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-white font-medium">{d.nom}</span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{NOMS_TYPE[d.type]}</span>
-              <span className="text-xs text-gray-500">par {d.nom_artiste ?? '—'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => traiter(d.id, approuverCertification)}
-                disabled={traitementId === d.id}
-                className="text-xs px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors disabled:opacity-50"
-              >
-                Approuver
-              </button>
-              <button
-                onClick={() => traiter(d.id, rejeterCertification)}
-                disabled={traitementId === d.id}
-                className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
-              >
-                Rejeter
-              </button>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   )

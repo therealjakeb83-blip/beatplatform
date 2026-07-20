@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DeconnexionButton from './DeconnexionButton'
+import { estAdmin } from '@/lib/admin'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -9,11 +10,10 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/connexion')
 
-  const { data: beatmaker } = await supabase
-    .from('beatmakers')
-    .select('slug')
-    .eq('id', user.id)
-    .single()
+  const [{ data: beatmaker }, admin] = await Promise.all([
+    supabase.from('beatmakers').select('slug').eq('id', user.id).single(),
+    estAdmin(),
+  ])
 
 return (
     <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
@@ -46,6 +46,14 @@ return (
               className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors flex items-center gap-2"
             >
               Ma boutique ↗
+            </Link>
+          )}
+          {admin && (
+            <Link
+              href="/dashboard/admin"
+              className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+            >
+              Admin
             </Link>
           )}
         </div>

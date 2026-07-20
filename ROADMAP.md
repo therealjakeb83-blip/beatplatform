@@ -12,7 +12,7 @@
 >
 > **⚠️ Blocage confirmé (2026-07-16) : `myproducer.com` est indisponible.** Le nom "My Producer" n'était déjà pas définitif (voir `memory/project_naming_deferred.md`), mais ce n'était jusqu'ici qu'une hypothèse de renommage esthétique. Ce n'en est plus une : la plateforme n'a **aucun nom de domaine réservable sous son nom actuel**. Ça bloque concrètement 2 choses (voir ordre de priorité ci-dessous) : Phase 4.5 (domaine d'envoi email par boutique — DKIM/SPF/DMARC à configurer sur le domaine définitif) et l'étape 17 (déploiement — achat du nom de domaine). Tout le reste du roadmap est indépendant du nom et peut avancer normalement en attendant.
 
-## Ordre de priorité actuel (2026-07-16)
+## Ordre de priorité actuel (2026-07-17)
 
 > Le tableau ci-dessous liste toutes les étapes dans leur ordre de numérotation d'origine — l'ordre réel de traitement recommandé, compte tenu des dépendances et du blocage nom/domaine, est différent. Voici l'ordre à suivre à partir de maintenant :
 
@@ -20,14 +20,24 @@
 |---|---|---|
 | 1 | **11d Phase 6** — Mailing transactionnels ✅ *(reste 6.7, beat cadeau fidélité — reporté)* | Comble un vrai trou produit visible immédiatement : aucun email de confirmation n'est envoyé après un achat ou un abonnement. Indépendant du nom de domaine (réutilise le même mécanisme d'envoi que Campagnes, déjà fonctionnel sur le domaine temporaire). |
 | 2 | **11d Phase 7** — Catégories & Certification ✅ *(codé 2026-07-17, pas encore testé)* | Indépendant du nom. Prérequis fonctionnel à l'étape 15 (la modération des demandes de certification fait partie du périmètre Admin — impossible à construire tant que les demandes elles-mêmes n'existent pas). |
-| 3 | **Étape 15** — Admin (perf SaaS, perf par boutique, modération certification, import BeatStars concierge) | Dépendance dure avant l'étape 17, explicitement actée. Dépend de la Phase 7 (rang 2) pour la partie modération. |
-| 4 | **11d Phase 8** — Dashboard business (accueil) | Agrège les KPIs de tous les modules Business, y compris Marketing/Mailing/Catégories — n'a de sens qu'une fois ces modules construits (rangs 1-2 inclus). |
-| 5 | **Étape 14** — Onboarding | Indépendant du nom (le parcours de config peut rester générique). |
-| 6 | **Étape 16** — Tests & corrections bout en bout (absorbe la Phase 4.8) | Après que le plus gros du produit (rangs 1-5) soit construit. Phase 4.8 (tests formels Campagnes) déjà décidée comme fusionnée ici plutôt que traitée séparément (note 2026-07-04). |
+| 3 | **Étape 15** — Admin 🔄 *(amorcé 2026-07-17 : `/dashboard/admin/categories`)*, **périmètre élargi le 2026-07-17** (voir note ci-dessous) | Dépendance dure avant l'étape 17, explicitement actée. Dépend de la Phase 7 (rang 2) pour la partie modération. Trou de scope identifié par Jake : périmètre initial (perf SaaS/boutique, modération, import BeatStars) insuffisant pour être vraiment autonome sans repasser par une session Claude. |
+| 4 | **Étape 5v2** — Refonte Boutique publique & Design System *(nouvelle, 2026-07-17 — voir note ci-dessous)* | Chantier à part du reste du module Business (boutique publique, pas dashboard beatmaker). Placé après l'Admin (rang 3) — décision Jake : terminer l'outillage interne, dont la dépendance dure avant déploiement, avant de se lancer dans un chantier plus long et moins cadré. |
+| 5 | **11d Phase 8** — Dashboard business (accueil) | Agrège les KPIs de tous les modules Business, y compris Marketing/Mailing/Catégories — n'a de sens qu'une fois ces modules construits (rangs 1-2 inclus). |
+| 6 | **Étape 14** — Onboarding | Repositionné après l'Étape 5v2 (rang 4) — un nouveau beatmaker doit être guidé sur le design final de sa boutique, pas sur l'ancien. Indépendant du nom (le parcours de config peut rester générique). |
+| 7 | **Étape 16** — Tests & corrections bout en bout (absorbe la Phase 4.8) | Après que le plus gros du produit (rangs 1-6) soit construit. Phase 4.8 (tests formels Campagnes) déjà décidée comme fusionnée ici plutôt que traitée séparément (note 2026-07-04). |
 | — | **Étape 11.5** — Import CSV BeatStars | Parké séparément — bloqué sur l'obtention d'un vrai CSV côté Jake, pas une question d'ordre. À glisser dès qu'il est disponible. |
 | 🔒 | **Nom + domaine de la plateforme** | À trancher par Jake dès que possible — plus ça traîne, plus ça retarde les 2 items ci-dessous. Ne bloque rien d'autre dans cette liste. |
-| 7 | **11d Phase 4.5** — Vrai domaine d'envoi par boutique | Bloqué tant que le nom/domaine définitif n'est pas choisi (DKIM/SPF/DMARC à configurer une seule fois, pas avant). |
-| 8 | **Étape 17** — Déploiement | Bloqué tant que le nom/domaine définitif n'est pas choisi (achat du nom de domaine) + dépend de l'étape 15 (admin) déjà fait. |
+| 8 | **11d Phase 4.5** — Vrai domaine d'envoi par boutique | Bloqué tant que le nom/domaine définitif n'est pas choisi (DKIM/SPF/DMARC à configurer une seule fois, pas avant). |
+| 9 | **Étape 17** — Déploiement | Bloqué tant que le nom/domaine définitif n'est pas choisi (achat du nom de domaine) + dépend de l'étape 15 (admin) déjà fait. |
+
+> **Trous de scope identifiés par Jake le 2026-07-17 :**
+> 1. **Étape 15 (Admin) trop étroite** — périmètre initial limité à perf SaaS/boutique + modération certification + import BeatStars. Jake veut un vrai back-office autonome : support, gestion des boutiques, analytics à l'échelle plateforme (pas juste par boutique), visibilité sur les mails transactionnels envoyés, et plus largement tout ce qui lui permet de gérer la plateforme sans devoir ouvrir une session Claude pour un problème ou une modification courante. Détail des sous-étapes à établir avant de coder — probable chantier à sous-étapes comme l'a été le module Business (11d).
+> 2. **Nouvelle Étape 5v2 — Refonte Boutique publique & Design System.** Constat : les 4 points suivants sont en réalité un seul chantier (mêmes fichiers, mêmes décisions de design system), regroupés en une seule phase plutôt que traités séparément :
+>    - Refonte UX/UI de la boutique publique, page par page (aujourd'hui : accueil + page beat + 2 playlists, très minimal)
+>    - Templates de branding par boutique
+>    - Personnalisation par le beatmaker (couleurs, sections, mise en page...) — **périmètre exact non défini, à trancher au moment de planifier l'Étape 5v2, pas maintenant** (dépend des décisions de design system qui n'existent pas encore)
+>    - Nouvelles pages boutique : catalogue par catégories, playlists, FAQ, contact + formulaire, CGV, confidentialité
+>    - Objectif affiché par Jake : un vrai site premium par beatmaker, pas juste un catalogue minimal.
 
 ## Légende
 | Statut | Signification |
@@ -60,7 +70,7 @@
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation *(partiellement couvert par 11d Marketing)* | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | Compteur d'écoutes sur les cartes beat et page détail *(analytics back-office couvert par 11d)* | 2-3h | ✅ Validé |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
-| 15 | **Admin** | Back-office plateforme : perf SaaS globales, perf par boutique, modération des demandes de certification (catégories, 11d Phase 7), outil interne d'import BeatStars (script scraping concierge). Dépendance dure avant l'étape 17 (déploiement officiel) | 10-15h | ⬜ À faire |
+| 15 | **Admin** | Back-office plateforme : perf SaaS globales, perf par boutique, modération des demandes de certification (catégories, 11d Phase 7) ✅ *(amorcé 2026-07-17, `/dashboard/admin/categories`, gardé par email — `lib/admin.ts`)*, outil interne d'import BeatStars (script scraping concierge), **+ périmètre élargi le 2026-07-17** (support, gestion des boutiques, analytics plateforme, visibilité mails transactionnels — objectif Jake : autonomie totale sans repasser par Claude, reste à détailler en sous-étapes). Dépendance dure avant l'étape 17 (déploiement officiel) | 10-15h *(à réviser)* | 🔄 En cours |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
 | 17 | **Déploiement** | Mise en ligne sur Vercel + nom de domaine | 2-4h | ⬜ À faire |
 
