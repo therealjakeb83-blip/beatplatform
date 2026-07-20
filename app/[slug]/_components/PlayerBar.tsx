@@ -73,9 +73,9 @@ export default function PlayerBar() {
             aria-label={isPlaying ? 'Pause' : 'Lecture'}
           >
             {isPlaying ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+              <svg viewBox="0 0 12 13" width="14" height="15" fill="white"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
             ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><path d="M7 5.5v13a1 1 0 0 0 1.53.85l10.5-6.5a1 1 0 0 0 0-1.7l-10.5-6.5A1 1 0 0 0 7 5.5Z" /></svg>
+              <svg viewBox="0 0 12 13" width="15" height="16" fill="white"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
             )}
           </button>
 

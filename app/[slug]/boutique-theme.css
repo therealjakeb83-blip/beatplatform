@@ -449,27 +449,24 @@
   text-transform: uppercase;
 }
 
+/* Dimensions/position reprises telles quelles de .qce-play-button sur
+   jakebmusic.com (27×27, top/left 20px, aucune ombre). */
 .shop-play {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 20px;
+  left: 20px;
   z-index: 6;
-  width: 38px;
-  height: 38px;
+  width: 27px;
+  height: 27px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
   color: #fff;
   background: var(--shop-play-background);
-  /* Pas d'ombre du tout : un simple box-shadow flou créait un halo
-     visible sur mobile (bouton petit, ombre disproportionnée). */
   box-shadow: none;
   cursor: pointer;
 }
-
-.shop-play svg,
-.shop-play { font-size: 15px; }
 
 .shop-beat-card h3 {
   margin: 8px 0 0;
