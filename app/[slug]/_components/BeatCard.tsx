@@ -53,7 +53,6 @@ export default function BeatCard({
     play(beat, queue)
   }
 
-  const licencesTriees = [...beat.licences].sort((a, b) => a.prix - b.prix)
   const genre = beat.styles?.[0] ?? beat.type_beat?.[0] ?? null
 
   return (
@@ -114,17 +113,9 @@ export default function BeatCard({
       {/* Infos */}
       <h3>{beat.titre}</h3>
 
-      {estVerrouille ? (
+      {estVerrouille && (
         <p className="text-xs mt-1 font-medium" style={{ color: 'var(--shop-primary)' }}>Réservé aux membres</p>
-      ) : licencesTriees.length > 0 ? (
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {licencesTriees.map(l => (
-            <span key={l.id} className="text-xs font-semibold text-white">
-              {l.sur_demande ? `${l.nom} →` : `${l.prix}€`}
-            </span>
-          ))}
-        </div>
-      ) : null}
+      )}
     </Link>
   )
 }
