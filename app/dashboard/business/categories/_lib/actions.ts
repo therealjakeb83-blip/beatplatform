@@ -10,9 +10,14 @@ export async function demanderCertification(categorieId: string): Promise<{ erre
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { erreur: 'Non authentifié.' }
 
+  // nom/type dénormalisés sur demandes_certification (Phase 7.10) — l'historique
+  // de la demande ne doit pas dépendre de l'existence de sa catégorie d'origine.
+  const { data: categorie } = await supabase.from('categories').select('nom, type').eq('id', categorieId).single()
+  if (!categorie) return { erreur: 'Catégorie introuvable.' }
+
   const { error } = await supabase
     .from('demandes_certification')
-    .insert({ categorie_id: categorieId, beatmaker_id: user.id })
+    .insert({ categorie_id: categorieId, beatmaker_id: user.id, nom: categorie.nom, type: categorie.type })
   if (error) return { erreur: error.code === '23505' ? 'Une demande est déjà en attente pour cette catégorie.' : error.message }
   revalidatePath(CHEMIN)
   return {}
