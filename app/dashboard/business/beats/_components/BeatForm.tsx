@@ -141,13 +141,15 @@ function CategorieSelector({ label, options, selected, onChange, hybride, placeh
     && !options.perso.some(t => t.toLowerCase() === rechPersoTrim.toLowerCase())
 
   return (
-    <div className="space-y-3">
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-4 space-y-4">
+      <p className="text-sm font-semibold text-white">{label}</p>
+
       <div>
-        <label className="block text-sm text-gray-300 mb-2">{label} certifié{label === 'Ambiances' ? 'es' : 's'}</label>
+        <label className="block text-xs text-gray-500 mb-2">Certifié{label === 'Ambiances' ? 'es' : 's'}</label>
         <CategorieChips tags={selectedCert} onRemove={toggle} />
         <div className="relative">
           <input type="text" value={rechercheCert} onChange={e => setRechercheCert(e.target.value)}
-            placeholder="Rechercher parmi les catégories certifiées..."
+            placeholder="Rechercher..."
             className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
           <RechercheDropdown recherche={rechercheCert} resultats={resultatsCert}
             onChoisir={tag => { ajouter(tag); setRechercheCert('') }} />
@@ -156,7 +158,7 @@ function CategorieSelector({ label, options, selected, onChange, hybride, placeh
 
       {hybride && (
         <div>
-          <label className="block text-sm text-gray-300 mb-2">Mes {label}</label>
+          <label className="block text-xs text-gray-500 mb-2">Mes {label}</label>
           <CategorieChips tags={selectedPerso} onRemove={toggle} />
           <div className="relative">
             <input type="text" value={recherchePerso} onChange={e => setRecherchePerso(e.target.value)}
@@ -508,13 +510,15 @@ export default function BeatForm({
       </section>
 
       {/* Tags */}
-      <section className="flex flex-col gap-6">
+      <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">Tags</h2>
-        <CategorieSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} hybride placeholder="Ajouter un style..." />
-        <CategorieSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} hybride={false} />
-        <CategorieSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} hybride={false} />
-        <CategorieSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} hybride placeholder="Ajouter un artiste..." />
-        <p className="text-xs text-gray-500 -mt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CategorieSelector label="Styles" options={categories.styles} selected={styles} onChange={setStyles} hybride placeholder="Ajouter un style..." />
+          <CategorieSelector label="Ambiances" options={categories.ambiances} selected={ambiances} onChange={setAmbiances} hybride={false} />
+          <CategorieSelector label="Instruments" options={categories.instruments} selected={instruments} onChange={setInstruments} hybride={false} />
+          <CategorieSelector label="Type Beat" options={categories.typeBeat} selected={typeBeat} onChange={setTypeBeat} hybride placeholder="Ajouter un artiste..." />
+        </div>
+        <p className="text-xs text-gray-500">
           Styles et Type Beat personnalisés : gérables (renommer, demander la certification) sur{' '}
           <Link href="/dashboard/business/categories" className="text-indigo-400 hover:underline">la page Catégories</Link>.
         </p>
