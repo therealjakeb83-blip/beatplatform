@@ -65,65 +65,113 @@ export type LicenceInfo = {
   streams_limite: number | null
 }
 
-function PillsRow({ tags, selected, onToggle }: { tags: string[]; selected: string[]; onToggle: (tag: string) => void }) {
+function CategorieChips({ tags, onRemove }: { tags: string[]; onRemove: (tag: string) => void }) {
+  if (tags.length === 0) return null
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 mb-2">
       {tags.map(tag => (
-        <button key={tag} type="button" onClick={() => onToggle(tag)}
-          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${selected.includes(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+        <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white">
           {tag}
-        </button>
+          <button type="button" onClick={() => onRemove(tag)} className="hover:text-indigo-200">×</button>
+        </span>
       ))}
     </div>
   )
 }
 
+// Dropdown de résultats sous une barre de recherche — n'apparaît que si
+// l'utilisateur a tapé quelque chose (même pattern que la recherche
+// beatmaker de CollaborateursSection un peu plus bas dans ce fichier).
+function RechercheDropdown({ recherche, resultats, creation, onChoisir, onCreer }: {
+  recherche: string; resultats: string[]; creation?: string | null
+  onChoisir: (tag: string) => void; onCreer?: (nom: string) => void
+}) {
+  if (!recherche.trim() || (resultats.length === 0 && !creation)) return null
+  return (
+    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden z-10 max-h-56 overflow-y-auto">
+      {resultats.map(tag => (
+        <button key={tag} type="button" onClick={() => onChoisir(tag)}
+          className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors">
+          {tag}
+        </button>
+      ))}
+      {creation && onCreer && (
+        <button type="button" onClick={() => onCreer(creation)}
+          className="w-full text-left px-4 py-2 text-sm text-indigo-400 hover:bg-gray-700 transition-colors border-t border-gray-700">
+          + Créer « {creation} »
+        </button>
+      )}
+    </div>
+  )
+}
+
 // Sélecteur unique pour les 4 types de tags : une section "certifiés"
-// toujours présente (catalogue plateforme + certifié, lecture seule), et
-// pour Styles/Type Beat (hybride=true) une section "Mes X" en plus avec les
-// catégories perso du beatmaker + le champ d'ajout libre. Ambiances/
-// Instruments restent lecture seule (pas de section "Mes X").
+// toujours présente (catalogue plateforme + certifié) avec recherche, et
+// pour Styles/Type Beat (hybride=true) une section "Mes X" en plus avec
+// recherche + création à la volée. Ambiances/Instruments n'ont que la
+// section certifiés (pas d'ajout perso).
 function CategorieSelector({ label, options, selected, onChange, hybride, placeholder }: {
   label: string; options: CategorieOptions; selected: string[]; onChange: (v: string[]) => void
   hybride: boolean; placeholder?: string
 }) {
-  const [input, setInput] = useState('')
+  const [rechercheCert, setRechercheCert] = useState('')
+  const [recherchePerso, setRecherchePerso] = useState('')
 
   function toggle(tag: string) {
     onChange(selected.includes(tag) ? selected.filter(t => t !== tag) : [...selected, tag])
   }
-  function addCustom() {
-    const val = input.trim()
-    if (val && !selected.includes(val)) onChange([...selected, val])
-    setInput('')
+  function ajouter(tag: string) {
+    if (!selected.includes(tag)) onChange([...selected, tag])
   }
 
-  // Perso sélectionnées mais pas (encore) dans la liste perso chargée —
-  // vient d'être tapée à l'instant, pas encore synchronisée en base.
-  const persoAffichable = [...new Set([...options.perso, ...selected.filter(t => !options.certifiees.includes(t) && !options.perso.includes(t))])]
+  const selectedCert = selected.filter(t => options.certifiees.includes(t))
+  const selectedPerso = selected.filter(t => !options.certifiees.includes(t))
+
+  const rechCertTrim = rechercheCert.trim().toLowerCase()
+  const resultatsCert = rechCertTrim
+    ? options.certifiees.filter(t => !selected.includes(t) && t.toLowerCase().includes(rechCertTrim)).slice(0, 8)
+    : []
+
+  const rechPersoTrim = recherchePerso.trim()
+  const resultatsPerso = rechPersoTrim
+    ? options.perso.filter(t => !selected.includes(t) && t.toLowerCase().includes(rechPersoTrim.toLowerCase())).slice(0, 8)
+    : []
+  const peutCreer = rechPersoTrim.length > 0
+    && !selected.some(t => t.toLowerCase() === rechPersoTrim.toLowerCase())
+    && !options.perso.some(t => t.toLowerCase() === rechPersoTrim.toLowerCase())
 
   return (
     <div className="space-y-3">
       <div>
         <label className="block text-sm text-gray-300 mb-2">{label} certifié{label === 'Ambiances' ? 'es' : 's'}</label>
-        {options.certifiees.length === 0
-          ? <p className="text-xs text-gray-600">Aucune catégorie officielle pour l&apos;instant.</p>
-          : <PillsRow tags={options.certifiees} selected={selected} onToggle={toggle} />}
+        <CategorieChips tags={selectedCert} onRemove={toggle} />
+        <div className="relative">
+          <input type="text" value={rechercheCert} onChange={e => setRechercheCert(e.target.value)}
+            placeholder="Rechercher parmi les catégories certifiées..."
+            className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
+          <RechercheDropdown recherche={rechercheCert} resultats={resultatsCert}
+            onChoisir={tag => { ajouter(tag); setRechercheCert('') }} />
+        </div>
       </div>
 
       {hybride && (
         <div>
           <label className="block text-sm text-gray-300 mb-2">Mes {label}</label>
-          {persoAffichable.length > 0 && <PillsRow tags={persoAffichable} selected={selected} onToggle={toggle} />}
-          <div className="flex gap-2 mt-2">
-            <input type="text" value={input} onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustom())}
+          <CategorieChips tags={selectedPerso} onRemove={toggle} />
+          <div className="relative">
+            <input type="text" value={recherchePerso} onChange={e => setRecherchePerso(e.target.value)}
+              onKeyDown={e => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                if (resultatsPerso.length > 0) { ajouter(resultatsPerso[0]); setRecherchePerso('') }
+                else if (peutCreer) { ajouter(rechPersoTrim); setRecherchePerso('') }
+              }}
               placeholder={placeholder}
-              className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
-            <button type="button" onClick={addCustom}
-              className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors">
-              Ajouter
-            </button>
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
+            <RechercheDropdown recherche={recherchePerso} resultats={resultatsPerso}
+              creation={peutCreer ? rechPersoTrim : null}
+              onChoisir={tag => { ajouter(tag); setRecherchePerso('') }}
+              onCreer={nom => { ajouter(nom); setRecherchePerso('') }} />
           </div>
         </div>
       )}
