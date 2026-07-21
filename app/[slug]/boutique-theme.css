@@ -377,10 +377,12 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 }
 
 @media (max-width: 767px) {
-  .shop-hero { padding: 120px 20px 90px; margin-top: -74px; background: var(--hero-bg-mobile); }
+  .shop-hero { padding: 120px 22px 90px; margin-top: -64px; background: var(--hero-bg-mobile); }
   .shop-hero h1 { font-size: 27px; line-height: 1.25; }
   .shop-hero p { font-size: 12.5px; max-width: 320px; }
   .shop-cta-hero { width: 100%; justify-content: center; }
+  .shop-down-arrow { margin-top: 60px; }
+  .shop-header { border-radius: 20px; }
 }
 
 /* ============================================================
@@ -709,8 +711,8 @@ a.shop-artist-card {
      y compris le carrousel "type beats" (compound selector pour battre
      .shop-row--artists à spécificité égale, indépendamment de l'ordre). */
   .shop-row, .shop-row.shop-row--artists { gap: var(--mobile-gap); }
-  .shop-style-card { flex-basis: 210px; }
-  .shop-artist-card { flex-basis: 90px; }
+  a.shop-style-card { flex-basis: 210px; }
+  a.shop-artist-card { flex-basis: 90px; }
   .shop-artist-card-photo { width: 80px; height: 80px; }
   .shop-media-card--instrument { flex-basis: 230px; height: 104px; }
   .shop-media-card--ambiance { flex-basis: 300px; height: 120px; }
