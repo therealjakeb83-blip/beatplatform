@@ -36,10 +36,12 @@
   --ac-deep: oklch(from var(--ac) min(l, 0.52) min(c, 0.22) h);
   --g1: oklch(from var(--ac) 0.62 min(c, 0.24) calc(h + 32));
   --g2: oklch(from var(--ac) 0.48 min(c, 0.25) calc(h - 6));
-  /* L/chroma recalibrés (grille testée empiriquement contre la maquette) —
-     la formule d'origine donnait un bleu bien trop saturé/violacé. */
-  --glow1: oklch(from var(--ac) 0.4 calc(c * 0.18) h);
-  --glow2: oklch(from var(--ac) 0.24 calc(c * 0.15) h);
+  /* L/chroma recalibrés par comparaison visuelle directe avec la maquette —
+     la formule d'origine (0.3 / c*.62) était trop saturée/violacée ; un
+     premier réglage (0.4 / c*.18) est ensuite parti trop loin dans l'autre
+     sens (bleu délavé/gris). */
+  --glow1: oklch(from var(--ac) 0.3 calc(c * 0.4) h);
+  --glow2: oklch(from var(--ac) 0.18 calc(c * 0.34) h);
   --hero-bg: radial-gradient(130% 120% at 50% -20%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
   --hero-bg-mobile: radial-gradient(160% 100% at 50% -15%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
   --glow-cta: color-mix(in srgb, var(--ac) 55%, transparent);
@@ -322,7 +324,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 .shop-hero {
   background: var(--hero-bg);
   text-align: center;
-  padding: 214px var(--sp-6) 64px;
+  padding: 214px var(--sp-6) 345px;
   margin-top: -118px;
   position: relative;
   z-index: 1;
