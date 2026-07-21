@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from './PlayerContext'
 import FavoriButton from './FavoriButton'
-import FreeDLModal from './FreeDLModal'
 
 export type LicencePublic = {
   id: string
@@ -40,12 +38,10 @@ export default function BeatCard({
   clientId?: string | null
 }) {
   const { play, currentBeat, isPlaying } = usePlayer()
-  const [modalOpen, setModalOpen] = useState(false)
 
   const isActive = currentBeat?.id === beat.id
   const hasAudio = !!beat.mp3_tague_url
   const estVerrouille = beat.prive && !estAbonne
-  const showFreeDL = beat.free_download_actif && beat.mp3_tague_url && !estVerrouille
 
   function handlePlay(e: React.MouseEvent) {
     e.preventDefault()
@@ -95,27 +91,7 @@ export default function BeatCard({
           </button>
         )}
 
-        {/* Badge Free DL */}
-        {showFreeDL && (
-          <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); setModalOpen(true) }}
-            className="shop-freedl-btn"
-          >
-            ↓ Free
-          </button>
-        )}
       </div>
-
-      {showFreeDL && (
-        <FreeDLModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          beatId={beat.id}
-          beatTitre={beat.titre}
-          slug={slug}
-          clientId={clientId}
-        />
-      )}
 
       {/* Infos */}
       <h3 className={`shop-beat-title${estVerrouille ? ' is-dimmed' : ''}`}>{beat.titre}</h3>
