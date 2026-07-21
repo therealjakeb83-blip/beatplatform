@@ -3,7 +3,15 @@
 import { useState } from 'react'
 import { useCart } from './CartContext'
 
-export default function CartDrawer({ slug }: { slug: string }) {
+export default function CartDrawer({
+  slug,
+  aboActif = false,
+  aboRemisePct = 0,
+}: {
+  slug: string
+  aboActif?: boolean
+  aboRemisePct?: number
+}) {
   const { items, isOpen, close, removeItem, clear } = useCart()
 
   const [codeInput, setCodeInput] = useState('')
@@ -79,82 +87,78 @@ export default function CartDrawer({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={close} />
-
-      <div className="relative w-full max-w-md h-full bg-gray-950 border-l border-gray-800 flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-          <h2 className="font-bold text-white">Panier ({items.length})</h2>
-          <button onClick={close} className="text-gray-500 hover:text-white transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className="shop-cart-overlay" onClick={close}>
+      <aside className="shop-cart-drawer" onClick={e => e.stopPropagation()}>
+        <div className="shop-cart-header">
+          <h2>Panier <span className="shop-section-count">({items.length})</span></h2>
+          <button onClick={close} className="shop-cart-close" aria-label="Fermer">×</button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="shop-cart-items">
           {items.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center mt-8">Ton panier est vide.</p>
+            <p className="shop-cart-empty">Ton panier est vide.</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <>
               {items.map(item => (
-                <div key={`${item.beatId}:${item.licenceId}`} className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-3">
+                <div key={`${item.beatId}:${item.licenceId}`} className="shop-cart-item">
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.titre} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                    <img src={item.imageUrl} alt={item.titre} className="shop-cart-item-cover" />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-gray-800 flex-shrink-0" />
+                    <div className="shop-cart-item-cover" />
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{item.titre}</p>
-                    <p className="text-gray-500 text-xs">{item.licenceNom} · {item.prix}€</p>
+                  <div className="shop-cart-item-body">
+                    <p className="shop-cart-item-title">{item.titre}</p>
+                    <span className="shop-cart-item-licence">{item.licenceNom} · {item.prix}€</span>
                   </div>
                   <button
                     onClick={() => removeItem(item.beatId, item.licenceId)}
-                    className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0"
+                    className="shop-cart-item-remove"
                     title="Retirer"
+                    aria-label="Retirer"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
               ))}
-            </div>
+
+              {aboActif && (
+                <div className="shop-cart-member-banner">
+                  👑 Membre : {aboRemisePct > 0 ? `−${aboRemisePct}% sur toutes les licences.` : 'des avantages exclusifs sur toutes les licences.'}
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {items.length > 0 && (
-          <div className="border-t border-gray-800 px-5 py-4 flex flex-col gap-3">
-            {/* Code promo */}
+          <div className="shop-cart-footer">
             {codeApplique ? (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-green-400">
-                  Code <strong>{codeApplique.code}</strong> appliqué
-                </span>
-                <button onClick={() => setCodeApplique(null)} className="text-gray-500 hover:text-gray-300 text-xs underline">
-                  Supprimer
-                </button>
+              <div className="shop-cart-promo-applied">
+                <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
+                <button onClick={() => setCodeApplique(null)} className="shop-cart-promo-remove">Supprimer</button>
               </div>
             ) : (
               <div>
-                <div className="flex items-center gap-2">
+                <div className="shop-cart-promo-row">
                   <input
                     type="text"
                     value={codeInput}
                     onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
                     onKeyDown={e => e.key === 'Enter' && validerCode()}
                     placeholder="Code promo"
-                    className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+                    className="shop-cart-input"
                   />
                   <button
                     onClick={validerCode}
                     disabled={!codeInput.trim() || chargementCode}
-                    className="px-4 py-2 rounded-lg border border-gray-700 text-sm text-gray-300 hover:bg-gray-800 disabled:opacity-40 transition-colors whitespace-nowrap"
+                    className="shop-cart-promo-apply"
                   >
                     {chargementCode ? '...' : 'Appliquer'}
                   </button>
                 </div>
-                {erreurCode && <p className="text-red-400 text-xs mt-2">{erreurCode}</p>}
+                {erreurCode && <p className="shop-cart-error">{erreurCode}</p>}
               </div>
             )}
 
@@ -163,31 +167,32 @@ export default function CartDrawer({ slug }: { slug: string }) {
               value={emailAcheteur}
               onChange={e => setEmailAcheteur(e.target.value)}
               placeholder="Ton email (si non connecté)"
-              className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+              className="shop-cart-input"
             />
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400">Total</span>
-              <span className="text-white font-bold text-lg">
+            <div className="shop-cart-row">
+              <span>Sous-total</span>
+              <span>{total.toFixed(2)}€</span>
+            </div>
+            <div className="shop-cart-row is-total">
+              <span>Total</span>
+              <span>
                 {codeApplique && totalApresCode !== total && (
-                  <span className="text-gray-500 line-through text-sm mr-2">{total.toFixed(2)}€</span>
+                  <span className="shop-cart-strike">{total.toFixed(2)}€</span>
                 )}
                 {totalApresCode.toFixed(2)}€
               </span>
             </div>
 
-            {erreur && <p className="text-red-400 text-xs">{erreur}</p>}
+            {erreur && <p className="shop-cart-error">{erreur}</p>}
 
-            <button
-              onClick={passerCommande}
-              disabled={chargement}
-              className="w-full px-4 py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors"
-            >
+            <button onClick={passerCommande} disabled={chargement} className="shop-cart-checkout">
               {chargement ? '...' : 'Passer commande'}
             </button>
+            <p className="shop-cart-note">Licences PDF envoyées par email · téléchargement immédiat</p>
           </div>
         )}
-      </div>
+      </aside>
     </div>
   )
 }

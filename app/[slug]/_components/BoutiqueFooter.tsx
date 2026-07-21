@@ -25,6 +25,7 @@ export default function BoutiqueFooter({
           ) : (
             <div className="shop-logo-fallback">{nomArtiste.slice(0, 2).toUpperCase()}</div>
           )}
+          <div className="shop-footer-tagline">Boutique propulsée par votre plateforme</div>
         </div>
 
         <div className="shop-footer-col">

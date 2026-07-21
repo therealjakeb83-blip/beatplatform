@@ -1,24 +1,41 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import { accentTextColor, accentTone, estHexValide } from '../_lib/theme-accent'
+import { usePlayer } from './PlayerContext'
 
-const THEMES_VALIDES = ['blue', 'red', 'green', 'purple']
+const RADIUS_PX: Record<string, string> = { arrondi: '16px', doux: '10px', carre: '4px' }
+const RADIUS_VALIDES = ['arrondi', 'doux', 'carre']
 
 export default function BoutiqueThemeRoot({
-  themeDb,
+  accentDb,
+  radiusDb,
   fontClassName,
   children,
 }: {
-  themeDb: string
+  accentDb: string
+  radiusDb: string
   fontClassName: string
   children: React.ReactNode
 }) {
   const searchParams = useSearchParams()
-  const themeApercu = searchParams.get('theme_apercu')
-  const theme = themeApercu && THEMES_VALIDES.includes(themeApercu) ? themeApercu : themeDb
+  const { currentBeat } = usePlayer()
+
+  const accentApercu = searchParams.get('theme_apercu')
+  const radiusApercu = searchParams.get('radius_apercu')
+
+  const accent = accentApercu && estHexValide(accentApercu) ? accentApercu : accentDb
+  const radius = radiusApercu && RADIUS_VALIDES.includes(radiusApercu) ? radiusApercu : radiusDb
+
+  const tone = accentTone(accent)
+  const acT = accentTextColor(accent)
 
   return (
-    <div data-shop-theme={theme} className={`shop-root ${fontClassName} min-h-screen text-white pb-28 flex flex-col`}>
+    <div
+      data-accent-tone={tone}
+      className={`shop-root ${fontClassName} min-h-screen flex flex-col${currentBeat ? ' has-player' : ''}`}
+      style={{ '--ac': accent, '--ac-t': acT, '--r-card': RADIUS_PX[radius] ?? RADIUS_PX.arrondi } as React.CSSProperties}
+    >
       {children}
     </div>
   )

@@ -59,13 +59,10 @@ export default function FavoriButton({
       onClick={toggle}
       disabled={chargement}
       aria-label={estFavori ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      className={`absolute top-2 right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-        estFavori
-          ? 'bg-rose-600 text-white shadow-lg'
-          : 'bg-black/50 text-gray-400 hover:bg-black/70 hover:text-white opacity-0 group-hover:opacity-100'
-      } ${chargement ? 'cursor-wait' : ''}`}
+      className={`shop-favori-btn${estFavori ? ' is-active' : ''}`}
+      style={chargement ? { cursor: 'wait' } : undefined}
     >
-      <span className="text-sm">{estFavori ? '♥' : '♡'}</span>
+      <span style={{ fontSize: 13 }}>{estFavori ? '♥' : '♡'}</span>
     </button>
   )
 }

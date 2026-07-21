@@ -3,11 +3,19 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 
+export type LicenceMin = { id: string; nom: string; prix: number; sur_demande: boolean }
+
 export type BeatMin = {
   id: string
   titre: string
   image_url: string | null
   mp3_tague_url: string | null
+  // Facultatifs — alimentés par BeatCatalogue pour l'affichage BPM/tag et
+  // le bouton "+ Ajouter" du player (licence la moins chère, ajoutée
+  // directement au panier sans repasser par la page du beat).
+  bpm?: number | null
+  tag?: string | null
+  licences?: LicenceMin[]
 }
 
 type PlayerContextType = {

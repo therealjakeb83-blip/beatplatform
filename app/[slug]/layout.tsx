@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Nunito_Sans } from 'next/font/google'
+import { Poppins } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { PlayerProvider } from './_components/PlayerContext'
@@ -9,14 +9,14 @@ import CartDrawer from './_components/CartDrawer'
 import BoutiqueHeader from './_components/BoutiqueHeader'
 import BoutiqueFooter from './_components/BoutiqueFooter'
 import BoutiqueThemeRoot from './_components/BoutiqueThemeRoot'
+import MobileTabBar from './_components/MobileTabBar'
 import './boutique-theme.css'
 
-// Police de jakebmusic.com (--wp--preset--font-family--nunito-sans), variable
-// donc compatible avec les graisses non-standard du CSS porté (650/750/850/950).
-const nunitoSans = Nunito_Sans({
-  variable: '--font-nunito-sans',
+// Police du design system (tokens.css: --font: 'Poppins'), poids 400-800.
+const poppins = Poppins({
+  variable: '--font-poppins',
   subsets: ['latin'],
-  weight: 'variable',
+  weight: ['400', '500', '600', '700', '800'],
 })
 
 export default async function BoutiqueLayout({
@@ -43,7 +43,7 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, theme_couleur')
+    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, theme_radius')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -51,7 +51,11 @@ export default async function BoutiqueLayout({
     <PlayerProvider>
       <CartProvider>
         <Suspense>
-          <BoutiqueThemeRoot themeDb={beatmaker?.theme_couleur ?? 'blue'} fontClassName={nunitoSans.variable}>
+          <BoutiqueThemeRoot
+            accentDb={beatmaker?.theme_couleur ?? '#2E4CF0'}
+            radiusDb={beatmaker?.theme_radius ?? 'arrondi'}
+            fontClassName={poppins.variable}
+          >
             {beatmaker && (
               <BoutiqueHeader
                 slug={slug}
@@ -75,7 +79,12 @@ export default async function BoutiqueLayout({
           </BoutiqueThemeRoot>
         </Suspense>
         <PlayerBar />
-        <CartDrawer slug={slug} />
+        <MobileTabBar slug={slug} />
+        <CartDrawer
+          slug={slug}
+          aboActif={beatmaker?.abo_actif ?? false}
+          aboRemisePct={beatmaker?.abo_remise_pct ?? 0}
+        />
       </CartProvider>
     </PlayerProvider>
   )

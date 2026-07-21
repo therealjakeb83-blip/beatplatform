@@ -1,6 +1,7 @@
 'use client'
 
 import { usePlayer } from './PlayerContext'
+import { useCart } from './CartContext'
 
 function formatTime(seconds: number) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -9,8 +10,16 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+function PlayIcon() {
+  return <svg viewBox="0 0 12 13" width="12" height="13" fill="currentColor"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
+}
+function PauseIcon() {
+  return <svg viewBox="0 0 12 13" width="11" height="12" fill="currentColor"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
+}
+
 export default function PlayerBar() {
   const { currentBeat, isPlaying, progress, duration, togglePlay, next, prev, seek } = usePlayer()
+  const { addItem, open } = useCart()
 
   if (!currentBeat) return null
 
@@ -21,73 +30,84 @@ export default function PlayerBar() {
   }
 
   const elapsed = progress * duration
+  const meta = [currentBeat.tag, currentBeat.bpm ? `${currentBeat.bpm} BPM` : null].filter(Boolean).join(' · ')
+
+  const licencesActives = (currentBeat.licences ?? []).filter(l => !l.sur_demande)
+  const moinsChere = licencesActives.length > 0
+    ? licencesActives.reduce((min, l) => (l.prix < min.prix ? l : min))
+    : null
+
+  function ajouterAuPanier() {
+    if (!moinsChere || !currentBeat) return
+    addItem({
+      beatId: currentBeat.id,
+      licenceId: moinsChere.id,
+      titre: currentBeat.titre,
+      imageUrl: currentBeat.image_url,
+      licenceNom: moinsChere.nom,
+      prix: moinsChere.prix,
+    })
+    open()
+  }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur border-t border-gray-800 z-50">
-      {/* Barre de progression cliquable */}
-      <div
-        className="h-1 bg-gray-700 cursor-pointer group"
-        onClick={handleProgressClick}
-      >
-        <div
-          className="h-full bg-brand-500 group-hover:bg-brand-400 transition-colors relative"
-          style={{ width: `${progress * 100}%` }}
-        >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto flex items-center gap-4 px-4 py-3">
-        {/* Cover */}
-        <div className="w-10 h-10 rounded bg-gray-800 flex-shrink-0 overflow-hidden">
+    <>
+      {/* Desktop */}
+      <div className="shop-player">
+        <div className="shop-player-inner">
           {currentBeat.image_url ? (
-            <img src={currentBeat.image_url} alt={currentBeat.titre} className="w-full h-full object-cover" />
+            <img className="shop-player-cover" src={currentBeat.image_url} alt={currentBeat.titre} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-bold">
-              {currentBeat.titre.slice(0, 2).toUpperCase()}
-            </div>
+            <div className="shop-player-cover shop-beat-fallback" style={{ position: 'relative' }}>{currentBeat.titre.slice(0, 2).toUpperCase()}</div>
           )}
-        </div>
 
-        {/* Titre + temps */}
-        <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-semibold truncate">{currentBeat.titre}</p>
-          <p className="text-gray-500 text-xs tabular-nums">
-            {formatTime(elapsed)} / {formatTime(duration)}
-          </p>
-        </div>
+          <div className="shop-player-info">
+            <p className="shop-player-title">{currentBeat.titre}</p>
+            {meta && <p className="shop-player-tag">{meta}</p>}
+          </div>
 
-        {/* Contrôles */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={prev}
-            className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-lg"
-            aria-label="Beat précédent"
-          >
-            ⏮
+          <button onClick={prev} className="shop-player-skip" aria-label="Beat précédent">⏮</button>
+
+          <button onClick={togglePlay} className="shop-player-toggle" aria-label={isPlaying ? 'Pause' : 'Lecture'}>
+            {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
 
-          <button
-            onClick={togglePlay}
-            className="w-11 h-11 rounded-full bg-brand-600 hover:bg-brand-500 flex items-center justify-center transition-colors text-lg"
-            aria-label={isPlaying ? 'Pause' : 'Lecture'}
-          >
-            {isPlaying ? (
-              <svg viewBox="0 0 12 13" width="14" height="15" fill="white"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
-            ) : (
-              <svg viewBox="0 0 12 13" width="15" height="16" fill="white"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
-            )}
-          </button>
+          <button onClick={next} className="shop-player-skip" aria-label="Beat suivant">⏭</button>
 
-          <button
-            onClick={next}
-            className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-lg"
-            aria-label="Beat suivant"
-          >
-            ⏭
-          </button>
+          <span className="shop-player-time">{formatTime(elapsed)}</span>
+          <div className="shop-player-track" onClick={handleProgressClick}>
+            <div className="shop-player-track-bg" />
+            <div className="shop-player-track-fill" style={{ width: `${progress * 100}%` }} />
+            <div className="shop-player-track-thumb" style={{ left: `${progress * 100}%` }} />
+          </div>
+          <span className="shop-player-time">{formatTime(duration)}</span>
+
+          {moinsChere && <span className="shop-player-price">dès {moinsChere.prix}€</span>}
+          {moinsChere && <button onClick={ajouterAuPanier} className="shop-player-add">+ Ajouter</button>}
         </div>
       </div>
-    </div>
+
+      {/* Mini-player mobile */}
+      <div className="shop-player-mobile">
+        {currentBeat.image_url ? (
+          <img className="shop-player-mobile-cover" src={currentBeat.image_url} alt={currentBeat.titre} />
+        ) : (
+          <div className="shop-player-mobile-cover shop-beat-fallback" style={{ position: 'relative' }}>{currentBeat.titre.slice(0, 2).toUpperCase()}</div>
+        )}
+
+        <div className="shop-player-mobile-info">
+          <p className="shop-player-title">{currentBeat.titre}</p>
+          {meta && <p className="shop-player-tag">{meta}</p>}
+        </div>
+
+        <button onClick={togglePlay} className="shop-player-mobile-toggle" aria-label={isPlaying ? 'Pause' : 'Lecture'}>
+          {isPlaying ? <PauseIcon /> : <PlayIcon />}
+        </button>
+
+        {moinsChere && (
+          <button onClick={ajouterAuPanier} className="shop-player-mobile-add">{moinsChere.prix}€ +</button>
+        )}
+      </div>
+    </>
   )
 }

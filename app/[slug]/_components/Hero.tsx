@@ -26,12 +26,12 @@ export default function Hero({
         <h1>{titre}</h1>
         <p>{sousTitre}</p>
         {afficherCta && (
-          <Link href={`/${slug}/abonnement`} className="shop-cta">
-            ＋ Devenir membre gratuitement👑
+          <Link href={`/${slug}/abonnement`} className="shop-cta shop-cta-hero">
+            + Devenir membre gratuitement 👑
           </Link>
         )}
       </div>
-      <a href="#catalogue" className="shop-down-arrow" aria-label="Descendre"></a>
+      <a href="#catalogue" className="shop-down-arrow" aria-label="Descendre">⌄</a>
     </section>
   )
 }

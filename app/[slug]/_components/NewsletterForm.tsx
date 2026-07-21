@@ -24,7 +24,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
   }
 
   if (statut === 'ok') {
-    return <p className="text-sm" style={{ color: 'var(--shop-primary)' }}>Inscription confirmée, merci !</p>
+    return <p className="text-sm" style={{ color: 'var(--ac-soft)' }}>Inscription confirmée, merci !</p>
   }
 
   return (
