@@ -88,9 +88,7 @@ export default function BeatCard({
       {/* Infos */}
       <h3 className={`shop-beat-title${estVerrouille ? ' is-dimmed' : ''}`}>{beat.titre}</h3>
 
-      {estVerrouille ? (
-        <p className="shop-beat-locked-caption">Réservé aux membres 👑</p>
-      ) : (
+      {!estVerrouille && (
         <div className="shop-beat-meta">
           <span>{beat.bpm ? `${beat.bpm} BPM` : ''}</span>
           {prixMin !== null && (

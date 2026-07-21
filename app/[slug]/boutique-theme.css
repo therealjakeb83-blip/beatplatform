@@ -599,8 +599,6 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 
 .shop-beat-price { color: var(--ac-soft); font-weight: 600; font-size: 12.5px; }
 
-.shop-beat-locked-caption { font-size: var(--fs-count); color: var(--text-3); margin: 0 var(--sp-1) var(--sp-1); }
-
 @media (max-width: 767px) {
   .shop-beat-card { flex-basis: 150px; width: 150px; }
   .shop-beat-title { font-size: 14px; }
