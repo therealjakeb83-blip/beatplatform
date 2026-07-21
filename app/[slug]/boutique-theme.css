@@ -293,6 +293,7 @@
   .shop-logo, .shop-logo-fallback { height: 32px; width: 32px; }
   .shop-header-row1 { padding: 10px 14px; gap: 12px; }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
+  .shop-header-icons { margin-left: auto; }
 }
 
 /* ============================================================
