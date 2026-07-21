@@ -6,18 +6,25 @@ export type AccentTone = 'default' | 'jaune' | 'orange' | 'violet' | 'noirBlanc'
 
 // Les 7 couleurs validées par Jake (tokens/tokens.json — accent.palette) —
 // seules couleurs proposées, pas de personnalisation libre.
-export const ACCENT_PRESETS: { valeur: string; label: string }[] = [
-  { valeur: '#2E4CF0', label: 'Bleu' },
-  { valeur: '#F2F2F2', label: 'Noir & blanc' },
-  { valeur: '#E11D48', label: 'Rouge' },
-  { valeur: '#10B981', label: 'Vert' },
-  { valeur: '#7C3AED', label: 'Violet' },
-  { valeur: '#F97316', label: 'Orange' },
-  { valeur: '#FACC15', label: 'Jaune' },
+export const ACCENT_PRESETS: { valeur: string; label: string; cle: string }[] = [
+  { valeur: '#2E4CF0', label: 'Bleu', cle: 'bleu' },
+  { valeur: '#F2F2F2', label: 'Noir & blanc', cle: 'noirBlanc' },
+  { valeur: '#E11D48', label: 'Rouge', cle: 'rouge' },
+  { valeur: '#10B981', label: 'Vert', cle: 'vert' },
+  { valeur: '#7C3AED', label: 'Violet', cle: 'violet' },
+  { valeur: '#F97316', label: 'Orange', cle: 'orange' },
+  { valeur: '#FACC15', label: 'Jaune', cle: 'jaune' },
 ]
 
 export function estAccentValide(valeur: string): boolean {
   return ACCENT_PRESETS.some(p => p.valeur === valeur)
+}
+
+// Clé du preset exact (bleu/rouge/vert/...) — sert à accrocher un asset
+// spécifique à une couleur précise (ex. background hero fourni en PNG),
+// distinct de accentTone() qui ne regroupe que par teinte HSL générale.
+export function accentPresetKey(hex: string): string | null {
+  return ACCENT_PRESETS.find(p => p.valeur === hex)?.cle ?? null
 }
 
 function hexToRgb(hex: string): [number, number, number] {

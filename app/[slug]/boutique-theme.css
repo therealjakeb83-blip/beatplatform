@@ -330,6 +330,16 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   z-index: 1;
 }
 
+/* Asset fourni tel quel par Jake (Claude Design) pour le thème bleu —
+   remplace le dégradé oklch calculé, uniquement en desktop et uniquement
+   pour ce preset précis. Le mobile et les 6 autres couleurs gardent le
+   dégradé dérivé de --ac. */
+@media (min-width: 768px) {
+  .shop-root[data-accent-preset="bleu"] .shop-hero {
+    background: url('/hero-bg-bleu.png') top center / cover no-repeat;
+  }
+}
+
 .shop-hero-content { max-width: 100%; }
 
 .shop-hero h1 {

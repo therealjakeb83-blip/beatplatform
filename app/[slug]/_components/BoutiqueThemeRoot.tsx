@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { accentTextColor, accentTone, estAccentValide } from '../_lib/theme-accent'
+import { accentPresetKey, accentTextColor, accentTone, estAccentValide } from '../_lib/theme-accent'
 import { usePlayer } from './PlayerContext'
 
 // Radius de carte figé sur "doux" pour toutes les boutiques — plus de
@@ -25,10 +25,12 @@ export default function BoutiqueThemeRoot({
 
   const tone = accentTone(accent)
   const acT = accentTextColor(accent)
+  const presetKey = accentPresetKey(accent)
 
   return (
     <div
       data-accent-tone={tone}
+      data-accent-preset={presetKey ?? undefined}
       className={`shop-root ${fontClassName} min-h-screen flex flex-col${currentBeat ? ' has-player' : ''}`}
       style={{ '--ac': accent, '--ac-t': acT, '--r-card': R_CARD } as React.CSSProperties}
     >
