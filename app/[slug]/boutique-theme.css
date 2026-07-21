@@ -684,8 +684,8 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   -webkit-user-drag: none;
   -webkit-touch-callout: none;
 }
-.shop-artist-card strong { display: block; font-size: var(--fs-body); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.shop-artist-card small { display: block; font-size: var(--fs-count); color: var(--text-3); margin-top: 2px; }
+.shop-artist-card strong { display: block; font-size: var(--fs-body); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; line-height: normal; }
+.shop-artist-card small { display: block; font-size: var(--fs-count); color: var(--text-3); line-height: normal; }
 
 .shop-media-card {
   position: relative;
