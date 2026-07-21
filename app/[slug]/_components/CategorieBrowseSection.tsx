@@ -59,8 +59,10 @@ export default function CategorieBrowseSection({
                   <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
                 )}
               </div>
-              <strong>{carte.nom}</strong>
-              <small>{carte.count} titre{carte.count !== 1 ? 's' : ''}</small>
+              <div className="shop-artist-card-info">
+                <strong>{carte.nom}</strong>
+                <small>{carte.count} titre{carte.count !== 1 ? 's' : ''}</small>
+              </div>
             </Link>
           ))}
         </div>
