@@ -339,7 +339,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
     /* Hauteur figée (pas "auto"/cover) — le dégradé de l'image doit
        atteindre le noir avant le point bas de l'animation de la flèche
        (translateY 9px), vérifié empiriquement à 600px. */
-    background: url('/hero-bg-bleu.png') top center / 100% 600px no-repeat;
+    background: url('/hero-bg-bleu.png') top center / 100% 650px no-repeat;
   }
 }
 
