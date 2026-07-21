@@ -75,15 +75,15 @@ export default async function BoutiqueLayout({
                 tiktokUrl={beatmaker.tiktok_url}
               />
             )}
+            <PlayerBar />
+            <MobileTabBar slug={slug} />
+            <CartDrawer
+              slug={slug}
+              aboActif={beatmaker?.abo_actif ?? false}
+              aboRemisePct={beatmaker?.abo_remise_pct ?? 0}
+            />
           </BoutiqueThemeRoot>
         </Suspense>
-        <PlayerBar />
-        <MobileTabBar slug={slug} />
-        <CartDrawer
-          slug={slug}
-          aboActif={beatmaker?.abo_actif ?? false}
-          aboRemisePct={beatmaker?.abo_remise_pct ?? 0}
-        />
       </CartProvider>
     </PlayerProvider>
   )
