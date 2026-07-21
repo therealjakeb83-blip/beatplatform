@@ -464,6 +464,8 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 }
 
 .shop-beat-card:hover { transform: translateY(-4px); border-color: var(--ac); }
+.shop-beat-card:focus { outline: none; }
+.shop-beat-card:focus-visible { border-color: var(--ac); }
 
 .shop-beat-cover {
   position: relative;
@@ -642,6 +644,8 @@ a.shop-style-card {
 }
 
 a.shop-style-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-style-hover); }
+a.shop-style-card:focus { outline: none; }
+a.shop-style-card:focus-visible { box-shadow: var(--shadow-style-hover); }
 .shop-style-card strong { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .shop-style-card small { font-size: var(--fs-count); opacity: .85; }
 
@@ -671,6 +675,8 @@ a.shop-artist-card {
 }
 
 .shop-artist-card:hover .shop-artist-card-photo { border-color: var(--ac); }
+a.shop-artist-card:focus { outline: none; }
+a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--ac); }
 .shop-artist-card-photo img {
   width: 100%; height: 100%; object-fit: cover;
   pointer-events: none;
@@ -693,6 +699,8 @@ a.shop-artist-card {
 }
 
 .shop-media-card:hover { border-color: var(--ac); }
+.shop-media-card:focus { outline: none; }
+.shop-media-card:focus-visible { border-color: var(--ac); }
 .shop-media-card img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   pointer-events: none;
