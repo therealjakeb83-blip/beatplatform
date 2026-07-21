@@ -211,7 +211,7 @@ export default async function BoutiquePage({
         aboActif={beatmaker.abo_actif}
       />
       <Suspense>
-        <div className="shop-container pt-6">
+        <div className="shop-container">
           <SuccessBanner />
         </div>
       </Suspense>

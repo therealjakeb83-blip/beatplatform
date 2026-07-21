@@ -386,7 +386,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 /* ============================================================
    SECTIONS / EN-TÊTES
    ============================================================ */
-.shop-catalogue { padding: var(--sp-2) 0 0; }
+.shop-catalogue { padding: 0; }
 
 .shop-section, .shop-members-box { margin-bottom: 36px; scroll-margin-top: 100px; }
 
