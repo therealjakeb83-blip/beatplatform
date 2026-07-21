@@ -36,12 +36,8 @@
   --ac-deep: oklch(from var(--ac) min(l, 0.52) min(c, 0.22) h);
   --g1: oklch(from var(--ac) 0.62 min(c, 0.24) calc(h + 32));
   --g2: oklch(from var(--ac) 0.48 min(c, 0.25) calc(h - 6));
-  /* L/chroma recalibrés par comparaison visuelle directe avec la maquette —
-     la formule d'origine (0.3 / c*.62) était trop saturée/violacée ; un
-     premier réglage (0.4 / c*.18) est ensuite parti trop loin dans l'autre
-     sens (bleu délavé/gris). */
-  --glow1: oklch(from var(--ac) 0.3 calc(c * 0.4) h);
-  --glow2: oklch(from var(--ac) 0.18 calc(c * 0.34) h);
+  --glow1: oklch(from var(--ac) 0.3 calc(c * 0.62) h);
+  --glow2: oklch(from var(--ac) 0.17 calc(c * 0.5) h);
   --hero-bg: radial-gradient(130% 120% at 50% -20%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
   --hero-bg-mobile: radial-gradient(160% 100% at 50% -15%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
   --glow-cta: color-mix(in srgb, var(--ac) 55%, transparent);
@@ -66,9 +62,7 @@
 
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
   --sp-6: 24px; --sp-8: 32px; --sp-12: 48px; --sp-24: 96px;
-  /* Container du contenu des sections (cartes, player) — plus large que le
-     header (1280px, resté fixe ci-dessus) sur demande du plan 2. */
-  --container: 1360px;
+  --container: 1280px;
   --gutter: 24px;
   --gap-grid: 16px;
   --gap-artists: 22px;
@@ -615,6 +609,21 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   .shop-beat-title { font-size: 14px; }
 }
 
+/* Réservés aux membres / Nouveautés / Sélection du beatmaker : vraie grille
+   5 colonnes en desktop (pas de scroll, exactement 5 cartes + "Tout voir"),
+   le carrousel horizontal drag-to-scroll ne s'applique qu'en mobile. */
+@media (min-width: 768px) {
+  .shop-row--beats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow: visible;
+    cursor: default;
+  }
+  .shop-row--beats[data-hscroll] { cursor: default; }
+  .shop-row--beats .shop-beat-card { flex: none; width: auto; }
+  .shop-row--beats > *:nth-child(n+6) { display: none; }
+}
+
 /* ============================================================
    CARROUSELS DE NAVIGATION — styles / type beat / instruments / ambiances
    ============================================================ */
@@ -1113,6 +1122,21 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   font-size: 10px;
   font-weight: 700;
 }
+
+.shop-newsletter-toggle {
+  display: inline-block;
+  margin-top: var(--sp-4);
+  border: 1px solid var(--ac);
+  color: var(--ac-soft);
+  border-radius: var(--r-pill);
+  padding: 8px 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: transparent;
+  cursor: pointer;
+}
+
+.shop-newsletter-toggle:hover { background: var(--ac); color: var(--ac-t); }
 
 .shop-newsletter-input {
   width: 100%;

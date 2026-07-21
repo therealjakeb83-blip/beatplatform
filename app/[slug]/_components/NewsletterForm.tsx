@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 export default function NewsletterForm({ slug }: { slug: string }) {
+  const [ouvert, setOuvert] = useState(false)
   const [email, setEmail] = useState('')
   const [accepte, setAccepte] = useState(false)
   const [statut, setStatut] = useState<'idle' | 'envoi' | 'ok' | 'erreur'>('idle')
@@ -21,6 +22,14 @@ export default function NewsletterForm({ slug }: { slug: string }) {
 
     setStatut(res.ok ? 'ok' : 'erreur')
     if (res.ok) setEmail('')
+  }
+
+  if (!ouvert) {
+    return (
+      <button type="button" className="shop-newsletter-toggle" onClick={() => setOuvert(true)}>
+        + La newsletter
+      </button>
+    )
   }
 
   if (statut === 'ok') {

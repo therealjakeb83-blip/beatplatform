@@ -49,7 +49,7 @@ export default function BeatCatalogue({
             </h2>
             <Link href={`/${slug}/membres`} className="shop-all-button">Tout voir ›</Link>
           </div>
-          <div className="shop-row" ref={rowMembresRef} data-hscroll>
+          <div className="shop-row shop-row--beats" ref={rowMembresRef} data-hscroll>
             {beatsPrives.map(beat => (
               <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} clientId={clientId} />
             ))}
@@ -64,7 +64,7 @@ export default function BeatCatalogue({
             <h2>Nouveautés</h2>
             <Link href={`/${slug}/beats`} className="shop-all-button">Tout voir ›</Link>
           </div>
-          <div className="shop-row" ref={rowNouveautesRef} data-hscroll>
+          <div className="shop-row shop-row--beats" ref={rowNouveautesRef} data-hscroll>
             {beats.slice(0, 10).map(beat => (
               <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} clientId={clientId} />
             ))}
@@ -79,7 +79,7 @@ export default function BeatCatalogue({
             <h2>La sélection du beatmaker</h2>
             <Link href={`/${slug}/selection`} className="shop-all-button">Tout voir ›</Link>
           </div>
-          <div className="shop-row" ref={rowSelectionRef} data-hscroll>
+          <div className="shop-row shop-row--beats" ref={rowSelectionRef} data-hscroll>
             {selection.slice(0, 10).map(beat => (
               <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} clientId={clientId} />
             ))}
