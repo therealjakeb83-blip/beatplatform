@@ -133,8 +133,8 @@ body:has(.shop-root) { overflow-x: hidden; }
   max-width: 1280px;
   margin: 0 auto;
   background: var(--glass-header);
-  backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border: 1px solid rgba(255,255,255,.09);
   border-radius: var(--r-header);
   box-shadow: var(--shadow-header);
@@ -260,7 +260,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 }
 
 .shop-icon-btn:hover { border-color: var(--ac); }
-.shop-icon-btn svg { width: 16px; height: 16px; }
+.shop-icon-btn svg { width: 15px; height: 15px; }
 
 .shop-cart-count {
   position: absolute;
@@ -318,7 +318,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 .shop-hero {
   background: var(--hero-bg);
   text-align: center;
-  padding: 214px var(--sp-6) 345px;
+  padding: 214px var(--sp-6) 150px;
   margin-top: -118px;
   position: relative;
   z-index: 1;
@@ -361,7 +361,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   justify-content: center;
   width: 20px;
   height: 20px;
-  margin: 67px auto 0;
+  margin: 81px auto 0;
   color: #6C6E78;
   animation: shopScrollHint 1.8s ease-in-out infinite;
   cursor: pointer;
@@ -582,6 +582,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 }
 
 .shop-beat-title {
+  color: var(--text);
   font-size: var(--fs-card);
   font-weight: 600;
   margin: var(--sp-3) var(--sp-1) 2px;
@@ -627,7 +628,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 /* ============================================================
    CARROUSELS DE NAVIGATION — styles / type beat / instruments / ambiances
    ============================================================ */
-.shop-style-card {
+a.shop-style-card {
   flex: 0 0 232px;
   height: 96px;
   border-radius: var(--r-card);
@@ -643,7 +644,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   transition: transform .18s, box-shadow .18s;
 }
 
-.shop-style-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-style-hover); }
+a.shop-style-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-style-hover); }
 .shop-style-card strong { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .shop-style-card small { font-size: var(--fs-count); opacity: .85; }
 
@@ -651,7 +652,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
    du token), plus large que le gap générique des autres rangées. */
 .shop-row--artists { gap: var(--gap-artists); }
 
-.shop-artist-card {
+a.shop-artist-card {
   flex: 0 0 116px;
   display: flex;
   flex-direction: column;
@@ -723,22 +724,22 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   left: 0; right: 0; bottom: 0;
   z-index: 60;
   background: var(--glass-player);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border-top: 1px solid var(--line-strong);
 }
 
 .shop-player-inner {
   max-width: var(--container);
   margin: 0 auto;
-  padding: var(--sp-2) var(--sp-6);
+  padding: var(--sp-3) var(--sp-6);
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .shop-player-cover {
-  width: 46px; height: 46px;
+  width: 48px; height: 48px;
   border-radius: 9px;
   object-fit: cover;
   border: 1px solid rgba(255,255,255,.08);
@@ -750,7 +751,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 .shop-player-info .shop-player-tag { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 
 .shop-player-toggle {
-  width: 38px; height: 38px;
+  width: 40px; height: 40px;
   border-radius: var(--r-pill);
   background: var(--ac);
   color: var(--ac-t);
@@ -832,8 +833,8 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   z-index: 61;
   margin: 0 10px var(--sp-2);
   background: rgba(10,12,22,.95);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--line-strong);
   border-radius: 16px;
   padding: var(--sp-2) var(--sp-3);
@@ -886,8 +887,8 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   left: 0; right: 0; bottom: 0;
   z-index: 60;
   background: rgba(8,10,18,.97);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border-top: 1px solid var(--line-strong);
   justify-content: space-around;
   padding: 10px var(--sp-2) var(--sp-4);

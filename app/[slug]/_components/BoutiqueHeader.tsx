@@ -71,8 +71,8 @@ export default function BoutiqueHeader({
               className="shop-icon-btn"
               aria-label="Compte"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path>
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+                <circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 5-5.5 8-5.5s6.5 1.5 8 5.5" strokeLinecap="round"></path>
               </svg>
             </Link>
           </div>
