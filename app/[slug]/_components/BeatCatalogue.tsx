@@ -45,7 +45,7 @@ export default function BeatCatalogue({
             <h2>
               Réservés aux membres <span className="shop-section-count">({beatsPrives.length})</span>
             </h2>
-            <Link href={`/${slug}/membres`} className="shop-all-button">Tout voir ›</Link>
+            <Link href={`/${slug}/membres`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
           <div className="shop-row shop-row--beats" ref={rowMembresRef} data-hscroll>
             {beatsPrives.map(beat => (
@@ -60,7 +60,7 @@ export default function BeatCatalogue({
         <section className="shop-section">
           <div className="shop-section-heading">
             <h2>Nouveautés</h2>
-            <Link href={`/${slug}/beats`} className="shop-all-button">Tout voir ›</Link>
+            <Link href={`/${slug}/beats`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
           <div className="shop-row shop-row--beats" ref={rowNouveautesRef} data-hscroll>
             {beats.slice(0, 10).map(beat => (
@@ -75,7 +75,7 @@ export default function BeatCatalogue({
         <section className="shop-section">
           <div className="shop-section-heading">
             <h2>La sélection du beatmaker</h2>
-            <Link href={`/${slug}/selection`} className="shop-all-button">Tout voir ›</Link>
+            <Link href={`/${slug}/selection`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
           <div className="shop-row shop-row--beats" ref={rowSelectionRef} data-hscroll>
             {selection.slice(0, 10).map(beat => (

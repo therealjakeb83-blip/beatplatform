@@ -422,8 +422,15 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 
 @media (max-width: 767px) {
   .shop-section, .shop-members-box { margin-bottom: 30px; }
+  .shop-section-heading { justify-content: space-between; }
   .shop-section-heading h2 { font-size: 19px; }
-  .shop-all-button { background: var(--ac); color: var(--ac-t); }
+  a.shop-all-button {
+    background: var(--ac);
+    color: var(--ac-t);
+    font-size: 11px;
+    padding: 6px 14px;
+  }
+  .shop-all-button-arrow { display: none; }
 }
 
 /* Rangées scrollables — reçoivent le drag-to-scroll (useDragScroll) sur desktop */
