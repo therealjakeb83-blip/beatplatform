@@ -375,7 +375,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 
 @media (max-width: 767px) {
   .shop-hero { padding: 120px 22px 90px; margin-top: -64px; background: var(--hero-bg-mobile); }
-  .shop-hero h1 { font-size: 27px; line-height: 1.25; }
+  .shop-hero h1 { font-size: 22px; line-height: 1.25; }
   .shop-hero p { font-size: 12.5px; max-width: 320px; }
   .shop-cta-hero { width: 100%; justify-content: center; }
   .shop-down-arrow { margin-top: 60px; }
