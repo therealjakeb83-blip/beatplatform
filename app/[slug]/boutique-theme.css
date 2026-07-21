@@ -107,6 +107,16 @@ body:has(.shop-root) { overflow-x: hidden; }
   --style-card-text: #0A0C13;
 }
 
+/* Bleu : valeurs figées en rgb() directement (pas la formule oklch(from var(--ac) ...))
+   — un oklch() relatif à une custom property se résout différemment de la même
+   formule appliquée à un hex littéral (comme le fait la maquette), constaté par
+   comparaison pixel réelle des deux rendus. Ces rgb() sont la couleur exacte que
+   la maquette elle-même affiche (lue via getComputedStyle sur la page source). */
+.shop-root[data-accent-preset="bleu"] {
+  --glow1: rgb(16, 35, 122);
+  --glow2: rgb(8, 18, 57);
+}
+
 .shop-container {
   max-width: var(--container);
   margin-inline: auto;
@@ -324,19 +334,6 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   z-index: 1;
 }
 
-/* Asset fourni tel quel par Jake (Claude Design) pour le thème bleu —
-   remplace le dégradé oklch calculé, uniquement en desktop et uniquement
-   pour ce preset précis. Le mobile et les 6 autres couleurs gardent le
-   dégradé dérivé de --ac. */
-@media (min-width: 768px) {
-  .shop-root[data-accent-preset="bleu"] .shop-hero {
-    /* Hauteur figée (pas "auto"/cover) — le dégradé de l'image doit
-       atteindre le noir avant le point bas de l'animation de la flèche
-       (translateY 9px), vérifié empiriquement à 600px. */
-    background: url('/hero-bg-bleu.png') top center / 100% 650px no-repeat;
-  }
-}
-
 .shop-hero-content { max-width: 100%; }
 
 .shop-hero h1 {
@@ -530,40 +527,23 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   font-size: 16px;
 }
 
-.shop-favori-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
-  width: 30px;
-  height: 30px;
+/* Favori — déplacé du cover de carte vers le player (desktop + mini mobile). */
+.shop-player-favori {
+  width: 28px;
+  height: 28px;
   border-radius: var(--r-pill);
-  background: rgba(5,6,11,.55);
+  background: none;
   display: grid;
   place-items: center;
-  color: rgba(255,255,255,.75);
+  color: rgba(255,255,255,.6);
   border: 0;
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .15s, background .15s, color .15s;
+  flex-shrink: 0;
+  transition: color .15s;
 }
 
-.shop-favori-btn:hover { color: #fff; }
-
-.shop-beat-card:hover .shop-favori-btn,
-.shop-beat-card:focus-within .shop-favori-btn,
-.shop-favori-btn.is-active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.shop-favori-btn.is-active { background: var(--ac); color: var(--ac-t); }
-
-/* Pas de hover fiable au tactile — garder le cœur visible sur mobile/tablette. */
-@media (hover: none) {
-  .shop-favori-btn { opacity: 1; pointer-events: auto; }
-}
+.shop-player-favori:hover { color: #fff; }
+.shop-player-favori.is-active { color: var(--ac); }
 
 .shop-freedl-btn {
   position: absolute;
@@ -831,7 +811,7 @@ a.shop-artist-card {
 .shop-player-mobile {
   position: fixed;
   left: 0; right: 0;
-  bottom: 64px;
+  bottom: 71px;
   z-index: 61;
   margin: 0 10px var(--sp-2);
   background: rgba(10,12,22,.95);
@@ -896,7 +876,7 @@ a.shop-artist-card {
   padding: 10px var(--sp-2) var(--sp-4);
 }
 
-.shop-tabbar-item {
+a.shop-tabbar-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -910,7 +890,7 @@ a.shop-artist-card {
 }
 
 .shop-tabbar-item svg { width: 18px; height: 18px; }
-.shop-tabbar-item.is-active { color: #fff; }
+a.shop-tabbar-item.is-active { color: #fff; }
 
 @media (max-width: 767px) { .shop-tabbar { display: flex; } }
 

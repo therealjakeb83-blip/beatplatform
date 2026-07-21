@@ -28,7 +28,6 @@ export default async function ParcourirCategoriePage({
 
   if (!beatmaker) notFound()
 
-  const { data: { user } } = await supabase.auth.getUser()
   const now = new Date().toISOString()
 
   const { data: rawBeats } = await supabase
@@ -89,7 +88,7 @@ export default async function ParcourirCategoriePage({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {beats.map(beat => (
-            <BeatCard key={beat.id} beat={beat} slug={slug} queue={beats} estAbonne={false} clientId={user?.id ?? null} />
+            <BeatCard key={beat.id} beat={beat} slug={slug} queue={beats} estAbonne={false} />
           ))}
         </div>
       )}

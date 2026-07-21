@@ -146,7 +146,7 @@ export default async function SelectionPage({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {beats.map(beat => (
-            <BeatCard key={beat.id} beat={beat} slug={slug} queue={beats} estAbonne={estAbonne} clientId={user?.id ?? null} />
+            <BeatCard key={beat.id} beat={beat} slug={slug} queue={beats} estAbonne={estAbonne} />
           ))}
         </div>
       )}

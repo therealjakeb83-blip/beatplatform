@@ -22,7 +22,6 @@ export default async function CataloguePage({
 
   if (!beatmaker) notFound()
 
-  const { data: { user } } = await supabase.auth.getUser()
   const now = new Date().toISOString()
 
   const { data: rawBeats } = await supabase
@@ -77,7 +76,7 @@ export default async function CataloguePage({
         Catalogue <span className="text-gray-500 font-normal text-lg">({beats.length})</span>
       </h1>
 
-      <CatalogueClient beats={beats} slug={slug} estAbonne={false} clientId={user?.id ?? null} />
+      <CatalogueClient beats={beats} slug={slug} estAbonne={false} />
     </div>
   )
 }

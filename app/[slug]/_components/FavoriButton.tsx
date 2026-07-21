@@ -8,10 +8,12 @@ export default function FavoriButton({
   beatId,
   clientId,
   slug,
+  className = 'shop-favori-btn',
 }: {
   beatId: string
   clientId: string | null
   slug: string
+  className?: string
 }) {
   const router = useRouter()
   const [estFavori, setEstFavori] = useState(false)
@@ -59,7 +61,7 @@ export default function FavoriButton({
       onClick={toggle}
       disabled={chargement}
       aria-label={estFavori ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      className={`shop-favori-btn${estFavori ? ' is-active' : ''}`}
+      className={`${className}${estFavori ? ' is-active' : ''}`}
       style={chargement ? { cursor: 'wait' } : undefined}
     >
       <span style={{ fontSize: 13 }}>{estFavori ? '♥' : '♡'}</span>

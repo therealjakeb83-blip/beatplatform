@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from './PlayerContext'
-import FavoriButton from './FavoriButton'
 
 export type LicencePublic = {
   id: string
@@ -29,13 +28,11 @@ export default function BeatCard({
   slug,
   queue,
   estAbonne = false,
-  clientId = null,
 }: {
   beat: BeatPublic
   slug: string
   queue: BeatMin[]
   estAbonne?: boolean
-  clientId?: string | null
 }) {
   const { play, currentBeat, isPlaying } = usePlayer()
 
@@ -66,11 +63,6 @@ export default function BeatCard({
         )}
 
         {tag && <span className="shop-beat-tag">{tag}</span>}
-
-        {/* Bouton favori */}
-        {!estVerrouille && (
-          <FavoriButton beatId={beat.id} clientId={clientId} slug={slug} />
-        )}
 
         {estVerrouille ? (
           <div className="shop-beat-locked">

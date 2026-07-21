@@ -23,14 +23,12 @@ export default function BeatCatalogue({
   selection = [],
   slug,
   estAbonne = false,
-  clientId = null,
 }: {
   beats: BeatPublic[]
   beatsPrives?: BeatPublic[]
   selection?: BeatPublic[]
   slug: string
   estAbonne?: boolean
-  clientId?: string | null
 }) {
   const queue: BeatMin[] = beats.map(toBeatMin)
   const rowMembresRef = useDragScroll<HTMLDivElement>()
@@ -51,7 +49,7 @@ export default function BeatCatalogue({
           </div>
           <div className="shop-row shop-row--beats" ref={rowMembresRef} data-hscroll>
             {beatsPrives.map(beat => (
-              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} clientId={clientId} />
+              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
             ))}
           </div>
         </section>
@@ -66,7 +64,7 @@ export default function BeatCatalogue({
           </div>
           <div className="shop-row shop-row--beats" ref={rowNouveautesRef} data-hscroll>
             {beats.slice(0, 10).map(beat => (
-              <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} clientId={clientId} />
+              <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} />
             ))}
           </div>
         </section>
@@ -81,7 +79,7 @@ export default function BeatCatalogue({
           </div>
           <div className="shop-row shop-row--beats" ref={rowSelectionRef} data-hscroll>
             {selection.slice(0, 10).map(beat => (
-              <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} clientId={clientId} />
+              <BeatCard key={beat.id} beat={beat} slug={slug} queue={queue} estAbonne={estAbonne} />
             ))}
           </div>
         </section>

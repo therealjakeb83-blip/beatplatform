@@ -2,6 +2,7 @@
 
 import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
+import FavoriButton from './FavoriButton'
 
 function formatTime(seconds: number) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -17,7 +18,13 @@ function PauseIcon() {
   return <svg viewBox="0 0 12 13" width="11" height="12" fill="currentColor"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
 }
 
-export default function PlayerBar() {
+export default function PlayerBar({
+  slug,
+  clientId,
+}: {
+  slug: string
+  clientId: string | null
+}) {
   const { currentBeat, isPlaying, progress, duration, togglePlay, next, prev, seek } = usePlayer()
   const { addItem, open } = useCart()
 
@@ -82,6 +89,8 @@ export default function PlayerBar() {
           </div>
           <span className="shop-player-time">{formatTime(duration)}</span>
 
+          <FavoriButton beatId={currentBeat.id} clientId={clientId} slug={slug} className="shop-player-favori" />
+
           {moinsChere && <span className="shop-player-price">dès {moinsChere.prix}€</span>}
           {moinsChere && <button onClick={ajouterAuPanier} className="shop-player-add">+ Ajouter</button>}
         </div>
@@ -103,6 +112,8 @@ export default function PlayerBar() {
         <button onClick={togglePlay} className="shop-player-mobile-toggle" aria-label={isPlaying ? 'Pause' : 'Lecture'}>
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
         </button>
+
+        <FavoriButton beatId={currentBeat.id} clientId={clientId} slug={slug} className="shop-player-favori" />
 
         {moinsChere && (
           <button onClick={ajouterAuPanier} className="shop-player-mobile-add">{moinsChere.prix}€ +</button>

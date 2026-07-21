@@ -221,7 +221,6 @@ export default async function BoutiquePage({
         selection={selection}
         slug={slug}
         estAbonne={estAbonne}
-        clientId={user?.id ?? null}
       />
       <div className="shop-container">
         <CategorieBrowseSection id="parcourir-styles" type="styles" slug={slug} cartes={stylesCartes} />
