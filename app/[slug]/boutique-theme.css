@@ -62,7 +62,9 @@
 
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
   --sp-6: 24px; --sp-8: 32px; --sp-12: 48px; --sp-24: 96px;
-  --container: 1280px;
+  /* Container du contenu des sections (cartes, player) — plus large que le
+     header (1280px, resté fixe ci-dessus) sur demande du plan 2. */
+  --container: 1360px;
   --gutter: 24px;
   --gap-grid: 16px;
   --gap-artists: 22px;
@@ -73,12 +75,17 @@
   --shadow-style-hover: 0 8px 28px var(--glow-card);
   --shadow-player-cursor: 0 0 8px color-mix(in srgb, var(--ac) 60%, transparent);
 
-  overflow-x: hidden;
   position: relative;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
 }
+
+/* overflow-x:hidden posé ici (et pas sur .shop-root) : un ancêtre avec
+   overflow non-visible casse position:sticky sur ses descendants (le
+   header). body est l'ancêtre du scroll réel, donc sticky continue de se
+   calculer par rapport au viewport. */
+body:has(.shop-root) { overflow-x: hidden; }
 
 .shop-root a { color: var(--ac-soft); text-decoration: none; }
 .shop-root a:hover { color: #fff; }
@@ -119,13 +126,13 @@
    ============================================================ */
 .shop-header-wrap {
   position: sticky;
-  top: 12px;
+  top: 15px;
   z-index: 50;
   padding: 0 20px;
 }
 
 .shop-header {
-  max-width: var(--container);
+  max-width: 1280px;
   margin: 0 auto;
   background: var(--glass-header);
   backdrop-filter: blur(18px);
@@ -370,7 +377,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
    ============================================================ */
 .shop-catalogue { padding: var(--sp-2) 0 0; }
 
-.shop-section, .shop-members-box { margin-bottom: 44px; scroll-margin-top: 100px; }
+.shop-section, .shop-members-box { margin-bottom: 36px; scroll-margin-top: 100px; }
 
 .shop-section-heading {
   display: flex;
@@ -428,8 +435,8 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
    CARTES BEATS (membres / nouveautés / sélection)
    ============================================================ */
 .shop-beat-card {
-  flex: 0 0 190px;
-  width: 190px;
+  flex: 0 0 250px;
+  width: 250px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
@@ -522,13 +529,28 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   display: grid;
   place-items: center;
   color: rgba(255,255,255,.75);
-  transition: background .15s, color .15s;
   border: 0;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s, background .15s, color .15s;
 }
 
 .shop-favori-btn:hover { color: #fff; }
+
+.shop-beat-card:hover .shop-favori-btn,
+.shop-beat-card:focus-within .shop-favori-btn,
+.shop-favori-btn.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .shop-favori-btn.is-active { background: var(--ac); color: var(--ac-t); }
+
+/* Pas de hover fiable au tactile — garder le cœur visible sur mobile/tablette. */
+@media (hover: none) {
+  .shop-favori-btn { opacity: 1; pointer-events: auto; }
+}
 
 .shop-freedl-btn {
   position: absolute;
@@ -690,7 +712,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 }
 
 .shop-player-cover {
-  width: 48px; height: 48px;
+  width: 54px; height: 54px;
   border-radius: 10px;
   object-fit: cover;
   border: 1px solid rgba(255,255,255,.08);
@@ -702,7 +724,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 .shop-player-info .shop-player-tag { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 
 .shop-player-toggle {
-  width: 40px; height: 40px;
+  width: 46px; height: 46px;
   border-radius: var(--r-pill);
   background: var(--ac);
   color: var(--ac-t);
@@ -757,13 +779,18 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 .shop-player-price { font-size: var(--fs-body); font-weight: 600; color: var(--ac-soft); flex-shrink: 0; }
 
 .shop-player-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 136px;
+  height: 42px;
   background: var(--ac);
   color: var(--ac-t);
   border: 0;
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12.5px;
-  padding: 9px 18px;
+  padding: 0 18px;
   border-radius: var(--r-pill);
   cursor: pointer;
   flex-shrink: 0;
