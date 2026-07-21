@@ -47,7 +47,7 @@
 
   --font-body: var(--font-poppins), sans-serif;
   --font-mono: monospace;
-  --fs-h1: 46px; --lh-h1: 1.18;
+  --fs-h1: 46px; --lh-h1: 1.2;
   --fs-h2: 27px;
   --fs-card: 17px;
   --fs-ui: 13.5px;
@@ -171,7 +171,7 @@
   padding: 8px 14px;
 }
 
-.shop-search svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .7; }
+.shop-search svg { width: 14px; height: 14px; flex-shrink: 0; stroke: #6B6D74; }
 
 .shop-search input {
   flex: 1;
@@ -184,7 +184,7 @@
   font-size: 12.5px;
 }
 
-.shop-search input::placeholder { color: var(--text-3); }
+.shop-search input::placeholder { color: #6B6D74; }
 
 .shop-header-links {
   display: flex;
@@ -199,12 +199,17 @@
 .shop-header-links a { color: #fff; }
 .shop-header-links a:hover { color: var(--ac-soft); }
 
-.shop-cta {
+/* Sélecteurs préfixés par "a" : .shop-cta est un <Link> (donc un <a>), et
+   `.shop-root a { color: var(--ac-soft) }` (règle de base des liens) a une
+   spécificité élément+classe qui écrasait silencieusement la couleur du
+   texte du bouton — d'où le texte pâle constaté. Même spécificité ici,
+   donc l'ordre de la feuille (déclaré après) tranche correctement. */
+a.shop-cta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: var(--ac);
-  color: var(--ac-t);
+  color: #fff;
   font-weight: 600;
   font-size: 13px;
   padding: 9px 18px;
@@ -215,9 +220,11 @@
   transition: background .2s, color .2s, box-shadow .2s;
 }
 
-.shop-cta:hover { background: #fff; color: var(--ac); box-shadow: var(--shadow-cta-hover); }
+a.shop-cta:hover { background: #fff; color: var(--ac); box-shadow: var(--shadow-cta-hover); }
 
-.shop-cta-hero {
+.shop-header-row1 a.shop-cta { padding: 9px 17.5px; }
+
+a.shop-cta-hero {
   background: #fff;
   color: var(--ac-deep);
   font-size: 13.5px;
@@ -225,9 +232,9 @@
   margin-top: 28px;
 }
 
-.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: var(--shadow-cta-hover); }
+a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: var(--shadow-cta-hover); }
 
-.shop-header-icons { display: flex; gap: 12px; flex-shrink: 0; }
+.shop-header-icons { display: flex; gap: 8px; flex-shrink: 0; }
 
 .shop-icon-btn {
   position: relative;
@@ -254,7 +261,7 @@
   color: var(--ac-t);
   font-size: 9px;
   font-weight: 700;
-  min-width: 15px;
+  min-width: 14px;
   height: 15px;
   border-radius: var(--r-pill);
   display: flex;
@@ -267,7 +274,7 @@
   display: flex;
   justify-content: center;
   gap: 10px;
-  padding: 2px 22px 14px;
+  padding: 2px 22px 15px;
   flex-wrap: wrap;
 }
 
@@ -302,7 +309,7 @@
 .shop-hero {
   background: var(--hero-bg);
   text-align: center;
-  padding: 214px 24px 150px;
+  padding: 214px 24px 136px;
   margin-top: -118px;
   position: relative;
   z-index: 1;
@@ -327,10 +334,13 @@
 }
 
 .shop-down-arrow {
-  display: block;
-  margin: 84px auto 0;
-  color: rgba(255,255,255,.6);
-  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 67px auto 0;
+  color: #6C6E78;
   animation: shopScrollHint 1.8s ease-in-out infinite;
   cursor: pointer;
 }

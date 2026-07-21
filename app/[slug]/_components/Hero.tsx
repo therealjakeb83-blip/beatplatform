@@ -31,7 +31,11 @@ export default function Hero({
           </Link>
         )}
       </div>
-      <a href="#catalogue" className="shop-down-arrow" aria-label="Descendre">⌄</a>
+      <a href="#catalogue" className="shop-down-arrow" aria-label="Descendre">
+        <svg width="16" height="9" viewBox="0 0 16 9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 1L8 8L15 1" />
+        </svg>
+      </a>
     </section>
   )
 }
