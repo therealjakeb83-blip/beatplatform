@@ -4,10 +4,20 @@
 
 export type AccentTone = 'default' | 'jaune' | 'orange' | 'violet' | 'noirBlanc'
 
-const HEX_RE = /^#[0-9A-Fa-f]{6}$/
+// Les 7 couleurs validées par Jake (tokens/tokens.json — accent.palette) —
+// seules couleurs proposées, pas de personnalisation libre.
+export const ACCENT_PRESETS: { valeur: string; label: string }[] = [
+  { valeur: '#2E4CF0', label: 'Bleu' },
+  { valeur: '#F2F2F2', label: 'Noir & blanc' },
+  { valeur: '#E11D48', label: 'Rouge' },
+  { valeur: '#10B981', label: 'Vert' },
+  { valeur: '#7C3AED', label: 'Violet' },
+  { valeur: '#F97316', label: 'Orange' },
+  { valeur: '#FACC15', label: 'Jaune' },
+]
 
-export function estHexValide(valeur: string): boolean {
-  return HEX_RE.test(valeur)
+export function estAccentValide(valeur: string): boolean {
+  return ACCENT_PRESETS.some(p => p.valeur === valeur)
 }
 
 function hexToRgb(hex: string): [number, number, number] {

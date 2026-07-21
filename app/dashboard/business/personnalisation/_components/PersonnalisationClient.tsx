@@ -12,26 +12,16 @@ const PRESETS: { valeur: string; label: string }[] = [
   { valeur: '#FACC15', label: 'Jaune' },
 ]
 
-const RADIUS: { valeur: string; label: string; px: number }[] = [
-  { valeur: 'arrondi', label: 'Arrondi', px: 16 },
-  { valeur: 'doux', label: 'Doux', px: 10 },
-  { valeur: 'carre', label: 'Carré', px: 4 },
-]
-
-const HEX_RE = /^#[0-9A-Fa-f]{6}$/
-
 export default function PersonnalisationClient({
   slug,
   heroTitreInitial,
   heroSousTitreInitial,
   accentInitial,
-  radiusInitial,
 }: {
   slug: string
   heroTitreInitial: string
   heroSousTitreInitial: string
   accentInitial: string
-  radiusInitial: string
 }) {
   const [heroTitre, setHeroTitre] = useState(heroTitreInitial)
   const [heroSousTitre, setHeroSousTitre] = useState(heroSousTitreInitial)
@@ -40,12 +30,9 @@ export default function PersonnalisationClient({
 
   const [accentApercu, setAccentApercu] = useState(accentInitial)
   const [accentSauvegarde, setAccentSauvegarde] = useState(accentInitial)
-  const [radiusApercu, setRadiusApercu] = useState(radiusInitial)
-  const [radiusSauvegarde, setRadiusSauvegarde] = useState(radiusInitial)
   const [savingTheme, setSavingTheme] = useState(false)
 
-  const themeModifie = accentApercu !== accentSauvegarde || radiusApercu !== radiusSauvegarde
-  const accentValide = HEX_RE.test(accentApercu)
+  const themeModifie = accentApercu !== accentSauvegarde
 
   async function enregistrerHero(e: React.FormEvent) {
     e.preventDefault()
@@ -61,16 +48,14 @@ export default function PersonnalisationClient({
   }
 
   async function enregistrerTheme() {
-    if (!accentValide) return
     setSavingTheme(true)
     await fetch('/api/business/personnalisation', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme_couleur: accentApercu, theme_radius: radiusApercu }),
+      body: JSON.stringify({ theme_couleur: accentApercu }),
     })
     setSavingTheme(false)
     setAccentSauvegarde(accentApercu)
-    setRadiusSauvegarde(radiusApercu)
   }
 
   return (
@@ -144,50 +129,6 @@ export default function PersonnalisationClient({
                   <span className="text-xs text-gray-300 font-medium">{preset.label}</span>
                 </button>
               ))}
-
-              <label className="flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 border-transparent hover:bg-gray-800/50 cursor-pointer">
-                <input
-                  type="color"
-                  value={accentValide ? accentApercu : '#2E4CF0'}
-                  onChange={e => setAccentApercu(e.target.value)}
-                  className="w-8 h-8 rounded-full overflow-hidden cursor-pointer bg-transparent border border-white/10"
-                />
-                <span className="text-xs text-gray-300 font-medium">Personnalisé</span>
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Code couleur (hex)</label>
-              <input
-                type="text"
-                value={accentApercu}
-                onChange={e => setAccentApercu(e.target.value)}
-                placeholder="#2E4CF0"
-                className={`w-40 px-3 py-2 rounded-lg bg-gray-800 text-white border font-mono text-sm focus:outline-none ${
-                  accentValide ? 'border-gray-700 focus:border-indigo-500' : 'border-red-500'
-                }`}
-              />
-            </div>
-
-            <div>
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Radius des cartes</h3>
-              <div className="flex gap-3">
-                {RADIUS.map(r => (
-                  <button
-                    key={r.valeur}
-                    onClick={() => setRadiusApercu(r.valeur)}
-                    className={`flex flex-col items-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
-                      radiusApercu === r.valeur ? 'border-indigo-500 bg-gray-800' : 'border-transparent hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <span
-                      className="w-8 h-8 bg-gray-600"
-                      style={{ borderRadius: r.px }}
-                    />
-                    <span className="text-xs text-gray-300 font-medium">{r.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
             <p className="text-xs text-gray-600">
@@ -197,7 +138,7 @@ export default function PersonnalisationClient({
             <div className="flex items-center gap-3">
               <button
                 onClick={enregistrerTheme}
-                disabled={savingTheme || !themeModifie || !accentValide}
+                disabled={savingTheme || !themeModifie}
                 className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
               >
                 {savingTheme ? 'Enregistrement...' : 'Enregistrer le thème'}
@@ -216,7 +157,7 @@ export default function PersonnalisationClient({
           </div>
           <iframe
             key={slug}
-            src={`/${slug}?theme_apercu=${encodeURIComponent(accentValide ? accentApercu : accentSauvegarde)}&radius_apercu=${radiusApercu}`}
+            src={`/${slug}?theme_apercu=${encodeURIComponent(accentApercu)}`}
             className="w-full flex-1 min-h-[600px] bg-black"
             title="Aperçu de la boutique"
           />

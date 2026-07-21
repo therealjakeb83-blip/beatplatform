@@ -43,7 +43,7 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, theme_radius')
+    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -53,7 +53,6 @@ export default async function BoutiqueLayout({
         <Suspense>
           <BoutiqueThemeRoot
             accentDb={beatmaker?.theme_couleur ?? '#2E4CF0'}
-            radiusDb={beatmaker?.theme_radius ?? 'arrondi'}
             fontClassName={poppins.variable}
           >
             {beatmaker && (
