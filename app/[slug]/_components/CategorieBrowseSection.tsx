@@ -54,7 +54,7 @@ export default function CategorieBrowseSection({
             <Link key={carte.nom} href={href(carte.nom)} className="shop-artist-card">
               <div className="shop-artist-card-photo">
                 {carte.imageUrl ? (
-                  <img src={carte.imageUrl} alt={carte.nom} />
+                  <img src={carte.imageUrl} alt={carte.nom} draggable={false} />
                 ) : (
                   <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
                 )}
@@ -72,7 +72,7 @@ export default function CategorieBrowseSection({
           {cartes.map(carte => (
             <Link key={carte.nom} href={href(carte.nom)} className="shop-media-card shop-media-card--instrument">
               {carte.imageUrl ? (
-                <img src={carte.imageUrl} alt={carte.nom} />
+                <img src={carte.imageUrl} alt={carte.nom} draggable={false} />
               ) : (
                 <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
               )}
@@ -91,7 +91,7 @@ export default function CategorieBrowseSection({
           {cartes.map(carte => (
             <Link key={carte.nom} href={href(carte.nom)} className="shop-media-card shop-media-card--ambiance">
               {carte.imageUrl ? (
-                <img src={carte.imageUrl} alt={carte.nom} />
+                <img src={carte.imageUrl} alt={carte.nom} draggable={false} />
               ) : (
                 <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
               )}

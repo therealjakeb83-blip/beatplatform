@@ -57,7 +57,7 @@ export default function BeatCard({
       {/* Cover + bouton play */}
       <div className="shop-beat-cover">
         {beat.image_url ? (
-          <img src={beat.image_url} alt={beat.titre} />
+          <img src={beat.image_url} alt={beat.titre} draggable={false} />
         ) : (
           <div className="shop-beat-fallback">{beat.titre.slice(0, 2).toUpperCase()}</div>
         )}
@@ -93,7 +93,11 @@ export default function BeatCard({
       ) : (
         <div className="shop-beat-meta">
           <span>{beat.bpm ? `${beat.bpm} BPM` : ''}</span>
-          {prixMin !== null && <span className="shop-beat-price">dès {prixMin}€</span>}
+          {prixMin !== null && (
+            <span className="shop-beat-price">
+              <span className="shop-beat-price-prefix">dès </span>{prixMin}€
+            </span>
+          )}
         </div>
       )}
     </Link>
