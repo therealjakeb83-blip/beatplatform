@@ -49,7 +49,7 @@ export default function CategorieBrowseSection({
 
       {/* Type beat — cercles photo. */}
       {type === 'type_beat' && (
-        <div className="shop-row" ref={rowRef} data-hscroll>
+        <div className="shop-row shop-row--artists" ref={rowRef} data-hscroll>
           {cartes.map(carte => (
             <Link key={carte.nom} href={href(carte.nom)} className="shop-artist-card">
               <div className="shop-artist-card-photo">
