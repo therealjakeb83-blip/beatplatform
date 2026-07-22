@@ -795,7 +795,7 @@ a.shop-artist-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #fff;
   text-align: center;
   user-select: none;
@@ -820,7 +820,17 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   -webkit-user-drag: none;
   -webkit-touch-callout: none;
 }
-.shop-artist-card strong { display: block; font-size: var(--fs-body); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; line-height: normal; }
+.shop-artist-card strong {
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .shop-artist-card small { display: block; font-size: var(--fs-count); color: var(--text-3); line-height: normal; }
 
 .shop-media-card {
