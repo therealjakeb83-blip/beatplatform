@@ -15,6 +15,7 @@ export const ACCENT_PRESETS: { valeur: string; label: string; cle: string }[] = 
   { valeur: '#F97316', label: 'Orange', cle: 'orange' },
   { valeur: '#FACC15', label: 'Jaune', cle: 'jaune' },
   { valeur: '#00F6FB', label: 'Cyan', cle: 'cyan' },
+  { valeur: '#0A0C13', label: 'Blanc & noir', cle: 'blancNoir' },
 ]
 
 export function estAccentValide(valeur: string): boolean {

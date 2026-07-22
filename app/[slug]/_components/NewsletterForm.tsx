@@ -56,7 +56,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
           S&apos;inscrire
         </button>
       </div>
-      <label className="flex items-start gap-2 text-xs" style={{ color: 'rgba(248, 248, 251, .5)' }}>
+      <label className="shop-newsletter-consent flex items-start gap-2 text-xs">
         <input
           type="checkbox"
           checked={accepte}
@@ -65,7 +65,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
         />
         <span>
           J&apos;accepte de recevoir des emails et j&apos;ai lu la{' '}
-          <Link href={`/${slug}/confidentialite`} className="underline hover:text-white">
+          <Link href={`/${slug}/confidentialite`} className="underline">
             politique de confidentialité
           </Link>
           .

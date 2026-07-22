@@ -11,6 +11,7 @@ const PRESETS: { valeur: string; label: string }[] = [
   { valeur: '#F97316', label: 'Orange' },
   { valeur: '#FACC15', label: 'Jaune' },
   { valeur: '#00F6FB', label: 'Cyan' },
+  { valeur: '#0A0C13', label: 'Blanc & noir' },
 ]
 
 export default function PersonnalisationClient({
