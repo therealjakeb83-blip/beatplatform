@@ -785,7 +785,10 @@ a.shop-style-card:focus-visible { box-shadow: var(--shadow-style-hover); }
 
 /* Carrousel "Parcourir les type beats" — gap dédié (spacing.carouselGapArtists
    du token), plus large que le gap générique des autres rangées. */
-.shop-row--artists { gap: var(--gap-artists); }
+/* align-items:flex-start évite que le nom le plus long d'un artiste
+   (ex. "Central Cee" sur 2 lignes) n'étire verticalement toutes les
+   autres cartes de la rangée (comportement par défaut du flexbox). */
+.shop-row--artists { gap: var(--gap-artists); align-items: flex-start; }
 
 a.shop-artist-card {
   flex: 0 0 116px;
