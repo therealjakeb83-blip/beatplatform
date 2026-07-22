@@ -239,6 +239,7 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-newsletter-consent { color: var(--text-3); }
 
 .shop-root[data-accent-preset="blancNoir"] .shop-footer { border-top-color: rgba(10,12,19,.09); }
+.shop-root[data-accent-preset="blancNoir"] .shop-footer-bottom { color: rgba(10,12,19,.45); }
 
 /* Lien générique : `.shop-root a:hover{color:#fff}` (règle de base) écrase
    sinon en blanc invisible sur fond clair. */
