@@ -554,8 +554,8 @@ a.shop-all-button {
 a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
 
 @media (max-width: 767px) {
-  .shop-section, .shop-members-box { margin-bottom: 30px; }
-  .shop-section-heading { justify-content: space-between; }
+  .shop-section, .shop-members-box { margin-bottom: 24px; }
+  .shop-section-heading { justify-content: space-between; margin-bottom: 8px; }
   .shop-section-heading h2 { font-size: 19px; }
   a.shop-all-button {
     background: var(--ac);
