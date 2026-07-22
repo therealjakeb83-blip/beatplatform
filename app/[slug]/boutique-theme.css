@@ -571,7 +571,7 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   display: flex;
   gap: var(--gap-grid);
   overflow-x: auto;
-  padding: 2px 1px 10px;
+  padding: 8px 1px 10px;
   scrollbar-width: none;
 }
 
