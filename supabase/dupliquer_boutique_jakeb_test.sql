@@ -1,6 +1,6 @@
 -- ============================================================
 -- Duplication boutique nicojacob83+test@gmail.com (jakeb-test)
--- → nicojacob83+test1@gmail.com ... +test8@gmail.com
+-- → nicojacob83+test1@gmail.com ... +test10@gmail.com
 --
 -- Copie : beats + catégories personnalisées (source='beatmaker')
 -- Ne copie PAS : licences, config boutique (branding/couleurs/logo),
@@ -35,7 +35,9 @@ WHERE email IN (
   'nicojacob83+test5@gmail.com',
   'nicojacob83+test6@gmail.com',
   'nicojacob83+test7@gmail.com',
-  'nicojacob83+test8@gmail.com'
+  'nicojacob83+test8@gmail.com',
+  'nicojacob83+test9@gmail.com',
+  'nicojacob83+test10@gmail.com'
 )
 ORDER BY email;
 
@@ -53,7 +55,9 @@ DECLARE
     'nicojacob83+test5@gmail.com',
     'nicojacob83+test6@gmail.com',
     'nicojacob83+test7@gmail.com',
-    'nicojacob83+test8@gmail.com'
+    'nicojacob83+test8@gmail.com',
+    'nicojacob83+test9@gmail.com',
+    'nicojacob83+test10@gmail.com'
   ];
 BEGIN
   SELECT id INTO source_id FROM beatmakers WHERE email = 'nicojacob83+test@gmail.com';
