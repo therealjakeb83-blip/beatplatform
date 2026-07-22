@@ -85,6 +85,18 @@
    calculer par rapport au viewport. */
 body:has(.shop-root) { overflow-x: hidden; }
 
+/* Le design desktop a été pensé (et validé par Jake) pour un rendu à 125%
+   de zoom navigateur — plus dense, moins de vide. zoom (pas transform:scale)
+   recalcule vraiment la mise en page comme un vrai zoom navigateur, donc on
+   le fige ici pour que ce rendu soit le défaut, sans dépendre du réglage de
+   zoom personnel du visiteur. Non supporté par les très vieux Firefox
+   (<126, 2024) : dégradation silencieuse vers l'affichage 100% normal.
+   Seuil à 1280px (pas 768px) : en dessous, la grille desktop déborde une
+   fois zoomée (testé jusqu'à 1150px, overflow horizontal confirmé). */
+@media (min-width: 1280px) {
+  body:has(.shop-root) { zoom: 1.25; }
+}
+
 .shop-root a { color: var(--ac-soft); text-decoration: none; }
 .shop-root a:hover { color: #fff; }
 .shop-root * { box-sizing: border-box; }
