@@ -195,17 +195,21 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-beat-title.is-dimmed { color: rgba(10,12,19,.78); }
 .shop-root[data-accent-preset="blancNoir"] .shop-beat-fallback { background: var(--surface-2); color: var(--text-3); }
 .shop-root[data-accent-preset="blancNoir"] .shop-artist-card { color: var(--text); }
+.shop-root[data-accent-preset="blancNoir"] .shop-artist-card-photo { border-color: rgba(10,12,19,.1); }
 .shop-root[data-accent-preset="blancNoir"] .shop-media-card { background: var(--surface-2); }
-.shop-root[data-accent-preset="blancNoir"] .shop-social-icon { color: var(--text); }
+.shop-root[data-accent-preset="blancNoir"] .shop-social-icon { color: var(--text); border-color: rgba(10,12,19,.28); }
+.shop-root[data-accent-preset="blancNoir"] .shop-footer-col a { color: rgba(10,12,19,.78); }
 
 /* Player : glass mobile hardcodé, curseur blanc invisible sans bordure sur
    fond clair (note tokens-light.css), textes/pistes hardcodés blancs */
 .shop-root[data-accent-preset="blancNoir"] .shop-player-mobile { background: rgba(255,255,255,.95); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-cover { border-color: rgba(10,12,19,.1); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-time { color: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-bg { background: rgba(10,12,19,.12); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-thumb { border: 2px solid var(--ac); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori { color: rgba(10,12,19,.6); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { color: var(--text); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-skip:hover { color: var(--text); }
 
 /* Tab bar mobile : fond hardcodé sombre, icônes/texte hardcodés blancs
    (icônes en stroke="currentColor", héritent de la couleur du lien) */
