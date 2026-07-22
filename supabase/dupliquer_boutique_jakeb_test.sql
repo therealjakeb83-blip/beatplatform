@@ -12,9 +12,9 @@
 -- via `supprime_le` — donc partager les mêmes URLs entre les 8 boutiques
 -- est sans risque).
 --
--- Statut : tous les beats copiés sont remis à 'public', peu importe leur
--- statut d'origine (vendu/masqué/programmé n'a pas de sens dans une
--- boutique neuve sans aucune commande).
+-- Statut : les beats copiés gardent exactement le même statut que la
+-- boutique source (décision 2026-07-22 — cohérence voulue entre les
+-- boutiques test plutôt qu'une normalisation à 'public').
 --
 -- PRÉ-REQUIS : les 8 comptes doivent déjà exister (inscription normale
 -- sur /connexion, avec un slug de boutique) — impossible de créer un
@@ -79,7 +79,7 @@ BEGIN
     WHERE beatmaker_id = source_id AND source = 'beatmaker'
     ON CONFLICT (type, nom, beatmaker_id) DO NOTHING;
 
-    -- Beats (mêmes fichiers R2, nouvelle ligne par boutique, statut normalisé à 'public')
+    -- Beats (mêmes fichiers R2 et mêmes catégories/statut que la source)
     INSERT INTO beats (
       beatmaker_id, date_sortie, titre, titre_beatstars, bpm, cle,
       styles, ambiances, instruments, type_beat,
@@ -90,7 +90,7 @@ BEGIN
       target_id, date_sortie, titre, titre_beatstars, bpm, cle,
       styles, ambiances, instruments, type_beat,
       image_url, mp3_tague_url, mp3_propre_url, wav_url, stems_url,
-      'public', free_download_actif
+      statut, free_download_actif
     FROM beats
     WHERE beatmaker_id = source_id AND supprime_le IS NULL;
 
