@@ -117,6 +117,15 @@ body:has(.shop-root) { overflow-x: hidden; }
   --glow2: rgb(8, 18, 57);
 }
 
+/* Cyan : dégradé des cartes styles éclairci (L 0.62→0.70 / 0.48→0.55), demandé
+   par le handoff uniquement pour cette déclinaison — les autres couleurs
+   sombres (bleu/rouge/vert/violet/orange) restent sur la formule d'origine,
+   déjà validées, à la demande de Jake (2026-07-22). */
+.shop-root[data-accent-preset="cyan"] {
+  --g1: oklch(from var(--ac) 0.70 min(c, 0.26) calc(h + 32));
+  --g2: oklch(from var(--ac) 0.55 min(c, 0.27) calc(h - 6));
+}
+
 .shop-container {
   max-width: var(--container);
   margin-inline: auto;

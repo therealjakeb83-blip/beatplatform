@@ -10,6 +10,7 @@ const PRESETS: { valeur: string; label: string }[] = [
   { valeur: '#7C3AED', label: 'Violet' },
   { valeur: '#F97316', label: 'Orange' },
   { valeur: '#FACC15', label: 'Jaune' },
+  { valeur: '#00F6FB', label: 'Cyan' },
 ]
 
 export default function PersonnalisationClient({

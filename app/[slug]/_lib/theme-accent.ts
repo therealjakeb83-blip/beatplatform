@@ -4,7 +4,7 @@
 
 export type AccentTone = 'default' | 'jaune' | 'orange' | 'violet' | 'noirBlanc'
 
-// Les 7 couleurs validées par Jake (tokens/tokens.json — accent.palette) —
+// Les couleurs validées par Jake (tokens/tokens.json — accent.palette) —
 // seules couleurs proposées, pas de personnalisation libre.
 export const ACCENT_PRESETS: { valeur: string; label: string; cle: string }[] = [
   { valeur: '#2E4CF0', label: 'Bleu', cle: 'bleu' },
@@ -14,6 +14,7 @@ export const ACCENT_PRESETS: { valeur: string; label: string; cle: string }[] = 
   { valeur: '#7C3AED', label: 'Violet', cle: 'violet' },
   { valeur: '#F97316', label: 'Orange', cle: 'orange' },
   { valeur: '#FACC15', label: 'Jaune', cle: 'jaune' },
+  { valeur: '#00F6FB', label: 'Cyan', cle: 'cyan' },
 ]
 
 export function estAccentValide(valeur: string): boolean {
