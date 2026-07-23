@@ -23,8 +23,16 @@ export async function generateViewport({ params }: { params: Promise<{ slug: str
   const { data } = await admin.from('beatmakers').select('theme_couleur').eq('slug', slug).maybeSingle()
   const isLight = accentPresetKey(data?.theme_couleur ?? '#2E4CF0') === 'blancNoir'
 
+  const bg = isLight ? '#F7F8FC' : '#05060B'
+
   return {
-    themeColor: isLight ? '#F7F8FC' : '#05060B',
+    // Safari (barre du bas en mode compact) suit parfois le mode clair/sombre
+    // du système plutôt que cette valeur si elle est déclarée sans media —
+    // déclarer les deux variantes avec la même couleur force l'application.
+    themeColor: [
+      { media: '(prefers-color-scheme: light)', color: bg },
+      { media: '(prefers-color-scheme: dark)', color: bg },
+    ],
     colorScheme: isLight ? 'light' : 'dark',
   }
 }
