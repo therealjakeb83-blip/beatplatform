@@ -613,7 +613,16 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
 .shop-row[data-dragging] { cursor: grabbing; }
 .shop-row[data-hscroll] { cursor: grab; }
 
-@media (max-width: 767px) { .shop-container { padding-inline: var(--sp-4); } }
+@media (max-width: 767px) {
+  .shop-container { padding-inline: var(--sp-4); }
+  /* Les rangées défilantes cassent le padding du conteneur (margin-inline
+     négatif) et le réappliquent sur elles-mêmes : le padding fait alors
+     partie de la zone scrollable et défile avec le contenu, au lieu de
+     rester fixe des deux côtés pendant tout le scroll (ce qui réduisait
+     en permanence la largeur utile visible des covers/blocs catégories,
+     contrairement à la maquette). */
+  .shop-row { margin-inline: calc(-1 * var(--sp-4)); padding-inline: var(--sp-4); }
+}
 
 /* ============================================================
    CARTES BEATS (membres / nouveautés / sélection)
