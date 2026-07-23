@@ -540,7 +540,14 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      de bloc) pour que le dégradé remonte jusqu'en haut de la page — sinon
      un bandeau du fond brut de .shop-root (#05060B, uni) apparaît entre le
      haut d'écran et le dégradé, visible comme un bloc noir disgracieux. */
-  .shop-hero { padding: 144px 22px 90px; margin-top: -95px; background: var(--hero-bg-mobile); }
+  /* Lueur blanche additive derrière le header, pour le faire ressortir du
+     fond dégradé — couche de background supplémentaire, n'affecte pas le
+     dégradé existant. */
+  .shop-hero {
+    padding: 144px 22px 90px;
+    margin-top: -95px;
+    background: radial-gradient(70% 35% at 50% 8%, rgba(255,255,255,.14), transparent 70%), var(--hero-bg-mobile);
+  }
   .shop-hero h1 { font-size: 27px; line-height: 1.25; }
   .shop-hero p { font-size: 12.5px; max-width: 300px; }
   .shop-cta-hero { width: 100%; justify-content: center; }
