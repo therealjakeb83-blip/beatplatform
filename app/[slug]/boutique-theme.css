@@ -542,7 +542,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      haut d'écran et le dégradé, visible comme un bloc noir disgracieux. */
   .shop-hero { padding: 144px 22px 90px; margin-top: -82px; background: var(--hero-bg-mobile); }
   .shop-hero h1 { font-size: 27px; line-height: 1.25; }
-  .shop-hero p { font-size: 12.5px; max-width: 320px; }
+  .shop-hero p { font-size: 12.5px; max-width: 300px; }
   .shop-cta-hero { width: 100%; justify-content: center; }
   .shop-down-arrow { margin-top: 60px; }
   .shop-header { border-radius: 20px; }
