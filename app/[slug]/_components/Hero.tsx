@@ -22,7 +22,7 @@ export default function Hero({
 
   return (
     <section className="shop-hero" id="top">
-      <div className="shop-container shop-hero-content">
+      <div className="shop-hero-content">
         <h1>{titre}</h1>
         <p>{sousTitre}</p>
         {afficherCta && (
