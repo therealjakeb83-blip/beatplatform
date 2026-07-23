@@ -12,6 +12,13 @@
   (jaune/orange/violet/N&B), posés via [data-accent-tone] par le même composant.
 */
 
+/* body/html restent blancs par défaut (globals.css) tant que le téléphone
+   est en mode clair système — Safari s'appuie sur cette couleur pendant le
+   rebond en haut/bas de page pour teinter sa barre, d'où du blanc qui
+   perce malgré le thème sombre de .shop-root (un enfant, pas body lui-même). */
+html:has(.shop-root), body:has(.shop-root) { background: #05060B; }
+html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-accent-preset="blancNoir"]) { background: #F7F8FC; }
+
 .shop-root {
   --bg: #05060B;
   --surface: #0D1019;
