@@ -161,8 +161,6 @@ export default function PlayerBar({
             {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
 
-          <FavoriButton beatId={currentBeat.id} clientId={clientId} slug={slug} className="shop-player-favori" />
-
           {moinsChere && (
             <button onClick={e => { e.stopPropagation(); ajouterAuPanier() }} className="shop-player-mobile-add">{moinsChere.prix}€ +</button>
           )}
