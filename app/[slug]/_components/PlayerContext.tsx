@@ -24,31 +24,61 @@ type PlayerContextType = {
   queue: BeatMin[]
   progress: number
   duration: number
+  isShuffled: boolean
+  loopOne: boolean
   play: (beat: BeatMin, queue: BeatMin[]) => void
   togglePlay: () => void
   next: () => void
   prev: () => void
   seek: (pct: number) => void
+  toggleShuffle: () => void
+  toggleLoop: () => void
 }
 
 const PlayerContext = createContext<PlayerContextType | null>(null)
+
+// Mélange persistant (Fisher-Yates) : figé jusqu'à désactivation du shuffle,
+// pas un tirage aléatoire à chaque ⏭ — décision Jake du 2026-07-22.
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentBeat, setCurrentBeat] = useState<BeatMin | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [queue, setQueue] = useState<BeatMin[]>([])
+  const [shuffleOrder, setShuffleOrder] = useState<BeatMin[]>([])
+  const [isShuffled, setIsShuffled] = useState(false)
+  const [loopOne, setLoopOne] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  const audioRef       = useRef<HTMLAudioElement | null>(null)
-  const queueRef       = useRef<BeatMin[]>([])
-  const currentBeatRef = useRef<BeatMin | null>(null)
-  const playedBeatsRef = useRef<Set<string>>(new Set())
-  const trackingRef    = useRef<{ beatId: string; accumulated: number; playedAt: number | null; play_id: string | null } | null>(null)
-  const finalizeRef    = useRef<(beacon: boolean) => void>(() => {})
+  const audioRef        = useRef<HTMLAudioElement | null>(null)
+  const queueRef        = useRef<BeatMin[]>([])
+  const shuffleOrderRef = useRef<BeatMin[]>([])
+  const isShuffledRef   = useRef(false)
+  const loopOneRef      = useRef(false)
+  const currentBeatRef  = useRef<BeatMin | null>(null)
+  const playedBeatsRef  = useRef<Set<string>>(new Set())
+  const trackingRef     = useRef<{ beatId: string; accumulated: number; playedAt: number | null; play_id: string | null } | null>(null)
+  const finalizeRef     = useRef<(beacon: boolean) => void>(() => {})
 
   useEffect(() => { queueRef.current = queue }, [queue])
+  useEffect(() => { shuffleOrderRef.current = shuffleOrder }, [shuffleOrder])
+  useEffect(() => { isShuffledRef.current = isShuffled }, [isShuffled])
+  useEffect(() => { loopOneRef.current = loopOne }, [loopOne])
   useEffect(() => { currentBeatRef.current = currentBeat }, [currentBeat])
+
+  // File active pour la navigation ⏮/⏭ et l'auto-avance en fin de piste :
+  // l'ordre mélangé si shuffle actif, sinon l'ordre d'origine.
+  function activeQueue() {
+    return isShuffledRef.current ? shuffleOrderRef.current : queueRef.current
+  }
 
   // Envoie la durée à chaque navigation Next.js (le PlayerProvider ne se démonte jamais)
   const pathname = usePathname()
@@ -173,18 +203,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       }
     })
     audio.addEventListener('ended', () => {
-      const q   = queueRef.current
       const cur = currentBeatRef.current
       if (!cur) return
-      const idx      = q.findIndex(b => b.id === cur.id)
-      const nextBeat = q[idx + 1]
-      if (nextBeat) {
-        setCurrentBeat(nextBeat)
-        currentBeatRef.current = nextBeat
-      } else {
+      if (loopOneRef.current) {
+        audio.currentTime = 0
+        audio.play().catch(() => {})
+        return
+      }
+      const q = isShuffledRef.current ? shuffleOrderRef.current : queueRef.current
+      if (q.length === 0) {
         setIsPlaying(false)
         setProgress(0)
+        return
       }
+      // Boucle circulaire : jamais de silence en fin de liste, on repart au début.
+      const idx      = q.findIndex(b => b.id === cur.id)
+      const nextBeat = q[idx === -1 ? 0 : (idx + 1) % q.length]
+      setCurrentBeat(nextBeat)
+      currentBeatRef.current = nextBeat
     })
 
     return () => {
@@ -209,6 +245,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const play = useCallback((beat: BeatMin, newQueue: BeatMin[]) => {
     setQueue(newQueue)
     queueRef.current = newQueue
+    if (isShuffledRef.current) {
+      const shuffled = shuffleArray(newQueue)
+      setShuffleOrder(shuffled)
+      shuffleOrderRef.current = shuffled
+    }
     if (currentBeatRef.current?.id === beat.id) {
       const audio = audioRef.current
       if (!audio) return
@@ -227,24 +268,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     else audio.pause()
   }, [])
 
+  // ⏮/⏭ bouclent toujours circulairement (retour au début après le dernier
+  // morceau) — décision Jake du 2026-07-22 : "jamais laisser l'utilisateur
+  // dans le vide". Indépendant du toggle loop (qui gère la fin de piste
+  // naturelle en repeat-one).
   const next = useCallback(() => {
-    const q   = queueRef.current
+    const q   = activeQueue()
     const cur = currentBeatRef.current
-    if (!cur) return
+    if (!cur || q.length === 0) return
     const idx      = q.findIndex(b => b.id === cur.id)
-    const nextBeat = q[idx + 1]
-    if (nextBeat) { setCurrentBeat(nextBeat); currentBeatRef.current = nextBeat }
+    const nextBeat = q[idx === -1 ? 0 : (idx + 1) % q.length]
+    setCurrentBeat(nextBeat)
+    currentBeatRef.current = nextBeat
   }, [])
 
   const prev = useCallback(() => {
     const audio = audioRef.current
     if (audio && audio.currentTime > 3) { audio.currentTime = 0; return }
-    const q   = queueRef.current
+    const q   = activeQueue()
     const cur = currentBeatRef.current
-    if (!cur) return
+    if (!cur || q.length === 0) return
     const idx      = q.findIndex(b => b.id === cur.id)
-    const prevBeat = q[idx - 1]
-    if (prevBeat) { setCurrentBeat(prevBeat); currentBeatRef.current = prevBeat }
+    const prevBeat = q[idx === -1 ? 0 : (idx - 1 + q.length) % q.length]
+    setCurrentBeat(prevBeat)
+    currentBeatRef.current = prevBeat
   }, [])
 
   const seek = useCallback((pct: number) => {
@@ -253,8 +300,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     audio.currentTime = (audio.duration || 0) * pct
   }, [])
 
+  const toggleShuffle = useCallback(() => {
+    setIsShuffled(prev => {
+      const nextVal = !prev
+      isShuffledRef.current = nextVal
+      if (nextVal) {
+        const shuffled = shuffleArray(queueRef.current)
+        setShuffleOrder(shuffled)
+        shuffleOrderRef.current = shuffled
+      }
+      return nextVal
+    })
+  }, [])
+
+  const toggleLoop = useCallback(() => {
+    setLoopOne(prev => !prev)
+  }, [])
+
   return (
-    <PlayerContext.Provider value={{ currentBeat, isPlaying, queue, progress, duration, play, togglePlay, next, prev, seek }}>
+    <PlayerContext.Provider value={{
+      currentBeat, isPlaying, queue, progress, duration, isShuffled, loopOne,
+      play, togglePlay, next, prev, seek, toggleShuffle, toggleLoop,
+    }}>
       {children}
     </PlayerContext.Provider>
   )

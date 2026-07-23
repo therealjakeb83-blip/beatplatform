@@ -223,6 +223,15 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-skip:hover { color: var(--text); }
 
+/* Panneau déplié : même glass hardcodé que le mini-player mobile. */
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded { background: rgba(255,255,255,.95); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-cover { border-color: rgba(10,12,19,.1); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-progress .shop-player-time { color: rgba(10,12,19,.55); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-handle { background: rgba(10,12,19,.25); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-favori { border-color: rgba(10,12,19,.4); color: rgba(10,12,19,.7); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-toggle-btn { color: rgba(10,12,19,.5); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-skip { color: rgba(10,12,19,.8); }
+
 /* Tab bar mobile : fond hardcodé sombre, icônes/texte hardcodés blancs
    (icônes en stroke="currentColor", héritent de la couleur du lien) */
 .shop-root[data-accent-preset="blancNoir"] .shop-tabbar { background: rgba(255,255,255,.97); }
@@ -1047,9 +1056,152 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   flex-shrink: 0;
 }
 
+.shop-player-mobile { cursor: pointer; }
+
+/* ============================================================
+   PLAYER MOBILE — PANNEAU DÉPLIÉ
+   Même carte flottante que .shop-player-mobile (même position, marges,
+   fond, radius) mais en état ouvert : cover 170px, favori dédié, rangée
+   de contrôles complète (shuffle/loop/prev/play/next/prix).
+   ============================================================ */
+.shop-player-expanded {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: 71px;
+  z-index: 61;
+  margin: 0 10px var(--sp-2);
+  background: rgba(10,12,22,.95);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  overflow: hidden;
+  display: none;
+}
+
+.shop-player-expanded-inner { padding: var(--sp-3) 18px 0; }
+
+.shop-player-expanded-handle {
+  display: block;
+  width: 36px; height: 4px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,.25);
+  margin: 0 auto 14px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.shop-player-expanded-cover-wrap { display: flex; justify-content: center; }
+.shop-player-expanded-cover {
+  width: 170px; height: 170px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid var(--line-strong);
+}
+
+.shop-player-expanded-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--sp-4);
+}
+
+.shop-player-expanded-head-info { flex: 1; min-width: 0; }
+.shop-player-expanded-head-info .shop-player-title { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shop-player-expanded-head-info .shop-player-tag { font-size: 9.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+
+.shop-player-expanded-favori {
+  width: 36px; height: 36px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.55);
+  color: rgba(255,255,255,.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color .15s, color .15s, box-shadow .15s;
+}
+.shop-player-expanded-favori span { font-size: 16px; }
+.shop-player-expanded-favori.is-active { border-color: var(--ac); color: var(--ac); box-shadow: 0 0 12px var(--glow-cta); }
+
+.shop-player-expanded-progress { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.shop-player-expanded-progress .shop-player-time { font-size: 10px; }
+
+.shop-player-expanded-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  margin-top: var(--sp-2);
+  padding-bottom: var(--sp-3);
+}
+
+.shop-player-expanded-sideleft {
+  position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+}
+
+.shop-player-expanded-toggle-btn {
+  width: 32px; height: 32px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: 0;
+  color: rgba(255,255,255,.55);
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: color .15s;
+}
+.shop-player-expanded-toggle-btn.is-active { color: var(--ac); }
+.shop-player-expanded-toggle-btn:active { transform: scale(.85); }
+
+.shop-player-expanded-skip {
+  width: 38px; height: 38px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: 0;
+  color: rgba(255,255,255,.85);
+  cursor: pointer;
+  display: grid; place-items: center;
+}
+.shop-player-expanded-skip:active { transform: scale(.85); }
+
+.shop-player-expanded-toggle {
+  width: 52px; height: 52px;
+  border-radius: var(--r-pill);
+  background: var(--ac);
+  color: var(--ac-t);
+  border: 0;
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.shop-player-expanded-toggle:active { transform: scale(.85); }
+
+.shop-player-expanded-price {
+  position: absolute; right: 0; top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 1px solid var(--ac);
+  color: var(--ac-soft);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.shop-player-expanded-price:active { transform: translateY(-50%) scale(.85); }
+
+.shop-player-expanded-handle:active { transform: scale(.85); }
+
 @media (max-width: 767px) {
   .shop-player { display: none; }
   .shop-player-mobile { display: flex; }
+  .shop-player-expanded { display: block; }
 }
 
 /* ============================================================
