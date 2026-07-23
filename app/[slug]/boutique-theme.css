@@ -470,7 +470,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 @media (max-width: 767px) {
   /* Écran mobile déjà chargé (tab bar + player) : le header reste en
      haut de page au lieu de suivre le scroll, pour désencombrer. */
-  .shop-header-wrap { position: static; top: auto; padding: 0 var(--sp-3); }
+  .shop-header-wrap { position: static; top: auto; margin-top: 10px; padding: 0 var(--sp-3); }
   .shop-logo, .shop-logo-fallback { height: 32px; width: 32px; }
   .shop-header-row1 { padding: 10px 14px; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
@@ -714,6 +714,7 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
 
 .shop-player-favori:hover { color: #fff; }
 .shop-player-favori.is-active { color: var(--ac); }
+.shop-player-favori svg { width: 12px; height: 12px; }
 
 .shop-freedl-btn {
   position: absolute;
@@ -1117,14 +1118,14 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
   background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
-  border: 1px solid rgba(255,255,255,.55);
+  border: 1px solid rgba(255,255,255,.22);
   color: rgba(255,255,255,.85);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
   transition: border-color .15s, color .15s, box-shadow .15s;
 }
-.shop-player-expanded-favori span { font-size: 16px; }
+.shop-player-expanded-favori svg { width: 15px; height: 15px; }
 .shop-player-expanded-favori.is-active { border-color: var(--ac); color: var(--ac); box-shadow: 0 0 12px var(--glow-cta); }
 
 .shop-player-expanded-progress { display: flex; align-items: center; gap: 8px; margin-top: 14px; }

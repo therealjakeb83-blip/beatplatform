@@ -1,7 +1,9 @@
 import { Suspense } from 'react'
+import type { Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { accentPresetKey } from './_lib/theme-accent'
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
 import { CartProvider } from './_components/CartContext'
@@ -11,6 +13,21 @@ import BoutiqueFooter from './_components/BoutiqueFooter'
 import BoutiqueThemeRoot from './_components/BoutiqueThemeRoot'
 import MobileTabBar from './_components/MobileTabBar'
 import './boutique-theme.css'
+
+// Chrome du navigateur mobile (barre d'adresse/statut) alignée sur le thème
+// de la boutique — sinon elle reste blanche par défaut et jure avec le fond
+// sombre. 'blancNoir' est le seul preset à fond clair (voir boutique-theme.css).
+export async function generateViewport({ params }: { params: Promise<{ slug: string }> }): Promise<Viewport> {
+  const { slug } = await params
+  const admin = createAdminClient()
+  const { data } = await admin.from('beatmakers').select('theme_couleur').eq('slug', slug).maybeSingle()
+  const isLight = accentPresetKey(data?.theme_couleur ?? '#2E4CF0') === 'blancNoir'
+
+  return {
+    themeColor: isLight ? '#F7F8FC' : '#05060B',
+    colorScheme: isLight ? 'light' : 'dark',
+  }
+}
 
 // Police du design system (tokens.css: --font: 'Poppins'), poids 400-800.
 const poppins = Poppins({

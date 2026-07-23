@@ -64,7 +64,9 @@ export default function FavoriButton({
       className={`${className}${estFavori ? ' is-active' : ''}`}
       style={chargement ? { cursor: 'wait' } : undefined}
     >
-      <span style={{ fontSize: 13 }}>{estFavori ? '♥' : '♡'}</span>
+      <svg viewBox="0 0 24 24" fill={estFavori ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round">
+        <path d="M12 21s-7.5-4.8-9.8-9.2C.7 8.9 2.4 5.5 5.7 5.1c1.9-.2 3.8.7 4.9 2.3l1.4 2 1.4-2c1.1-1.6 3-2.5 4.9-2.3 3.3.4 5 3.8 3.5 6.7C19.5 16.2 12 21 12 21z" />
+      </svg>
     </button>
   )
 }
