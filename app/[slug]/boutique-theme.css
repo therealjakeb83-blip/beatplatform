@@ -570,7 +570,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 
 .shop-members-box .shop-section-heading h2 { color: rgba(255,255,255,.85); }
 
-.shop-section-count { color: var(--text-3); font-weight: 500; font-size: 20px; margin-left: var(--sp-2); }
+.shop-section-count { color: var(--text-3); font-weight: 500; font-size: 15px; margin-left: var(--sp-2); }
 
 /* a.shop-all-button : même piège de spécificité, voir a.shop-pill ci-dessus */
 a.shop-all-button {
