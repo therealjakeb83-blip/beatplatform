@@ -477,7 +477,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 @media (max-width: 767px) {
   /* Écran mobile déjà chargé (tab bar + player) : le header reste en
      haut de page au lieu de suivre le scroll, pour désencombrer. */
-  .shop-header-wrap { position: static; top: auto; margin-top: 44px; padding: 0 var(--sp-3); }
+  .shop-header-wrap { position: static; top: auto; margin-top: 0; padding: 0 var(--sp-3); }
   .shop-logo, .shop-logo-fallback { height: 32px; width: 32px; }
   .shop-header-row1 { padding: 10px 14px; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
@@ -536,7 +536,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 }
 
 @media (max-width: 767px) {
-  .shop-hero { padding: 120px 22px 90px; margin-top: -64px; background: var(--hero-bg-mobile); }
+  .shop-hero { padding: 144px 22px 90px; margin-top: -64px; background: var(--hero-bg-mobile); }
   .shop-hero h1 { font-size: 27px; line-height: 1.25; }
   .shop-hero p { font-size: 12.5px; max-width: 320px; }
   .shop-cta-hero { width: 100%; justify-content: center; }
