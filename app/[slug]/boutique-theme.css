@@ -479,7 +479,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      haut de page au lieu de suivre le scroll, pour désencombrer. */
   .shop-header-wrap { position: static; top: auto; margin-top: 12px; padding: 0 var(--sp-3); }
   .shop-logo, .shop-logo-fallback { height: 32px; width: 32px; }
-  .shop-header-row1 { padding: 7px 14px; gap: var(--sp-3); }
+  .shop-header-row1 { padding: 8px 14px; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
   .shop-header-icons { margin-left: auto; }
 }
