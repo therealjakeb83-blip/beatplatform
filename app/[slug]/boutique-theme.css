@@ -163,24 +163,32 @@ body:has(.shop-root) { overflow-x: hidden; }
   --surface-3: #F1F3F9;
   --footer-bg: #EFF1F8;
   --drawer-bg: #FFFFFF;
-  --line: rgba(10,12,19,.08);
-  --line-strong: rgba(10,12,19,.12);
+  /* .14/.2 (au lieu de .08/.12) : bordures de cartes invisibles sur fond
+     blanc avec les valeurs sombres d'origine (déclinaison Blanche, 2026-07-23) */
+  --line: rgba(10,12,19,.14);
+  --line-strong: rgba(10,12,19,.2);
+  --card-shadow: 0 1px 3px rgba(20,30,60,.06);
   --glass-header: rgba(255,255,255,.72);
   --glass-player: rgba(255,255,255,.95);
   --shadow-header: 0 14px 44px rgba(20,30,60,.12);
 
   --text: #0A0C13;
   --text-2: rgba(10,12,19,.72);
-  --text-3: rgba(10,12,19,.55);
+  /* .7 (au lieu de .55) : sous le seuil AA sur fond blanc en dessous de 14px */
+  --text-3: rgba(10,12,19,.7);
+  --text-4: rgba(10,12,19,.64);
 
   --ac-soft: rgb(74,77,86);
   --ac-deep: rgb(10,12,19);
-  --g1: rgb(160,156,166);
-  --g2: rgb(109,114,123);
-  --glow1: rgb(188,189,193);
-  --glow2: rgb(228,228,230);
-  --hero-bg: radial-gradient(130% 120% at 50% -20%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
-  --hero-bg-mobile: radial-gradient(160% 100% at 50% -15%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
+  --style-card-text: #0A0C13;
+  /* Gris neutres (chroma 0) recalculés depuis les oklch() de la maquette —
+     l'ancien jeu de valeurs avait une légère dominante violette parasite. */
+  --g1: rgb(238,238,238);
+  --g2: rgb(189,190,190);
+  --glow1: rgb(215,215,215);
+  --glow2: rgb(242,242,242);
+  --hero-bg: radial-gradient(130% 120% at 50% -20%, var(--glow1) 0%, var(--glow2) 48%, var(--bg) 92%);
+  --hero-bg-mobile: radial-gradient(160% 100% at 50% -15%, var(--glow1) 0%, var(--glow2) 48%, var(--bg) 92%);
 }
 
 /* Logo : fourni en blanc par le beatmaker, rendu noir sur fond clair
@@ -192,13 +200,22 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-logo-fallback { background: var(--ac); }
 
 /* Header : bordures/inputs/texte/icônes hardcodés pour le thème sombre */
-.shop-root[data-accent-preset="blancNoir"] .shop-header { border-color: rgba(10,12,19,.1); }
-.shop-root[data-accent-preset="blancNoir"] .shop-search { border-color: rgba(10,12,19,.1); }
+.shop-root[data-accent-preset="blancNoir"] .shop-header { border-color: rgba(10,12,19,.18); }
+.shop-root[data-accent-preset="blancNoir"] .shop-search { border-color: rgba(10,12,19,.18); }
 .shop-root[data-accent-preset="blancNoir"] .shop-search svg { stroke: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-search input { color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-search input::placeholder { color: rgba(10,12,19,.5); }
 .shop-root[data-accent-preset="blancNoir"] .shop-header-links a { color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-icon-btn svg { stroke: var(--text); }
+
+/* Boutons du header mobile : pastilles pleines noires + icônes blanches
+   (différent du desktop, qui reste fond clair/icône sombre) — spécifique à
+   la déclinaison Blanche mobile. */
+@media (max-width: 767px) {
+  .shop-root[data-accent-preset="blancNoir"] .shop-icon-btn { background: var(--ac); border-color: var(--ac); }
+  .shop-root[data-accent-preset="blancNoir"] .shop-icon-btn svg { stroke: #FFFFFF; }
+  .shop-root[data-accent-preset="blancNoir"] .shop-cart-count { background: #FFFFFF; color: var(--ac); border: 1px solid var(--ac); }
+}
 
 /* CTA héro / pill "Beats privés" : en thème clair l'accent est déjà noir,
    donc l'état "inversé" du thème sombre (fond blanc/texte accent) devient
@@ -211,20 +228,24 @@ body:has(.shop-root) { overflow-x: hidden; }
 
 /* Cartes / carrousels : textes et bordures hardcodés blancs */
 .shop-root[data-accent-preset="blancNoir"] .shop-members-box .shop-section-heading h2 { color: rgba(10,12,19,.88); }
+.shop-root[data-accent-preset="blancNoir"] .shop-section-count { color: var(--text-4); }
 .shop-root[data-accent-preset="blancNoir"] .shop-beat-title.is-dimmed { color: rgba(10,12,19,.78); }
 .shop-root[data-accent-preset="blancNoir"] .shop-beat-fallback { background: var(--surface-2); color: var(--text-3); }
+.shop-root[data-accent-preset="blancNoir"] .shop-beat-card { box-shadow: var(--card-shadow); }
+.shop-root[data-accent-preset="blancNoir"] a.shop-style-card { border: 1px solid rgba(10,12,19,.05); box-shadow: 0 1px 2px rgba(10,12,19,.05); }
 .shop-root[data-accent-preset="blancNoir"] .shop-artist-card { color: var(--text); }
-.shop-root[data-accent-preset="blancNoir"] .shop-artist-card-photo { border-color: rgba(10,12,19,.1); }
+.shop-root[data-accent-preset="blancNoir"] .shop-artist-card-photo { border-color: rgba(10,12,19,.18); }
 .shop-root[data-accent-preset="blancNoir"] .shop-media-card { background: var(--surface-2); }
 .shop-root[data-accent-preset="blancNoir"] .shop-social-icon { color: var(--text); border-color: rgba(10,12,19,.28); }
 .shop-root[data-accent-preset="blancNoir"] .shop-footer-col a { color: rgba(10,12,19,.78); }
+.shop-root[data-accent-preset="blancNoir"] .shop-footer-tagline { color: var(--text-4); }
 
 /* Player : glass mobile hardcodé, curseur blanc invisible sans bordure sur
    fond clair (note tokens-light.css), textes/pistes hardcodés blancs */
 .shop-root[data-accent-preset="blancNoir"] .shop-player-mobile { background: rgba(255,255,255,.95); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-cover { border-color: rgba(10,12,19,.1); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-time { color: rgba(10,12,19,.55); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-track-bg { background: rgba(10,12,19,.12); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-track-bg { background: rgba(10,12,19,.14); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-thumb { border: 2px solid var(--ac); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori { color: rgba(10,12,19,.6); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { color: var(--text); }
@@ -234,14 +255,18 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded { background: rgba(255,255,255,.95); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-cover { border-color: rgba(10,12,19,.1); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-progress .shop-player-time { color: rgba(10,12,19,.55); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-handle { background: rgba(10,12,19,.25); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-favori { border-color: rgba(10,12,19,.4); color: rgba(10,12,19,.7); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-toggle-btn { color: rgba(10,12,19,.5); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-skip { color: rgba(10,12,19,.8); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-handle { background: rgba(10,12,19,.2); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-favori {
+  background: linear-gradient(160deg, rgba(10,12,19,.05), rgba(10,12,19,.01));
+  border-color: rgba(10,12,19,.18);
+  color: rgba(10,12,19,.55);
+}
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-toggle-btn { color: rgba(10,12,19,.45); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-skip { color: rgba(10,12,19,.85); }
 
 /* Tab bar mobile : fond hardcodé sombre, icônes/texte hardcodés blancs
    (icônes en stroke="currentColor", héritent de la couleur du lien) */
-.shop-root[data-accent-preset="blancNoir"] .shop-tabbar { background: rgba(255,255,255,.97); }
+.shop-root[data-accent-preset="blancNoir"] .shop-tabbar { background: rgba(255,255,255,.97); border-top-color: rgba(10,12,19,.12); }
 .shop-root[data-accent-preset="blancNoir"] a.shop-tabbar-item { color: rgba(10,12,19,.6); }
 .shop-root[data-accent-preset="blancNoir"] a.shop-tabbar-item.is-active { color: var(--text); }
 
@@ -251,7 +276,7 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-close:hover { color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-item { border-color: rgba(10,12,19,.09); }
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-item-remove { color: rgba(10,12,19,.4); }
-.shop-root[data-accent-preset="blancNoir"] .shop-cart-member-banner { border-color: rgba(10,12,19,.1); }
+.shop-root[data-accent-preset="blancNoir"] .shop-cart-member-banner { border-color: rgba(10,12,19,.18); }
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-footer { border-top-color: rgba(10,12,19,.1); }
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-input { border-color: rgba(10,12,19,.15); color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-promo-apply { border-color: rgba(10,12,19,.2); color: rgba(10,12,19,.75); }
