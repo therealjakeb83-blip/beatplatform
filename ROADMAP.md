@@ -907,7 +907,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T8** — Email, slug et Stripe Connect bien absents du formulaire d'édition (lecture seule uniquement)
 
 **Suspension (boutique de test uniquement) :**
-- [ ] **T9** — Clic "Suspendre" sans raison → bouton désactivé/bloqué (raison obligatoire)
+- [x] **T9** — Clic "Suspendre" sans raison → bouton désactivé/bloqué (raison obligatoire)
 - [ ] **T10** — Suspension avec raison → rapport affiché cohérent (abo plateforme + nombre d'artistes mis en pause)
 - [ ] **T11** — Le beatmaker suspendu, en se connectant à son dashboard, est redirigé vers `/dashboard/suspendu` avec le bon motif affiché
 - [ ] **T12** — La boutique publique `/{slug}` de test affiche "temporairement indisponible" (plus de header/player/catalogue)
