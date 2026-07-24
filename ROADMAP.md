@@ -903,8 +903,8 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Fiche boutique (`/dashboard/admin/boutiques/[id]`) :**
 - [x] **T6** — Stats affichées (clients, commandes, statut abo plateforme, artistes abonnés actifs) cohérentes avec les données réelles de la boutique de test
-- [ ] **T7** — Correction d'un champ bas risque (ex. téléphone, tagline) → sauvegarde visible après rechargement
-- [ ] **T8** — Email, slug et Stripe Connect bien absents du formulaire d'édition (lecture seule uniquement)
+- [x] **T7** — Correction d'un champ bas risque (ex. téléphone, tagline) → sauvegarde visible après rechargement
+- [x] **T8** — Email, slug et Stripe Connect bien absents du formulaire d'édition (lecture seule uniquement)
 
 **Suspension (boutique de test uniquement) :**
 - [ ] **T9** — Clic "Suspendre" sans raison → bouton désactivé/bloqué (raison obligatoire)
