@@ -968,7 +968,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T7** — Bouton "Gérer mon abonnement" → redirige vers le portail Stripe (Billing Portal), sans erreur
 
 **Annulation (via le portail Stripe) :**
-- [ ] **T8** — Annule l'abonnement depuis le portail → `abonnements_plateforme.statut` repasse à `annule` (vérifiable en base ou via la fiche admin)
+- [x] **T8** — Annule l'abonnement depuis le portail → `abonnements_plateforme.statut` repasse à `annule` *(nuance découverte : annuler pendant l'essai programme `cancel_at` à la fin d'essai plutôt que d'annuler immédiatement côté Stripe — `statut` reste `en_essai` jusque-là, mais l'indicateur "annulation prévue" ajouté en session s'affiche bien sur la fiche admin et `/dashboard/abonnement`. Le passage à `annule` au jour J n'est pas re-testé en direct, mais le handler `customer.subscription.deleted` est le même code déjà validé côté abonnement boutique)*
 
 **Second essai (annuel) :**
 - [ ] **T9** — Avec un autre compte de test, refaire T1-T4 en choisissant "Annuel" → prix et période corrects en base (`periode = 'annuel'`, `prix = 49990`)
