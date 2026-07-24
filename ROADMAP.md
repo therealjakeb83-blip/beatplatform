@@ -915,8 +915,8 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T10** — Suspension avec raison → rapport affiché cohérent (abo plateforme + nombre d'artistes mis en pause) *(validé sur `jakeb-test1` avec un vrai abonnement Stripe test — a aussi révélé et corrigé un bug : un abonnement artiste sans compte Connect était ignoré au lieu d'être mis en pause)*
 - [x] **T11** — Le beatmaker suspendu, en se connectant à son dashboard, est redirigé vers `/dashboard/suspendu` avec le bon motif affiché *(validé pendant l'incident d'auto-suspension du compte admin, voir note plus haut)*
 - [x] **T12** — La boutique publique `/{slug}` de test affiche "temporairement indisponible" (plus de header/player/catalogue)
-- [ ] **T13** — Sur le Dashboard Stripe (mode test) : l'abonnement plateforme du beatmaker de test passe bien en pause (`pause_collection` actif)
-- [ ] **T14** — Sur le Dashboard Stripe (mode test) : les abonnements artistes actifs de cette boutique passent bien en pause
+- [ ] **T13** — Sur le Dashboard Stripe (mode test) : l'abonnement plateforme du beatmaker de test passe bien en pause (`pause_collection` actif) *(pas encore testé — `jakeb-test1` n'a pas d'abonnement plateforme, il en faut un via `/dashboard/paiements` pour vérifier ce cas)*
+- [x] **T14** — Sur le Dashboard Stripe (mode test) : les abonnements artistes actifs de cette boutique passent bien en pause *(validé sur `jakeb-test1` — badge "Recouvrement suspendu" confirmé)*
 - [ ] **T15** — Réactivation → dashboard et boutique publique de nouveau accessibles immédiatement
 - [ ] **T16** — L'abonnement plateforme reprend exactement son statut d'avant suspension (`actif` ou `en_essai`, pas juste `actif` par défaut) et la pause Stripe est retirée
 - [ ] **T17** — Les abonnements artistes repassent à `actif` et la pause Stripe est retirée sur chacun
