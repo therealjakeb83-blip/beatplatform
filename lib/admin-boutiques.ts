@@ -72,15 +72,21 @@ export async function suspendreBoutique(beatmakerId: string, raison: string): Pr
   const rapportArtistes: RapportSuspension['artistes'] = { total: abosArtistes?.length ?? 0, reussis: 0, ignores: 0, echecs: [] }
 
   for (const abo of abosArtistes ?? []) {
-    if (!abo.stripe_subscription_id || !beatmaker?.stripe_account_id) {
+    if (!abo.stripe_subscription_id) {
       rapportArtistes.ignores++
       continue
     }
     try {
+      // Un abonnement artiste ne vit sur le compte Connect du beatmaker que
+      // si celui-ci était configuré au moment du checkout (transfer_data) —
+      // sinon la subscription vit sur le compte principal. Découvert le
+      // 2026-07-24 : ignorer purement et simplement dès que stripe_account_id
+      // est absent aurait laissé de vrais abonnements sans Connect continuer
+      // à facturer pendant une suspension.
       await stripe.subscriptions.update(
         abo.stripe_subscription_id,
         { pause_collection: { behavior: 'void' } },
-        { stripeAccount: beatmaker.stripe_account_id }
+        beatmaker?.stripe_account_id ? { stripeAccount: beatmaker.stripe_account_id } : undefined
       )
       await admin.from('abonnements_boutique').update({
         statut: 'suspendu',
@@ -150,7 +156,7 @@ export async function reactiverBoutique(beatmakerId: string): Promise<RapportSus
   const rapportArtistes: RapportSuspension['artistes'] = { total: abosArtistes?.length ?? 0, reussis: 0, ignores: 0, echecs: [] }
 
   for (const abo of abosArtistes ?? []) {
-    if (!abo.stripe_subscription_id || !beatmaker?.stripe_account_id) {
+    if (!abo.stripe_subscription_id) {
       rapportArtistes.ignores++
       await admin.from('abonnements_boutique').update({
         statut: abo.statut_avant_suspension ?? 'actif',
@@ -162,7 +168,7 @@ export async function reactiverBoutique(beatmakerId: string): Promise<RapportSus
       await stripe.subscriptions.update(
         abo.stripe_subscription_id,
         { pause_collection: '' },
-        { stripeAccount: beatmaker.stripe_account_id }
+        beatmaker?.stripe_account_id ? { stripeAccount: beatmaker.stripe_account_id } : undefined
       )
       await admin.from('abonnements_boutique').update({
         statut: abo.statut_avant_suspension ?? 'actif',
