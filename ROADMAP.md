@@ -895,9 +895,9 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T0** — Migration `phase15_1_admin_support.sql` exécutée sans erreur
 
 **Recherche (`/dashboard/admin/recherche`) :**
-- [ ] **T1** — Recherche par email d'un beatmaker → apparaît dans "Boutiques"
-- [ ] **T2** — Recherche par slug d'un beatmaker → même résultat
-- [ ] **T3** — Recherche par email d'un client → apparaît dans "Clients (artistes)"
+- [x] **T1** — Recherche par email d'un beatmaker → apparaît dans "Boutiques"
+- [x] **T2** — Recherche par slug d'un beatmaker → même résultat
+- [x] **T3** — Recherche par email d'un client → apparaît dans "Clients (artistes)"
 - [ ] **T4** — Recherche par préfixe d'ID d'une commande (les 8 caractères affichés `#XXXXXXXX` dans `/dashboard/business/commandes`) → apparaît dans "Commandes", lien fonctionne
 - [ ] **T5** — Recherche par préfixe d'ID d'un abonnement boutique (`A-XXXXXXXX`) → apparaît dans "Abonnements boutique", lien fonctionne
 
