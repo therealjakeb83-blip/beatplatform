@@ -137,6 +137,15 @@ body:has(.shop-root) { overflow-x: hidden; }
   --ac-soft: rgb(206,206,206);
 }
 
+/* Bouton du header : sur les autres thèmes il alterne avec celui du hero
+   (header = accent vif / hero = blanc, inversés au survol) — avec un
+   accent quasi-blanc, l'accent générique (var(--ac)) rend les deux
+   boutons indissociables. Rendu "noir" plein pour recréer le contraste
+   noir/blanc, y compris l'inversion au survol. Ne cible que le bouton du
+   header (.shop-header-row1), pas celui du hero qui reste inchangé. */
+.shop-root[data-accent-tone="noirBlanc"] .shop-header-row1 a.shop-cta { background: #0A0C13; color: #fff; }
+.shop-root[data-accent-tone="noirBlanc"] .shop-header-row1 a.shop-cta:hover { background: #fff; color: #0A0C13; }
+
 /* Bleu : valeurs figées en rgb() directement (pas la formule oklch(from var(--ac) ...))
    — un oklch() relatif à une custom property se résout différemment de la même
    formule appliquée à un hex littéral (comme le fait la maquette), constaté par
