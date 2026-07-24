@@ -988,7 +988,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 > ⚠️ **Avant de tester** : migration `phase8b_3_exemption_gate.sql` exécutée (✅ faite en session). Un script ponctuel a déjà activé `abonnement_exempte = true` sur les 15 comptes de test qui n'avaient ni vrai essai Stripe ni bypass admin (`beatmaker-b`, `jake-2`, `jakeb-test2` à `jakeb-test10`, `jeanne-b`, `nehzia-s`, `nico-beats`, `test-du-jour`, `testbeatmaker1`) — `jakeb-test` (admin) et `jakeb-test1`/`re-test-88ae36d4` (vrai essai `en_essai`) n'en ont pas besoin.
 
 - [x] **T11** — Un compte beatmaker **sans abonnement ET sans exemption** (créer un nouveau compte de test, ou retirer temporairement l'exemption d'un compte existant via le bouton admin) est redirigé vers `/dashboard/abonnement` dès qu'il visite n'importe quelle page `/dashboard/**`
-- [ ] **T12** — Depuis ce même compte bloqué, `/dashboard/abonnement` reste accessible (pas de boucle de redirection) et affiche le choix mensuel/annuel
+- [x] **T12** — Depuis ce même compte bloqué, `/dashboard/abonnement` reste accessible (pas de boucle de redirection) et affiche le choix mensuel/annuel
 - [ ] **T13** — Ce compte souscrit un essai réel (checkout Stripe test, carte 4242) → immédiatement après, `/dashboard` redevient accessible sans rien recharger de spécial
 - [ ] **T14** — `jakeb-test1` (déjà `en_essai` réel) accède normalement à `/dashboard` sans passer par l'exemption
 - [ ] **T15** — Un compte de test avec `abonnement_exempte = true` (ex. `jakeb-test2`) accède normalement à `/dashboard` malgré `abo_plateforme = AUCUN`
