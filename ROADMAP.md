@@ -892,7 +892,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 > ⚠️ **Tester la suspension sur une boutique de test uniquement** (ex. `feedback.jakeb@gmail.com`, voir mémoire `project_compte_test_feedback_jakeb`) — la cascade met en pause de vrais abonnements Stripe (mode test), jamais une boutique réelle active.
 
 **Préalable :**
-- [ ] **T0** — Migration `phase15_1_admin_support.sql` exécutée sans erreur
+- [x] **T0** — Migration `phase15_1_admin_support.sql` exécutée sans erreur
 
 **Recherche (`/dashboard/admin/recherche`) :**
 - [ ] **T1** — Recherche par email d'un beatmaker → apparaît dans "Boutiques"
