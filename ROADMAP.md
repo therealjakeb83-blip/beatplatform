@@ -989,7 +989,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 - [x] **T11** — Un compte beatmaker **sans abonnement ET sans exemption** (créer un nouveau compte de test, ou retirer temporairement l'exemption d'un compte existant via le bouton admin) est redirigé vers `/dashboard/abonnement` dès qu'il visite n'importe quelle page `/dashboard/**`
 - [x] **T12** — Depuis ce même compte bloqué, `/dashboard/abonnement` reste accessible (pas de boucle de redirection) et affiche le choix mensuel/annuel
-- [ ] **T13** — Ce compte souscrit un essai réel (checkout Stripe test, carte 4242) → immédiatement après, `/dashboard` redevient accessible sans rien recharger de spécial
+- [x] **T13** — Ce compte souscrit un essai réel (checkout Stripe test, carte 4242) → immédiatement après, `/dashboard` redevient accessible sans rien recharger de spécial
 - [ ] **T14** — `jakeb-test1` (déjà `en_essai` réel) accède normalement à `/dashboard` sans passer par l'exemption
 - [ ] **T15** — Un compte de test avec `abonnement_exempte = true` (ex. `jakeb-test2`) accède normalement à `/dashboard` malgré `abo_plateforme = AUCUN`
 - [ ] **T16** — Le compte admin (`jakeb-test`) accède normalement à `/dashboard` ET `/dashboard/admin` sans jamais être concerné par le gate, quel que soit son statut d'abonnement
