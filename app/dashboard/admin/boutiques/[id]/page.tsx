@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/utils/supabase/admin'
 import BoutiqueDetailClient from './_components/BoutiqueDetailClient'
-import { suspendreAction, reactiverAction, corrigerBeatmakerAction } from './_lib/actions'
+import { suspendreAction, reactiverAction, corrigerBeatmakerAction, exempterGateAction } from './_lib/actions'
 
 export default async function BoutiqueDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -9,7 +9,7 @@ export default async function BoutiqueDetailPage({ params }: { params: Promise<{
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, email, nom_artiste, slug, tagline, bio, telephone, adresse, ville, code_postal, pays, numero_entreprise, notes_admin, statut, suspendu_le, suspendu_raison, created_at, stripe_account_id, devise')
+    .select('id, email, nom_artiste, slug, tagline, bio, telephone, adresse, ville, code_postal, pays, numero_entreprise, notes_admin, statut, suspendu_le, suspendu_raison, created_at, stripe_account_id, devise, abonnement_exempte')
     .eq('id', id)
     .maybeSingle()
 
@@ -33,6 +33,7 @@ export default async function BoutiqueDetailPage({ params }: { params: Promise<{
       suspendreAction={suspendreAction}
       reactiverAction={reactiverAction}
       corrigerBeatmakerAction={corrigerBeatmakerAction}
+      exempterGateAction={exempterGateAction}
     />
   )
 }

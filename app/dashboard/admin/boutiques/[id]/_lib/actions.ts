@@ -43,6 +43,20 @@ const CHAMPS_AUTORISES = [
 ] as const
 type ChampAutorise = typeof CHAMPS_AUTORISES[number]
 
+// Laisser-passer gate abonnement plateforme (Étape 8b, suite) — pour les
+// boutiques de test qui n'ont pas de vrai abonnement Stripe. Volontairement
+// séparé de corrigerBeatmakerAction (champs texte) car c'est un bypass de
+// sécurité, pas une simple correction de profil.
+export async function exempterGateAction(beatmakerId: string, exempte: boolean): Promise<{ erreur?: string }> {
+  if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('beatmakers').update({ abonnement_exempte: exempte }).eq('id', beatmakerId)
+  if (error) return { erreur: error.message }
+
+  return {}
+}
+
 export async function corrigerBeatmakerAction(
   beatmakerId: string,
   champs: Partial<Record<ChampAutorise, string>>

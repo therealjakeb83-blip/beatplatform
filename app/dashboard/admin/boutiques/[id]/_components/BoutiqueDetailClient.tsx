@@ -24,6 +24,7 @@ type Beatmaker = {
   created_at: string
   stripe_account_id: string | null
   devise: string
+  abonnement_exempte: boolean
 }
 
 type ChampsEditables = Record<'nom_artiste' | 'tagline' | 'bio' | 'telephone' | 'adresse' | 'ville' | 'code_postal' | 'numero_entreprise' | 'notes_admin', string>
@@ -38,13 +39,15 @@ type Props = {
   suspendreAction: (id: string, raison: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
   reactiverAction: (id: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
   corrigerBeatmakerAction: (id: string, champs: Partial<ChampsEditables>) => Promise<{ erreur?: string }>
+  exempterGateAction: (id: string, exempte: boolean) => Promise<{ erreur?: string }>
 }
 
 export default function BoutiqueDetailClient({
   beatmaker, nbClients, nbCommandes, statutAbonnementPlateforme, annulationPrevueAbonnementPlateforme, nbAbosArtistesActifs,
-  suspendreAction, reactiverAction, corrigerBeatmakerAction,
+  suspendreAction, reactiverAction, corrigerBeatmakerAction, exempterGateAction,
 }: Props) {
   const [statut, setStatut] = useState(beatmaker.statut)
+  const [exempte, setExempte] = useState(beatmaker.abonnement_exempte)
   const [raison, setRaison] = useState('')
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const [rapport, setRapport] = useState<RapportSuspension | null>(null)
@@ -77,6 +80,16 @@ export default function BoutiqueDetailClient({
       setErreur(null)
       setRapport(res.rapport ?? null)
       setStatut('actif')
+    })
+  }
+
+  function toggleExemption() {
+    const nouvelleValeur = !exempte
+    startTransition(async () => {
+      const res = await exempterGateAction(beatmaker.id, nouvelleValeur)
+      if (res.erreur) { setErreur(res.erreur); return }
+      setErreur(null)
+      setExempte(nouvelleValeur)
     })
   }
 
@@ -118,6 +131,22 @@ export default function BoutiqueDetailClient({
           note={annulationPrevueAbonnementPlateforme ? `annulation ${new Date(annulationPrevueAbonnementPlateforme).toLocaleDateString('fr-FR')}` : undefined}
         />
         <Stat label="Artistes abonnés actifs" valeur={nbAbosArtistesActifs} />
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
+        <p className="text-sm font-semibold text-white">Gate abonnement plateforme (Étape 8b)</p>
+        <p className="text-xs text-gray-500">
+          Laisser-passer pour boutique de test — bypass le blocage dashboard même sans abonnement Stripe réel. Ne jamais activer sur une vraie boutique.
+        </p>
+        <button
+          onClick={toggleExemption}
+          disabled={isPending}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+            exempte ? 'bg-amber-600 text-white hover:bg-amber-500' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          {isPending ? 'Mise à jour…' : exempte ? 'Exemptée — retirer le laisser-passer' : 'Exempter du gate'}
+        </button>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
