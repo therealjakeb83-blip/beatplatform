@@ -898,7 +898,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T1** — Recherche par email d'un beatmaker → apparaît dans "Boutiques"
 - [x] **T2** — Recherche par slug d'un beatmaker → même résultat
 - [x] **T3** — Recherche par email d'un client → apparaît dans "Clients (artistes)"
-- [ ] **T4** — Recherche par préfixe d'ID d'une commande (les 8 caractères affichés `#XXXXXXXX` dans `/dashboard/business/commandes`) → apparaît dans "Commandes", lien fonctionne
+- [x] **T4** — Recherche par préfixe d'ID d'une commande (les 8 caractères affichés `#XXXXXXXX` dans `/dashboard/business/commandes`) → apparaît dans "Commandes", lien fonctionne *(bug trouvé et corrigé en cours de test : "email inconnu" affiché sur les commandes d'abonnement — `acheteur_email` jamais renseigné par `traiterPaiementAbonnement`, fallback ajouté vers `clients.email`)*
 - [ ] **T5** — Recherche par préfixe d'ID d'un abonnement boutique (`A-XXXXXXXX`) → apparaît dans "Abonnements boutique", lien fonctionne
 
 **Fiche boutique (`/dashboard/admin/boutiques/[id]`) :**
