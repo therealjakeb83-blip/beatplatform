@@ -93,7 +93,7 @@
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ✅ Validé |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : co-producers listés depuis beat_splits, répartition publishing, splits_snapshot stocké dans commandes. | 5-8h | ✅ Validé |
 | 8 | **Abonnements** | Plans d'abonnement par beatmaker, catalogue privé (beats visibles + cadenas), remise % automatique (sauf Illimité/Exclusive), essai gratuit configurable, gestion depuis le dashboard et depuis la boutique | 8-12h | ✅ Validé |
-| 8b | **Abonnement plateforme** *(nouvelle, 2026-07-24)* | Ce que le beatmaker paie à My Producer (`abonnements_plateforme`) — jamais construit malgré la table présente depuis le schéma d'origine. V1 minimale : 1 plan mensuel (49,99€) / annuel (499,90€), essai 14j + CB obligatoire, accès total ou rien. Blocage d'accès réel volontairement différé (lot séparé). Voir mémoire `project_abonnement_plateforme_decouverte`. | À estimer | 🔄 Codé le 2026-07-24, pas encore testé — checklist T0-T10 |
+| 8b | **Abonnement plateforme** *(nouvelle, 2026-07-24)* | Ce que le beatmaker paie à My Producer (`abonnements_plateforme`) — jamais construit malgré la table présente depuis le schéma d'origine. V1 minimale : 1 plan mensuel (49,99€) / annuel (499,90€), essai 14j + CB obligatoire, accès total ou rien. Blocage d'accès réel volontairement différé (lot séparé). Voir mémoire `project_abonnement_plateforme_decouverte`. | À estimer | ✅ Codé et testé bout en bout le 2026-07-24 — checklist T0-T10 validée. Reste : blocage d'accès réel (lot séparé) |
 | 9 | **Espace client artiste** | Compte My Producer global : inscription/connexion artiste, "Se connecter avec My Producer" dans les boutiques, beats achetés, abonnements actifs multi-appareils, fichiers à télécharger. Favoris : bouton cœur sur les cartes beat, page "Mes favoris". | 5-8h | ✅ Validé |
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
@@ -942,7 +942,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Sécurité :**
 - [x] **T25** — Compte non-admin (déconnecté ou autre compte réel) → toutes les routes `/dashboard/admin/**` redirigent vers `/dashboard/business` *(validé pour non-connecté → `/connexion`, comportement proxy.ts confirmé correct)*
 
-#### Checklist tests Étape 8b — Abonnement plateforme ⬜ À tester
+#### Checklist tests Étape 8b — Abonnement plateforme ✅ Validée le 2026-07-24
 
 > **Contexte :** Découverte le 2026-07-24 que ce système n'avait jamais été construit (voir mémoire `project_abonnement_plateforme_decouverte`). V1 minimale : 1 plan (mensuel 49,99€ / annuel 499,90€), essai 14 jours + CB obligatoire, accès total ou rien — pas de blocage d'accès réel dans ce lot (volontairement différé, voir plus bas).
 >
@@ -974,7 +974,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T9** — Avec un autre compte de test, refaire T1-T4 en choisissant "Annuel" → prix et période corrects en base (`periode = 'annuel'`, `prix = 49990`)
 
 **Garde-fou : pas de blocage d'accès dans ce lot :**
-- [ ] **T10** — Un compte beatmaker **sans aucun abonnement plateforme** peut toujours accéder normalement à `/dashboard` et `/dashboard/business` — confirme que le gate d'accès n'a bien PAS été activé par erreur dans ce lot (différé volontairement à un lot séparé)
+- [x] **T10** — Un compte beatmaker **sans aucun abonnement plateforme** peut toujours accéder normalement à `/dashboard` et `/dashboard/business` — confirme que le gate d'accès n'a bien PAS été activé par erreur dans ce lot (différé volontairement à un lot séparé)
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
