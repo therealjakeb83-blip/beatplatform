@@ -917,9 +917,9 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T12** — La boutique publique `/{slug}` de test affiche "temporairement indisponible" (plus de header/player/catalogue)
 - [ ] **T13** — 🔒 **Bloqué, pas juste "pas encore testé"** — le système d'abonnement plateforme (beatmaker → My Producer) lui-même n'est pas encore construit/fonctionnel (confirmé le 2026-07-24 : zéro ligne `actif`/`en_essai` dans `abonnements_plateforme` sur toute la base, aucun beatmaker n'a jamais pu s'abonner). Le code de pause côté `lib/admin-boutiques.ts` est prêt et suit la même logique que T14 (déjà validée), mais ne sera testable qu'une fois ce système construit ailleurs dans le roadmap
 - [x] **T14** — Sur le Dashboard Stripe (mode test) : les abonnements artistes actifs de cette boutique passent bien en pause *(validé sur `jakeb-test1` — badge "Recouvrement suspendu" confirmé)*
-- [ ] **T15** — Réactivation → dashboard et boutique publique de nouveau accessibles immédiatement
-- [ ] **T16** — L'abonnement plateforme reprend exactement son statut d'avant suspension (`actif` ou `en_essai`, pas juste `actif` par défaut) et la pause Stripe est retirée
-- [ ] **T17** — Les abonnements artistes repassent à `actif` et la pause Stripe est retirée sur chacun
+- [x] **T15** — Réactivation → dashboard et boutique publique de nouveau accessibles immédiatement
+- [ ] **T16** — 🔒 Bloqué, même raison que T13 — pas d'abonnement plateforme testable actuellement
+- [x] **T17** — Les abonnements artistes repassent à `actif` et la pause Stripe est retirée sur chacun *(validé sur `jakeb-test1` — badge "Recouvrement suspendu" disparu, confirmé après le fix du webhook `customer.subscription.updated`)*
 
 **Fiche client (`/dashboard/admin/clients/[id]`) :**
 - [ ] **T18** — Liste des boutiques (leads) et commandes récentes affichée correctement
