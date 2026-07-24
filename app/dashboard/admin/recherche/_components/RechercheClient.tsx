@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { ResultatRechercheAdmin, OngletRecherche } from '@/lib/admin-recherche'
 
@@ -42,12 +42,14 @@ export default function RechercheClient({ rechercher }: Props) {
   const [erreur, setErreur] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [cherche, setCherche] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Numéro de séquence : une recherche plus ancienne peut techniquement
   // répondre APRÈS une plus récente (réseau, charge serveur variable) — sans
   // ce garde-fou elle écrase le bon résultat avec le sien, périmé (bug
   // remonté par Jake le 2026-07-24 : "des fois ne donne aucun résultat").
-  // Seule la réponse à la dernière recherche lancée est appliquée.
+  // Seule la réponse à la dernière recherche lancée est appliquée. C'est ce
+  // garde-fou qui permet de chercher à chaque frappe sans debounce (retiré
+  // le 2026-07-24 — rendait l'usage peu fluide) sans risquer d'affichage
+  // incohérent.
   const sequenceRef = useRef(0)
 
   function executer(valeur: string, ong: OngletRecherche) {
@@ -66,24 +68,15 @@ export default function RechercheClient({ rechercher }: Props) {
     })
   }
 
-  // Debounce court (150ms) : laisse le temps de collapser plusieurs frappes
-  // rapides en une seule recherche, sans introduire un temps mort perceptible
-  // (300ms rendait l'usage peu fluide — retour Jake, 2026-07-24).
   function onChangeQuery(valeur: string) {
     setQ(valeur)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => executer(valeur, onglet), 150)
+    executer(valeur, onglet)
   }
 
-  // Changer d'onglet relance immédiatement (pas de debounce nécessaire,
-  // l'utilisateur ne tape rien à ce moment-là).
   function onChangeOnglet(nouvel: OngletRecherche) {
     setOnglet(nouvel)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
     executer(q, nouvel)
   }
-
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
   const ongletActif = ONGLETS.find(o => o.valeur === onglet)!
   const total = resultat
