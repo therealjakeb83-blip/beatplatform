@@ -922,8 +922,8 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T17** — Les abonnements artistes repassent à `actif` et la pause Stripe est retirée sur chacun *(validé sur `jakeb-test1` — badge "Recouvrement suspendu" disparu, confirmé après le fix du webhook `customer.subscription.updated`)*
 
 **Fiche client (`/dashboard/admin/clients/[id]`) :**
-- [ ] **T18** — Liste des boutiques (leads) et commandes récentes affichée correctement
-- [ ] **T19** — Correction d'un champ bas risque (ex. téléphone) → sauvegarde visible ; email non éditable
+- [x] **T18** — Liste des boutiques (leads) et commandes récentes affichée correctement
+- [x] **T19** — Correction d'un champ bas risque (ex. téléphone) → sauvegarde visible ; email non éditable
 
 **Fiches commande/abonnement en lecture seule :**
 - [ ] **T20** — `/dashboard/admin/commandes/[id]` affiche le détail correct (articles, montants, liens boutique/client fonctionnels)
