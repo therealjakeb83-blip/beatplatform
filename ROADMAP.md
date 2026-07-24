@@ -93,7 +93,7 @@
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ✅ Validé |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : co-producers listés depuis beat_splits, répartition publishing, splits_snapshot stocké dans commandes. | 5-8h | ✅ Validé |
 | 8 | **Abonnements** | Plans d'abonnement par beatmaker, catalogue privé (beats visibles + cadenas), remise % automatique (sauf Illimité/Exclusive), essai gratuit configurable, gestion depuis le dashboard et depuis la boutique | 8-12h | ✅ Validé |
-| 8b | **Abonnement plateforme** *(nouvelle, 2026-07-24)* | Ce que le beatmaker paie à My Producer (`abonnements_plateforme`) — jamais construit malgré la table présente depuis le schéma d'origine. V1 minimale : 1 plan (mensuel/annuel), essai 14j + CB obligatoire, accès total ou rien. Voir mémoire `project_admin_etape15_scope` pour le contexte de la découverte. | À estimer | 🔄 Cadré, code en cours |
+| 8b | **Abonnement plateforme** *(nouvelle, 2026-07-24)* | Ce que le beatmaker paie à My Producer (`abonnements_plateforme`) — jamais construit malgré la table présente depuis le schéma d'origine. V1 minimale : 1 plan mensuel (49,99€) / annuel (499,90€), essai 14j + CB obligatoire, accès total ou rien. Blocage d'accès réel volontairement différé (lot séparé). Voir mémoire `project_abonnement_plateforme_decouverte`. | À estimer | 🔄 Codé le 2026-07-24, pas encore testé — checklist T0-T10 |
 | 9 | **Espace client artiste** | Compte My Producer global : inscription/connexion artiste, "Se connecter avec My Producer" dans les boutiques, beats achetés, abonnements actifs multi-appareils, fichiers à télécharger. Favoris : bouton cœur sur les cartes beat, page "Mes favoris". | 5-8h | ✅ Validé |
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
@@ -941,6 +941,40 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Sécurité :**
 - [x] **T25** — Compte non-admin (déconnecté ou autre compte réel) → toutes les routes `/dashboard/admin/**` redirigent vers `/dashboard/business` *(validé pour non-connecté → `/connexion`, comportement proxy.ts confirmé correct)*
+
+#### Checklist tests Étape 8b — Abonnement plateforme ⬜ À tester
+
+> **Contexte :** Découverte le 2026-07-24 que ce système n'avait jamais été construit (voir mémoire `project_abonnement_plateforme_decouverte`). V1 minimale : 1 plan (mensuel 49,99€ / annuel 499,90€), essai 14 jours + CB obligatoire, accès total ou rien — pas de blocage d'accès réel dans ce lot (volontairement différé, voir plus bas).
+>
+> ⚠️ **À faire avant tout test** :
+> 1. Exécuter `supabase/phase8b_abonnement_plateforme.sql` dans l'éditeur SQL Supabase (grants INSERT service_role + SELECT authenticated sur `abonnements_plateforme`).
+> 2. Ajouter sur Vercel (Production ET Preview) les variables d'environnement `STRIPE_PRICE_PLATEFORME_MENSUEL` et `STRIPE_PRICE_PLATEFORME_ANNUEL` (valeurs déjà dans `.env.local`, créées en mode test Stripe le 2026-07-24) — sans ça la route de checkout renvoie une erreur 500.
+> 3. Tester avec un compte beatmaker de test qui n'a **jamais** d'abonnement plateforme (n'importe lequel des `jakeb-testN` fait l'affaire).
+
+**Préalable :**
+- [ ] **T0** — Migration `phase8b_abonnement_plateforme.sql` exécutée + variables d'env Vercel ajoutées
+
+**Souscription (`/dashboard/abonnement`) :**
+- [ ] **T1** — Sans abonnement existant, la page affiche le choix mensuel/annuel avec le bon prix affiché pour chaque option
+- [ ] **T2** — Clique "Mensuel" → "Démarrer l'essai gratuit" → redirection vers Stripe Checkout, carte demandée (4242 4242 4242 4242), essai affiché à 0€ pendant 14 jours
+- [ ] **T3** — Après paiement (carte enregistrée), retour sur `/dashboard/abonnement?succes=1` → la page affiche maintenant "Essai gratuit", prix mensuel, date de fin d'essai à J+14
+- [ ] **T4** — Une ligne apparaît dans `abonnements_plateforme` (vérifiable via `/dashboard/admin/recherche`, onglet Boutiques → fiche → stat "Abo. plateforme") avec `statut = 'en_essai'`
+
+**Vérif Stripe :**
+- [ ] **T5** — Sur le Dashboard Stripe test (`/test/subscriptions`), l'abonnement créé apparaît avec le statut "En période d'essai" (trialing)
+- [ ] **T6** — Le log `/dashboard/admin/stripe-events` montre les événements `checkout.session.completed` et `customer.subscription.created` traités sans erreur
+
+**Portail Stripe :**
+- [ ] **T7** — Bouton "Gérer mon abonnement" → redirige vers le portail Stripe (Billing Portal), sans erreur
+
+**Annulation (via le portail Stripe) :**
+- [ ] **T8** — Annule l'abonnement depuis le portail → `abonnements_plateforme.statut` repasse à `annule` (vérifiable en base ou via la fiche admin)
+
+**Second essai (annuel) :**
+- [ ] **T9** — Avec un autre compte de test, refaire T1-T4 en choisissant "Annuel" → prix et période corrects en base (`periode = 'annuel'`, `prix = 49990`)
+
+**Garde-fou : pas de blocage d'accès dans ce lot :**
+- [ ] **T10** — Un compte beatmaker **sans aucun abonnement plateforme** peut toujours accéder normalement à `/dashboard` et `/dashboard/business` — confirme que le gate d'accès n'a bien PAS été activé par erreur dans ce lot (différé volontairement à un lot séparé)
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 

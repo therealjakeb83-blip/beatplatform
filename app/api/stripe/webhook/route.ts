@@ -46,14 +46,28 @@ export async function POST(request: Request) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
       if (session.mode === 'subscription') {
-        await traiterAbonnementCree(session)
+        if (session.metadata?.type === 'abonnement_plateforme') {
+          await traiterAbonnementPlateformeCree(session)
+        } else {
+          await traiterAbonnementCree(session)
+        }
       } else {
         await traiterPaiement(session)
       }
     }
 
+    // Les events invoice/subscription n'ont pas de metadata.type directement
+    // dessus (contrairement à checkout.session.completed) — on cherche
+    // d'abord côté abonnements_plateforme (Étape 8b), sinon on retombe sur le
+    // traitement boutique existant. Les deux tables ont des
+    // stripe_subscription_id distincts, jamais de collision possible.
     if (event.type === 'invoice.payment_succeeded') {
-      await traiterPaiementAbonnement(event.data.object as Stripe.Invoice)
+      const invoice = event.data.object as Stripe.Invoice
+      if (await estAbonnementPlateforme(invoice)) {
+        await traiterPaiementAbonnementPlateforme(invoice)
+      } else {
+        await traiterPaiementAbonnement(invoice)
+      }
     }
 
     if (event.type === 'invoice.payment_failed') {
@@ -61,11 +75,21 @@ export async function POST(request: Request) {
     }
 
     if (event.type === 'customer.subscription.updated') {
-      await traiterMajAbonnement(event.data.object as Stripe.Subscription)
+      const subscription = event.data.object as Stripe.Subscription
+      if (subscription.metadata?.type === 'abonnement_plateforme') {
+        await traiterMajAbonnementPlateforme(subscription)
+      } else {
+        await traiterMajAbonnement(subscription)
+      }
     }
 
     if (event.type === 'customer.subscription.deleted') {
-      await traiterAnnulationAbonnement(event.data.object as Stripe.Subscription)
+      const subscription = event.data.object as Stripe.Subscription
+      if (subscription.metadata?.type === 'abonnement_plateforme') {
+        await traiterAnnulationAbonnementPlateforme(subscription)
+      } else {
+        await traiterAnnulationAbonnement(subscription)
+      }
     }
 
     if (event.type === 'account.updated') {
@@ -426,6 +450,132 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
     })
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
   }
+}
+
+// ============================================================
+// Étape 8b — Abonnement plateforme (beatmaker → My Producer)
+// ============================================================
+// Même patron que les abonnements boutique ci-dessus, en plus simple : pas
+// de Stripe Connect (paiement direct sur le compte principal, c'est le
+// beatmaker qui paie), pas d'automatisations/emails pour cette V1 minimale
+// (cadrage 2026-07-24). Le blocage d'accès dashboard est volontairement
+// différé à un lot séparé — ces handlers ne font QUE tenir
+// abonnements_plateforme à jour, rien d'autre.
+
+async function traiterAbonnementPlateformeCree(session: Stripe.Checkout.Session) {
+  const meta = session.metadata
+  if (!meta?.beatmaker_id) return
+
+  const subscriptionId = typeof session.subscription === 'string'
+    ? session.subscription
+    : session.subscription?.id ?? null
+  if (!subscriptionId) return
+
+  const supabase = createAdminClient()
+
+  const { data: existant } = await supabase
+    .from('abonnements_plateforme')
+    .select('id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+  if (existant) {
+    console.log('[webhook] Abonnement plateforme déjà créé:', subscriptionId)
+    return
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+  const finPeriode = subscription.items.data[0]?.current_period_end
+  const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null
+  const prixCents = subscription.items.data[0]?.price.unit_amount ?? 0
+
+  const { error } = await supabase.from('abonnements_plateforme').insert({
+    beatmaker_id: meta.beatmaker_id,
+    plan: 'standard',
+    periode: meta.periode === 'annuel' ? 'annuel' : 'mensuel',
+    prix: prixCents,
+    devise: 'EUR',
+    en_essai: subscription.status === 'trialing',
+    essai_fin_le: trialEnd ?? new Date().toISOString(),
+    statut: subscription.status === 'trialing' ? 'en_essai' : 'actif',
+    date_debut: new Date().toISOString(),
+    date_fin: trialEnd ?? (finPeriode ? new Date(finPeriode * 1000).toISOString() : null),
+    stripe_subscription_id: subscriptionId,
+    stripe_customer_id: typeof session.customer === 'string' ? session.customer : null,
+  })
+
+  if (error) console.error('[webhook] Erreur insert abonnement_plateforme:', JSON.stringify(error))
+  else console.log('[webhook] Abonnement plateforme créé pour', meta.beatmaker_id)
+}
+
+async function traiterMajAbonnementPlateforme(subscription: Stripe.Subscription) {
+  const supabase = createAdminClient()
+  const status = subscription.status
+  const statut = status === 'active' ? 'actif'
+    : status === 'trialing' ? 'en_essai'
+    : status === 'past_due' ? 'impaye'
+    : 'annule'
+  const enEssai = status === 'trialing'
+  const finPeriode = subscription.items.data[0]?.current_period_end
+
+  const { error } = await supabase
+    .from('abonnements_plateforme')
+    .update({
+      statut,
+      en_essai: enEssai,
+      ...(finPeriode ? { date_fin: new Date(finPeriode * 1000).toISOString() } : {}),
+    })
+    .eq('stripe_subscription_id', subscription.id)
+
+  if (error) console.error('[webhook] Erreur maj abonnement_plateforme:', JSON.stringify(error))
+  else console.log('[webhook] Abonnement plateforme mis à jour:', subscription.id, statut)
+}
+
+async function traiterAnnulationAbonnementPlateforme(subscription: Stripe.Subscription) {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('abonnements_plateforme')
+    .update({ statut: 'annule', en_essai: false, date_annulation: new Date().toISOString() })
+    .eq('stripe_subscription_id', subscription.id)
+
+  if (error) console.error('[webhook] Erreur annulation abonnement_plateforme:', JSON.stringify(error))
+  else console.log('[webhook] Abonnement plateforme annulé:', subscription.id)
+}
+
+// Les events invoice n'ont pas metadata.type directement dessus — on
+// regarde si la subscription liée existe côté abonnements_plateforme avant
+// de savoir quel traitement appliquer.
+async function estAbonnementPlateforme(invoice: Stripe.Invoice): Promise<boolean> {
+  const subRaw = invoice.parent?.subscription_details?.subscription
+  const subscriptionId = typeof subRaw === 'string' ? subRaw : subRaw?.id ?? null
+  if (!subscriptionId) return false
+
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('abonnements_plateforme')
+    .select('id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+  return !!data
+}
+
+async function traiterPaiementAbonnementPlateforme(invoice: Stripe.Invoice) {
+  const billing = invoice.billing_reason
+  // subscription_create n'a rien à facturer pendant l'essai (montant à 0) —
+  // seul un vrai renouvellement/changement doit repasser le statut à 'actif'.
+  if (billing !== 'subscription_cycle' && billing !== 'subscription_update') return
+
+  const subRaw = invoice.parent?.subscription_details?.subscription
+  const subscriptionId = typeof subRaw === 'string' ? subRaw : subRaw?.id ?? null
+  if (!subscriptionId) return
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('abonnements_plateforme')
+    .update({ statut: 'actif', en_essai: false })
+    .eq('stripe_subscription_id', subscriptionId)
+
+  if (error) console.error('[webhook] Erreur paiement abonnement_plateforme:', JSON.stringify(error))
+  else console.log('[webhook] Paiement abonnement plateforme confirmé:', subscriptionId)
 }
 
 async function traiterPaiement(session: Stripe.Checkout.Session) {
