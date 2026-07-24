@@ -958,7 +958,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T1** — Sans abonnement existant, la page affiche le choix mensuel/annuel avec le bon prix affiché pour chaque option
 - [x] **T2** — Clique "Mensuel" → "Démarrer l'essai gratuit" → redirection vers Stripe Checkout, carte demandée (4242 4242 4242 4242), essai affiché à 0€ pendant 14 jours
 - [x] **T3** — Après paiement (carte enregistrée), retour sur `/dashboard/abonnement?succes=1` → la page affiche maintenant "Essai gratuit", prix mensuel, date de fin d'essai à J+14
-- [ ] **T4** — Une ligne apparaît dans `abonnements_plateforme` (vérifiable via `/dashboard/admin/recherche`, onglet Boutiques → fiche → stat "Abo. plateforme") avec `statut = 'en_essai'`
+- [x] **T4** — Une ligne apparaît dans `abonnements_plateforme` (vérifiable via `/dashboard/admin/recherche`, onglet Boutiques → fiche → stat "Abo. plateforme") avec `statut = 'en_essai'`
 
 **Vérif Stripe :**
 - [ ] **T5** — Sur le Dashboard Stripe test (`/test/subscriptions`), l'abonnement créé apparaît avec le statut "En période d'essai" (trialing)
