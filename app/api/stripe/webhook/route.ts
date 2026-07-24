@@ -184,6 +184,15 @@ async function traiterMajAbonnement(subscription: Stripe.Subscription) {
 
   if (!abo) return
 
+  // Boutique suspendue depuis l'admin (Étape 15c) — pause_collection ne
+  // change PAS subscription.status (reste "active"), donc sans ce garde-fou
+  // ce handler écraserait silencieusement 'suspendu' par 'actif' au premier
+  // événement Stripe reçu sur l'abonnement (y compris celui déclenché par la
+  // pause elle-même), cassant la réactivation qui ne retrouve alors plus
+  // rien à traiter. Découvert en testant le 2026-07-24. Le statut ne doit
+  // être repris que par reactiverBoutique() (lib/admin-boutiques.ts).
+  if (abo.statut === 'suspendu') return
+
   const entreEnImpaye = statut === 'impaye' && abo.statut !== 'impaye'
   // Moment de la décision de churn (clic "Annuler" côté Business ou
   // self-service client) — l'abo reste actif jusqu'à la fin de la période
