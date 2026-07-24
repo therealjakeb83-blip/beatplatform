@@ -961,7 +961,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T4** — Une ligne apparaît dans `abonnements_plateforme` (vérifiable via `/dashboard/admin/recherche`, onglet Boutiques → fiche → stat "Abo. plateforme") avec `statut = 'en_essai'`
 
 **Vérif Stripe :**
-- [ ] **T5** — Sur le Dashboard Stripe test (`/test/subscriptions`), l'abonnement créé apparaît avec le statut "En période d'essai" (trialing)
+- [x] **T5** — Sur le Dashboard Stripe test (`/test/subscriptions`), l'abonnement créé apparaît avec le statut "En période d'essai" (trialing)
 - [ ] **T6** — Le log `/dashboard/admin/stripe-events` montre les événements `checkout.session.completed` et `customer.subscription.created` traités sans erreur
 
 **Portail Stripe :**
