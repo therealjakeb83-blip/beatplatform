@@ -971,7 +971,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T8** — Annule l'abonnement depuis le portail → `abonnements_plateforme.statut` repasse à `annule` *(nuance découverte : annuler pendant l'essai programme `cancel_at` à la fin d'essai plutôt que d'annuler immédiatement côté Stripe — `statut` reste `en_essai` jusque-là, mais l'indicateur "annulation prévue" ajouté en session s'affiche bien sur la fiche admin et `/dashboard/abonnement`. Le passage à `annule` au jour J n'est pas re-testé en direct, mais le handler `customer.subscription.deleted` est le même code déjà validé côté abonnement boutique)*
 
 **Second essai (annuel) :**
-- [ ] **T9** — Avec un autre compte de test, refaire T1-T4 en choisissant "Annuel" → prix et période corrects en base (`periode = 'annuel'`, `prix = 49990`)
+- [x] **T9** — Avec un autre compte de test, refaire T1-T4 en choisissant "Annuel" → prix et période corrects en base (`periode = 'annuel'`, `prix = 49990`)
 
 **Garde-fou : pas de blocage d'accès dans ce lot :**
 - [ ] **T10** — Un compte beatmaker **sans aucun abonnement plateforme** peut toujours accéder normalement à `/dashboard` et `/dashboard/business` — confirme que le gate d'accès n'a bien PAS été activé par erreur dans ce lot (différé volontairement à un lot séparé)
