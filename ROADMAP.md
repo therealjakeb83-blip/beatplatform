@@ -930,9 +930,9 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T21** — `/dashboard/admin/abonnements/[id]` affiche le détail correct (plan, prix, dates, liens boutique/client fonctionnels)
 
 **Log Stripe (`/dashboard/admin/stripe-events`) :**
-- [ ] **T22** — Un paiement de test déclenche bien une ligne "traite" dans le log, quasi en temps réel
-- [ ] **T23** — Filtre "Échecs uniquement" fonctionne (provoquer un échec de traitement pour vérifier, ex. webhook rejoué sur une donnée déjà supprimée)
-- [ ] **T24** — Un webhook rejoué par Stripe (bouton "Renvoyer" dans le Dashboard Stripe) met à jour la même ligne au lieu d'en créer une nouvelle (upsert sur `stripe_event_id`)
+- [x] **T22** — Un paiement de test déclenche bien une ligne "traite" dans le log, quasi en temps réel
+- [x] **T23** — Filtre "Échecs uniquement" fonctionne (provoquer un échec de traitement pour vérifier, ex. webhook rejoué sur une donnée déjà supprimée)
+- [x] **T24** — Un webhook rejoué par Stripe (bouton "Renvoyer" dans le Dashboard Stripe) met à jour la même ligne au lieu d'en créer une nouvelle (upsert sur `stripe_event_id`)
 
 **Sécurité :**
 - [ ] **T25** — Compte non-admin (déconnecté ou autre compte réel) → toutes les routes `/dashboard/admin/**` redirigent vers `/dashboard/business`
