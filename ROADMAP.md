@@ -890,6 +890,10 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 > ⚠️ **À faire avant tout test** : exécuter la migration `supabase/phase15_1_admin_support.sql` dans l'éditeur SQL Supabase (crée `stripe_events`, ajoute le statut `suspendu` sur `abonnements_plateforme`/`abonnements_boutique`, les colonnes `suspendu_le`/`suspendu_raison`/`statut_avant_suspension`, et les fonctions de recherche par préfixe). Rien de tout ça n'a encore été testé par Jake.
 >
 > ⚠️ **Tester la suspension sur une boutique de test uniquement** (ex. `feedback.jakeb@gmail.com`, voir mémoire `project_compte_test_feedback_jakeb`) — la cascade met en pause de vrais abonnements Stripe (mode test), jamais une boutique réelle active.
+>
+> ⚠️ **Incident 2026-07-24 pendant les tests** : Jake a suspendu son propre compte admin (`jakeb-test`) et s'est retrouvé bloqué hors de `/dashboard/admin` (`estAdmin()` dépend de `beatmakers.statut`, et `proxy.ts` redirige tout `/dashboard/**` suspendu vers `/dashboard/suspendu`, y compris l'admin lui-même). Récupéré via un script ponctuel (service_role) qui a remis `statut='actif'` directement en base — aucune donnée Stripe n'avait été touchée (voir découverte ci-dessous). **Corrigé dans la foulée** : `suspendreAction` (`app/dashboard/admin/boutiques/[id]/_lib/actions.ts`) refuse désormais explicitement de suspendre le compte dont le slug est `SLUG_ADMIN` (exporté depuis `lib/admin.ts`).
+>
+> ⚠️ **Découverte pendant l'incident** : les 39 `abonnements_boutique` de `jakeb-test` sont des données de **seed SQL** (`supabase/seed_abonnements.sql`) avec de faux `stripe_subscription_id` qui n'existent pas sur Stripe (`No such subscription`) — la cascade de pause a échoué proprement dessus (comportement attendu, rien de cassé), mais ça veut dire que T13/T14 (vérification réelle de `pause_collection` sur Stripe) n'ont pas pu être validés sur cette boutique. **Utiliser une boutique dont les abonnements viennent d'un vrai passage en caisse Stripe test** (ex. `feedback.jakeb@gmail.com` / "Jake 2") pour ces deux tests, pas `jakeb-test`.
 
 **Préalable :**
 - [x] **T0** — Migration `phase15_1_admin_support.sql` exécutée sans erreur

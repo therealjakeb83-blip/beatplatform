@@ -1,6 +1,6 @@
 'use server'
 
-import { estAdmin } from '@/lib/admin'
+import { estAdmin, SLUG_ADMIN } from '@/lib/admin'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { suspendreBoutique, reactiverBoutique, type RapportSuspension } from '@/lib/admin-boutiques'
 import { revalidatePath } from 'next/cache'
@@ -12,6 +12,13 @@ function chemin(id: string) {
 export async function suspendreAction(beatmakerId: string, raison: string): Promise<{ rapport?: RapportSuspension; erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
   if (!raison.trim()) return { erreur: 'Une raison est obligatoire.' }
+
+  // Incident 2026-07-24 : suspendre le compte admin lui-même bloque l'accès
+  // à /dashboard/admin (estAdmin() dépend de ce même statut) — plus aucun
+  // moyen de se réactiver via l'UI. Ce compte ne doit jamais être suspendable.
+  const admin = createAdminClient()
+  const { data: cible } = await admin.from('beatmakers').select('slug').eq('id', beatmakerId).single()
+  if (cible?.slug === SLUG_ADMIN) return { erreur: 'Impossible de suspendre le compte admin — tu te bloquerais toi-même hors de cet outil.' }
 
   const rapport = await suspendreBoutique(beatmakerId, raison.trim())
   revalidatePath(chemin(beatmakerId))
