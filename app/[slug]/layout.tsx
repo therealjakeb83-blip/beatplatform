@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
 import type { Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
@@ -84,8 +85,11 @@ export default async function BoutiqueLayout({
   }
 
   // Étape 8b — la boutique publique n'existe que pour un beatmaker qui paie
-  // la plateforme. Mêmes exemptions que le gate dashboard (proxy.ts) :
-  // compte admin et boutiques de test exemptées (`abonnement_exempte`).
+  // la plateforme : tant qu'il n'a pas d'abonnement actif, la boutique ne
+  // doit pas juste être "inactive", elle ne doit pas exister publiquement —
+  // vrai 404, pas de page qui confirme qu'un slug est pris. Mêmes exemptions
+  // que le gate dashboard (proxy.ts) : compte admin et boutiques de test
+  // exemptées (`abonnement_exempte`).
   if (beatmaker && beatmaker.slug !== SLUG_ADMIN && !beatmaker.abonnement_exempte) {
     const { data: abonnementActif } = await admin
       .from('abonnements_plateforme')
@@ -95,13 +99,7 @@ export default async function BoutiqueLayout({
       .limit(1)
       .maybeSingle()
 
-    if (!abonnementActif) {
-      return (
-        <div className="min-h-screen bg-[#05060B] text-white flex items-center justify-center px-4">
-          <p className="text-center text-gray-400">Cette boutique n&apos;est pas encore active.</p>
-        </div>
-      )
-    }
+    if (!abonnementActif) notFound()
   }
 
   return (
