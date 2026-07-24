@@ -43,8 +43,15 @@ export default function RechercheClient({ rechercher }: Props) {
   const [isPending, startTransition] = useTransition()
   const [cherche, setCherche] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Numéro de séquence : une recherche plus ancienne peut techniquement
+  // répondre APRÈS une plus récente (réseau, charge serveur variable) — sans
+  // ce garde-fou elle écrase le bon résultat avec le sien, périmé (bug
+  // remonté par Jake le 2026-07-24 : "des fois ne donne aucun résultat").
+  // Seule la réponse à la dernière recherche lancée est appliquée.
+  const sequenceRef = useRef(0)
 
   function executer(valeur: string, ong: OngletRecherche) {
+    const sequence = ++sequenceRef.current
     if (!valeur.trim()) {
       setResultat(null)
       setCherche(false)
@@ -53,17 +60,19 @@ export default function RechercheClient({ rechercher }: Props) {
     startTransition(async () => {
       setCherche(true)
       const res = await rechercher(valeur, ong)
+      if (sequence !== sequenceRef.current) return // une recherche plus récente a déjà pris le relais
       if (res.erreur) setErreur(res.erreur)
       else { setResultat(res.resultat ?? null); setErreur(null) }
     })
   }
 
-  // Debounce : la recherche ne part que 300ms après la dernière frappe, pas
-  // à chaque lettre (retour Jake, 2026-07-24 — ça ralentissait en tapant).
+  // Debounce court (150ms) : laisse le temps de collapser plusieurs frappes
+  // rapides en une seule recherche, sans introduire un temps mort perceptible
+  // (300ms rendait l'usage peu fluide — retour Jake, 2026-07-24).
   function onChangeQuery(valeur: string) {
     setQ(valeur)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => executer(valeur, onglet), 300)
+    debounceRef.current = setTimeout(() => executer(valeur, onglet), 150)
   }
 
   // Changer d'onglet relance immédiatement (pas de debounce nécessaire,
