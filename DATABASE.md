@@ -64,6 +64,8 @@ Profil de chaque beatmaker inscrit sur la plateforme My Producer.
 | `source_acquisition` | text | ⬜ Optionnel | Canal d'acquisition (YouTube, Instagram, bouche à oreille...) |
 | `date_dernier_login` | timestamp | ✅ Auto | Dernière connexion (détection churn) |
 | `notes_admin` | text | ⬜ Optionnel | Notes internes visibles uniquement par l'admin |
+| `suspendu_le` | timestamp | ⬜ Optionnel | Date de suspension depuis l'admin (Étape 15c, 2026-07-24) — `null` sinon |
+| `suspendu_raison` | text | ⬜ Optionnel | Raison saisie par l'admin à la suspension — `null` sinon |
 
 > **Note :** La LTV (Lifetime Value) est calculée dynamiquement depuis `abonnements_plateforme`, pas stockée ici.
 
@@ -300,16 +302,20 @@ Abonnements des beatmakers à My Producer. Un seul plan en V1, décliné en mens
 #### Statut
 | Champ | Type | Description |
 |---|---|---|
-| `statut` | text | `en_essai` / `actif` / `annule` / `impaye` |
+| `statut` | text | `en_essai` / `actif` / `annule` / `impaye` / `suspendu` (Étape 15c, 2026-07-24 — boutique suspendue depuis l'admin) |
 | `date_debut` | timestamp | Date de début du premier cycle payant |
 | `date_fin` | timestamp | Date de fin du cycle en cours (renouvellement ou expiration) |
 | `date_annulation` | timestamp | Date d'annulation — `null` si actif |
+| `statut_avant_suspension` | text | Statut réel avant une suspension admin — permet à la réactivation de restaurer le bon état plutôt que de deviner `actif`. Rempli/vidé uniquement par `lib/admin-boutiques.ts` |
+| `annulation_prevue_le` | timestamp | Renseigné depuis `subscription.cancel_at` (Stripe) quand une annulation est programmée mais pas encore effective (ex. annulation pendant l'essai) — `null` sinon |
 
 #### Stripe
 | Champ | Type | Description |
 |---|---|---|
 | `stripe_subscription_id` | text | Référence de l'abonnement Stripe |
 | `stripe_customer_id` | text | Référence du client Stripe |
+
+> **Étape 8b (2026-07-24)** : ce système (beatmaker → My Producer) a un vrai parcours de paiement fonctionnel depuis cette date — 1 plan (mensuel 49,99€ / annuel 499,90€), essai 14 jours + CB obligatoire, checkout direct sans Stripe Connect. Voir `app/api/stripe/plateforme/checkout/route.ts` et `/dashboard/abonnement`. **Le blocage d'accès dashboard si non abonné n'est pas (encore) activé** — voir mémoire `project_abonnement_plateforme_decouverte`.
 
 ### `abonnements_boutique`
 Abonnements des artistes aux boutiques des beatmakers. 1 seul plan en V1, que chaque beatmaker tarifie librement.
@@ -341,11 +347,12 @@ Abonnements des artistes aux boutiques des beatmakers. 1 seul plan en V1, que ch
 #### Statut
 | Champ | Type | Description |
 |---|---|---|
-| `statut` | text | `actif` / `annule` / `impaye` |
+| `statut` | text | `actif` / `annule` / `impaye` / `suspendu` (Étape 15c, 2026-07-24 — boutique suspendue depuis l'admin) |
 | `date_debut` | timestamp | Début du premier cycle payant |
 | `date_fin` | timestamp | Fin du cycle en cours (renouvellement ou expiration) |
 | `date_annulation` | timestamp | Date d'annulation — `null` si actif |
 | `motif_annulation` | text | `user_cancel` / `payment_failed` / `admin_cancel` — `null` si actif. Permet de distinguer une annulation volontaire (à relancer) d'un impayé (relance CB automatique) |
+| `statut_avant_suspension` | text | Statut réel avant une suspension admin — voir même champ sur `abonnements_plateforme` |
 
 #### Paiement
 | Champ | Type | Description |
@@ -391,5 +398,6 @@ Non détaillées colonne par colonne ici — voir le fichier `supabase/*.sql` ci
 | `templates_email` | Bibliothèque de mises en page réutilisables (blocs jsonb) — `source` plateforme (officiel, `beatmaker_id` NULL) ou beatmaker (perso) | `marketing_migration.sql` |
 | `campagne_envois` | Un email envoyé = une ligne : `resend_message_id`, `envoye_at`/`ouvert_at`/`clique_at`/`converti_at`/`desinscrit_at`, `bounce`/`plainte` — source des compteurs agrégés sur `campagnes` | `marketing_migration.sql`, `marketing_migration_webhook.sql`, `marketing_migration_conversions.sql` |
 | `free_downloads` / `morceaux_clients` | Tables créées upfront en Phase 0 — `free_downloads` prévu étape 12 dédiée, `morceaux_clients` pas encore branchée | `business_migration.sql` |
+| `stripe_events` | Log de chaque webhook Stripe reçu (Étape 15b, 2026-07-24) : `stripe_event_id` (unique, upsert anti-doublon sur rejeu), `type`, `statut` recu/traite/echoue, `erreur`. Consultable via `/dashboard/admin/stripe-events`, accès service_role uniquement | `phase15_1_admin_support.sql` |
 
-**Colonnes ajoutées sur des tables existantes :** `clients` (spotify, youtube, tiktok, notes, tags, instagram, newsletter_consent), `beats` (couleur, free_download_actif), `commandes` (notes, type_commande LICENCE/CREATION_ABONNEMENT/RENOUVELLEMENT, stripe_session_id, source_marketing élargi à 9 valeurs, acheteur_email/acheteur_nom pour les invités), `abonnements_boutique` (fin_essai, annulation_en_cours, mensualites_payees), `beatmakers` (domaine_envoi_email, domaine_envoi_verifie — pas encore utilisées, cf Phase 4.5).
+**Colonnes ajoutées sur des tables existantes :** `clients` (spotify, youtube, tiktok, notes, tags, instagram, newsletter_consent), `beats` (couleur, free_download_actif), `commandes` (notes, type_commande LICENCE/CREATION_ABONNEMENT/RENOUVELLEMENT, stripe_session_id, source_marketing élargi à 9 valeurs, acheteur_email/acheteur_nom pour les invités), `abonnements_boutique` (fin_essai, annulation_en_cours, mensualites_payees, **statut `suspendu` + `statut_avant_suspension`, 2026-07-24**), `abonnements_plateforme` (**statut `suspendu` + `statut_avant_suspension` + `annulation_prevue_le`, 2026-07-24**), `beatmakers` (domaine_envoi_email, domaine_envoi_verifie — pas encore utilisées, cf Phase 4.5 ; **`suspendu_le` + `suspendu_raison`, 2026-07-24**).
