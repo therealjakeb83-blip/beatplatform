@@ -124,6 +124,17 @@ body:has(.shop-root) { overflow-x: hidden; }
   --glow1: oklch(0.52 0 0); --glow2: oklch(0.19 0 0);
   --g1: oklch(0.95 0 0); --g2: oklch(0.55 0 0);
   --style-card-text: #0A0C13;
+  /* --ac-deep/--ac-soft absents ici jusqu'ici : la formule générale
+     oklch(from var(--ac) ...) (piège déjà documenté, voir bleu plus bas)
+     se résout mal sur l'accent quasi-blanc #F2F2F2, produisant un texte
+     illisible sur les boutons (blanc sur blanc / gris presque invisible).
+     Piège plus profond que pour bleu : même oklch(from #F2F2F2 ...) avec
+     un hex littéral donne un résultat différent une fois stocké dans la
+     custom property et lu via var() (vérifié par comparaison directe,
+     canvas vs getComputedStyle sur un élément réel) — seul le rgb() final
+     déjà calculé est fiable ici, pas de formule relative du tout. */
+  --ac-deep: rgb(105,105,105);
+  --ac-soft: rgb(206,206,206);
 }
 
 /* Bleu : valeurs figées en rgb() directement (pas la formule oklch(from var(--ac) ...))
@@ -409,7 +420,7 @@ a.shop-cta {
   align-items: center;
   gap: 6px;
   background: var(--ac);
-  color: #fff;
+  color: var(--ac-t);
   font-weight: 600;
   font-size: var(--fs-body);
   padding: 9px 18px;
@@ -420,7 +431,7 @@ a.shop-cta {
   transition: background .2s, color .2s, box-shadow .2s;
 }
 
-a.shop-cta:hover { background: #fff; color: var(--ac); box-shadow: var(--shadow-cta-hover); }
+a.shop-cta:hover { background: #fff; color: var(--ac-deep); box-shadow: var(--shadow-cta-hover); }
 
 .shop-header-row1 a.shop-cta { padding: 9px 17.5px; }
 
