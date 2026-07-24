@@ -1,5 +1,10 @@
 # My Producer — Roadmap V1
 
+> Dernière mise à jour : 2026-07-24 — **Étape 15 (Admin) : périmètre cadré par interview + scoring pertinence/dangerosité, puis lot 1 codé dans la foulée (RIEN N'EST TESTÉ PAR JAKE).** Session en deux temps :
+> - **Cadrage** (voir mémoire `project_admin_etape15_scope`) : interview zone par zone (Support, Gestion des boutiques, Analytics plateforme, Mails transactionnels, Autonomie sans session Claude, Rôles/permissions), puis score pertinence/dangerosité (1-5) sur chaque feature retenue. **Exclus définitivement** (dangerosité 4-5) : modifier une boutique à sa place (email/slug/Stripe Connect), supprimer un compte, corriger un statut de split/paiement collab. Nouvelle **zone 15g — Mises à jour/veille technique** née en cours de session (rapport quotidien npm+OSV.dev avec prompt copiable pour une future session Claude, jamais d'auto-apply) — reportée à une prochaine session dédiée.
+> - **Lot 1 codé** : recherche multi-critères (`/dashboard/admin/recherche`), log des webhooks Stripe (`/dashboard/admin/stripe-events`), suspendre/réactiver une boutique avec **pause en cascade** des abonnements Stripe — l'abonnement plateforme du beatmaker ET chaque abonnement artiste actif de sa boutique (`pause_collection`, réversible, pas une annulation — garde-fou ajouté par Jake en session : sinon l'argent continue de couler des deux côtés d'une boutique suspendue), et correction de champs bas risque sur un compte client/beatmaker. Détail technique et garde-fous : `lib/admin-boutiques.ts`, `lib/admin-recherche.ts`, migration `supabase/phase15_1_admin_support.sql`.
+> - ⚠️ **Migration `phase15_1_admin_support.sql` pas encore exécutée** — à faire avant tout test (voir checklist T0-T25 plus bas, section "Checklist tests Étape 15 lot 1").
+>
 > Dernière mise à jour : 2026-07-23 — **Étape 5v2 (boutique publique) : passe complète de finitions mobile + nouveau panneau player déplié + intégration de la déclinaison Blanche & Noire mise à jour.** Session longue, majoritairement pilotée par des allers-retours visuels avec Jake (captures annotées + comparaisons directes avec la maquette via `dev-browser`) :
 > - **Corrections mobile boutique** : bordure de sélection d'une cover coupée en haut (padding-top de `.shop-row` insuffisant pour le `translateY` au survol — `overflow-x:auto` impose implicitement `overflow-y:auto`), rythme vertical entre sections resserré pour coller à la maquette (`margin-bottom` 30→24px, `margin-bottom` du titre de section 18→8px), bug d'étirement de la rangée "type beats" (un nom sur 2 lignes comme "Central Cee" étirait toutes les cartes de la rangée — `align-items:flex-start` + troncature ellipsis du nom).
 > - **Zoom desktop 125% figé en dur** : Jake trouvait le rendu desktop plus abouti à 125% de zoom navigateur — plutôt que réajuster des centaines de valeurs px, la propriété CSS `zoom` (pas `transform:scale`, qui ne recalcule pas la mise en page) applique ce rendu par défaut via `body:has(.shop-root){zoom:1.25}`, scopé à `min-width:1280px` (en dessous, la grille déborde une fois zoomée — testé et confirmé).
@@ -43,7 +48,7 @@
 |---|---|---|
 | 1 | **11d Phase 6** — Mailing transactionnels ✅ *(reste 6.7, beat cadeau fidélité — reporté)* | Comble un vrai trou produit visible immédiatement : aucun email de confirmation n'est envoyé après un achat ou un abonnement. Indépendant du nom de domaine (réutilise le même mécanisme d'envoi que Campagnes, déjà fonctionnel sur le domaine temporaire). |
 | 2 | **11d Phase 7** — Catégories & Certification ✅ *(codé 2026-07-17, testé et validé 2026-07-20 — checklist T0-T19 à 100%)* | Indépendant du nom. Prérequis fonctionnel à l'étape 15 (la modération des demandes de certification fait partie du périmètre Admin — impossible à construire tant que les demandes elles-mêmes n'existent pas). |
-| 3 | **Étape 15** — Admin 🔄 *(amorcé 2026-07-17 : `/dashboard/admin/categories`)*, **périmètre élargi le 2026-07-17** (voir note ci-dessous) | Dépendance dure avant l'étape 17, explicitement actée. Dépend de la Phase 7 (rang 2) pour la partie modération. Trou de scope identifié par Jake : périmètre initial (perf SaaS/boutique, modération, import BeatStars) insuffisant pour être vraiment autonome sans repasser par une session Claude. |
+| 3 | **Étape 15** — Admin 🔄 *(périmètre cadré en sous-étapes 15a-15g le 2026-07-24, lot 1 codé le même jour — pas encore testé)* | Dépendance dure avant l'étape 17, explicitement actée. Dépend de la Phase 7 (rang 2) pour la partie modération. Sous-étapes détaillées dans `project_admin_etape15_scope` et la checklist de test en fin de doc. |
 | 4 | **Étape 5v2** — Refonte Boutique publique & Design System *(nouvelle, 2026-07-17 — voir note ci-dessous)* | Chantier à part du reste du module Business (boutique publique, pas dashboard beatmaker). Placé après l'Admin (rang 3) — décision Jake : terminer l'outillage interne, dont la dépendance dure avant déploiement, avant de se lancer dans un chantier plus long et moins cadré. |
 | 5 | **11d Phase 8** — Dashboard business (accueil) | Agrège les KPIs de tous les modules Business, y compris Marketing/Mailing/Catégories — n'a de sens qu'une fois ces modules construits (rangs 1-2 inclus). |
 | 6 | **Étape 14** — Onboarding | Repositionné après l'Étape 5v2 (rang 4) — un nouveau beatmaker doit être guidé sur le design final de sa boutique, pas sur l'ancien. Indépendant du nom (le parcours de config peut rester générique). |
@@ -93,7 +98,7 @@
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation *(partiellement couvert par 11d Marketing)* | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | Compteur d'écoutes sur les cartes beat et page détail *(analytics back-office couvert par 11d)* | 2-3h | ✅ Validé |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
-| 15 | **Admin** | Back-office plateforme : perf SaaS globales, perf par boutique, modération des demandes de certification (catégories, 11d Phase 7) ✅ *(amorcé 2026-07-17, `/dashboard/admin/categories`, gardé par email — `lib/admin.ts`)*, outil interne d'import BeatStars (script scraping concierge), **+ périmètre élargi le 2026-07-17** (support, gestion des boutiques, analytics plateforme, visibilité mails transactionnels — objectif Jake : autonomie totale sans repasser par Claude, reste à détailler en sous-étapes). Dépendance dure avant l'étape 17 (déploiement officiel) | 10-15h *(à réviser)* | 🔄 En cours |
+| 15 | **Admin** | Back-office plateforme, périmètre cadré en sous-étapes le 2026-07-24 : **15a** Recherche/Support ✅ codé, **15b** Log Stripe ✅ codé, **15c** Suspendre/Réactiver une boutique (cascade Stripe) ✅ codé, **15d** Analytics plateforme ⬜, **15e** Visibilité mails transactionnels ⬜, **15f** Rôles/permissions (reste en V1, gate par slug) — pas prioritaire, **15g** Mises à jour/veille technique ⬜ *(nouvelle zone née le 2026-07-24)*, modération des demandes de certification (catégories, 11d Phase 7) ✅ *(amorcé 2026-07-17, `/dashboard/admin/categories`)*, outil interne d'import BeatStars (script scraping concierge) ⬜. Détail complet + scoring dangerosité : mémoire `project_admin_etape15_scope`. Dépendance dure avant l'étape 17 (déploiement officiel) | 10-15h *(à réviser)* | 🔄 En cours — lot 1 (15a/15b/15c) codé le 2026-07-24, pas encore testé |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
 | 17 | **Déploiement** | Mise en ligne sur Vercel + nom de domaine | 2-4h | ⬜ À faire |
 
@@ -877,6 +882,56 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Sécurité :**
 - [x] **T19** — Compte non-admin (déconnecté ou autre compte réel) → `/dashboard/admin` redirige vers `/dashboard/business`
+
+#### Checklist tests Étape 15 lot 1 — Admin Recherche/Support + Log Stripe + Suspension ⬜ À tester
+
+> **Contexte :** Premier lot de code de l'Étape 15 élargie, cadré par interview + scoring pertinence/dangerosité le 2026-07-24 (voir mémoire `project_admin_etape15_scope`). Items retenus : recherche multi-critères (15a), log des webhooks Stripe (15b), suspendre/réactiver une boutique avec pause en cascade des abonnements Stripe (15c), correction de champs bas risque sur un compte client/beatmaker (15a). Exclus définitivement : modifier une boutique à sa place (email/slug/Stripe Connect), supprimer un compte, corriger un statut de split/paiement collab.
+>
+> ⚠️ **À faire avant tout test** : exécuter la migration `supabase/phase15_1_admin_support.sql` dans l'éditeur SQL Supabase (crée `stripe_events`, ajoute le statut `suspendu` sur `abonnements_plateforme`/`abonnements_boutique`, les colonnes `suspendu_le`/`suspendu_raison`/`statut_avant_suspension`, et les fonctions de recherche par préfixe). Rien de tout ça n'a encore été testé par Jake.
+>
+> ⚠️ **Tester la suspension sur une boutique de test uniquement** (ex. `feedback.jakeb@gmail.com`, voir mémoire `project_compte_test_feedback_jakeb`) — la cascade met en pause de vrais abonnements Stripe (mode test), jamais une boutique réelle active.
+
+**Préalable :**
+- [ ] **T0** — Migration `phase15_1_admin_support.sql` exécutée sans erreur
+
+**Recherche (`/dashboard/admin/recherche`) :**
+- [ ] **T1** — Recherche par email d'un beatmaker → apparaît dans "Boutiques"
+- [ ] **T2** — Recherche par slug d'un beatmaker → même résultat
+- [ ] **T3** — Recherche par email d'un client → apparaît dans "Clients (artistes)"
+- [ ] **T4** — Recherche par préfixe d'ID d'une commande (les 8 caractères affichés `#XXXXXXXX` dans `/dashboard/business/commandes`) → apparaît dans "Commandes", lien fonctionne
+- [ ] **T5** — Recherche par préfixe d'ID d'un abonnement boutique (`A-XXXXXXXX`) → apparaît dans "Abonnements boutique", lien fonctionne
+
+**Fiche boutique (`/dashboard/admin/boutiques/[id]`) :**
+- [ ] **T6** — Stats affichées (clients, commandes, statut abo plateforme, artistes abonnés actifs) cohérentes avec les données réelles de la boutique de test
+- [ ] **T7** — Correction d'un champ bas risque (ex. téléphone, tagline) → sauvegarde visible après rechargement
+- [ ] **T8** — Email, slug et Stripe Connect bien absents du formulaire d'édition (lecture seule uniquement)
+
+**Suspension (boutique de test uniquement) :**
+- [ ] **T9** — Clic "Suspendre" sans raison → bouton désactivé/bloqué (raison obligatoire)
+- [ ] **T10** — Suspension avec raison → rapport affiché cohérent (abo plateforme + nombre d'artistes mis en pause)
+- [ ] **T11** — Le beatmaker suspendu, en se connectant à son dashboard, est redirigé vers `/dashboard/suspendu` avec le bon motif affiché
+- [ ] **T12** — La boutique publique `/{slug}` de test affiche "temporairement indisponible" (plus de header/player/catalogue)
+- [ ] **T13** — Sur le Dashboard Stripe (mode test) : l'abonnement plateforme du beatmaker de test passe bien en pause (`pause_collection` actif)
+- [ ] **T14** — Sur le Dashboard Stripe (mode test) : les abonnements artistes actifs de cette boutique passent bien en pause
+- [ ] **T15** — Réactivation → dashboard et boutique publique de nouveau accessibles immédiatement
+- [ ] **T16** — L'abonnement plateforme reprend exactement son statut d'avant suspension (`actif` ou `en_essai`, pas juste `actif` par défaut) et la pause Stripe est retirée
+- [ ] **T17** — Les abonnements artistes repassent à `actif` et la pause Stripe est retirée sur chacun
+
+**Fiche client (`/dashboard/admin/clients/[id]`) :**
+- [ ] **T18** — Liste des boutiques (leads) et commandes récentes affichée correctement
+- [ ] **T19** — Correction d'un champ bas risque (ex. téléphone) → sauvegarde visible ; email non éditable
+
+**Fiches commande/abonnement en lecture seule :**
+- [ ] **T20** — `/dashboard/admin/commandes/[id]` affiche le détail correct (articles, montants, liens boutique/client fonctionnels)
+- [ ] **T21** — `/dashboard/admin/abonnements/[id]` affiche le détail correct (plan, prix, dates, liens boutique/client fonctionnels)
+
+**Log Stripe (`/dashboard/admin/stripe-events`) :**
+- [ ] **T22** — Un paiement de test déclenche bien une ligne "traite" dans le log, quasi en temps réel
+- [ ] **T23** — Filtre "Échecs uniquement" fonctionne (provoquer un échec de traitement pour vérifier, ex. webhook rejoué sur une donnée déjà supprimée)
+- [ ] **T24** — Un webhook rejoué par Stripe (bouton "Renvoyer" dans le Dashboard Stripe) met à jour la même ligne au lieu d'en créer une nouvelle (upsert sur `stripe_event_id`)
+
+**Sécurité :**
+- [ ] **T25** — Compte non-admin (déconnecté ou autre compte réel) → toutes les routes `/dashboard/admin/**` redirigent vers `/dashboard/business`
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 

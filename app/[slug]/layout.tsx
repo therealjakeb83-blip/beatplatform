@@ -68,9 +68,19 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur')
+    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut')
     .eq('slug', slug)
     .maybeSingle()
+
+  // Boutique suspendue depuis l'admin (Étape 15c) — bloque toute la boutique
+  // publique, avant même de charger le player/panier/thème.
+  if (beatmaker?.statut === 'suspendu') {
+    return (
+      <div className="min-h-screen bg-[#05060B] text-white flex items-center justify-center px-4">
+        <p className="text-center text-gray-400">Cette boutique est temporairement indisponible.</p>
+      </div>
+    )
+  }
 
   return (
     <PlayerProvider>

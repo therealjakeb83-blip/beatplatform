@@ -39,13 +39,21 @@ export async function proxy(request: NextRequest) {
     // Vérifier que l'utilisateur est bien un beatmaker
     const { data: beatmaker } = await supabase
       .from('beatmakers')
-      .select('id')
+      .select('id, statut')
       .eq('id', user.id)
       .single()
 
     if (!beatmaker) {
       const url = request.nextUrl.clone()
       url.pathname = '/mon-compte'
+      return NextResponse.redirect(url)
+    }
+
+    // Boutique suspendue depuis l'admin (Étape 15c) — coupe l'accès au
+    // dashboard immédiatement, sauf à la page d'explication elle-même.
+    if (beatmaker.statut === 'suspendu' && pathname !== '/dashboard/suspendu') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard/suspendu'
       return NextResponse.redirect(url)
     }
   }

@@ -31,43 +31,66 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Signature invalide' }, { status: 400 })
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
-    if (session.mode === 'subscription') {
-      await traiterAbonnementCree(session)
-    } else {
-      await traiterPaiement(session)
+  // Log admin (page /dashboard/admin/stripe-events) — upsert sur
+  // stripe_event_id pour qu'un rejeu Stripe mette à jour la même ligne au
+  // lieu d'en créer une nouvelle. N'affecte jamais le traitement métier
+  // ci-dessous : une erreur d'écriture du log ne doit jamais faire échouer
+  // le webhook (Stripe réessaierait indéfiniment un event déjà traité).
+  const logAdmin = createAdminClient()
+  await logAdmin.from('stripe_events').upsert(
+    { stripe_event_id: event.id, type: event.type, statut: 'recu' },
+    { onConflict: 'stripe_event_id' }
+  )
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session
+      if (session.mode === 'subscription') {
+        await traiterAbonnementCree(session)
+      } else {
+        await traiterPaiement(session)
+      }
     }
+
+    if (event.type === 'invoice.payment_succeeded') {
+      await traiterPaiementAbonnement(event.data.object as Stripe.Invoice)
+    }
+
+    if (event.type === 'invoice.payment_failed') {
+      await traiterEchecRenouvellementAbonnement(event.data.object as Stripe.Invoice)
+    }
+
+    if (event.type === 'customer.subscription.updated') {
+      await traiterMajAbonnement(event.data.object as Stripe.Subscription)
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      await traiterAnnulationAbonnement(event.data.object as Stripe.Subscription)
+    }
+
+    if (event.type === 'account.updated') {
+      await traiterCompteConnecte(event.data.object as Stripe.Account)
+    }
+
+    if (event.type === 'checkout.session.expired') {
+      await traiterExpirationTentative(event.data.object as Stripe.Checkout.Session)
+    }
+
+    if (event.type === 'payment_intent.payment_failed') {
+      await traiterEchecTentative(event.data.object as Stripe.PaymentIntent)
+    }
+  } catch (err) {
+    const erreur = err instanceof Error ? err.message : String(err)
+    console.error('[webhook] Erreur traitement event', event.type, ':', erreur)
+    await logAdmin.from('stripe_events').update({ statut: 'echoue', erreur, traite_at: new Date().toISOString() }).eq('stripe_event_id', event.id)
+    // 200 quand même : la signature est valide, l'erreur vient de notre
+    // traitement — répondre en erreur ferait retenter Stripe indéfiniment
+    // le même event sans que le rapport /dashboard/admin/stripe-events ne
+    // soit consulté entre-temps.
+    return NextResponse.json({ ok: true })
   }
 
-  if (event.type === 'invoice.payment_succeeded') {
-    await traiterPaiementAbonnement(event.data.object as Stripe.Invoice)
-  }
-
-  if (event.type === 'invoice.payment_failed') {
-    await traiterEchecRenouvellementAbonnement(event.data.object as Stripe.Invoice)
-  }
-
-  if (event.type === 'customer.subscription.updated') {
-    await traiterMajAbonnement(event.data.object as Stripe.Subscription)
-  }
-
-  if (event.type === 'customer.subscription.deleted') {
-    await traiterAnnulationAbonnement(event.data.object as Stripe.Subscription)
-  }
-
-  if (event.type === 'account.updated') {
-    await traiterCompteConnecte(event.data.object as Stripe.Account)
-  }
-
-  if (event.type === 'checkout.session.expired') {
-    await traiterExpirationTentative(event.data.object as Stripe.Checkout.Session)
-  }
-
-  if (event.type === 'payment_intent.payment_failed') {
-    await traiterEchecTentative(event.data.object as Stripe.PaymentIntent)
-  }
-
+  await logAdmin.from('stripe_events').update({ statut: 'traite', traite_at: new Date().toISOString() }).eq('stripe_event_id', event.id)
   return NextResponse.json({ ok: true })
 }
 
