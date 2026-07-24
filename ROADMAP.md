@@ -926,8 +926,8 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T19** — Correction d'un champ bas risque (ex. téléphone) → sauvegarde visible ; email non éditable
 
 **Fiches commande/abonnement en lecture seule :**
-- [ ] **T20** — `/dashboard/admin/commandes/[id]` affiche le détail correct (articles, montants, liens boutique/client fonctionnels)
-- [ ] **T21** — `/dashboard/admin/abonnements/[id]` affiche le détail correct (plan, prix, dates, liens boutique/client fonctionnels)
+- [x] **T20** — `/dashboard/admin/commandes/[id]` affiche le détail correct (articles, montants, liens boutique/client fonctionnels)
+- [x] **T21** — `/dashboard/admin/abonnements/[id]` affiche le détail correct (plan, prix, dates, liens boutique/client fonctionnels)
 
 **Log Stripe (`/dashboard/admin/stripe-events`) :**
 - [ ] **T22** — Un paiement de test déclenche bien une ligne "traite" dans le log, quasi en temps réel
