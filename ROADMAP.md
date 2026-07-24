@@ -902,7 +902,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T5** — Recherche par préfixe d'ID d'un abonnement boutique (`A-XXXXXXXX`) → apparaît dans "Abonnements boutique", lien fonctionne
 
 **Fiche boutique (`/dashboard/admin/boutiques/[id]`) :**
-- [ ] **T6** — Stats affichées (clients, commandes, statut abo plateforme, artistes abonnés actifs) cohérentes avec les données réelles de la boutique de test
+- [x] **T6** — Stats affichées (clients, commandes, statut abo plateforme, artistes abonnés actifs) cohérentes avec les données réelles de la boutique de test
 - [ ] **T7** — Correction d'un champ bas risque (ex. téléphone, tagline) → sauvegarde visible après rechargement
 - [ ] **T8** — Email, slug et Stripe Connect bien absents du formulaire d'édition (lecture seule uniquement)
 
