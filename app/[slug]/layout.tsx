@@ -3,6 +3,7 @@ import type { Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { SLUG_ADMIN } from '@/lib/admin'
 import { accentPresetKey } from './_lib/theme-accent'
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
@@ -68,7 +69,7 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut')
+    .select('id, nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, slug, abonnement_exempte')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -80,6 +81,27 @@ export default async function BoutiqueLayout({
         <p className="text-center text-gray-400">Cette boutique est temporairement indisponible.</p>
       </div>
     )
+  }
+
+  // Étape 8b — la boutique publique n'existe que pour un beatmaker qui paie
+  // la plateforme. Mêmes exemptions que le gate dashboard (proxy.ts) :
+  // compte admin et boutiques de test exemptées (`abonnement_exempte`).
+  if (beatmaker && beatmaker.slug !== SLUG_ADMIN && !beatmaker.abonnement_exempte) {
+    const { data: abonnementActif } = await admin
+      .from('abonnements_plateforme')
+      .select('id')
+      .eq('beatmaker_id', beatmaker.id)
+      .in('statut', ['actif', 'en_essai'])
+      .limit(1)
+      .maybeSingle()
+
+    if (!abonnementActif) {
+      return (
+        <div className="min-h-screen bg-[#05060B] text-white flex items-center justify-center px-4">
+          <p className="text-center text-gray-400">Cette boutique n&apos;est pas encore active.</p>
+        </div>
+      )
+    }
   }
 
   return (
