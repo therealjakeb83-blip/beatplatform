@@ -9,6 +9,8 @@ export type ResultatRechercheAdmin = {
 
 const VIDE: ResultatRechercheAdmin = { beatmakers: [], clients: [], commandes: [], abonnements: [] }
 
+export type OngletRecherche = 'boutiques' | 'artistes' | 'commandes'
+
 // Renseigne acheteur_email depuis le client lié quand la commande/l'abonnement
 // ne le porte pas directement — cas des commandes CREATION_ABONNEMENT/
 // RENOUVELLEMENT (traiterPaiementAbonnement dans le webhook Stripe ne
@@ -29,10 +31,12 @@ async function completerEmailManquant<T extends { client_id: string; acheteur_em
 }
 
 // Point d'entrée unique de la recherche admin (support, 15a) — un champ,
-// détection automatique du type de requête. Le préfixe d'ID est le même
-// identifiant à 8 caractères déjà affiché partout dans le dashboard business
-// (`#A3F92B1C`) — c'est ce qu'un beatmaker colle à Jake en support.
-export async function rechercherAdmin(requete: string): Promise<ResultatRechercheAdmin> {
+// segmenté par onglet (Boutiques/Artistes/Commandes & Abonnements) pour ne
+// lancer que les requêtes pertinentes — chercher dans tout à chaque frappe
+// ralentissait sans raison (retour Jake, 2026-07-24). Le préfixe d'ID est le
+// même identifiant à 8 caractères déjà affiché partout dans le dashboard
+// business (`#A3F92B1C`) — c'est ce qu'un beatmaker colle à Jake en support.
+export async function rechercherAdmin(requete: string, onglet: OngletRecherche): Promise<ResultatRechercheAdmin> {
   const q = requete.trim()
   if (!q) return VIDE
 
@@ -40,20 +44,35 @@ export async function rechercherAdmin(requete: string): Promise<ResultatRecherch
   const motif = `%${q}%`
   const ressemblePrefixeId = /^[0-9a-f]{3,32}$/i.test(q)
 
-  const [beatmakersRes, clientsRes, commandesRes, abonnementsRes] = await Promise.all([
-    admin.from('beatmakers').select('id, nom_artiste, slug, email, statut').or(`email.ilike.${motif},slug.ilike.${motif},nom_artiste.ilike.${motif}`).limit(10),
-    admin.from('clients').select('id, nom, prenom, email').or(`email.ilike.${motif},nom.ilike.${motif},prenom.ilike.${motif}`).limit(10),
-    ressemblePrefixeId ? admin.rpc('admin_chercher_commande_prefixe', { p_prefixe: q }) : Promise.resolve({ data: [] }),
-    ressemblePrefixeId ? admin.rpc('admin_chercher_abonnement_prefixe', { p_prefixe: q }) : Promise.resolve({ data: [] }),
+  if (onglet === 'boutiques') {
+    const { data } = await admin
+      .from('beatmakers')
+      .select('id, nom_artiste, slug, email, statut')
+      .or(`email.ilike.${motif},slug.ilike.${motif},nom_artiste.ilike.${motif}`)
+      .limit(10)
+    return { ...VIDE, beatmakers: data ?? [] }
+  }
+
+  if (onglet === 'artistes') {
+    const { data } = await admin
+      .from('clients')
+      .select('id, nom, prenom, email')
+      .or(`email.ilike.${motif},nom.ilike.${motif},prenom.ilike.${motif}`)
+      .limit(10)
+    return { ...VIDE, clients: data ?? [] }
+  }
+
+  // onglet === 'commandes' — commandes ET abonnements, uniquement par
+  // préfixe d'ID (pas de recherche par email ici, c'est le rôle de l'onglet Artistes)
+  if (!ressemblePrefixeId) return VIDE
+
+  const [commandesRes, abonnementsRes] = await Promise.all([
+    admin.rpc('admin_chercher_commande_prefixe', { p_prefixe: q }),
+    admin.rpc('admin_chercher_abonnement_prefixe', { p_prefixe: q }),
   ])
 
   const commandes = await completerEmailManquant(admin, (commandesRes.data ?? []) as ResultatRechercheAdmin['commandes'])
   const abonnements = await completerEmailManquant(admin, (abonnementsRes.data ?? []) as ResultatRechercheAdmin['abonnements'])
 
-  return {
-    beatmakers: beatmakersRes.data ?? [],
-    clients: clientsRes.data ?? [],
-    commandes,
-    abonnements,
-  }
+  return { ...VIDE, commandes, abonnements }
 }

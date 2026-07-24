@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
-import type { ResultatRechercheAdmin } from '@/lib/admin-recherche'
+import type { ResultatRechercheAdmin, OngletRecherche } from '@/lib/admin-recherche'
 
 type Props = {
-  rechercher: (requete: string) => Promise<{ resultat?: ResultatRechercheAdmin; erreur?: string }>
+  rechercher: (requete: string, onglet: OngletRecherche) => Promise<{ resultat?: ResultatRechercheAdmin; erreur?: string }>
 }
 
 const STATUT_STYLES: Record<string, string> = {
@@ -29,15 +29,22 @@ function Badge({ statut }: { statut: string }) {
   )
 }
 
+const ONGLETS: { valeur: OngletRecherche; label: string; placeholder: string }[] = [
+  { valeur: 'boutiques', label: 'Boutiques', placeholder: 'Email, slug ou nom de boutique...' },
+  { valeur: 'artistes', label: 'Artistes', placeholder: 'Email ou nom d\'un artiste...' },
+  { valeur: 'commandes', label: 'Commandes & Abonnements', placeholder: 'Identifiant (ex. A3F92B1C)...' },
+]
+
 export default function RechercheClient({ rechercher }: Props) {
+  const [onglet, setOnglet] = useState<OngletRecherche>('boutiques')
   const [q, setQ] = useState('')
   const [resultat, setResultat] = useState<ResultatRechercheAdmin | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [cherche, setCherche] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function lancer(valeur: string) {
-    setQ(valeur)
+  function executer(valeur: string, ong: OngletRecherche) {
     if (!valeur.trim()) {
       setResultat(null)
       setCherche(false)
@@ -45,12 +52,31 @@ export default function RechercheClient({ rechercher }: Props) {
     }
     startTransition(async () => {
       setCherche(true)
-      const res = await rechercher(valeur)
+      const res = await rechercher(valeur, ong)
       if (res.erreur) setErreur(res.erreur)
       else { setResultat(res.resultat ?? null); setErreur(null) }
     })
   }
 
+  // Debounce : la recherche ne part que 300ms après la dernière frappe, pas
+  // à chaque lettre (retour Jake, 2026-07-24 — ça ralentissait en tapant).
+  function onChangeQuery(valeur: string) {
+    setQ(valeur)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => executer(valeur, onglet), 300)
+  }
+
+  // Changer d'onglet relance immédiatement (pas de debounce nécessaire,
+  // l'utilisateur ne tape rien à ce moment-là).
+  function onChangeOnglet(nouvel: OngletRecherche) {
+    setOnglet(nouvel)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    executer(q, nouvel)
+  }
+
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
+
+  const ongletActif = ONGLETS.find(o => o.valeur === onglet)!
   const total = resultat
     ? resultat.beatmakers.length + resultat.clients.length + resultat.commandes.length + resultat.abonnements.length
     : 0
@@ -59,16 +85,30 @@ export default function RechercheClient({ rechercher }: Props) {
     <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
       <div>
         <h1 className="text-xl font-bold text-white">Recherche</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Email ou slug d&apos;un beatmaker, email/nom d&apos;un artiste, ou identifiant affiché dans le dashboard business (ex. <code className="text-gray-400">A3F92B1C</code>).
-        </p>
+        <p className="text-sm text-gray-500 mt-0.5">Retrouver un compte ou une transaction, par catégorie.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {ONGLETS.map(o => (
+          <button
+            key={o.valeur}
+            onClick={() => onChangeOnglet(o.valeur)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              onglet === o.valeur
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
       </div>
 
       <input
         autoFocus
         value={q}
-        onChange={e => lancer(e.target.value)}
-        placeholder="Rechercher..."
+        onChange={e => onChangeQuery(e.target.value)}
+        placeholder={ongletActif.placeholder}
         className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-gray-600"
       />
 
@@ -93,7 +133,7 @@ export default function RechercheClient({ rechercher }: Props) {
       )}
 
       {resultat && resultat.clients.length > 0 && (
-        <Section titre="Clients (artistes)">
+        <Section titre="Artistes">
           {resultat.clients.map(c => (
             <Link key={c.id} href={`/dashboard/admin/clients/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-800/50 transition-colors">
               <div>
