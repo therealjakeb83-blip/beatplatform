@@ -143,7 +143,11 @@ body:has(.shop-root) { overflow-x: hidden; }
    boutons indissociables. Rendu "noir" plein pour recréer le contraste
    noir/blanc, y compris l'inversion au survol. Ne cible que le bouton du
    header (.shop-header-row1), pas celui du hero qui reste inchangé. */
-.shop-root[data-accent-tone="noirBlanc"] .shop-header-row1 a.shop-cta { background: #0A0C13; color: #fff; }
+.shop-root[data-accent-tone="noirBlanc"] .shop-header-row1 a.shop-cta {
+  background: #0A0C13;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(255,255,255,.35);
+}
 .shop-root[data-accent-tone="noirBlanc"] .shop-header-row1 a.shop-cta:hover { background: #fff; color: #0A0C13; }
 
 /* Bleu : valeurs figées en rgb() directement (pas la formule oklch(from var(--ac) ...))
