@@ -33,6 +33,7 @@ type Props = {
   nbClients: number
   nbCommandes: number
   statutAbonnementPlateforme: string | null
+  annulationPrevueAbonnementPlateforme: string | null
   nbAbosArtistesActifs: number
   suspendreAction: (id: string, raison: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
   reactiverAction: (id: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
@@ -40,7 +41,7 @@ type Props = {
 }
 
 export default function BoutiqueDetailClient({
-  beatmaker, nbClients, nbCommandes, statutAbonnementPlateforme, nbAbosArtistesActifs,
+  beatmaker, nbClients, nbCommandes, statutAbonnementPlateforme, annulationPrevueAbonnementPlateforme, nbAbosArtistesActifs,
   suspendreAction, reactiverAction, corrigerBeatmakerAction,
 }: Props) {
   const [statut, setStatut] = useState(beatmaker.statut)
@@ -111,7 +112,11 @@ export default function BoutiqueDetailClient({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat label="Clients" valeur={nbClients} />
         <Stat label="Commandes" valeur={nbCommandes} />
-        <Stat label="Abo. plateforme" valeur={statutAbonnementPlateforme ?? '—'} />
+        <Stat
+          label="Abo. plateforme"
+          valeur={statutAbonnementPlateforme ?? '—'}
+          note={annulationPrevueAbonnementPlateforme ? `annulation ${new Date(annulationPrevueAbonnementPlateforme).toLocaleDateString('fr-FR')}` : undefined}
+        />
         <Stat label="Artistes abonnés actifs" valeur={nbAbosArtistesActifs} />
       </div>
 
@@ -200,11 +205,12 @@ function StatutBadge({ statut }: { statut: string }) {
   return <span className={`text-xs px-2 py-1 rounded border ${styles[statut] ?? styles.inactif}`}>{statut}</span>
 }
 
-function Stat({ label, valeur }: { label: string; valeur: string | number }) {
+function Stat({ label, valeur, note }: { label: string; valeur: string | number; note?: string }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
       <p className="text-lg font-bold text-white">{valeur}</p>
       <p className="text-xs text-gray-500">{label}</p>
+      {note && <p className="text-xs text-amber-400 mt-0.5">{note}</p>}
     </div>
   )
 }

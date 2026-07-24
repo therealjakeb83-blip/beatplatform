@@ -18,7 +18,7 @@ export default async function BoutiqueDetailPage({ params }: { params: Promise<{
   const [{ count: nbClients }, { count: nbCommandes }, { data: aboPlateforme }, { count: nbAbosArtistesActifs }] = await Promise.all([
     admin.from('leads').select('id', { count: 'exact', head: true }).eq('beatmaker_id', id),
     admin.from('commandes').select('id', { count: 'exact', head: true }).eq('beatmaker_id', id),
-    admin.from('abonnements_plateforme').select('statut').eq('beatmaker_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('abonnements_plateforme').select('statut, annulation_prevue_le').eq('beatmaker_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     admin.from('abonnements_boutique').select('id', { count: 'exact', head: true }).eq('beatmaker_id', id).eq('statut', 'actif'),
   ])
 
@@ -28,6 +28,7 @@ export default async function BoutiqueDetailPage({ params }: { params: Promise<{
       nbClients={nbClients ?? 0}
       nbCommandes={nbCommandes ?? 0}
       statutAbonnementPlateforme={aboPlateforme?.statut ?? null}
+      annulationPrevueAbonnementPlateforme={aboPlateforme?.annulation_prevue_le ?? null}
       nbAbosArtistesActifs={nbAbosArtistesActifs ?? 0}
       suspendreAction={suspendreAction}
       reactiverAction={reactiverAction}

@@ -9,7 +9,7 @@ export default async function AbonnementPlateformePage() {
 
   const { data: abo } = await supabase
     .from('abonnements_plateforme')
-    .select('id, statut, en_essai, essai_fin_le, periode, prix, devise, date_fin, stripe_customer_id')
+    .select('id, statut, en_essai, essai_fin_le, periode, prix, devise, date_fin, stripe_customer_id, annulation_prevue_le')
     .eq('beatmaker_id', user.id)
     .order('created_at', { ascending: false })
     .limit(1)

@@ -13,6 +13,7 @@ type Abonnement = {
   devise: string
   date_fin: string | null
   stripe_customer_id: string | null
+  annulation_prevue_le: string | null
 } | null
 
 const STATUT_LABEL: Record<string, { label: string; cls: string }> = {
@@ -84,6 +85,9 @@ export default function AbonnementPlateformeClient({ abonnement }: { abonnement:
           )}
           {abonnement.date_fin && !abonnement.en_essai && (
             <p className="text-xs text-gray-500">Prochain renouvellement le {new Date(abonnement.date_fin).toLocaleDateString('fr-FR')}.</p>
+          )}
+          {abonnement.annulation_prevue_le && (
+            <p className="text-xs text-amber-400">Annulation prévue le {new Date(abonnement.annulation_prevue_le).toLocaleDateString('fr-FR')} — accès conservé jusque-là.</p>
           )}
           {abonnement.stripe_customer_id && (
             <button

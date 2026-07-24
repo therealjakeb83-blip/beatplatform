@@ -517,11 +517,19 @@ async function traiterMajAbonnementPlateforme(subscription: Stripe.Subscription)
   const enEssai = status === 'trialing'
   const finPeriode = subscription.items.data[0]?.current_period_end
 
+  // subscription.cancel_at est renseigné aussi bien pour une annulation "à la
+  // fin de la période en cours" que pour une annulation pendant l'essai (où
+  // cancel_at_period_end reste à false, status reste "trialing") — c'est le
+  // signal le plus fiable pour prévenir d'une annulation déjà programmée
+  // avant qu'elle ne soit effective (découvert en testant le 2026-07-24).
+  const annulationPrevueLe = subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null
+
   const { error } = await supabase
     .from('abonnements_plateforme')
     .update({
       statut,
       en_essai: enEssai,
+      annulation_prevue_le: annulationPrevueLe,
       ...(finPeriode ? { date_fin: new Date(finPeriode * 1000).toISOString() } : {}),
     })
     .eq('stripe_subscription_id', subscription.id)
@@ -534,7 +542,7 @@ async function traiterAnnulationAbonnementPlateforme(subscription: Stripe.Subscr
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('abonnements_plateforme')
-    .update({ statut: 'annule', en_essai: false, date_annulation: new Date().toISOString() })
+    .update({ statut: 'annule', en_essai: false, date_annulation: new Date().toISOString(), annulation_prevue_le: null })
     .eq('stripe_subscription_id', subscription.id)
 
   if (error) console.error('[webhook] Erreur annulation abonnement_plateforme:', JSON.stringify(error))
