@@ -992,7 +992,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T13** — Ce compte souscrit un essai réel (checkout Stripe test, carte 4242) → immédiatement après, `/dashboard` redevient accessible sans rien recharger de spécial
 - [x] **T14** — `jakeb-test1` (déjà `en_essai` réel) accède normalement à `/dashboard` sans passer par l'exemption
 - [x] **T15** — Un compte de test avec `abonnement_exempte = true` (ex. `jakeb-test2`) accède normalement à `/dashboard` malgré `abo_plateforme = AUCUN`
-- [ ] **T16** — Le compte admin (`jakeb-test`) accède normalement à `/dashboard` ET `/dashboard/admin` sans jamais être concerné par le gate, quel que soit son statut d'abonnement
+- [x] **T16** — Le compte admin (`jakeb-test`) accède normalement à `/dashboard` ET `/dashboard/admin` sans jamais être concerné par le gate, quel que soit son statut d'abonnement
 - [ ] **T17** — Sur la fiche `/dashboard/admin/boutiques/[id]` d'une boutique de test, le bouton "Exempter du gate" / "Exemptée — retirer le laisser-passer" toggle correctement et se reflète immédiatement à l'écran
 - [ ] **T18** — Retirer l'exemption d'un compte qui n'a par ailleurs aucun abonnement actif le rebloque bien au prochain accès dashboard (vérifie que le toggle a un effet réel, pas juste visuel)
 - [ ] **T19** — Un compte `suspendu` reste redirigé vers `/dashboard/suspendu` en priorité, même s'il a par ailleurs un abonnement actif ou une exemption (le check suspension passe avant le check gate abonnement)
