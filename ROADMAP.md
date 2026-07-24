@@ -981,7 +981,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Garde-fou : pas de blocage d'accès dans ce lot :**
 - [x] **T10** — Un compte beatmaker **sans aucun abonnement plateforme** peut toujours accéder normalement à `/dashboard` et `/dashboard/business` — confirme que le gate d'accès n'a bien PAS été activé par erreur dans ce lot (différé volontairement à un lot séparé)
 
-#### Checklist tests Étape 8b (suite) — Gate d'accès dashboard
+#### Checklist tests Étape 8b (suite) — Gate d'accès dashboard ✅ Validée le 2026-07-24
 
 > **Contexte :** Dernier morceau volontairement différé lors du codage initial (voir T10 ci-dessus) — activé le 2026-07-24 dans `proxy.ts`, une fois le paiement lui-même testé. Un beatmaker sans abonnement `actif`/`en_essai` est redirigé vers `/dashboard/abonnement`. Deux exemptions : `SLUG_ADMIN` (compte admin) et le nouveau laisser-passer `beatmakers.abonnement_exempte` (migration `supabase/phase8b_3_exemption_gate.sql`).
 >
@@ -995,7 +995,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T16** — Le compte admin (`jakeb-test`) accède normalement à `/dashboard` ET `/dashboard/admin` sans jamais être concerné par le gate, quel que soit son statut d'abonnement
 - [x] **T17** — Sur la fiche `/dashboard/admin/boutiques/[id]` d'une boutique de test, le bouton "Exempter du gate" / "Exemptée — retirer le laisser-passer" toggle correctement et se reflète immédiatement à l'écran
 - [x] **T18** — Retirer l'exemption d'un compte qui n'a par ailleurs aucun abonnement actif le rebloque bien au prochain accès dashboard (vérifie que le toggle a un effet réel, pas juste visuel) *(bonus confirmé : la boutique publique du même compte bascule aussi en 404, preuve que le toggle a un vrai effet sur les deux gates)*
-- [ ] **T19** — Un compte `suspendu` reste redirigé vers `/dashboard/suspendu` en priorité, même s'il a par ailleurs un abonnement actif ou une exemption (le check suspension passe avant le check gate abonnement)
+- [x] **T19** — Un compte `suspendu` reste redirigé vers `/dashboard/suspendu` en priorité, même s'il a par ailleurs un abonnement actif ou une exemption (le check suspension passe avant le check gate abonnement)
 - [x] **T20** — La boutique publique `/{slug}` d'un beatmaker sans abonnement ni exemption renvoie une vraie page 404 (pas un message "boutique inactive") — visite en navigation privée, sans être connecté
 - [x] **T21** — Après souscription réelle (T13), la boutique publique de ce même beatmaker redevient visible normalement
 - [x] **T22** — La boutique publique d'un compte exempté (ex. `jakeb-test2`) reste visible malgré `abo_plateforme = AUCUN`
