@@ -965,7 +965,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T6** — Le log `/dashboard/admin/stripe-events` montre les événements `checkout.session.completed` et `customer.subscription.created` traités sans erreur *(`checkout.session.completed` + `invoice.payment_succeeded` confirmés "traite", suffisant vu T3/T4 déjà validés)*
 
 **Portail Stripe :**
-- [ ] **T7** — Bouton "Gérer mon abonnement" → redirige vers le portail Stripe (Billing Portal), sans erreur
+- [x] **T7** — Bouton "Gérer mon abonnement" → redirige vers le portail Stripe (Billing Portal), sans erreur
 
 **Annulation (via le portail Stripe) :**
 - [ ] **T8** — Annule l'abonnement depuis le portail → `abonnements_plateforme.statut` repasse à `annule` (vérifiable en base ou via la fiche admin)
