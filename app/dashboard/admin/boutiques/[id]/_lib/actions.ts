@@ -3,12 +3,14 @@
 import { estAdmin, SLUG_ADMIN } from '@/lib/admin'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { suspendreBoutique, reactiverBoutique, type RapportSuspension } from '@/lib/admin-boutiques'
-import { revalidatePath } from 'next/cache'
 
-function chemin(id: string) {
-  return `/dashboard/admin/boutiques/${id}`
-}
-
+// Pas de revalidatePath() ici (ni dans reactiverAction/corrigerBeatmakerAction
+// ci-dessous) : découvert le 2026-07-24 que ça force Next.js à resynchroniser
+// le composant client juste après l'action, ce qui réinitialise son état
+// local — le rapport de suspension (jamais stocké nulle part, uniquement en
+// mémoire côté client) disparaissait immédiatement après être apparu. Le
+// composant met déjà à jour son affichage lui-même (setStatut/setChamps), pas
+// besoin d'un aller-retour serveur pour cette page.
 export async function suspendreAction(beatmakerId: string, raison: string): Promise<{ rapport?: RapportSuspension; erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
   if (!raison.trim()) return { erreur: 'Une raison est obligatoire.' }
@@ -21,7 +23,6 @@ export async function suspendreAction(beatmakerId: string, raison: string): Prom
   if (cible?.slug === SLUG_ADMIN) return { erreur: 'Impossible de suspendre le compte admin — tu te bloquerais toi-même hors de cet outil.' }
 
   const rapport = await suspendreBoutique(beatmakerId, raison.trim())
-  revalidatePath(chemin(beatmakerId))
   return { rapport }
 }
 
@@ -29,7 +30,6 @@ export async function reactiverAction(beatmakerId: string): Promise<{ rapport?: 
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
 
   const rapport = await reactiverBoutique(beatmakerId)
-  revalidatePath(chemin(beatmakerId))
   return { rapport }
 }
 
@@ -59,6 +59,5 @@ export async function corrigerBeatmakerAction(
   const { error } = await admin.from('beatmakers').update(maj).eq('id', beatmakerId)
   if (error) return { erreur: error.message }
 
-  revalidatePath(chemin(beatmakerId))
   return {}
 }
