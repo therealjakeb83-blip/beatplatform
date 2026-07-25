@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CartBadge from './CartBadge'
@@ -21,8 +21,27 @@ export default function BoutiqueHeader({
 }) {
   const router = useRouter()
   const [recherche, setRecherche] = useState('')
+  const wrapRef = useRef<HTMLDivElement>(null)
 
   const afficherCta = peutAfficherCtaAbonnement({ abo_actif: aboActif })
+
+  // Header dynamique (desktop) : caché en descente, réaffiché en remontée
+  // ou près du haut de page — cf. handoff_modifs_v2/commun/header-dynamique.js
+  useEffect(() => {
+    const header = wrapRef.current
+    if (!header) return
+    let lastY = window.scrollY
+    function onScroll() {
+      const y = window.scrollY
+      const dy = y - lastY
+      if (y < 80) header!.classList.remove('is-hidden')
+      else if (dy > 4) header!.classList.add('is-hidden')
+      else if (dy < -4) header!.classList.remove('is-hidden')
+      lastY = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   function soumettreRecherche(e: React.FormEvent) {
     e.preventDefault()
@@ -30,7 +49,7 @@ export default function BoutiqueHeader({
   }
 
   return (
-    <div className="shop-header-wrap">
+    <div className="shop-header-wrap" ref={wrapRef}>
       <header className="shop-header">
         <div className="shop-header-row1">
           <Link href={`/${slug}`} aria-label="Accueil">

@@ -55,7 +55,7 @@ export default function BeatCard({
       className="group shop-beat-card"
     >
       {/* Cover + bouton play */}
-      <div className="shop-beat-cover">
+      <div className={`shop-beat-cover${estVerrouille ? ' shop-beat-cover--locked' : ''}`}>
         {beat.image_url ? (
           <img src={beat.image_url} alt={beat.titre} draggable={false} />
         ) : (
