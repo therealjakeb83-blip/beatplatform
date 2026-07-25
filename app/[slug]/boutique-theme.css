@@ -874,7 +874,9 @@ a.shop-style-card {
   transition: transform .18s, box-shadow .18s;
 }
 
-a.shop-style-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-style-hover); }
+@media (hover: hover) {
+  a.shop-style-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-style-hover); }
+}
 a.shop-style-card:focus { outline: none; }
 a.shop-style-card:focus-visible { box-shadow: var(--shadow-style-hover); }
 .shop-style-card strong { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
