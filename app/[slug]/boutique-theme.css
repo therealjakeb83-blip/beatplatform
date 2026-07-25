@@ -532,7 +532,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 .shop-hero {
   background: var(--hero-bg);
   text-align: center;
-  padding: 214px var(--sp-6) 260px;
+  padding: 214px var(--sp-6) 190px;
   margin-top: -118px;
   position: relative;
   z-index: 1;

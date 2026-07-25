@@ -1,6 +1,3 @@
-'use client'
-
-import { useEffect } from 'react'
 import Link from 'next/link'
 import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
 
@@ -22,22 +19,6 @@ export default function Hero({
   const titre = heroTitre || `Trouve une instru composée par ${nomArtiste}, pour ton projet`
   const sousTitre = heroSousTitre || tagline || 'Des beats de qualité pour donner vie à tes projets.'
   const afficherCta = peutAfficherCtaAbonnement({ abo_actif: aboActif })
-
-  // Premier scroll molette depuis le tout haut de page : on saute directement
-  // au sommet de la première catégorie plutôt que de laisser l'utilisateur
-  // scroller manuellement à travers tout le padding du héro (fallait 2 crans
-  // de molette avant cet effet).
-  useEffect(() => {
-    let dejaDeclenche = false
-    function onWheel(e: WheelEvent) {
-      if (dejaDeclenche || window.scrollY > 10 || e.deltaY <= 0) return
-      dejaDeclenche = true
-      e.preventDefault()
-      document.querySelector('#catalogue > :first-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-    window.addEventListener('wheel', onWheel, { passive: false })
-    return () => window.removeEventListener('wheel', onWheel)
-  }, [])
 
   return (
     <section className="shop-hero" id="top">
