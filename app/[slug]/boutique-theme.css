@@ -732,8 +732,6 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 /* ============================================================
    SECTIONS / EN-TÊTES
    ============================================================ */
-.shop-catalogue { padding: 0; }
-
 .shop-section, .shop-members-box { margin-bottom: 36px; scroll-margin-top: 100px; }
 
 .shop-section-heading {
@@ -1052,11 +1050,15 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
 /* Nouveautés / Sélection du beatmaker : vraie grille 5 colonnes en desktop
    (pas de scroll, exactement 5 cartes + "Tout voir"), le carrousel horizontal
    drag-to-scroll ne s'applique qu'en mobile. Réservés aux membres n'utilise
-   plus cette grille — voir le carrousel défilant .members-marquee ci-dessous. */
+   plus cette grille — voir le carrousel défilant .members-marquee ci-dessous.
+   Colonnes à largeur fixe (232px desktop, comme .shop-style-card) plutôt
+   que 1fr — sinon les cartes s'étirent pour remplir le conteneur et ne
+   s'alignent plus avec les blocs catégories juste en dessous (largeur
+   fixe), retour Jake du 26/07. */
 @media (min-width: 768px) {
   .shop-row--beats {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(5, 232px);
     overflow: visible;
     cursor: default;
   }

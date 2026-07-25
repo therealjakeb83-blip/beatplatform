@@ -35,7 +35,7 @@ export default function BeatCatalogue({
   const rowSelectionRef = useDragScroll<HTMLDivElement>()
 
   return (
-    <div id="catalogue" className="shop-container shop-catalogue">
+    <div id="catalogue" className="shop-container">
 
       {/* Section beats membres */}
       {beatsPrives.length > 0 && (
