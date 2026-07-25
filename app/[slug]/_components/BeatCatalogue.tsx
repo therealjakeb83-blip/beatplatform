@@ -31,7 +31,6 @@ export default function BeatCatalogue({
   estAbonne?: boolean
 }) {
   const queue: BeatMin[] = beats.map(toBeatMin)
-  const rowMembresRef = useDragScroll<HTMLDivElement>()
   const rowNouveautesRef = useDragScroll<HTMLDivElement>()
   const rowSelectionRef = useDragScroll<HTMLDivElement>()
 
@@ -47,10 +46,17 @@ export default function BeatCatalogue({
             </h2>
             <Link href={`/${slug}/membres`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
-          <div className="shop-row shop-row--beats" ref={rowMembresRef} data-hscroll>
-            {beatsPrives.map(beat => (
-              <BeatCard key={beat.id} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
-            ))}
+          {/* Banderole défilante en boucle infinie — la liste est rendue deux
+              fois à l'identique pour une boucle sans couture (translate -50%). */}
+          <div className="members-marquee-wrap">
+            <div className="members-marquee">
+              {beatsPrives.map(beat => (
+                <BeatCard key={`m1-${beat.id}`} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
+              ))}
+              {beatsPrives.map(beat => (
+                <BeatCard key={`m2-${beat.id}`} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
+              ))}
+            </div>
           </div>
         </section>
       )}

@@ -26,6 +26,11 @@ type PlayerContextType = {
   duration: number
   isShuffled: boolean
   loopOne: boolean
+  // Id du beat dont la cover mobile affiche ses contrôles (play/panier) —
+  // une seule cover ouverte à la fois, indépendant de isPlaying (le
+  // play/pause ne referme pas les contrôles, seul un re-tap sur la cover le fait).
+  mobileControlsBeatId: string | null
+  setMobileControlsBeatId: (id: string | null) => void
   play: (beat: BeatMin, queue: BeatMin[]) => void
   togglePlay: () => void
   next: () => void
@@ -55,6 +60,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [shuffleOrder, setShuffleOrder] = useState<BeatMin[]>([])
   const [isShuffled, setIsShuffled] = useState(false)
   const [loopOne, setLoopOne] = useState(false)
+  const [mobileControlsBeatId, setMobileControlsBeatId] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
@@ -320,6 +326,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   return (
     <PlayerContext.Provider value={{
       currentBeat, isPlaying, queue, progress, duration, isShuffled, loopOne,
+      mobileControlsBeatId, setMobileControlsBeatId,
       play, togglePlay, next, prev, seek, toggleShuffle, toggleLoop,
     }}>
       {children}

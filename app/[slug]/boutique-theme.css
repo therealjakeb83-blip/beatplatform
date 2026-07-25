@@ -251,8 +251,10 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-footer-tagline { color: var(--text-4); }
 
 /* Player : glass mobile hardcodé, curseur blanc invisible sans bordure sur
-   fond clair (note tokens-light.css), textes/pistes hardcodés blancs */
-.shop-root[data-accent-preset="blancNoir"] .shop-player-mobile { background: rgba(255,255,255,.95); }
+   fond clair (note tokens-light.css), textes/pistes hardcodés blancs
+   (le mini-player utilise désormais le dégradé --g1/--g2, déjà theme-aware
+   — pas d'override de fond nécessaire ici, voir déclinaisons monochromes
+   plus bas pour les boutons play/achat inversés). */
 .shop-root[data-accent-preset="blancNoir"] .shop-player-cover { border-color: rgba(10,12,19,.1); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-time { color: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-bg { background: rgba(10,12,19,.14); }
@@ -274,11 +276,31 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-toggle-btn { color: rgba(10,12,19,.45); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-skip { color: rgba(10,12,19,.85); }
 
-/* Tab bar mobile : fond hardcodé sombre, icônes/texte hardcodés blancs
-   (icônes en stroke="currentColor", héritent de la couleur du lien) */
-.shop-root[data-accent-preset="blancNoir"] .shop-tabbar { background: rgba(255,255,255,.97); border-top-color: rgba(10,12,19,.12); }
+/* Tab bar mobile : transparente (fond porté par .shop-bottom-dock), icônes/
+   texte hardcodés sombres (icônes en stroke="currentColor", héritent de la
+   couleur du lien) */
 .shop-root[data-accent-preset="blancNoir"] a.shop-tabbar-item { color: rgba(10,12,19,.6); }
 .shop-root[data-accent-preset="blancNoir"] a.shop-tabbar-item.is-active { color: var(--text); }
+
+/* Bloc bas mobile (dock player + navbar) : dégradé d'opacité clair au lieu
+   du noir hardcodé, boutons play/achat inversés en dur sombre (mêmes
+   presets « monochromes » que les cards) car --style-card-text ET --ac-deep
+   sont sombres ici — bg=texte sombre serait illisible sans cet override. */
+.shop-root[data-accent-preset="blancNoir"] .shop-bottom-dock {
+  background: linear-gradient(180deg,
+    rgba(247,248,252,0)   0%,
+    rgba(247,248,252,.6) 12%,
+    rgba(247,248,252,.88) 32%,
+    rgba(247,248,252,.97) 60%,
+    #F7F8FC              100%);
+}
+.shop-root[data-accent-tone="noirBlanc"] .shop-player-mobile-toggle,
+.shop-root[data-accent-preset="blancNoir"] .shop-player-mobile-toggle,
+.shop-root[data-accent-tone="noirBlanc"] .shop-player-mobile-add,
+.shop-root[data-accent-preset="blancNoir"] .shop-player-mobile-add {
+  background: #0A0C13;
+  color: #FFFFFF;
+}
 
 /* Panier : bordures/textes hardcodés blancs */
 .shop-root[data-accent-preset="blancNoir"] .shop-cart-header { border-bottom-color: rgba(10,12,19,.1); }
@@ -732,6 +754,8 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   color: rgba(255,255,255,.85);
 }
 
+/* Desktop : invisible par défaut, apparaît au survol de la cover ; reste
+   visible (icône pause) tant que ce beat est en lecture. */
 .shop-beat-play {
   position: absolute;
   top: 10px;
@@ -746,10 +770,23 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: transform .18s;
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .18s, transform .18s, filter .18s;
 }
 
-.shop-beat-play:hover { transform: scale(1.1); }
+@media (hover: hover) {
+  .shop-beat-cover:hover .shop-beat-play { opacity: 1; transform: scale(1); }
+  .shop-beat-cover:hover .shop-beat-play--disabled { opacity: .5; }
+  .shop-beat-play:hover { filter: brightness(1.15); }
+}
+
+.shop-beat-cover.is-playing .shop-beat-play { opacity: 1; transform: scale(1); }
+.shop-beat-play--disabled { cursor: not-allowed; }
+
+@media (max-width: 767px) {
+  .shop-beat-play { display: none; }
+}
 
 .shop-beat-locked {
   position: absolute;
@@ -758,6 +795,79 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   display: grid;
   place-items: center;
   background: var(--overlay-lock);
+  transition: opacity .18s;
+}
+
+@media (hover: hover) {
+  .shop-beat-cover:hover .shop-beat-locked { opacity: 0; }
+}
+
+/* Mobile : aucun bouton visible par défaut — un tap sur la cover lance le
+   beat et affiche voile + play/panier centrés (voir handleCoverTap). */
+.shop-beat-mobile-veil {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: rgba(5,6,11,.62);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+.shop-beat-mobile-ctrls {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 4;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+.shop-beat-cover.mobile-controls-open .shop-beat-mobile-veil,
+.shop-beat-cover.mobile-controls-open .shop-beat-mobile-ctrls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.shop-beat-mobile-play,
+.shop-beat-mobile-cart {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-pill);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform .15s;
+}
+
+.shop-beat-mobile-play:active,
+.shop-beat-mobile-cart:active { transform: scale(.9); }
+
+.shop-beat-mobile-play {
+  background: var(--ac);
+  color: var(--ac-t);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--ac) 55%, transparent);
+}
+
+.shop-beat-mobile-sep { width: 1px; height: 26px; background: rgba(255,255,255,.35); }
+
+.shop-beat-mobile-cart {
+  background: #FFFFFF;
+  color: var(--ac-deep);
+  box-shadow: 0 6px 20px rgba(0,0,0,.45);
+}
+
+@media (max-width: 767px) {
+  .shop-beat-mobile-veil, .shop-beat-mobile-ctrls { display: flex; }
 }
 
 .shop-beat-locked-icon {
@@ -840,9 +950,10 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   .shop-beat-locked-caption { display: none; }
 }
 
-/* Réservés aux membres / Nouveautés / Sélection du beatmaker : vraie grille
-   5 colonnes en desktop (pas de scroll, exactement 5 cartes + "Tout voir"),
-   le carrousel horizontal drag-to-scroll ne s'applique qu'en mobile. */
+/* Nouveautés / Sélection du beatmaker : vraie grille 5 colonnes en desktop
+   (pas de scroll, exactement 5 cartes + "Tout voir"), le carrousel horizontal
+   drag-to-scroll ne s'applique qu'en mobile. Réservés aux membres n'utilise
+   plus cette grille — voir le carrousel défilant .members-marquee ci-dessous. */
 @media (min-width: 768px) {
   .shop-row--beats {
     display: grid;
@@ -853,6 +964,49 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   .shop-row--beats[data-hscroll] { cursor: default; }
   .shop-row--beats .shop-beat-card { flex: none; width: auto; }
   .shop-row--beats > *:nth-child(n+6) { display: none; }
+}
+
+/* Carrousel « Réservés aux membres » — banderole en boucle infinie (PC +
+   mobile), remplace la grille statique des autres rangées. La liste est
+   rendue deux fois dans BeatCatalogue, piste width:max-content, translate
+   -50% => boucle sans couture. */
+@keyframes membresMarquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.members-marquee-wrap {
+  overflow: hidden;
+  padding: 4px 0 8px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+
+.members-marquee {
+  display: flex;
+  gap: var(--gap-grid);
+  width: max-content;
+  animation: membresMarquee 40s linear infinite;
+}
+
+@media (hover: hover) {
+  .members-marquee-wrap:hover .members-marquee { animation-play-state: paused; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .members-marquee { animation: none; }
+}
+
+@media (min-width: 768px) {
+  .members-marquee > .shop-beat-card { flex: 0 0 210px; width: 210px; }
+}
+
+@media (max-width: 767px) {
+  .members-marquee-wrap {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  }
+  .members-marquee { gap: 12px; animation-duration: 32s; }
 }
 
 /* ============================================================
@@ -1091,17 +1245,15 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
 
 .shop-player-add:hover { filter: brightness(1.15); }
 
+/* Carte opaque au dégradé des blocs Styles (--g1 -> --g2, déjà theme-aware
+   par preset) — plus de fond/flou/bordure fixes, la position (fixed, bas
+   d'écran) est portée par le conteneur parent .shop-bottom-dock. */
 .shop-player-mobile {
-  position: fixed;
-  left: 0; right: 0;
-  bottom: 71px;
-  z-index: 61;
-  margin: 0 10px var(--sp-2);
-  background: rgba(10,12,22,.95);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
+  margin: 0 8px 8px;
+  background: linear-gradient(135deg, var(--g1), var(--g2));
+  color: var(--style-card-text);
+  border: none;
+  border-radius: 8px;
   padding: var(--sp-2) var(--sp-3);
   display: none;
   align-items: center;
@@ -1111,47 +1263,53 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
 .shop-player-mobile-cover { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .shop-player-mobile-info { flex: 1; min-width: 0; }
 .shop-player-mobile-info .shop-player-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.shop-player-mobile-info .shop-player-tag { font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+/* Texte secondaire en opacité (pas une couleur fixe) pour rester lisible
+   sur toutes les déclinaisons d'accent du dégradé. */
+.shop-player-mobile-info .shop-player-tag { font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .62; }
 
+/* Play inversé : fond = texte de carte (blanc la plupart du temps), icône
+   couleur accent foncé — cf. override monochrome plus haut pour les
+   déclinaisons où --style-card-text ET --ac-deep sont sombres tous les deux. */
 .shop-player-mobile-toggle {
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
-  background: var(--ac);
-  color: var(--ac-t);
+  background: var(--style-card-text);
+  color: var(--ac-deep);
   border: 0;
   display: grid; place-items: center;
   cursor: pointer;
   flex-shrink: 0;
 }
 
+/* Achat : fond plein inversé (pas juste un contour) */
 .shop-player-mobile-add {
-  background: transparent;
-  border: 1px solid var(--ac);
-  color: var(--ac-soft);
+  background: var(--style-card-text);
+  color: var(--ac-deep);
+  border: none;
   font-family: var(--font-body);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--fs-count);
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-pill);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0,0,0,.28);
 }
 
 .shop-player-mobile { cursor: pointer; }
 
 /* ============================================================
    PLAYER MOBILE — PANNEAU DÉPLIÉ
-   Même carte flottante que .shop-player-mobile (même position, marges,
-   fond, radius) mais en état ouvert : cover 170px, favori dédié, rangée
-   de contrôles complète (shuffle/loop/prev/play/next/prix).
+   Carte flottante propre (fond/flou/bordure inchangés, non concernée par
+   la refonte dégradé du lot v5, qui ne cible que le mini-player replié) —
+   seule sa position change : plus de fixed indépendant, conteneur normal
+   dans le flux de .shop-bottom-dock, juste au-dessus de la navbar.
+   État ouvert : cover 170px, favori dédié, rangée de contrôles complète
+   (shuffle/loop/prev/play/next/prix).
    ============================================================ */
 .shop-player-expanded {
-  position: fixed;
-  left: 0; right: 0;
-  bottom: 71px;
-  z-index: 61;
-  margin: 0 10px var(--sp-2);
+  margin: 0 8px 8px;
   background: rgba(10,12,22,.95);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
@@ -1287,19 +1445,38 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
 }
 
 /* ============================================================
-   TAB BAR MOBILE
+   BLOC BAS MOBILE — dock (player + navbar), façon Spotify
+   Un seul conteneur fixe porte le dégradé d'opacité ; le mini-player/panneau
+   déplié et la navbar deviennent des enfants en flux normal à l'intérieur
+   (voir layout.tsx : <PlayerBar/> + <MobileTabBar/> enveloppés dans
+   .shop-bottom-dock). Rien sur desktop — le player desktop (.shop-player)
+   garde sa propre barre fixe, indépendante de ce conteneur.
    ============================================================ */
+@media (max-width: 767px) {
+  .shop-bottom-dock {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    max-width: 430px;
+    margin: 0 auto;
+    background: linear-gradient(180deg,
+      rgba(5,6,11,0)    0%,
+      rgba(5,6,11,.6)  12%,
+      rgba(5,6,11,.88) 32%,
+      rgba(5,6,11,.97) 60%,
+      #05060B         100%);
+  }
+}
+
+/* Transparente : le fond vient du dégradé de .shop-bottom-dock, plus de
+   flou ni de bordure propres. */
 .shop-tabbar {
   display: none;
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 60;
-  background: rgba(8,10,18,.97);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--line-strong);
+  background: transparent;
+  border: none;
   justify-content: space-around;
-  padding: 10px var(--sp-2) var(--sp-4);
+  align-items: flex-end;
+  padding: 6px 6px 20px;
 }
 
 a.shop-tabbar-item {
@@ -1307,7 +1484,7 @@ a.shop-tabbar-item {
   flex-direction: column;
   align-items: center;
   gap: var(--sp-1);
-  color: rgba(255,255,255,.55);
+  color: rgba(255,255,255,.62);
   font-size: 9.5px;
   font-weight: 600;
   min-width: 44px;
@@ -1316,7 +1493,7 @@ a.shop-tabbar-item {
 }
 
 .shop-tabbar-item svg { width: 18px; height: 18px; }
-a.shop-tabbar-item.is-active { color: #fff; }
+a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 
 @media (max-width: 767px) { .shop-tabbar { display: flex; } }
 
