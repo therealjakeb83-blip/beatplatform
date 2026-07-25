@@ -989,12 +989,16 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   animation: membresMarquee 40s linear infinite;
 }
 
-@media (hover: hover) {
-  .members-marquee-wrap:hover .members-marquee { animation-play-state: paused; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .members-marquee { animation: none; }
+}
+
+/* Défilement continu, sans réaction au survol — à la demande de Jake, ni
+   pause ni effet de levée/éclairage des covers, seul le clic doit mener
+   à la catégorie Réservés aux membres. */
+@media (hover: hover) {
+  .members-marquee .shop-beat-card:hover { transform: none; }
+  .members-marquee .shop-beat-cover:hover .shop-beat-locked { opacity: 1; }
 }
 
 @media (min-width: 768px) {
