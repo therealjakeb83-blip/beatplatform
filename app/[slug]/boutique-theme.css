@@ -910,7 +910,9 @@ a.shop-artist-card {
   transition: border-color .18s;
 }
 
-.shop-artist-card:hover .shop-artist-card-photo { border-color: var(--ac); }
+@media (hover: hover) {
+  .shop-artist-card:hover .shop-artist-card-photo { border-color: var(--ac); }
+}
 a.shop-artist-card:focus { outline: none; }
 a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--ac); }
 .shop-artist-card-photo img {
@@ -944,7 +946,9 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   transition: border-color .18s;
 }
 
-.shop-media-card:hover { border-color: var(--ac); }
+@media (hover: hover) {
+  .shop-media-card:hover { border-color: var(--ac); }
+}
 .shop-media-card:focus { outline: none; }
 .shop-media-card:focus-visible { border-color: var(--ac); }
 .shop-media-card img {
