@@ -823,7 +823,7 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   transform: translate(-50%,-50%);
   z-index: 4;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s;
@@ -837,8 +837,8 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
 
 .shop-beat-mobile-play,
 .shop-beat-mobile-cart {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--r-pill);
   border: none;
   cursor: pointer;
@@ -858,7 +858,7 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   box-shadow: 0 6px 20px color-mix(in srgb, var(--ac) 55%, transparent);
 }
 
-.shop-beat-mobile-sep { width: 1px; height: 26px; background: rgba(255,255,255,.35); }
+.shop-beat-mobile-sep { width: 1px; height: 20px; background: rgba(255,255,255,.35); }
 
 .shop-beat-mobile-cart {
   background: #FFFFFF;

@@ -136,16 +136,16 @@ export default function BeatCard({
             <div className="shop-beat-mobile-ctrls">
               <button onClick={handleMobilePlayBtn} className="shop-beat-mobile-play" aria-label={enLecture ? 'Pause' : 'Écouter'}>
                 {enLecture ? (
-                  <svg viewBox="0 0 12 13" width="15" height="16" fill="currentColor"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
+                  <svg viewBox="0 0 12 13" width="12" height="13" fill="currentColor"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
                 ) : (
-                  <svg viewBox="0 0 12 13" width="16" height="17" fill="currentColor"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
+                  <svg viewBox="0 0 12 13" width="13" height="14" fill="currentColor"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
                 )}
               </button>
               {moinsChere && (
                 <>
                   <span className="shop-beat-mobile-sep" />
                   <button onClick={handleMobileCart} className="shop-beat-mobile-cart" aria-label="Acheter">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 7h12l-1 13H7L6 7z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M9 7a3 3 0 016 0" stroke="currentColor" strokeWidth="2" /></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 7h12l-1 13H7L6 7z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M9 7a3 3 0 016 0" stroke="currentColor" strokeWidth="2" /></svg>
                   </button>
                 </>
               )}
