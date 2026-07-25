@@ -29,10 +29,11 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --line: rgba(255,255,255,.06);
   --line-strong: rgba(255,255,255,.10);
   --glass-header: rgba(7,9,18,.55);
-  --glass-player: rgba(8,10,18,.95);
   --scrim-media: linear-gradient(0deg, rgba(5,6,11,.85), transparent 60%);
   --overlay-lock: rgba(5,6,11,.45);
   --tag-bg: rgba(5,6,11,.78);
+  --player-fade: linear-gradient(180deg, rgba(5,6,11,0) 0%, rgba(5,6,11,.6) 14%, rgba(5,6,11,.88) 34%, rgba(5,6,11,.97) 62%, #05060B 100%);
+  --fav-btn-bg: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
 
   --text: #FFFFFF;
   --text-2: rgba(255,255,255,.70);
@@ -41,8 +42,8 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   /* --ac / --ac-t / --r-card posés en inline style par BoutiqueThemeRoot */
   --ac-soft: oklch(from var(--ac) 0.85 min(c, 0.07) h);
   --ac-deep: oklch(from var(--ac) min(l, 0.52) min(c, 0.22) h);
-  --g1: oklch(from var(--ac) 0.62 min(c, 0.24) calc(h + 32));
-  --g2: oklch(from var(--ac) 0.48 min(c, 0.25) calc(h - 6));
+  --g1: oklch(from var(--ac) 0.7 min(c, 0.26) calc(h + 16));
+  --g2: oklch(from var(--ac) 0.55 min(c, 0.27) calc(h - 14));
   --glow1: oklch(from var(--ac) 0.3 calc(c * 0.62) h);
   --glow2: oklch(from var(--ac) 0.17 calc(c * 0.5) h);
   --hero-bg: radial-gradient(130% 120% at 50% -20%, var(--glow1) 0%, var(--glow2) 45%, var(--bg) 92%);
@@ -146,15 +147,6 @@ body:has(.shop-root) { overflow-x: hidden; }
   --glow2: rgb(8, 18, 57);
 }
 
-/* Cyan : dégradé des cartes styles éclairci (L 0.62→0.70 / 0.48→0.55), demandé
-   par le handoff uniquement pour cette déclinaison — les autres couleurs
-   sombres (bleu/rouge/vert/violet/orange) restent sur la formule d'origine,
-   déjà validées, à la demande de Jake (2026-07-22). */
-.shop-root[data-accent-preset="cyan"] {
-  --g1: oklch(from var(--ac) 0.70 min(c, 0.26) calc(h + 32));
-  --g2: oklch(from var(--ac) 0.55 min(c, 0.27) calc(h - 6));
-}
-
 /* ============================================================
    BLANC & NOIR — thème clair complet (accent verrouillé #0A0C13),
    pas juste une nouvelle couleur d'accent comme les 8 autres presets.
@@ -179,8 +171,9 @@ body:has(.shop-root) { overflow-x: hidden; }
   --line-strong: rgba(10,12,19,.2);
   --card-shadow: 0 1px 3px rgba(20,30,60,.06);
   --glass-header: rgba(255,255,255,.72);
-  --glass-player: rgba(255,255,255,.95);
   --shadow-header: 0 14px 44px rgba(20,30,60,.12);
+  --player-fade: linear-gradient(180deg, rgba(247,248,252,0) 0%, rgba(247,248,252,.6) 14%, rgba(247,248,252,.9) 34%, rgba(247,248,252,.98) 62%, #F7F8FC 100%);
+  --fav-btn-bg: linear-gradient(160deg, rgba(10,12,19,.05), rgba(10,12,19,.01));
 
   --text: #0A0C13;
   --text-2: rgba(10,12,19,.72);
@@ -222,7 +215,7 @@ body:has(.shop-root) { overflow-x: hidden; }
    (différent du desktop, qui reste fond clair/icône sombre) — spécifique à
    la déclinaison Blanche mobile. */
 @media (max-width: 767px) {
-  .shop-root[data-accent-preset="blancNoir"] .shop-icon-btn { background: var(--ac); border-color: var(--ac); }
+  .shop-root[data-accent-preset="blancNoir"] .shop-icon-btn { background: var(--ac); }
   .shop-root[data-accent-preset="blancNoir"] .shop-icon-btn svg { stroke: #FFFFFF; }
   .shop-root[data-accent-preset="blancNoir"] .shop-cart-count { background: #FFFFFF; color: var(--ac); border: 1px solid var(--ac); }
 }
@@ -259,8 +252,8 @@ body:has(.shop-root) { overflow-x: hidden; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-time { color: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-bg { background: rgba(10,12,19,.14); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-thumb { border: 2px solid var(--ac); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-favori { color: rgba(10,12,19,.6); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { color: var(--text); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-favori { border-color: rgba(10,12,19,.18); color: rgba(10,12,19,.55); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { border-color: var(--ac); color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-skip:hover { color: var(--text); }
 
 /* Panneau déplié : même glass hardcodé que le mini-player mobile. */
@@ -325,6 +318,16 @@ body:has(.shop-root) { overflow-x: hidden; }
 
 .shop-root[data-accent-preset="blancNoir"] .shop-footer { border-top-color: rgba(10,12,19,.09); }
 .shop-root[data-accent-preset="blancNoir"] .shop-footer-bottom { color: rgba(10,12,19,.45); }
+
+@media (max-width: 767px) {
+  /* Équivalent clair du dégradé neutre mobile (base #05060B->#0E0F13),
+     même principe adapté à --footer-bg clair (#EFF1F8). */
+  .shop-root[data-accent-preset="blancNoir"] .shop-footer {
+    background: linear-gradient(180deg, #F7F8FC 0%, #F2F4F8 45%, #EFF1F8 100%);
+    border-top-color: rgba(10,12,19,.06);
+  }
+  .shop-root[data-accent-preset="blancNoir"] .shop-social-icon { background: rgba(10,12,19,.06); }
+}
 
 /* Lien générique : `.shop-root a:hover{color:#fff}` (règle de base) écrase
    sinon en blanc invisible sur fond clair. */
@@ -539,13 +542,17 @@ a.shop-pill.is-private { background: #fff; color: #05060B; border-color: #fff; f
 a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 
 @media (max-width: 767px) {
-  /* Écran mobile déjà chargé (tab bar + player) : le header reste en
-     haut de page au lieu de suivre le scroll, pour désencombrer. */
-  .shop-header-wrap { position: static; top: auto; margin-top: 12px; padding: 0 var(--sp-3); }
-  .shop-logo, .shop-logo-fallback { height: 32px; width: 32px; }
-  .shop-header-row1 { padding: 8px 14px; gap: var(--sp-3); }
+  /* Header mobile : plus de barre floutée — logo + boutons posés
+     directement sur le hero, sticky pour rester accessibles au scroll. */
+  .shop-header-wrap { position: sticky; top: 10px; padding: 0 16px; }
+  .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; }
+  .shop-logo, .shop-logo-fallback { height: 40px; width: 40px; }
+  .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
-  .shop-header-icons { margin-left: auto; }
+  .shop-header-icons { margin-left: auto; gap: 10px; }
+  .shop-icon-btn { width: 44px; height: 44px; border: none; background: rgba(16,18,24,.55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .shop-icon-btn svg { width: 22px; height: 22px; }
+  .shop-cart-count { top: -2px; right: -2px; min-width: 16px; height: 16px; font-size: 9.5px; }
 }
 
 /* ============================================================
@@ -557,10 +564,100 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
   padding: 214px var(--sp-6) 190px;
   margin-top: -118px;
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   z-index: 1;
 }
 
-.shop-hero-content { max-width: 100%; }
+.shop-hero-content { position: relative; z-index: 1; max-width: 100%; }
+
+/* ============================================================
+   FOND ANIMÉ DU HERO — trois nappes de couleur (--g1/--g2) qui dérivent
+   et respirent + un balayage conique, calibrées mobile par défaut,
+   recalibrées desktop plus bas (blur/tailles plus larges).
+   ============================================================ */
+.shop-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.shop-hero-blob {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+}
+
+.shop-hero-blob--a {
+  top: -28%; left: -22%;
+  width: 96%; height: 118%;
+  background: radial-gradient(circle at 50% 50%, var(--g1) 0%, transparent 68%);
+  filter: blur(48px);
+  opacity: .5;
+  animation: heroDriftA 26s ease-in-out infinite, heroPulse 13s ease-in-out infinite;
+}
+
+.shop-hero-blob--b {
+  top: -18%; right: -26%;
+  width: 100%; height: 116%;
+  background: radial-gradient(circle at 50% 50%, var(--g2) 0%, transparent 66%);
+  filter: blur(54px);
+  opacity: .48;
+  animation: heroDriftB 34s ease-in-out infinite, heroPulse 17s ease-in-out infinite;
+}
+
+.shop-hero-sweep {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 190%; height: 190%;
+  transform-origin: 50% 50%;
+  margin: -95% 0 0 -95%;
+  background: conic-gradient(from 0deg, transparent 0deg, color-mix(in srgb, var(--g1) 55%, transparent) 70deg, transparent 150deg, color-mix(in srgb, var(--g2) 50%, transparent) 250deg, transparent 340deg);
+  filter: blur(60px);
+  mix-blend-mode: screen;
+  opacity: .3;
+  animation: heroSpin 60s linear infinite;
+}
+
+@keyframes heroDriftA {
+  0% { transform: translate(-12%,-8%) scale(1); }
+  33% { transform: translate(14%,6%) scale(1.18); }
+  66% { transform: translate(6%,-12%) scale(1.05); }
+  100% { transform: translate(-12%,-8%) scale(1); }
+}
+@keyframes heroDriftB {
+  0% { transform: translate(16%,10%) scale(1.1); }
+  30% { transform: translate(-14%,-6%) scale(1); }
+  70% { transform: translate(-4%,14%) scale(1.22); }
+  100% { transform: translate(16%,10%) scale(1.1); }
+}
+@keyframes heroSpin {
+  from { transform: rotate(0deg) scale(1.35); }
+  to { transform: rotate(360deg) scale(1.35); }
+}
+@keyframes heroPulse {
+  0%, 100% { opacity: .34; }
+  50% { opacity: .62; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-hero-blob, .shop-hero-sweep { animation: none; }
+}
+
+@media (min-width: 768px) {
+  .shop-hero-blob--a { top: -30%; left: -10%; width: 70%; height: 120%; filter: blur(70px); }
+  .shop-hero-blob--b { top: -20%; right: -14%; width: 74%; height: 118%; filter: blur(80px); }
+  .shop-hero-sweep { width: 130%; height: 190%; margin: -95% 0 0 -65%; filter: blur(90px); }
+}
+
+/* Blanc & Noir : screen éclaircit sur fond clair (résultat quasi invisible/
+   délavé) — multiply assombrit correctement, cohérent avec un thème clair. */
+.shop-root[data-accent-preset="blancNoir"] .shop-hero-blob,
+.shop-root[data-accent-preset="blancNoir"] .shop-hero-sweep {
+  mix-blend-mode: multiply;
+}
 
 .shop-hero h1 {
   margin: 0 auto;
@@ -579,6 +676,8 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 }
 
 .shop-down-arrow {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -835,10 +934,9 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   pointer-events: auto;
 }
 
-.shop-beat-mobile-play,
 .shop-beat-mobile-cart {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--r-pill);
   border: none;
   cursor: pointer;
@@ -847,24 +945,12 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   justify-content: center;
   padding: 0;
   transition: transform .15s;
-}
-
-.shop-beat-mobile-play:active,
-.shop-beat-mobile-cart:active { transform: scale(.9); }
-
-.shop-beat-mobile-play {
-  background: var(--ac);
-  color: var(--ac-t);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--ac) 55%, transparent);
-}
-
-.shop-beat-mobile-sep { width: 1px; height: 20px; background: rgba(255,255,255,.35); }
-
-.shop-beat-mobile-cart {
   background: #FFFFFF;
   color: var(--ac-deep);
   box-shadow: 0 6px 20px rgba(0,0,0,.45);
 }
+
+.shop-beat-mobile-cart:active { transform: scale(.9); }
 
 @media (max-width: 767px) {
   .shop-beat-mobile-veil, .shop-beat-mobile-ctrls { display: flex; }
@@ -878,24 +964,26 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   font-size: 16px;
 }
 
-/* Favori — déplacé du cover de carte vers le player (desktop + mini mobile). */
+/* Favori — déplacé du cover de carte vers le player (desktop + mini mobile).
+   Style aligné sur le panneau mobile déplié (.shop-player-expanded-favori) :
+   pastille avec fond dégradé, bordure qui s'allume en accent + glow au clic. */
 .shop-player-favori {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--r-pill);
-  background: none;
+  background: var(--fav-btn-bg);
+  border: 1px solid rgba(255,255,255,.22);
   display: grid;
   place-items: center;
-  color: rgba(255,255,255,.6);
-  border: 0;
+  color: rgba(255,255,255,.85);
   cursor: pointer;
   flex-shrink: 0;
-  transition: color .15s;
+  transition: border-color .18s, color .15s, transform .15s, box-shadow .25s;
 }
 
-.shop-player-favori:hover { color: #fff; }
-.shop-player-favori.is-active { color: var(--ac); }
-.shop-player-favori svg { width: 12px; height: 12px; }
+.shop-player-favori:hover { border-color: var(--ac); transform: scale(1.06); }
+.shop-player-favori.is-active { border-color: var(--ac); color: var(--ac); box-shadow: 0 0 12px var(--glow-cta); }
+.shop-player-favori svg { width: 15px; height: 15px; }
 
 .shop-freedl-btn {
   position: absolute;
@@ -1146,16 +1234,13 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 60;
-  background: var(--glass-player);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--line-strong);
+  background: var(--player-fade);
 }
 
 .shop-player-inner {
   max-width: var(--container);
   margin: 0 auto;
-  padding: var(--sp-3) var(--sp-6);
+  padding: 26px var(--sp-6) 14px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1675,6 +1760,13 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   border-top: 1px solid rgba(255,255,255,.07);
 }
 
+@media (max-width: 767px) {
+  .shop-footer {
+    background: linear-gradient(180deg, #05060B 0%, #0B0C0F 45%, #0E0F13 100%);
+    border-top-color: rgba(255,255,255,.06);
+  }
+}
+
 .shop-footer-grid {
   padding: 56px var(--sp-6) var(--sp-12);
   display: grid;
@@ -1709,8 +1801,11 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 10px;
-  font-weight: 700;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .shop-social-icon { border: none; background: rgba(16,18,24,.55); }
 }
 
 .shop-newsletter-toggle {

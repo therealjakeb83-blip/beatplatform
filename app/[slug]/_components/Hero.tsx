@@ -22,6 +22,11 @@ export default function Hero({
 
   return (
     <section className="shop-hero" id="top">
+      <div className="shop-hero-bg" aria-hidden="true">
+        <div className="shop-hero-blob shop-hero-blob--a" />
+        <div className="shop-hero-blob shop-hero-blob--b" />
+        <div className="shop-hero-sweep" />
+      </div>
       <div className="shop-hero-content">
         <h1>{titre}</h1>
         <p>{sousTitre}</p>
