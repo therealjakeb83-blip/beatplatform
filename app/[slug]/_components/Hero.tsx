@@ -26,6 +26,7 @@ export default function Hero({
         <div className="shop-hero-blob shop-hero-blob--a" />
         <div className="shop-hero-blob shop-hero-blob--b" />
         <div className="shop-hero-sweep" />
+        <div className="shop-hero-fade" />
       </div>
       <div className="shop-hero-content">
         <h1>{titre}</h1>

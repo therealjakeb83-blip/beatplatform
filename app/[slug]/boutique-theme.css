@@ -621,6 +621,14 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
   animation: heroSpin 60s linear infinite;
 }
 
+/* Fondu par-dessus les nappes, vers le fond de page — sans lui la coupure
+   entre le bas du hero et la section suivante est nette/dure. */
+.shop-hero-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 55%, transparent) 0%, transparent 24%, transparent 60%, var(--bg) 100%);
+}
+
 @keyframes heroDriftA {
   0% { transform: translate(-12%,-8%) scale(1); }
   33% { transform: translate(14%,6%) scale(1.18); }
@@ -650,6 +658,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
   .shop-hero-blob--a { top: -30%; left: -10%; width: 70%; height: 120%; filter: blur(70px); }
   .shop-hero-blob--b { top: -20%; right: -14%; width: 74%; height: 118%; filter: blur(80px); }
   .shop-hero-sweep { width: 130%; height: 190%; margin: -95% 0 0 -65%; filter: blur(90px); }
+  .shop-hero-fade { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 55%, transparent) 0%, transparent 26%, transparent 62%, var(--bg) 100%); }
 }
 
 /* Blanc & Noir : screen éclaircit sur fond clair (résultat quasi invisible/
