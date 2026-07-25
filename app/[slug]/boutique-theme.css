@@ -543,8 +543,11 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 
 @media (max-width: 767px) {
   /* Header mobile : plus de barre floutée — logo + boutons posés
-     directement sur le hero, sticky pour rester accessibles au scroll. */
-  .shop-header-wrap { position: sticky; top: 10px; padding: 0 16px; }
+     directement sur le hero. position:fixed (pas sticky) : sticky s'est
+     avéré capricieux sur Safari iOS réel (le header redescendait au
+     scroll malgré un rendu correct en Chromium simulé) — fixed est
+     inconditionnel, jamais affecté par ce genre de bug de navigateur. */
+  .shop-header-wrap { position: fixed; left: 0; right: 0; top: 10px; padding: 0 16px; }
   .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; }
   .shop-logo, .shop-logo-fallback { height: 40px; width: 40px; }
   .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
@@ -708,16 +711,15 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 }
 
 @media (max-width: 767px) {
-  /* margin-top compense la hauteur totale du header (24px de marge + ~58px
-     de bloc) pour que le dégradé remonte jusqu'en haut de la page — sinon
-     un bandeau du fond brut de .shop-root (#05060B, uni) apparaît entre le
-     haut d'écran et le dégradé, visible comme un bloc noir disgracieux. */
+  /* Header désormais fixed (hors flux, hauteur nulle dans le document) —
+     plus besoin de margin-top négatif pour "annuler" sa hauteur, le hero
+     commence naturellement en haut de page, le header flotte par-dessus. */
   /* Lueur blanche additive derrière le header, pour le faire ressortir du
      fond dégradé — couche de background supplémentaire, n'affecte pas le
      dégradé existant. */
   .shop-hero {
     padding: 144px 22px 90px;
-    margin-top: -95px;
+    margin-top: 0;
     background: radial-gradient(72% 30% at 50% 6%, rgba(255,255,255,.06), transparent 70%), var(--hero-bg-mobile);
   }
   .shop-hero h1 { font-size: 27px; line-height: 1.25; }
