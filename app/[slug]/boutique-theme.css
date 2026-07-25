@@ -684,7 +684,11 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   user-select: none;
 }
 
-.shop-beat-card:hover { transform: translateY(-4px); }
+/* (hover: hover) exclut le tactile — sans ça, l'effet de levée se déclenche
+   au doigt en swipant les covers dans les carrousels mobiles. */
+@media (hover: hover) {
+  .shop-beat-card:hover { transform: translateY(-4px); }
+}
 .shop-beat-card:focus { outline: none; }
 
 .shop-beat-cover {
