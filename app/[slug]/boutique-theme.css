@@ -86,11 +86,17 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   font-family: var(--font-body);
 }
 
-/* overflow-x:hidden posé ici (et pas sur .shop-root) : un ancêtre avec
-   overflow non-visible casse position:sticky sur ses descendants (le
-   header). body est l'ancêtre du scroll réel, donc sticky continue de se
-   calculer par rapport au viewport. */
-body:has(.shop-root) { overflow-x: hidden; }
+/* `overflow-x: clip` et pas `hidden` : bug WebKit connu sur iOS Safari réel
+   (jamais reproduit en Chromium simulé, d'où le premier correctif validé en
+   test automatisé qui ne tenait pas sur téléphone) — dès qu'un ancêtre du
+   header (même body) porte un `overflow` non-`visible`, iOS Safari recalcule
+   `position: fixed`/`sticky` de ses descendants par rapport à cet ancêtre au
+   lieu du viewport, et le header se remet à défiler avec la page. `clip` ne
+   crée pas de scroll container (contrairement à `hidden`/`auto`/`scroll`),
+   donc n'active pas ce bug, tout en bloquant le débordement horizontal des
+   carrousels comme avant (vérifié : aucun scroll horizontal en trop après
+   le changement). */
+body:has(.shop-root) { overflow-x: clip; }
 
 /* Le design desktop a été pensé (et validé par Jake) pour un rendu à 125%
    de zoom navigateur — plus dense, moins de vide. zoom (pas transform:scale)
