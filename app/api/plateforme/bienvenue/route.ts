@@ -13,9 +13,9 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { data: beatmaker } = await supabase.from('beatmakers').select('email, nom_artiste').eq('id', user.id).maybeSingle()
+  const { data: beatmaker } = await supabase.from('beatmakers').select('email').eq('id', user.id).maybeSingle()
   if (beatmaker) {
-    await envoyerBienvenuePlateforme({ to: beatmaker.email, nomArtiste: beatmaker.nom_artiste, beatmakerId: user.id })
+    await envoyerBienvenuePlateforme({ to: beatmaker.email, beatmakerId: user.id })
   }
 
   return NextResponse.json({ ok: true })

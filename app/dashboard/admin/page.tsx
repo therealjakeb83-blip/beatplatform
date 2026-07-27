@@ -34,6 +34,13 @@ export default function AdminPage() {
           <p className="text-sm font-semibold text-white">Analytics plateforme</p>
           <p className="text-xs text-gray-500 mt-0.5">Revenu réel, volume d&apos;affaires boutiques, croissance, classement</p>
         </Link>
+        <Link
+          href="/dashboard/admin/mails-plateforme"
+          className="block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 transition-colors"
+        >
+          <p className="text-sm font-semibold text-white">Mails My Producer</p>
+          <p className="text-xs text-gray-500 mt-0.5">Personnaliser le titre/intro des emails envoyés aux beatmakers</p>
+        </Link>
       </div>
     </div>
   )

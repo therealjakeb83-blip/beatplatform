@@ -106,162 +106,6 @@ export async function envoyerRappelFonds({
   })
 }
 
-// ============================================================
-// Emails My Producer → beatmaker (Étape 8b, abonnement plateforme)
-// ============================================================
-// Contrairement aux transactionnels boutique→client (confirmationCommande
-// etc. plus bas, brandés par boutique via templates_transactionnels), ces
-// emails viennent de Jake/My Producer directement — pas de personnalisation
-// par beatmaker, un seul template fixe pour tout le monde (décision
-// 2026-07-27, voir memory/project_admin_etape15_scope.md).
-
-function fmtDateEssai(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-export async function envoyerBienvenuePlateforme({
-  to,
-  nomArtiste,
-  beatmakerId,
-}: {
-  to: string
-  nomArtiste: string
-  beatmakerId: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_bienvenue',
-    to,
-    subject: `Bienvenue sur My Producer, ${nomArtiste}`,
-    text: [
-      `Bonjour ${nomArtiste},`,
-      ``,
-      `Ton compte My Producer est créé — bienvenue !`,
-      ``,
-      `Prochaine étape : configure ta boutique et abonne-toi pour la rendre visible (essai gratuit de 14 jours, sans engagement).`,
-      `${APP_URL}/dashboard`,
-      ``,
-      `— L'équipe My Producer`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerConfirmationEssaiPlateforme({
-  to,
-  beatmakerId,
-  periode,
-  prixEuros,
-  essaiFinLe,
-}: {
-  to: string
-  beatmakerId: string
-  periode: 'mensuel' | 'annuel'
-  prixEuros: number
-  essaiFinLe: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_confirmation_essai',
-    to,
-    subject: `Ton essai gratuit My Producer a démarré`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `Ton essai gratuit de 14 jours a démarré. Tu as un accès complet à My Producer jusqu'au ${fmtDateEssai(essaiFinLe)}.`,
-      ``,
-      `Aucun prélèvement ne sera effectué avant cette date. Passé ce délai, ton abonnement ${periode} de ${prixEuros}€ démarrera automatiquement.`,
-      ``,
-      `Gère ton abonnement à tout moment : ${APP_URL}/dashboard/abonnement`,
-      ``,
-      `— L'équipe My Producer`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerRappelFinEssaiPlateforme({
-  to,
-  beatmakerId,
-  periode,
-  prixEuros,
-  essaiFinLe,
-}: {
-  to: string
-  beatmakerId: string
-  periode: 'mensuel' | 'annuel'
-  prixEuros: number
-  essaiFinLe: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_rappel_fin_essai',
-    to,
-    subject: `Ton essai My Producer se termine dans 3 jours`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `Ton essai gratuit se termine le ${fmtDateEssai(essaiFinLe)}. Passé cette date, ton abonnement ${periode} (${prixEuros}€) démarrera automatiquement — aucune action nécessaire si tu souhaites continuer.`,
-      ``,
-      `Pour annuler avant le prélèvement : ${APP_URL}/dashboard/abonnement`,
-      ``,
-      `— L'équipe My Producer`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerPaiementEchouePlateforme({
-  to,
-  beatmakerId,
-}: {
-  to: string
-  beatmakerId: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_paiement_echoue',
-    to,
-    subject: `Le paiement de ton abonnement My Producer a échoué`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `Le dernier prélèvement de ton abonnement My Producer n'a pas pu être effectué.`,
-      `Merci de mettre à jour ton moyen de paiement pour éviter une interruption d'accès à ta boutique.`,
-      ``,
-      `Mets à jour ta carte : ${APP_URL}/dashboard/abonnement`,
-      ``,
-      `— L'équipe My Producer`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerConfirmationAnnulationPlateforme({
-  to,
-  beatmakerId,
-}: {
-  to: string
-  beatmakerId: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_annulation',
-    to,
-    subject: `Ton abonnement My Producer a été annulé`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `Ton abonnement My Producer est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.`,
-      ``,
-      `Tu peux te réabonner à tout moment : ${APP_URL}/dashboard/abonnement`,
-      ``,
-      `— L'équipe My Producer`,
-    ].join('\n'),
-  })
-}
-
 export async function envoyerCategorieCertifiee({
   to,
   nomCategorie,
@@ -482,6 +326,242 @@ function rendreEmailTransactionnel({
     </table>
   </td></tr>
 </table>`
+}
+
+// ============================================================
+// Emails My Producer → beatmaker (Étape 8b, abonnement plateforme)
+// ============================================================
+// Contrairement aux transactionnels boutique→client ci-dessous (brandés
+// par boutique via templates_transactionnels), ces emails viennent de
+// Jake/My Producer directement — branding fixe (BRANDING_PLATEFORME),
+// jamais personnalisable par le beatmaker. Seuls le titre et l'intro de
+// chaque email sont éditables par l'admin, dans `templates_plateforme`
+// (page /dashboard/admin/mails-plateforme) — même mécanisme "titre+intro,
+// fallback par défaut sinon" que templates_transactionnels, réutilise le
+// même moteur de rendu HTML (rendreEmailTransactionnel) pour un aperçu et
+// un rendu identiques à ce que les beatmakers ont déjà. Décision Jake
+// 2026-07-27, voir memory/project_mails_my_producer.md.
+
+export type TypeTemplatePlateforme =
+  | 'bienvenue'
+  | 'confirmation_essai'
+  | 'rappel_fin_essai'
+  | 'paiement_echoue'
+  | 'annulation'
+
+const BRANDING_PLATEFORME: BrandingTransactionnel = {
+  nom_artiste: 'My Producer',
+  slug: '',
+  logo_url: null,
+  signature_transactionnels: "L'équipe My Producer",
+  couleur_marque: COULEUR_DEFAUT,
+  instagram_url: null,
+  youtube_url: null,
+  tiktok_url: null,
+  footer_message_reseaux: null,
+  titre_footer_reseaux: null,
+}
+
+const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
+  bienvenue: 'Bienvenue sur My Producer !',
+  confirmation_essai: 'Ton essai gratuit a démarré',
+  rappel_fin_essai: 'Ton essai se termine dans 3 jours',
+  paiement_echoue: "Le paiement de ton abonnement a échoué",
+  annulation: 'Ton abonnement a été annulé',
+}
+
+function introDefautPlateforme(type: TypeTemplatePlateforme): string {
+  switch (type) {
+    case 'bienvenue':
+      return "Ton compte My Producer est créé — bienvenue ! Configure ta boutique et abonne-toi pour la rendre visible (essai gratuit de 14 jours, sans engagement)."
+    case 'confirmation_essai':
+      return "Ton essai gratuit de 14 jours a démarré. Tu as un accès complet à My Producer. Aucun prélèvement ne sera effectué avant la fin de l'essai."
+    case 'rappel_fin_essai':
+      return "Ton essai gratuit se termine bientôt. Passé cette date, ton abonnement démarrera automatiquement — aucune action nécessaire si tu souhaites continuer."
+    case 'paiement_echoue':
+      return "Le dernier prélèvement de ton abonnement My Producer n'a pas pu être effectué. Merci de mettre à jour ton moyen de paiement pour éviter une interruption d'accès à ta boutique."
+    case 'annulation':
+      return 'Ton abonnement My Producer est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.'
+  }
+}
+
+async function chargerTemplatePlateforme(type: TypeTemplatePlateforme) {
+  const admin = createAdminClient()
+  const { data: template } = await admin.from('templates_plateforme').select('titre, intro').eq('type', type).maybeSingle()
+  return { titre: template?.titre ?? null, intro: template?.intro ?? null }
+}
+
+function fmtDateEssai(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function corpsAbonnementPlateforme(periode: 'mensuel' | 'annuel', prixEuros: number, essaiFinLe: string): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Abonnement ${echapper(periode)}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${prixEuros.toFixed(2)}€ après l'essai</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;font-size:13px;color:#111827;">Fin de l'essai</td>
+        <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(fmtDateEssai(essaiFinLe))}</td>
+      </tr>
+    </table>`
+}
+
+export async function envoyerBienvenuePlateforme({
+  to,
+  beatmakerId,
+}: {
+  to: string
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('bienvenue')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_bienvenue',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.bienvenue,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.bienvenue,
+      intro: intro || introDefautPlateforme('bienvenue'),
+      corpsHtml: '',
+      cta: { texte: 'Accéder à mon dashboard', lien: `${APP_URL}/dashboard` },
+    }),
+  })
+}
+
+export async function envoyerConfirmationEssaiPlateforme({
+  to,
+  beatmakerId,
+  periode,
+  prixEuros,
+  essaiFinLe,
+}: {
+  to: string
+  beatmakerId: string
+  periode: 'mensuel' | 'annuel'
+  prixEuros: number
+  essaiFinLe: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('confirmation_essai')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_confirmation_essai',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.confirmation_essai,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.confirmation_essai,
+      intro: intro || introDefautPlateforme('confirmation_essai'),
+      corpsHtml: corpsAbonnementPlateforme(periode, prixEuros, essaiFinLe),
+      cta: { texte: 'Gérer mon abonnement', lien: `${APP_URL}/dashboard/abonnement` },
+    }),
+  })
+}
+
+export async function envoyerRappelFinEssaiPlateforme({
+  to,
+  beatmakerId,
+  periode,
+  prixEuros,
+  essaiFinLe,
+}: {
+  to: string
+  beatmakerId: string
+  periode: 'mensuel' | 'annuel'
+  prixEuros: number
+  essaiFinLe: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('rappel_fin_essai')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_rappel_fin_essai',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.rappel_fin_essai,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.rappel_fin_essai,
+      intro: intro || introDefautPlateforme('rappel_fin_essai'),
+      corpsHtml: corpsAbonnementPlateforme(periode, prixEuros, essaiFinLe),
+      cta: { texte: 'Gérer mon abonnement', lien: `${APP_URL}/dashboard/abonnement` },
+    }),
+  })
+}
+
+export async function envoyerPaiementEchouePlateforme({
+  to,
+  beatmakerId,
+}: {
+  to: string
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('paiement_echoue')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_paiement_echoue',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.paiement_echoue,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.paiement_echoue,
+      intro: intro || introDefautPlateforme('paiement_echoue'),
+      corpsHtml: '',
+      cta: { texte: 'Mettre à jour ma carte', lien: `${APP_URL}/dashboard/abonnement` },
+    }),
+  })
+}
+
+export async function envoyerConfirmationAnnulationPlateforme({
+  to,
+  beatmakerId,
+}: {
+  to: string
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('annulation')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_annulation',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.annulation,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.annulation,
+      intro: intro || introDefautPlateforme('annulation'),
+      corpsHtml: '',
+      cta: { texte: 'Me réabonner', lien: `${APP_URL}/dashboard/abonnement` },
+    }),
+  })
+}
+
+// ── Aperçu (page réglages admin) — mêmes titre/intro par défaut que
+// l'envoi réel, données d'exemple à la place des vraies dates/prix. Ne
+// passe jamais par envoyerEmailUnique (pas d'envoi, pas de log).
+const CORPS_EXEMPLE_PLATEFORME = corpsAbonnementPlateforme('mensuel', 49.99, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString())
+
+export async function genererApercuTransactionnelPlateforme(
+  type: TypeTemplatePlateforme,
+  titreDraft: string,
+  introDraft: string,
+): Promise<string> {
+  const titre = titreDraft.trim() || TITRE_DEFAUT_PLATEFORME[type]
+  const intro = introDraft.trim() || introDefautPlateforme(type)
+
+  const parType: Record<TypeTemplatePlateforme, { corpsHtml: string; cta: { texte: string; lien: string } }> = {
+    bienvenue: { corpsHtml: '', cta: { texte: 'Accéder à mon dashboard', lien: '#' } },
+    confirmation_essai: { corpsHtml: CORPS_EXEMPLE_PLATEFORME, cta: { texte: 'Gérer mon abonnement', lien: '#' } },
+    rappel_fin_essai: { corpsHtml: CORPS_EXEMPLE_PLATEFORME, cta: { texte: 'Gérer mon abonnement', lien: '#' } },
+    paiement_echoue: { corpsHtml: '', cta: { texte: 'Mettre à jour ma carte', lien: '#' } },
+    annulation: { corpsHtml: '', cta: { texte: 'Me réabonner', lien: '#' } },
+  }
+
+  return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })
 }
 
 export async function confirmationCommande({
