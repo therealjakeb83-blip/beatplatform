@@ -106,6 +106,162 @@ export async function envoyerRappelFonds({
   })
 }
 
+// ============================================================
+// Emails My Producer → beatmaker (Étape 8b, abonnement plateforme)
+// ============================================================
+// Contrairement aux transactionnels boutique→client (confirmationCommande
+// etc. plus bas, brandés par boutique via templates_transactionnels), ces
+// emails viennent de Jake/My Producer directement — pas de personnalisation
+// par beatmaker, un seul template fixe pour tout le monde (décision
+// 2026-07-27, voir memory/project_admin_etape15_scope.md).
+
+function fmtDateEssai(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+export async function envoyerBienvenuePlateforme({
+  to,
+  nomArtiste,
+  beatmakerId,
+}: {
+  to: string
+  nomArtiste: string
+  beatmakerId: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_bienvenue',
+    to,
+    subject: `Bienvenue sur My Producer, ${nomArtiste}`,
+    text: [
+      `Bonjour ${nomArtiste},`,
+      ``,
+      `Ton compte My Producer est créé — bienvenue !`,
+      ``,
+      `Prochaine étape : configure ta boutique et abonne-toi pour la rendre visible (essai gratuit de 14 jours, sans engagement).`,
+      `${APP_URL}/dashboard`,
+      ``,
+      `— L'équipe My Producer`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerConfirmationEssaiPlateforme({
+  to,
+  beatmakerId,
+  periode,
+  prixEuros,
+  essaiFinLe,
+}: {
+  to: string
+  beatmakerId: string
+  periode: 'mensuel' | 'annuel'
+  prixEuros: number
+  essaiFinLe: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_confirmation_essai',
+    to,
+    subject: `Ton essai gratuit My Producer a démarré`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `Ton essai gratuit de 14 jours a démarré. Tu as un accès complet à My Producer jusqu'au ${fmtDateEssai(essaiFinLe)}.`,
+      ``,
+      `Aucun prélèvement ne sera effectué avant cette date. Passé ce délai, ton abonnement ${periode} de ${prixEuros}€ démarrera automatiquement.`,
+      ``,
+      `Gère ton abonnement à tout moment : ${APP_URL}/dashboard/abonnement`,
+      ``,
+      `— L'équipe My Producer`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerRappelFinEssaiPlateforme({
+  to,
+  beatmakerId,
+  periode,
+  prixEuros,
+  essaiFinLe,
+}: {
+  to: string
+  beatmakerId: string
+  periode: 'mensuel' | 'annuel'
+  prixEuros: number
+  essaiFinLe: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_rappel_fin_essai',
+    to,
+    subject: `Ton essai My Producer se termine dans 3 jours`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `Ton essai gratuit se termine le ${fmtDateEssai(essaiFinLe)}. Passé cette date, ton abonnement ${periode} (${prixEuros}€) démarrera automatiquement — aucune action nécessaire si tu souhaites continuer.`,
+      ``,
+      `Pour annuler avant le prélèvement : ${APP_URL}/dashboard/abonnement`,
+      ``,
+      `— L'équipe My Producer`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerPaiementEchouePlateforme({
+  to,
+  beatmakerId,
+}: {
+  to: string
+  beatmakerId: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_paiement_echoue',
+    to,
+    subject: `Le paiement de ton abonnement My Producer a échoué`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `Le dernier prélèvement de ton abonnement My Producer n'a pas pu être effectué.`,
+      `Merci de mettre à jour ton moyen de paiement pour éviter une interruption d'accès à ta boutique.`,
+      ``,
+      `Mets à jour ta carte : ${APP_URL}/dashboard/abonnement`,
+      ``,
+      `— L'équipe My Producer`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerConfirmationAnnulationPlateforme({
+  to,
+  beatmakerId,
+}: {
+  to: string
+  beatmakerId: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_annulation',
+    to,
+    subject: `Ton abonnement My Producer a été annulé`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `Ton abonnement My Producer est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.`,
+      ``,
+      `Tu peux te réabonner à tout moment : ${APP_URL}/dashboard/abonnement`,
+      ``,
+      `— L'équipe My Producer`,
+    ].join('\n'),
+  })
+}
+
 export async function envoyerCategorieCertifiee({
   to,
   nomCategorie,

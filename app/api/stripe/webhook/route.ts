@@ -2,7 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
-import { envoyerFondsEnAttente, confirmationCommande, confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement } from '@/lib/emails'
+import { envoyerFondsEnAttente, confirmationCommande, confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { headers } from 'next/headers'
@@ -488,14 +488,17 @@ async function traiterAbonnementPlateformeCree(session: Stripe.Checkout.Session)
   const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null
   const prixCents = subscription.items.data[0]?.price.unit_amount ?? 0
 
+  const periode = meta.periode === 'annuel' ? 'annuel' : 'mensuel'
+  const essaiFinLe = trialEnd ?? new Date().toISOString()
+
   const { error } = await supabase.from('abonnements_plateforme').insert({
     beatmaker_id: meta.beatmaker_id,
     plan: 'standard',
-    periode: meta.periode === 'annuel' ? 'annuel' : 'mensuel',
+    periode,
     prix: prixCents,
     devise: 'EUR',
     en_essai: subscription.status === 'trialing',
-    essai_fin_le: trialEnd ?? new Date().toISOString(),
+    essai_fin_le: essaiFinLe,
     statut: subscription.status === 'trialing' ? 'en_essai' : 'actif',
     date_debut: new Date().toISOString(),
     date_fin: trialEnd ?? (finPeriode ? new Date(finPeriode * 1000).toISOString() : null),
@@ -503,8 +506,18 @@ async function traiterAbonnementPlateformeCree(session: Stripe.Checkout.Session)
     stripe_customer_id: typeof session.customer === 'string' ? session.customer : null,
   })
 
-  if (error) console.error('[webhook] Erreur insert abonnement_plateforme:', JSON.stringify(error))
-  else console.log('[webhook] Abonnement plateforme créé pour', meta.beatmaker_id)
+  if (error) {
+    console.error('[webhook] Erreur insert abonnement_plateforme:', JSON.stringify(error))
+    return
+  }
+  console.log('[webhook] Abonnement plateforme créé pour', meta.beatmaker_id)
+
+  const { data: beatmaker } = await supabase.from('beatmakers').select('email').eq('id', meta.beatmaker_id).maybeSingle()
+  if (beatmaker?.email) {
+    await envoyerConfirmationEssaiPlateforme({
+      to: beatmaker.email, beatmakerId: meta.beatmaker_id, periode, prixEuros: prixCents / 100, essaiFinLe,
+    })
+  }
 }
 
 async function traiterMajAbonnementPlateforme(subscription: Stripe.Subscription) {
@@ -524,6 +537,16 @@ async function traiterMajAbonnementPlateforme(subscription: Stripe.Subscription)
   // avant qu'elle ne soit effective (découvert en testant le 2026-07-24).
   const annulationPrevueLe = subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null
 
+  // Chargé avant la mise à jour pour détecter l'entrée en impayé (même
+  // pattern que traiterMajAbonnement pour abonnements_boutique) — un email
+  // ne doit partir qu'au moment où le statut BASCULE vers 'impaye', pas à
+  // chaque event Stripe reçu tant qu'il y reste.
+  const { data: avant } = await supabase
+    .from('abonnements_plateforme')
+    .select('statut, beatmaker_id, beatmakers(email)')
+    .eq('stripe_subscription_id', subscription.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('abonnements_plateforme')
     .update({
@@ -534,19 +557,36 @@ async function traiterMajAbonnementPlateforme(subscription: Stripe.Subscription)
     })
     .eq('stripe_subscription_id', subscription.id)
 
-  if (error) console.error('[webhook] Erreur maj abonnement_plateforme:', JSON.stringify(error))
-  else console.log('[webhook] Abonnement plateforme mis à jour:', subscription.id, statut)
+  if (error) {
+    console.error('[webhook] Erreur maj abonnement_plateforme:', JSON.stringify(error))
+    return
+  }
+  console.log('[webhook] Abonnement plateforme mis à jour:', subscription.id, statut)
+
+  const entreEnImpaye = statut === 'impaye' && avant?.statut !== 'impaye'
+  if (entreEnImpaye && avant) {
+    const beatmaker = Array.isArray(avant.beatmakers) ? avant.beatmakers[0] : avant.beatmakers
+    if (beatmaker?.email) await envoyerPaiementEchouePlateforme({ to: beatmaker.email, beatmakerId: avant.beatmaker_id })
+  }
 }
 
 async function traiterAnnulationAbonnementPlateforme(subscription: Stripe.Subscription) {
   const supabase = createAdminClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('abonnements_plateforme')
     .update({ statut: 'annule', en_essai: false, date_annulation: new Date().toISOString(), annulation_prevue_le: null })
     .eq('stripe_subscription_id', subscription.id)
+    .select('beatmaker_id, beatmakers(email)')
+    .maybeSingle()
 
-  if (error) console.error('[webhook] Erreur annulation abonnement_plateforme:', JSON.stringify(error))
-  else console.log('[webhook] Abonnement plateforme annulé:', subscription.id)
+  if (error) {
+    console.error('[webhook] Erreur annulation abonnement_plateforme:', JSON.stringify(error))
+    return
+  }
+  console.log('[webhook] Abonnement plateforme annulé:', subscription.id)
+
+  const beatmaker = Array.isArray(data?.beatmakers) ? data.beatmakers[0] : data?.beatmakers
+  if (beatmaker?.email && data) await envoyerConfirmationAnnulationPlateforme({ to: beatmaker.email, beatmakerId: data.beatmaker_id })
 }
 
 // Les events invoice n'ont pas metadata.type directement dessus — on

@@ -34,6 +34,8 @@ export default function InscriptionPage() {
       return
     }
 
+    await fetch('/api/plateforme/bienvenue', { method: 'POST' }).catch(() => {})
+
     router.push('/dashboard')
   }
 
