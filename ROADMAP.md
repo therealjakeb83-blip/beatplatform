@@ -1,5 +1,11 @@
 # My Producer — Roadmap V1
 
+> Dernière mise à jour : 2026-07-27 (suite) — **"Mails My Producer" codé : 5 emails transactionnels plateforme→beatmaker, jusque-là totalement inexistants.** Chantier né de la reconsidération de 15e (voir plus bas) — Jake voulait à l'origine configurer les emails que My Producer envoie aux beatmakers eux-mêmes, pas une vue admin sur les emails boutique→client.
+> - **Les 5 emails** : bienvenue à l'inscription, confirmation de démarrage d'essai, rappel de fin d'essai (J-3), paiement échoué, confirmation d'annulation. Template fixe unique "My Producer" — **pas** de personnalisation par beatmaker (contrairement aux transactionnels boutique→client de la Phase 6, où chaque beatmaker brande ses emails) : ici c'est Jake qui parle au beatmaker, pas la boutique à son client.
+> - **Bonne surprise en creusant le code** : la détection technique (statuts, dates) existait déjà pour 4 des 5 cas (`abonnements_plateforme.statut` passe déjà correctement à `impaye`/`annule`/`actif` via les handlers webhook existants) — il ne manquait que l'envoi d'email au bon moment. Seul le rappel de fin d'essai (#3) demandait un nouveau mécanisme : **nouveau cron quotidien** `/api/cron/plateforme-rappels` + colonne `rappel_essai_envoye_le` (anti-doublon).
+> - `lib/emails.ts` (5 nouvelles fonctions, même pattern texte brut que `envoyerCategorieCertifiee`), webhook Stripe étendu (confirmation essai/paiement échoué/annulation), nouvelle route `/api/plateforme/bienvenue` (appelée juste après `signUp()` côté client — aucun webhook Stripe ne couvre l'inscription).
+> - Checklist de test T0-T5 ajoutée plus bas (section "Checklist tests Mails My Producer") — **pas encore testée par Jake**.
+>
 > Dernière mise à jour : 2026-07-27 — **Étape 15 lot 2 (Admin) : 15d Analytics plateforme codé, testé bout en bout et validé par Jake ; 15e Mails transactionnels reconsidéré et simplifié après discussion.**
 > - **15d** — nouvelle page `/dashboard/admin/analytics` (`lib/admin-analytics.ts`), organisée en blocs distincts comme cadré le 2026-07-24 : **ton revenu réel** (MRR/ARR depuis `abonnements_plateforme`, statut `actif` uniquement — `en_essai` compté à part) volontairement séparé du **volume d'affaires boutiques** (CA net HT cumulé de toutes les boutiques, même formule que `TabRevenus.tsx` de l'analytics business, présenté explicitement comme un simple signal de santé à 0% commission) ; puis croissance (boutiques actives/nouveaux beatmakers 7-30j/churn plateforme 30j), classement des boutiques (top 10 par CA net), santé technique (compteur d'échecs email/webhook 7j), tendances catalogue (total beats + nouveaux 30j). Aucune migration SQL nécessaire.
 > - **15e — la vue "liste des emails de toutes les boutiques" a été codée puis retirée dans la même session**, après une discussion avec Jake sur son utilité réelle : (1) redondante avec `/dashboard/business/marketing/logs` que chaque beatmaker a déjà pour ses propres emails (le flux de support prévu est artiste→beatmaker→admin en dernier recours, pas un canal direct) ; (2) sans alerte proactive, Jake n'aurait jamais pensé à ouvrir cette page de lui-même ; (3) une page de browsing permanent sur le détail nominatif (destinataire+sujet+erreur) des emails de TOUS les clients de TOUS les beatmakers va à l'encontre du principe de minimisation RGPD — mieux vaut n'accéder à ce niveau de détail qu'à la demande, pour un cas précis signalé, plutôt que d'avoir un outil de consultation libre en permanence. Seul le **compteur agrégé** (nombre d'échecs, pas le détail) reste, dans le bloc "Santé technique" de 15d. `lib/admin-mails.ts` et `app/dashboard/admin/mails/` supprimés. Détail complet : mémoire `project_admin_etape15_scope`.
@@ -113,7 +119,7 @@
 | 6 | **Paiements** | Stripe Connect, checkout, codes promo, TVA optionnelle | 10-15h | ✅ Validé |
 | 7 | **Licences & livraison** | Livraison automatique des fichiers après achat. PDF contrat généré automatiquement avec : co-producers listés depuis beat_splits, répartition publishing, splits_snapshot stocké dans commandes. | 5-8h | ✅ Validé |
 | 8 | **Abonnements** | Plans d'abonnement par beatmaker, catalogue privé (beats visibles + cadenas), remise % automatique (sauf Illimité/Exclusive), essai gratuit configurable, gestion depuis le dashboard et depuis la boutique | 8-12h | ✅ Validé |
-| 8b | **Abonnement plateforme** *(nouvelle, 2026-07-24)* | Ce que le beatmaker paie à My Producer (`abonnements_plateforme`) — jamais construit malgré la table présente depuis le schéma d'origine. V1 minimale : 1 plan mensuel (49,99€) / annuel (499,90€), essai 14j + CB obligatoire, accès total ou rien. Blocage d'accès réel volontairement différé (lot séparé). Voir mémoire `project_abonnement_plateforme_decouverte`. | À estimer | ✅ Codé et testé bout en bout le 2026-07-24 — checklist T0-T10 validée. Reste : blocage d'accès réel (lot séparé) |
+| 8b | **Abonnement plateforme** *(nouvelle, 2026-07-24)* | Ce que le beatmaker paie à My Producer (`abonnements_plateforme`) — jamais construit malgré la table présente depuis le schéma d'origine. V1 minimale : 1 plan mensuel (49,99€) / annuel (499,90€), essai 14j + CB obligatoire, accès total ou rien. Blocage d'accès réel volontairement différé (lot séparé). Voir mémoire `project_abonnement_plateforme_decouverte`. **Bonus 2026-07-27 — "Mails My Producer"** : 5 emails transactionnels plateforme→beatmaker (bienvenue, confirmation essai, rappel fin d'essai J-3, paiement échoué, annulation), template fixe non personnalisable — inexistants jusque-là, trouvé en testant 15d. Voir mémoire `project_admin_etape15_scope`. | À estimer | ✅ Codé et testé bout en bout le 2026-07-24 — checklist T0-T10 validée. Reste : blocage d'accès réel (lot séparé). Mails My Producer codés le 2026-07-27, checklist T0-T5 pas encore testée |
 | 9 | **Espace client artiste** | Compte My Producer global : inscription/connexion artiste, "Se connecter avec My Producer" dans les boutiques, beats achetés, abonnements actifs multi-appareils, fichiers à télécharger. Favoris : bouton cœur sur les cartes beat, page "Mes favoris". | 5-8h | ✅ Validé |
 | 10 | **Split collab** | Stripe Connect pour beatmakers collaborateurs. Deux modes : compte My Producer existant OU invitation par email. Fonds retenus chez Stripe si collab non inscrit, reversés à l'inscription. | 7-10h | ✅ Validé |
 | 11 | **CRM** | Liste clients, fiches, import CSV BeatStars. Détection automatique de doublons clients (fuzzy matching). | 5-8h | ✅ Validé |
@@ -1040,6 +1046,30 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Sécurité :**
 - [x] **T15** — Compte non-admin (`jakeb-test1`) → `/dashboard/admin/analytics` redirige vers `/dashboard/business` ; déconnecté → `/connexion` (comportement `proxy.ts` déjà validé au lot 1)
+
+#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ⬜ Pas encore testée par Jake
+
+> **Contexte :** Chantier identifié le 2026-07-27 en testant l'Étape 15 lot 2 — Jake pensait que "Mails transactionnels (admin)" couvrait déjà ça. Zéro email n'existait côté plateforme→beatmaker malgré `abonnements_plateforme` fonctionnel depuis le 2026-07-24. 5 emails, template fixe non personnalisable (contrairement aux transactionnels boutique→client de la Phase 6). Détail technique complet : mémoire `project_admin_etape15_scope`.
+>
+> ⚠️ **À faire avant tout test** : exécuter `supabase/mails_plateforme.sql` (ajoute `rappel_essai_envoye_le` sur `abonnements_plateforme`) dans l'éditeur SQL Supabase, et vérifier que le cron `/api/cron/plateforme-rappels` apparaît bien dans Vercel après déploiement (nouveau, ajouté à `vercel.json`).
+
+**Préalable :**
+- [ ] **T0** — Migration `mails_plateforme.sql` exécutée sans erreur
+
+**Bienvenue :**
+- [ ] **T1** — Inscription d'un nouveau compte beatmaker de test → email de bienvenue reçu, lien vers `/dashboard` fonctionnel
+
+**Confirmation essai :**
+- [ ] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
+
+**Rappel fin d'essai (J-3) :**
+- [ ] **T3** — Pas testable en conditions réelles sans attendre 11 jours — vérifier plutôt en appelant `/api/cron/plateforme-rappels` manuellement (avec le header `Authorization: Bearer <CRON_SECRET>`) sur un abonnement de test dont `essai_fin_le` a été modifié à J+2 ou J+3 en base : email reçu, `rappel_essai_envoye_le` mis à jour, un second appel du cron ne renvoie pas de doublon
+
+**Paiement échoué :**
+- [ ] **T4** — Simuler un échec de renouvellement (voir technique carte `4000...0341`, mémoire `feedback_stripe_test_declines`) sur un abonnement plateforme de test → email reçu au moment précis où le statut passe à `impaye` (pas à chaque event Stripe suivant tant qu'il y reste)
+
+**Annulation :**
+- [ ] **T5** — Annuler un abonnement plateforme de test (hors période d'essai, pour une annulation immédiate) → email de confirmation reçu
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
