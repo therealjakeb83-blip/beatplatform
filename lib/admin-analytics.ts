@@ -67,8 +67,8 @@ export async function getAnalyticsPlateforme(): Promise<AnalyticsPlateforme> {
     admin.from('commandes').select('beatmaker_id, prix_paye, reduction_montant, created_at').eq('statut', 'payee'),
     admin.from('email_logs').select('id', { count: 'exact', head: true }).eq('statut', 'echoue').gte('created_at', j7),
     admin.from('stripe_events').select('id', { count: 'exact', head: true }).eq('statut', 'echoue').gte('created_at', j7),
-    admin.from('beats').select('id', { count: 'exact', head: true }),
-    admin.from('beats').select('id', { count: 'exact', head: true }).gte('created_at', j30),
+    admin.from('beats').select('id', { count: 'exact', head: true }).is('supprime_le', null),
+    admin.from('beats').select('id', { count: 'exact', head: true }).is('supprime_le', null).gte('created_at', j30),
   ])
 
   // --- Revenu réel (MRR/ARR) ---
