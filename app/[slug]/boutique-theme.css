@@ -554,7 +554,7 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      n'importe quel autre bloc. Toutes les tentatives précédentes de le
      garder collé à l'écran (sticky, puis fixed, puis fixed+couche GPU)
      partaient d'un mauvais diagnostic du besoin — voir feedback mémoire. */
-  .shop-header-wrap { position: static; padding: 0 16px; }
+  .shop-header-wrap { position: static; padding: 10px 16px 0; }
   .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; }
   .shop-logo, .shop-logo-fallback { height: 40px; width: 40px; }
   .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
