@@ -553,7 +553,24 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      avéré capricieux sur Safari iOS réel (le header redescendait au
      scroll malgré un rendu correct en Chromium simulé) — fixed est
      inconditionnel, jamais affecté par ce genre de bug de navigateur. */
-  .shop-header-wrap { position: fixed; left: 0; right: 0; top: 10px; padding: 0 16px; }
+  /* translateZ(0) : force ce header sur sa propre couche GPU. Bug iOS
+     Safari distinct de celui d'overflow (déjà réglé plus haut) — même sans
+     ancêtre problématique, un position:fixed peut se faire "recalculer" en
+     repaint logiciel pendant un scroll rapide/momentum sur WebKit, et
+     dériver visuellement. La couche composée dédiée évite ce chemin de
+     rendu. Sans effet sur le containing block des enfants (leur position
+     n'en dépend pas ici) ni sur le breakpoint desktop (scopé <768px). */
+  .shop-header-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 10px;
+    padding: 0 16px;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
   .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; }
   .shop-logo, .shop-logo-fallback { height: 40px; width: 40px; }
   .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
