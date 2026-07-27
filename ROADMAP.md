@@ -1,10 +1,11 @@
 # My Producer — Roadmap V1
 
 > Dernière mise à jour : 2026-07-27 (suite) — **"Mails My Producer" codé : 5 emails transactionnels plateforme→beatmaker, jusque-là totalement inexistants.** Chantier né de la reconsidération de 15e (voir plus bas) — Jake voulait à l'origine configurer les emails que My Producer envoie aux beatmakers eux-mêmes, pas une vue admin sur les emails boutique→client.
-> - **Les 5 emails** : bienvenue à l'inscription, confirmation de démarrage d'essai, rappel de fin d'essai (J-3), paiement échoué, confirmation d'annulation. Template fixe unique "My Producer" — **pas** de personnalisation par beatmaker (contrairement aux transactionnels boutique→client de la Phase 6, où chaque beatmaker brande ses emails) : ici c'est Jake qui parle au beatmaker, pas la boutique à son client.
+> - **Les 5 emails** : bienvenue à l'inscription, confirmation de démarrage d'essai, rappel de fin d'essai (J-3), paiement échoué, confirmation d'annulation. Branding fixe unique "My Producer" — **jamais** personnalisable par un beatmaker (contrairement aux transactionnels boutique→client de la Phase 6, où chaque beatmaker brande ses emails) : ici c'est Jake qui parle au beatmaker, pas la boutique à son client.
 > - **Bonne surprise en creusant le code** : la détection technique (statuts, dates) existait déjà pour 4 des 5 cas (`abonnements_plateforme.statut` passe déjà correctement à `impaye`/`annule`/`actif` via les handlers webhook existants) — il ne manquait que l'envoi d'email au bon moment. Seul le rappel de fin d'essai (#3) demandait un nouveau mécanisme : **nouveau cron quotidien** `/api/cron/plateforme-rappels` + colonne `rappel_essai_envoye_le` (anti-doublon).
-> - `lib/emails.ts` (5 nouvelles fonctions, même pattern texte brut que `envoyerCategorieCertifiee`), webhook Stripe étendu (confirmation essai/paiement échoué/annulation), nouvelle route `/api/plateforme/bienvenue` (appelée juste après `signUp()` côté client — aucun webhook Stripe ne couvre l'inscription).
-> - Checklist de test T0-T5 ajoutée plus bas (section "Checklist tests Mails My Producer") — **pas encore testée par Jake**.
+> - `lib/emails.ts` (5 nouvelles fonctions), webhook Stripe étendu (confirmation essai/paiement échoué/annulation), nouvelle route `/api/plateforme/bienvenue` (appelée juste après `signUp()` côté client — aucun webhook Stripe ne couvre l'inscription).
+> - **Personnalisation ajoutée dans la foulée, avant même le premier test** : Jake a demandé "le même système de gestion que les boutiques" plutôt que des textes figés — les 5 emails sont repassés en HTML en réutilisant le moteur de rendu déjà existant côté boutique (`rendreEmailTransactionnel`), avec un branding fixe "My Producer" (pas de logo/couleur/signature configurables). Nouvelle table `templates_plateforme` (titre+intro, une ligne par type, pas par beatmaker) + nouvelle page `/dashboard/admin/mails-plateforme` (accordéon + aperçu en direct, calqué sur `/dashboard/business/mailing/transactionnels`). **Vision plus large exprimée par Jake, mise de côté pour l'instant** : un vrai CRM My Producer (contacts = beatmakers) — noté dans `memory/project_features_backlog.md`, pas cadré.
+> - Checklist de test T0-T8 ajoutée plus bas (section "Checklist tests Mails My Producer") — **pas encore testée par Jake**.
 >
 > Dernière mise à jour : 2026-07-27 — **Étape 15 lot 2 (Admin) : 15d Analytics plateforme codé, testé bout en bout et validé par Jake ; 15e Mails transactionnels reconsidéré et simplifié après discussion.**
 > - **15d** — nouvelle page `/dashboard/admin/analytics` (`lib/admin-analytics.ts`), organisée en blocs distincts comme cadré le 2026-07-24 : **ton revenu réel** (MRR/ARR depuis `abonnements_plateforme`, statut `actif` uniquement — `en_essai` compté à part) volontairement séparé du **volume d'affaires boutiques** (CA net HT cumulé de toutes les boutiques, même formule que `TabRevenus.tsx` de l'analytics business, présenté explicitement comme un simple signal de santé à 0% commission) ; puis croissance (boutiques actives/nouveaux beatmakers 7-30j/churn plateforme 30j), classement des boutiques (top 10 par CA net), santé technique (compteur d'échecs email/webhook 7j), tendances catalogue (total beats + nouveaux 30j). Aucune migration SQL nécessaire.
@@ -1049,15 +1050,15 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 #### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ⬜ Pas encore testée par Jake
 
-> **Contexte :** Chantier identifié le 2026-07-27 en testant l'Étape 15 lot 2 — Jake pensait que "Mails transactionnels (admin)" couvrait déjà ça. Zéro email n'existait côté plateforme→beatmaker malgré `abonnements_plateforme` fonctionnel depuis le 2026-07-24. 5 emails, template fixe non personnalisable (contrairement aux transactionnels boutique→client de la Phase 6). Détail technique complet : mémoire `project_admin_etape15_scope`.
+> **Contexte :** Chantier identifié le 2026-07-27 en testant l'Étape 15 lot 2 — Jake pensait que "Mails transactionnels (admin)" couvrait déjà ça. Zéro email n'existait côté plateforme→beatmaker malgré `abonnements_plateforme` fonctionnel depuis le 2026-07-24. 5 emails en HTML (même moteur de rendu que les transactionnels boutique→client de la Phase 6, branding fixe "My Producer"), titre+intro personnalisables par l'admin via `/dashboard/admin/mails-plateforme` (ajouté le même jour, Jake voulait le même système de gestion que les boutiques). Détail technique complet : mémoire `project_mails_my_producer`.
 >
-> ⚠️ **À faire avant tout test** : exécuter `supabase/mails_plateforme.sql` (ajoute `rappel_essai_envoye_le` sur `abonnements_plateforme`) dans l'éditeur SQL Supabase, et vérifier que le cron `/api/cron/plateforme-rappels` apparaît bien dans Vercel après déploiement (nouveau, ajouté à `vercel.json`).
+> ⚠️ **À faire avant tout test** : (ré)exécuter `supabase/mails_plateforme.sql` dans l'éditeur SQL Supabase — le fichier est idempotent (safe à ré-exécuter même si déjà fait une fois), il contient maintenant aussi la table `templates_plateforme`. Vérifier que le cron `/api/cron/plateforme-rappels` apparaît bien dans Vercel après déploiement (déjà confirmé présent).
 
 **Préalable :**
-- [ ] **T0** — Migration `mails_plateforme.sql` exécutée sans erreur
+- [ ] **T0** — Migration `mails_plateforme.sql` (ré-exécutée avec la partie `templates_plateforme`) sans erreur
 
 **Bienvenue :**
-- [ ] **T1** — Inscription d'un nouveau compte beatmaker de test → email de bienvenue reçu, lien vers `/dashboard` fonctionnel
+- [ ] **T1** — Inscription d'un nouveau compte beatmaker de test → email de bienvenue reçu (HTML, branding My Producer), lien vers `/dashboard` fonctionnel
 
 **Confirmation essai :**
 - [ ] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
@@ -1070,6 +1071,11 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Annulation :**
 - [ ] **T5** — Annuler un abonnement plateforme de test (hors période d'essai, pour une annulation immédiate) → email de confirmation reçu
+
+**Personnalisation admin (`/dashboard/admin/mails-plateforme`) :**
+- [ ] **T6** — Les 5 sections s'affichent, l'aperçu en direct se met à jour en tapant dans Titre/Intro
+- [ ] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
+- [ ] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
