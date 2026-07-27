@@ -1,5 +1,10 @@
 # My Producer — Roadmap V1
 
+> Dernière mise à jour : 2026-07-27 — **Étape 15 lot 2 (Admin) : 15d Analytics plateforme + 15e Mails transactionnels codés, RIEN N'EST ENCORE TESTÉ PAR JAKE.** Suite directe du lot 1 (15a/15b/15c, validé le 2026-07-24) et de l'Étape 8b (abonnement plateforme, dont 15d mesure enfin le vrai revenu). Aucune migration SQL nécessaire (tout se lit depuis des tables déjà existantes).
+> - **15e** — nouvelle page `/dashboard/admin/mails` : vue des échecs d'envoi toutes boutiques confondues (toggle Échecs/Tous + filtre transactionnel/automatisation), avec un bouton **Renvoyer** par ligne échouée. Le renvoi manuel (`lib/admin-mails.ts`) ne recalcule jamais le contenu d'origine — `email_logs` stocke déjà `corps_html`/`corps_texte` depuis `email_logs_corps_migration.sql`, donc il rejoue tel quel via `envoyerEmailUnique()`, qui crée sa propre nouvelle ligne de log (l'historique garde trace des deux tentatives).
+> - **15d** — nouvelle page `/dashboard/admin/analytics` (`lib/admin-analytics.ts`), organisée en blocs distincts comme cadré le 2026-07-24 : **ton revenu réel** (MRR/ARR depuis `abonnements_plateforme`, statut `actif` uniquement — `en_essai` compté à part) volontairement séparé du **volume d'affaires boutiques** (CA net HT cumulé de toutes les boutiques, même formule que `TabRevenus.tsx` de l'analytics business, présenté explicitement comme un simple signal de santé à 0% commission) ; puis croissance (boutiques actives/nouveaux beatmakers 7-30j/churn plateforme 30j), classement des boutiques (top 10 par CA net), santé technique (échecs email/webhook 7j, liens directs vers 15e et le Log Stripe), tendances catalogue (total beats + nouveaux 30j).
+> - Checklist de test T0-TN ajoutée plus bas (section "Checklist tests Étape 15 lot 2").
+>
 > Dernière mise à jour : 2026-07-26 — **Étape 5v2 (boutique publique) : deux gros lots de handoff design intégrés (carrousel membres en boucle, dock mobile façon Spotify, hero animé, header/footer mobile restylés) — un bug ouvert en fin de session.**
 > - **Lot v5** : la grille "Réservés aux membres" devient une banderole `.members-marquee` en boucle infinie (liste dupliquée, `translateX(-50%)`), pause+éclairage au survol retirés sur demande de Jake (doit juste défiler). Bouton play desktop invisible par défaut, apparaît au survol de la cover, reste visible en lecture. Contrôles au tap mobile (nouvel état `mobileControlsBeatId` dans `PlayerContext.tsx`, une seule cover ouverte à la fois, indépendant de `isPlaying`). Bloc bas mobile refondu en dock façon Spotify (`PlayerBar`+`MobileTabBar` dans un nouveau `.shop-bottom-dock`, dégradé d'opacité au lieu du flou, mini-player opaque au dégradé Styles, boutons inversés).
 > - **Lot "integration-mobile"** (10 points de handoff, traité en plan mode) : header mobile sans barre floutée (juste logo+2 boutons translucides sur le hero), footer avec vraies icônes SVG sociales (mobile + desktop) et fond neutre mobile, **hero animé** (3 nappes `--g1`/`--g2` qui dérivent + balayage conique + fondu vers le fond de page — la 4ᵉ couche du README avait été oubliée au premier passage, coupure nette visible corrigée après coup sur retour de Jake), overlay de lecture mobile simplifié (bouton achat seul, 48px, plus de play/pause dessus), player PC en dégradé d'opacité (nouvelle var `--player-fade`) + favori élargi et stylé, formule `--g1`/`--g2` généralisée à tous les presets (override cyan devenu redondant, retiré).
@@ -64,7 +69,7 @@
 | 2 | **11d Phase 7** — Catégories & Certification ✅ *(codé 2026-07-17, testé et validé 2026-07-20 — checklist T0-T19 à 100%)* | Indépendant du nom. Prérequis fonctionnel à l'étape 15 (la modération des demandes de certification fait partie du périmètre Admin — impossible à construire tant que les demandes elles-mêmes n'existent pas). |
 | 3 | **Étape 15 lot 1** — Admin : Recherche/Log Stripe/Suspension ✅ *(codé et testé bout en bout le 2026-07-24 — checklist T0-T25 validée, T13/T16 bloqués)* | Dépendance dure avant l'étape 17, explicitement actée. Dépend de la Phase 7 (rang 2) pour la partie modération. |
 | 4 | **Étape 8b — Abonnement plateforme** ✅ *(codée + testée le 2026-07-24, gate d'accès activé le même jour — voir note ci-dessus)* | 1 plan unique (mensuel/annuel), essai 14 jours + CB obligatoire, accès total ou rien — pas de différenciation de droits pour cette V1. Le blocage d'accès (`proxy.ts`) a été activé dans un second temps, une fois le paiement lui-même testé bout en bout. |
-| 5 | **Étape 15 lot 2** — Admin : 15d Analytics plateforme + 15e Mails transactionnels | Repoussé après l'Étape 8b (rang 4) : 15d mesure justement le revenu de l'Étape 8b — le construire avant afficherait des zéros indéfiniment. |
+| 5 | **Étape 15 lot 2** — Admin : 15d Analytics plateforme + 15e Mails transactionnels ✅ *(codé le 2026-07-27, pas encore testé)* | Repoussé après l'Étape 8b (rang 4) : 15d mesure justement le revenu de l'Étape 8b — le construire avant afficherait des zéros indéfiniment. |
 | 6 | **Étape 5v2** — Refonte Boutique publique & Design System *(déjà très avancée — CGV/confidentialité/contact/mentions légales/plan de site déjà construits, reste la personnalisation par le beatmaker et le beat cadeau 6.7)* | Chantier indépendant du reste (boutique publique, pas dashboard beatmaker) — peut continuer en parallèle si Jake le souhaite. |
 | 7 | **11d Phase 8** — Dashboard business (accueil) | Agrège les KPIs de tous les modules Business, y compris Marketing/Mailing/Catégories/Abonnement plateforme — n'a de sens qu'une fois ces modules construits. |
 | 8 | **Étape 14** — Onboarding | Repositionné après l'Étape 8b (rang 4) : le parcours d'inscription doit intégrer l'abonnement plateforme dès sa conception, pas l'ajouter après coup. |
@@ -115,7 +120,7 @@
 | 12 | **Emails automatiques** | Post-achat, abonnement, renouvellement, annulation *(partiellement couvert par 11d Marketing)* | 4-6h | ⬜ À faire |
 | 13 | **Analytics** | Compteur d'écoutes sur les cartes beat et page détail *(analytics back-office couvert par 11d)* | 2-3h | ✅ Validé |
 | 14 | **Onboarding** | Parcours guidé de configuration à l'inscription | 5-8h | ⬜ À faire |
-| 15 | **Admin** | Back-office plateforme, périmètre cadré en sous-étapes le 2026-07-24 : **15a** Recherche/Support ✅ codé+testé, **15b** Log Stripe ✅ codé+testé, **15c** Suspendre/Réactiver une boutique (cascade Stripe) ✅ codé+testé (3 bugs trouvés et corrigés pendant les tests), **15d** Analytics plateforme ⬜, **15e** Visibilité mails transactionnels ⬜, **15f** Rôles/permissions (reste en V1, gate par slug) — pas prioritaire, **15g** Mises à jour/veille technique ⬜ *(nouvelle zone née le 2026-07-24)*, modération des demandes de certification (catégories, 11d Phase 7) ✅ *(amorcé 2026-07-17, `/dashboard/admin/categories`)*, outil interne d'import BeatStars (script scraping concierge) ⬜. Détail complet + scoring dangerosité : mémoire `project_admin_etape15_scope`. Dépendance dure avant l'étape 17 (déploiement officiel) | 10-15h *(à réviser)* | 🔄 En cours — lot 1 (15a/15b/15c) codé ET testé bout en bout le 2026-07-24 |
+| 15 | **Admin** | Back-office plateforme, périmètre cadré en sous-étapes le 2026-07-24 : **15a** Recherche/Support ✅ codé+testé, **15b** Log Stripe ✅ codé+testé, **15c** Suspendre/Réactiver une boutique (cascade Stripe) ✅ codé+testé (3 bugs trouvés et corrigés pendant les tests), **15d** Analytics plateforme ✅ *(codé le 2026-07-27, pas encore testé)*, **15e** Visibilité mails transactionnels ✅ *(codé le 2026-07-27, pas encore testé)*, **15f** Rôles/permissions (reste en V1, gate par slug) — pas prioritaire, **15g** Mises à jour/veille technique ⬜ *(nouvelle zone née le 2026-07-24)*, modération des demandes de certification (catégories, 11d Phase 7) ✅ *(amorcé 2026-07-17, `/dashboard/admin/categories`)*, outil interne d'import BeatStars (script scraping concierge) ⬜. Détail complet + scoring dangerosité : mémoire `project_admin_etape15_scope`. Dépendance dure avant l'étape 17 (déploiement officiel) | 10-15h *(à réviser)* | 🔄 En cours — lot 1 (15a/15b/15c) validé le 2026-07-24, lot 2 (15d/15e) codé le 2026-07-27, tests en attente |
 | 16 | **Tests & corrections** | Tout tester de bout en bout avant lancement | 8-15h | ⬜ À faire |
 | 17 | **Déploiement** | Mise en ligne sur Vercel + nom de domaine | 2-4h | ⬜ À faire |
 
@@ -1006,6 +1011,36 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T20** — La boutique publique `/{slug}` d'un beatmaker sans abonnement ni exemption renvoie une vraie page 404 (pas un message "boutique inactive") — visite en navigation privée, sans être connecté
 - [x] **T21** — Après souscription réelle (T13), la boutique publique de ce même beatmaker redevient visible normalement
 - [x] **T22** — La boutique publique d'un compte exempté (ex. `jakeb-test2`) reste visible malgré `abo_plateforme = AUCUN`
+
+#### Checklist tests Étape 15 lot 2 — Admin 15d Analytics plateforme + 15e Mails transactionnels ⬜ Pas encore testée par Jake
+
+> **Contexte :** Suite du lot 1 (15a/15b/15c, validé le 2026-07-24), repoussée après l'Étape 8b (déjà validée) pour que 15d mesure un vrai revenu plutôt que des zéros. Aucune migration SQL nécessaire — les deux pages lisent uniquement des tables déjà existantes (`abonnements_plateforme`, `commandes`, `beatmakers`, `email_logs`, `stripe_events`, `beats`).
+>
+> ⚠️ Pour valider le renvoi manuel (15e), il faut au moins une ligne `email_logs` en statut `echoue` — au besoin, en provoquer une à froid (ex. adresse email invalide sur un compte de test) plutôt que d'attendre un vrai échec.
+
+**Accueil admin :**
+- [ ] **T0** — `/dashboard/admin` affiche les deux nouvelles cartes "Mails transactionnels" et "Analytics plateforme", liens fonctionnels
+
+**Mails transactionnels (`/dashboard/admin/mails`) :**
+- [ ] **T1** — Par défaut, seuls les emails en échec s'affichent
+- [ ] **T2** — Filtre "Tous" → les emails envoyés avec succès apparaissent aussi
+- [ ] **T3** — Filtres "Transactionnel"/"Automatisation" restreignent bien la liste au bon type
+- [ ] **T4** — Chaque ligne affiche la bonne boutique (nom + slug), le bon destinataire et le message d'erreur
+- [ ] **T5** — Clic "Renvoyer" sur un email en échec → message "Renvoyé ✓" affiché, une nouvelle ligne apparaît dans la liste après rechargement de la page (statut dépend du succès du renvoi)
+- [ ] **T6** — Renvoyer un email dont le contenu n'a pas été historisé (envoyé avant `email_logs_corps_migration.sql`, s'il en reste) → message d'erreur clair, rien ne casse
+
+**Analytics plateforme (`/dashboard/admin/analytics`) :**
+- [ ] **T7** — Bloc "Ton revenu réel" : MRR/ARR cohérents avec les abonnements plateforme réellement actifs (croiser avec `/dashboard/admin/recherche` ou le Dashboard Stripe test)
+- [ ] **T8** — Compteurs actifs/en essai/annulés/impayés cohérents avec le nombre réel de lignes `abonnements_plateforme` par statut
+- [ ] **T9** — Bloc "Volume d'affaires boutiques" : CA net total cohérent avec la somme des CA net de chaque boutique (comparer avec `/dashboard/business/analytics` d'une boutique de test)
+- [ ] **T10** — CA net "30 derniers jours" plausible (inférieur ou égal au total tout historique)
+- [ ] **T11** — Bloc "Croissance" : nombre de boutiques actives cohérent (exclut les boutiques suspendues), nouveaux beatmakers 7j/30j plausibles
+- [ ] **T12** — Bloc "Classement des boutiques" : ordre décroissant par CA net correct, lien vers la fiche boutique fonctionne
+- [ ] **T13** — Bloc "Santé technique" : les compteurs d'échecs (7j) correspondent à ce qui est visible sur `/dashboard/admin/mails?filtre=echoue` et `/dashboard/admin/stripe-events?filtre=echoue`, les liens y mènent bien
+- [ ] **T14** — Bloc "Tendances catalogue" : total de beats cohérent avec la somme des catalogues de toutes les boutiques
+
+**Sécurité :**
+- [ ] **T15** — Compte non-admin (déconnecté ou autre compte réel) → `/dashboard/admin/mails` et `/dashboard/admin/analytics` redirigent vers `/dashboard/business`
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
