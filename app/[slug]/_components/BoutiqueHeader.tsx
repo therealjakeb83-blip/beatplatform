@@ -32,14 +32,6 @@ export default function BoutiqueHeader({
     if (!header) return
     let lastY = window.scrollY
     function onScroll() {
-      // Le CSS scope déjà le transform is-hidden à min-width:768px, mais on
-      // coupe aussi la logique ici : le header mobile ne doit jamais bouger,
-      // dans aucun cas (pas juste "ne pas avoir d'effet visuel").
-      if (window.innerWidth < 768) {
-        header!.classList.remove('is-hidden')
-        lastY = window.scrollY
-        return
-      }
       const y = window.scrollY
       const dy = y - lastY
       if (y < 80) header!.classList.remove('is-hidden')
