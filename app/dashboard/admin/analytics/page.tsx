@@ -97,11 +97,9 @@ export default async function AdminAnalyticsPage() {
         </div>
       </Bloc>
 
-      <Bloc titre="Santé technique">
+      <Bloc titre="Santé technique" description="Juste un signal d'alerte — le détail nominatif des emails envoyés par les boutiques n'est volontairement pas exposé ici (voir décision 2026-07-27 : redondant avec les logs de chaque beatmaker, et plus d'exposition que nécessaire sur les données de leurs clients).">
         <div className="grid grid-cols-2 gap-3">
-          <Link href="/dashboard/admin/mails?filtre=echoue">
-            <Carte label="Échecs email — 7 derniers jours" value={String(data.santeTechnique.echecsEmail7j)} color={data.santeTechnique.echecsEmail7j > 0 ? '#f87171' : '#4ade80'} sub="Voir Mails transactionnels →" />
-          </Link>
+          <Carte label="Échecs email — 7 derniers jours" value={String(data.santeTechnique.echecsEmail7j)} color={data.santeTechnique.echecsEmail7j > 0 ? '#f87171' : '#4ade80'} />
           <Link href="/dashboard/admin/stripe-events?filtre=echoue">
             <Carte label="Échecs webhook — 7 derniers jours" value={String(data.santeTechnique.echecsWebhook7j)} color={data.santeTechnique.echecsWebhook7j > 0 ? '#f87171' : '#4ade80'} sub="Voir Log Stripe →" />
           </Link>

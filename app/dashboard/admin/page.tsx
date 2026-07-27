@@ -28,13 +28,6 @@ export default function AdminPage() {
           <p className="text-xs text-gray-500 mt-0.5">Derniers événements webhook reçus, succès et échecs</p>
         </Link>
         <Link
-          href="/dashboard/admin/mails"
-          className="block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 transition-colors"
-        >
-          <p className="text-sm font-semibold text-white">Mails transactionnels</p>
-          <p className="text-xs text-gray-500 mt-0.5">Échecs d&apos;envoi toutes boutiques confondues + renvoi manuel</p>
-        </Link>
-        <Link
           href="/dashboard/admin/analytics"
           className="block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 transition-colors"
         >
