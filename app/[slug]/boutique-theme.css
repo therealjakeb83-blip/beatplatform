@@ -718,15 +718,18 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
 }
 
 @media (max-width: 767px) {
-  /* Header désormais fixed (hors flux, hauteur nulle dans le document) —
-     plus besoin de margin-top négatif pour "annuler" sa hauteur, le hero
-     commence naturellement en haut de page, le header flotte par-dessus. */
+  /* Header dans le flux (position:static) : sa hauteur réelle (70px mesurée)
+     pousse le hero vers le bas, ce qui laisserait un bandeau uni de
+     --bg au-dessus du dégradé. margin-top négatif = même truc que sur
+     desktop (-118px) : le hero remonte visuellement sous le header
+     transparent, dégradé continu jusqu'en haut, logo/boutons qui semblent
+     flotter dessus — alors qu'ils défilent bien avec la page (pas fixed). */
   /* Lueur blanche additive derrière le header, pour le faire ressortir du
      fond dégradé — couche de background supplémentaire, n'affecte pas le
      dégradé existant. */
   .shop-hero {
     padding: 144px 22px 90px;
-    margin-top: 0;
+    margin-top: -70px;
     background: radial-gradient(72% 30% at 50% 6%, rgba(255,255,255,.06), transparent 70%), var(--hero-bg-mobile);
   }
   .shop-hero h1 { font-size: 27px; line-height: 1.25; }
