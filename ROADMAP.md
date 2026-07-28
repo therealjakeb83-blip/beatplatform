@@ -1060,7 +1060,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 > ⚠️ **À faire avant tout test** : (ré)exécuter `supabase/mails_plateforme.sql` dans l'éditeur SQL Supabase — le fichier est idempotent (safe à ré-exécuter même si déjà fait une fois), il contient maintenant aussi la table `templates_plateforme` **et** le 6ᵉ type `confirmation_email` (ajouté le 2026-07-28, voir juste en dessous). Vérifier que le cron `/api/cron/plateforme-rappels` apparaît bien dans Vercel après déploiement (déjà confirmé présent).
 
 **Préalable :**
-- [ ] **T0** — Migration `mails_plateforme.sql` (ré-exécutée avec les parties `templates_plateforme` + `confirmation_email`) sans erreur
+- [x] **T0** — Migration `mails_plateforme.sql` (ré-exécutée avec les parties `templates_plateforme` + `confirmation_email`) sans erreur
 
 **Confirmation d'adresse email (nouveau, 2026-07-28 — corrige le bug T1 ci-dessous) :**
 
