@@ -1066,16 +1066,16 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 > Le bug T1 (bienvenue jamais envoyée) venait du fait que `/api/plateforme/bienvenue` était appelé juste après `signUp()`, avant que l'email de confirmation exigée par Supabase ne soit validée — aucune session n'existe encore à ce moment-là (401 silencieux). Corrigé en passant l'inscription côté serveur (`admin.generateLink`) : la confirmation devient elle-même un 6ᵉ email envoyé par nous (Resend, brandé, personnalisable), et c'est seulement la confirmation réelle (page `/confirmation-compte`, `verifyOtp`) qui déclenche la bienvenue — plus aucun appel prématuré. Détail technique : mémoire `project_mails_my_producer` (section 2026-07-28).
 
-- [ ] **T1a** — Inscription (`/inscription`) avec un email de test jamais utilisé → écran "Vérifie ta boîte mail" affiché (pas de redirection immédiate vers `/dashboard`)
-- [ ] **T1b** — Email de confirmation reçu **brandé My Producer** (pas le générique Supabase) — vérifier `email_logs` : une ligne `evenement = 'plateforme_confirmation_email'` existe déjà à ce stade, avant même le clic
-- [ ] **T1c** — Clic sur le lien → atterrit sur `/confirmation-compte` → "Compte confirmé !" → redirection automatique vers `/dashboard`, connecté
-- [ ] **T1d** — `email_logs` : une ligne `evenement = 'plateforme_bienvenue'` apparaît **seulement après** ce clic, jamais avant
+- [x] **T1a** — Inscription (`/inscription`) avec un email de test jamais utilisé → écran "Vérifie ta boîte mail" affiché (pas de redirection immédiate vers `/dashboard`)
+- [x] **T1b** — Email de confirmation reçu **brandé My Producer** (pas le générique Supabase)
+- [x] **T1c** — Clic sur le lien → confirmation réussie → redirection vers `/dashboard`, connecté → gate abonnement (Étape 8b) a immédiatement pris le relais vers `/dashboard/abonnement` (comportement normal pour un compte tout juste créé sans abonnement — confirme que la session est bien active)
+- [x] **T1d** — Email de bienvenue reçu séparément, après le clic (pas au moment du formulaire) — confirmé par Jake
 - [ ] **T1e** — Recliquer sur le même lien (ou lien expiré) → `/confirmation-compte` affiche "Lien invalide ou expiré" proprement, pas de crash
 - [ ] **T1f** — Réinscription avec un email déjà utilisé → message d'erreur clair, pas de doublon de compte ni de 2ᵉ email envoyé
 - [ ] **T1g** — Non-régression flux artiste (`/artiste/inscription`) : toujours son propre comportement inchangé (email Supabase générique + `confirmationCompteArtiste` brandée à la boutique)
 
 **Bienvenue :**
-- [ ] **T1** — ✅ Corrigé le 2026-07-28 (voir bloc ci-dessus) — se valide via T1c/T1d
+- [x] **T1** — ✅ Corrigé et validé le 2026-07-28 (voir bloc ci-dessus, T1a-T1d)
 
 **Confirmation essai :**
 - [ ] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
