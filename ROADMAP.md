@@ -1,10 +1,9 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-07-28 — **Bug trouvé en testant T1 : l'email de bienvenue ne part jamais actuellement.** Nouveau chantier cadré (pas codé) pour la prochaine session : intégrer la confirmation d'adresse email dans "Mails My Producer" comme 6ᵉ email, ce qui corrige le bug au passage.
-> - **Diagnostic** : l'inscription (`app/inscription/page.tsx`) exige une confirmation d'email (déjà activée côté Supabase, comme pour les artistes) — juste après `supabase.auth.signUp()` côté client, **aucune session n'existe encore**, donc l'appel à `/api/plateforme/bienvenue` échoue silencieusement (401). Vérifié concrètement : `email_logs` vide pour un compte de test tout juste inscrit (`nicojacob83+2807@gmail.com`), alors que `email_confirmed_at` ne s'est rempli que ~25s après `created_at` (vrai clic sur le lien Supabase générique, pas branded).
-> - **Précédent existant à réutiliser** : le flux artiste (`app/artiste/inscription/page.tsx` → `emailRedirectTo` vers `/auth/callback`) fait déjà exactement ce pattern — Supabase envoie sa propre confirmation, `/auth/callback` échange le code puis déclenche un email de bienvenue custom (`confirmationCompteArtiste`). Le flux beatmaker ne fait PAS ça aujourd'hui (pas de `emailRedirectTo`, redirection immédiate sans attendre la confirmation) — d'où le bug.
-> - **Direction validée avec Jake** : ne pas se contenter de rebrander le template Supabase depuis son dashboard (plus simple mais déconnecté de notre système, pas dans `email_logs`, pas personnalisable via `/dashboard/admin/mails-plateforme`) — **intégrer complètement** : inscription passée côté serveur, lien de confirmation généré et envoyé par nous (6ᵉ type dans `templates_plateforme`/`MailsPlateformeClient.tsx`), et c'est seulement la confirmation réelle (pas le formulaire) qui déclenche l'email de bienvenue.
-> - **Décision de méthode** : chantier repris dans une **nouvelle session** (contexte de celle-ci trop chargé après 15d/15e + 2 bugs + Mails My Producer x2 itérations) — tout ce qui précède est déjà commité/documenté, rien à perdre en changeant de session.
+> Dernière mise à jour : 2026-07-28 (suite) — **Chantier codé : confirmation d'adresse email intégrée comme 6ᵉ email My Producer, bug de la bienvenue non-envoyée corrigé.** Pas encore testé par Jake — checklist T0/T1a-T1g ajoutée (section "Checklist tests Mails My Producer").
+> - **Approche technique retenue, différente de ce qui avait été esquissé** : plutôt que de faire passer le beatmaker par `/auth/callback` (réutilisé tel quel par les artistes, PKCE `exchangeCodeForSession`), l'inscription beatmaker passe désormais entièrement côté serveur via une nouvelle route `/api/inscription/beatmaker` qui appelle `admin.generateLink({ type: 'signup', ... })` — crée le compte (déclenche le trigger `handle_new_beatmaker` comme d'habitude) sans jamais faire partir l'email automatique de Supabase, et renvoie un `token_hash`. Ce lien est envoyé par nous (6ᵉ type `confirmation_email` dans `templates_plateforme`), et vérifié côté navigateur par une nouvelle page `/confirmation-compte` via `supabase.auth.verifyOtp()` — **même pattern déjà éprouvé dans ce projet** pour la connexion auto post-abonnement (`app/api/stripe/abonnement/succes/route.ts` → `/artiste/nouveau-mot-de-passe`), plutôt qu'un flux PKCE non testé pour ce cas précis. C'est seulement une fois `verifyOtp` réussi que la page appelle `/api/plateforme/bienvenue` (route inchangée, juste déclenchée au bon moment) puis redirige vers `/dashboard`. Le flux artiste (`/auth/callback`) reste totalement inchangé.
+> - **Fichiers touchés** : `supabase/mails_plateforme.sql` (6ᵉ valeur du CHECK, idempotent), `lib/emails.ts` (`envoyerConfirmationEmailPlateforme`), nouvelle route `app/api/inscription/beatmaker/route.ts`, nouvelle page `app/confirmation-compte/page.tsx`, `app/inscription/page.tsx` (écran "Vérifie ta boîte mail" au lieu d'une redirection immédiate — même UX que `/artiste/inscription`), carte admin dans `MailsPlateformeClient.tsx`. `tsc`/`eslint` propres (aucune erreur nouvelle introduite). Détail complet : mémoire `project_mails_my_producer` (section 2026-07-28).
+> - **À faire avant de tester** : ré-exécuter `supabase/mails_plateforme.sql` dans l'éditeur SQL Supabase (idempotent, ajoute le 6ᵉ type au CHECK).
 >
 > Dernière mise à jour : 2026-07-27 (suite) — **"Mails My Producer" codé : 5 emails transactionnels plateforme→beatmaker, jusque-là totalement inexistants.** Chantier né de la reconsidération de 15e (voir plus bas) — Jake voulait à l'origine configurer les emails que My Producer envoie aux beatmakers eux-mêmes, pas une vue admin sur les emails boutique→client.
 > - **Les 5 emails** : bienvenue à l'inscription, confirmation de démarrage d'essai, rappel de fin d'essai (J-3), paiement échoué, confirmation d'annulation. Branding fixe unique "My Producer" — **jamais** personnalisable par un beatmaker (contrairement aux transactionnels boutique→client de la Phase 6, où chaque beatmaker brande ses emails) : ici c'est Jake qui parle au beatmaker, pas la boutique à son client.
@@ -1054,17 +1053,29 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Sécurité :**
 - [x] **T15** — Compte non-admin (`jakeb-test1`) → `/dashboard/admin/analytics` redirige vers `/dashboard/business` ; déconnecté → `/connexion` (comportement `proxy.ts` déjà validé au lot 1)
 
-#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ⬜ Pas encore testée par Jake
+#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ⬜ Pas encore testée par Jake (6e email confirmation_email ajouté le 2026-07-28, bug bienvenue corrigé)
 
 > **Contexte :** Chantier identifié le 2026-07-27 en testant l'Étape 15 lot 2 — Jake pensait que "Mails transactionnels (admin)" couvrait déjà ça. Zéro email n'existait côté plateforme→beatmaker malgré `abonnements_plateforme` fonctionnel depuis le 2026-07-24. 5 emails en HTML (même moteur de rendu que les transactionnels boutique→client de la Phase 6, branding fixe "My Producer"), titre+intro personnalisables par l'admin via `/dashboard/admin/mails-plateforme` (ajouté le même jour, Jake voulait le même système de gestion que les boutiques). Détail technique complet : mémoire `project_mails_my_producer`.
 >
-> ⚠️ **À faire avant tout test** : (ré)exécuter `supabase/mails_plateforme.sql` dans l'éditeur SQL Supabase — le fichier est idempotent (safe à ré-exécuter même si déjà fait une fois), il contient maintenant aussi la table `templates_plateforme`. Vérifier que le cron `/api/cron/plateforme-rappels` apparaît bien dans Vercel après déploiement (déjà confirmé présent).
+> ⚠️ **À faire avant tout test** : (ré)exécuter `supabase/mails_plateforme.sql` dans l'éditeur SQL Supabase — le fichier est idempotent (safe à ré-exécuter même si déjà fait une fois), il contient maintenant aussi la table `templates_plateforme` **et** le 6ᵉ type `confirmation_email` (ajouté le 2026-07-28, voir juste en dessous). Vérifier que le cron `/api/cron/plateforme-rappels` apparaît bien dans Vercel après déploiement (déjà confirmé présent).
 
 **Préalable :**
-- [ ] **T0** — Migration `mails_plateforme.sql` (ré-exécutée avec la partie `templates_plateforme`) sans erreur
+- [ ] **T0** — Migration `mails_plateforme.sql` (ré-exécutée avec les parties `templates_plateforme` + `confirmation_email`) sans erreur
+
+**Confirmation d'adresse email (nouveau, 2026-07-28 — corrige le bug T1 ci-dessous) :**
+
+> Le bug T1 (bienvenue jamais envoyée) venait du fait que `/api/plateforme/bienvenue` était appelé juste après `signUp()`, avant que l'email de confirmation exigée par Supabase ne soit validée — aucune session n'existe encore à ce moment-là (401 silencieux). Corrigé en passant l'inscription côté serveur (`admin.generateLink`) : la confirmation devient elle-même un 6ᵉ email envoyé par nous (Resend, brandé, personnalisable), et c'est seulement la confirmation réelle (page `/confirmation-compte`, `verifyOtp`) qui déclenche la bienvenue — plus aucun appel prématuré. Détail technique : mémoire `project_mails_my_producer` (section 2026-07-28).
+
+- [ ] **T1a** — Inscription (`/inscription`) avec un email de test jamais utilisé → écran "Vérifie ta boîte mail" affiché (pas de redirection immédiate vers `/dashboard`)
+- [ ] **T1b** — Email de confirmation reçu **brandé My Producer** (pas le générique Supabase) — vérifier `email_logs` : une ligne `evenement = 'plateforme_confirmation_email'` existe déjà à ce stade, avant même le clic
+- [ ] **T1c** — Clic sur le lien → atterrit sur `/confirmation-compte` → "Compte confirmé !" → redirection automatique vers `/dashboard`, connecté
+- [ ] **T1d** — `email_logs` : une ligne `evenement = 'plateforme_bienvenue'` apparaît **seulement après** ce clic, jamais avant
+- [ ] **T1e** — Recliquer sur le même lien (ou lien expiré) → `/confirmation-compte` affiche "Lien invalide ou expiré" proprement, pas de crash
+- [ ] **T1f** — Réinscription avec un email déjà utilisé → message d'erreur clair, pas de doublon de compte ni de 2ᵉ email envoyé
+- [ ] **T1g** — Non-régression flux artiste (`/artiste/inscription`) : toujours son propre comportement inchangé (email Supabase générique + `confirmationCompteArtiste` brandée à la boutique)
 
 **Bienvenue :**
-- [ ] **T1** — 🔒 **Bloqué, bug confirmé le 2026-07-28** — l'email de bienvenue ne part pas : `/api/plateforme/bienvenue` est appelé avant qu'une session existe (confirmation d'email requise à l'inscription), donc échoue silencieusement (401). Vérifié : `email_logs` vide pour un compte de test fraîchement inscrit. Chantier de correction cadré pour la prochaine session (voir note tout en haut de ce fichier) — ne sera testable qu'une fois ce chantier fait
+- [ ] **T1** — ✅ Corrigé le 2026-07-28 (voir bloc ci-dessus) — se valide via T1c/T1d
 
 **Confirmation essai :**
 - [ ] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
@@ -1079,8 +1090,8 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [ ] **T5** — Annuler un abonnement plateforme de test (hors période d'essai, pour une annulation immédiate) → email de confirmation reçu
 
 **Personnalisation admin (`/dashboard/admin/mails-plateforme`) :**
-- [ ] **T6** — Les 5 sections s'affichent, l'aperçu en direct se met à jour en tapant dans Titre/Intro
-- [ ] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
+- [ ] **T6** — Les 6 sections s'affichent (Confirmation d'adresse email en 1ʳᵉ position), l'aperçu en direct se met à jour en tapant dans Titre/Intro
+- [ ] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1a-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
 - [ ] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
