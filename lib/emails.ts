@@ -343,6 +343,7 @@ function rendreEmailTransactionnel({
 // 2026-07-27, voir memory/project_mails_my_producer.md.
 
 export type TypeTemplatePlateforme =
+  | 'confirmation_email'
   | 'bienvenue'
   | 'confirmation_essai'
   | 'rappel_fin_essai'
@@ -363,6 +364,7 @@ const BRANDING_PLATEFORME: BrandingTransactionnel = {
 }
 
 const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
+  confirmation_email: 'Confirme ton adresse email',
   bienvenue: 'Bienvenue sur My Producer !',
   confirmation_essai: 'Ton essai gratuit a démarré',
   rappel_fin_essai: 'Ton essai se termine dans 3 jours',
@@ -372,6 +374,8 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
   switch (type) {
+    case 'confirmation_email':
+      return "Plus qu'une étape avant de lancer ta boutique : confirme ton adresse email en cliquant sur le bouton ci-dessous."
     case 'bienvenue':
       return "Ton compte My Producer est créé — bienvenue ! Configure ta boutique et abonne-toi pour la rendre visible (essai gratuit de 14 jours, sans engagement)."
     case 'confirmation_essai':
@@ -406,6 +410,38 @@ function corpsAbonnementPlateforme(periode: 'mensuel' | 'annuel', prixEuros: num
         <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(fmtDateEssai(essaiFinLe))}</td>
       </tr>
     </table>`
+}
+
+// Contrairement aux 5 autres, cet email est déclenché depuis l'inscription
+// elle-même (app/api/inscription/beatmaker) plutôt qu'un webhook/cron — le
+// compte n'est pas encore confirmé au moment de l'envoi, donc `beatmakerId`
+// existe déjà (créé par le trigger Postgres synchrone) mais l'utilisateur
+// n'a pas de session. Voir ROADMAP.md (2026-07-28) pour le diagnostic du
+// bug que ce chantier corrige (bienvenue jamais envoyée).
+export async function envoyerConfirmationEmailPlateforme({
+  to,
+  beatmakerId,
+  lienConfirmation,
+}: {
+  to: string
+  beatmakerId: string
+  lienConfirmation: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('confirmation_email')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_confirmation_email',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.confirmation_email,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.confirmation_email,
+      intro: intro || introDefautPlateforme('confirmation_email'),
+      corpsHtml: '',
+      cta: { texte: 'Confirmer mon adresse email', lien: lienConfirmation },
+    }),
+  })
 }
 
 export async function envoyerBienvenuePlateforme({
@@ -554,6 +590,7 @@ export async function genererApercuTransactionnelPlateforme(
   const intro = introDraft.trim() || introDefautPlateforme(type)
 
   const parType: Record<TypeTemplatePlateforme, { corpsHtml: string; cta: { texte: string; lien: string } }> = {
+    confirmation_email: { corpsHtml: '', cta: { texte: 'Confirmer mon adresse email', lien: '#' } },
     bienvenue: { corpsHtml: '', cta: { texte: 'Accéder à mon dashboard', lien: '#' } },
     confirmation_essai: { corpsHtml: CORPS_EXEMPLE_PLATEFORME, cta: { texte: 'Gérer mon abonnement', lien: '#' } },
     rappel_fin_essai: { corpsHtml: CORPS_EXEMPLE_PLATEFORME, cta: { texte: 'Gérer mon abonnement', lien: '#' } },

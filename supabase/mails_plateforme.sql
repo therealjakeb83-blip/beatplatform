@@ -36,3 +36,20 @@ alter table templates_plateforme enable row level security;
 -- (service_role), toujours derrière estAdmin() côté serveur — même pattern
 -- que les autres tables purement admin (ex. categories côté plateforme).
 grant all on templates_plateforme to service_role;
+
+-- ============================================================
+-- Mise à jour (2026-07-28) — 6ᵉ type : confirmation_email
+-- ============================================================
+-- Jusqu'ici, l'inscription beatmaker s'appuyait sur l'email de confirmation
+-- générique envoyé automatiquement par Supabase — le vrai bug (bienvenue
+-- qui ne partait jamais) vient du fait que la confirmation n'était jamais
+-- attendue avant de tenter d'envoyer la bienvenue (voir ROADMAP.md et
+-- memory/project_mails_my_producer.md, mise à jour 2026-07-28). La
+-- confirmation d'adresse email devient donc elle-même un email envoyé par
+-- nous (Resend), pour être branded + personnalisable comme les 5 autres.
+
+alter table templates_plateforme drop constraint if exists templates_plateforme_type_check;
+alter table templates_plateforme add constraint templates_plateforme_type_check check (type in (
+  'bienvenue', 'confirmation_essai', 'rappel_fin_essai',
+  'paiement_echoue', 'annulation', 'confirmation_email'
+));

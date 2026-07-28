@@ -3,7 +3,7 @@ import { sauvegarderTemplatePlateforme, genererApercuPlateforme } from './_lib/a
 import MailsPlateformeClient from './_components/MailsPlateformeClient'
 import type { TypeTemplatePlateforme } from '@/lib/emails'
 
-const TYPES: TypeTemplatePlateforme[] = ['bienvenue', 'confirmation_essai', 'rappel_fin_essai', 'paiement_echoue', 'annulation']
+const TYPES: TypeTemplatePlateforme[] = ['confirmation_email', 'bienvenue', 'confirmation_essai', 'rappel_fin_essai', 'paiement_echoue', 'annulation']
 
 export default async function MailsPlateformePage() {
   const admin = createAdminClient()

@@ -15,11 +15,18 @@ const DEBOUNCE_MS = 400
 
 const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: string; description: string; declencheur: string }[] = [
   {
+    type: 'confirmation_email',
+    nom: 'Confirmation d\'adresse email',
+    titrePlaceholder: 'Confirme ton adresse email',
+    description: "Envoyé juste après l'inscription, contient le lien de confirmation.",
+    declencheur: 'Déclencheur : inscription (avant que le compte soit confirmé)',
+  },
+  {
     type: 'bienvenue',
     nom: 'Bienvenue',
     titrePlaceholder: 'Bienvenue sur My Producer !',
-    description: 'Envoyé juste après la création du compte.',
-    declencheur: 'Déclencheur : inscription (supabase.auth.signUp)',
+    description: 'Envoyé juste après la confirmation réelle de l\'adresse email.',
+    declencheur: 'Déclencheur : clic sur le lien de confirmation (/confirmation-compte)',
   },
   {
     type: 'confirmation_essai',

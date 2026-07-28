@@ -1,42 +1,54 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function InscriptionPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nomArtiste, setNomArtiste] = useState('')
   const [erreur, setErreur] = useState('')
   const [chargement, setChargement] = useState(false)
+  const [succes, setSucces] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErreur('')
     setChargement(true)
 
-    const supabase = createClient()
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { nom_artiste: nomArtiste, role: 'beatmaker' },
-      },
+    const res = await fetch('/api/inscription/beatmaker', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, nomArtiste }),
     })
+    const data = await res.json()
 
-    if (error) {
-      setErreur(error.message)
+    if (!res.ok) {
+      setErreur(data.erreur ?? 'Erreur lors de la création du compte.')
       setChargement(false)
       return
     }
 
-    await fetch('/api/plateforme/bienvenue', { method: 'POST' }).catch(() => {})
+    setSucces(true)
+    setChargement(false)
+  }
 
-    router.push('/dashboard')
+  if (succes) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+        <div className="w-full max-w-md text-center">
+          <div className="text-5xl mb-4">📩</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Vérifie ta boîte mail</h1>
+          <p className="text-gray-400 text-sm leading-relaxed">
+            Un lien de confirmation t&apos;a été envoyé à <strong className="text-white">{email}</strong>.
+            <br />Clique dessus pour activer ton compte My Producer.
+          </p>
+          <p className="text-gray-600 text-xs mt-4">
+            Tu peux fermer cette page.
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (
