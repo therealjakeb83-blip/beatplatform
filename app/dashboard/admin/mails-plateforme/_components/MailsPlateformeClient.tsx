@@ -89,7 +89,7 @@ export default function MailsPlateformeClient({ templates, sauvegarderTemplate, 
   }
 
   return (
-    <div className="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-white">Mails My Producer</h1>
         <p className="text-sm text-gray-500 mt-0.5">

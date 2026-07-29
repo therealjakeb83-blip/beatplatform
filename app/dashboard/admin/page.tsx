@@ -39,7 +39,7 @@ export default function AdminPage() {
           className="block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 transition-colors"
         >
           <p className="text-sm font-semibold text-white">Mails My Producer</p>
-          <p className="text-xs text-gray-500 mt-0.5">Personnaliser le titre/intro des emails envoyés aux beatmakers</p>
+          <p className="text-xs text-gray-500 mt-0.5">Réglages (titre/intro) et logs des emails envoyés aux beatmakers</p>
         </Link>
       </div>
     </div>
