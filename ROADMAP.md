@@ -923,7 +923,9 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 > - **Regroupement des demandes par nom** (7.10, le plus gros chantier de la session) : plusieurs beatmakers peuvent créer indépendamment une catégorie perso avec le même nom (à la casse près — "Jerk"/"JERK"/"jerk" sont regroupées, "Jerk"/"Jerks" non). `demandes_certification` gagne `nom`/`type` dénormalisés (l'historique ne dépend plus de l'existence de la catégorie d'origine) et `categorie_id` passe en `ON DELETE SET NULL` (⚠️ bug de migration corrigé en session : la colonne était restée `NOT NULL`, incompatible avec `SET NULL` — `supabase/phase7_11_fix_categorie_id_nullable.sql`). Fonction `traiter_groupe_certification()` entièrement set-based (boucle uniquement sur le nombre de variantes de casse distinctes, jamais sur le nombre de lignes — reste rapide même à grande échelle) : approuver renomme les beats des variantes vers le nom final choisi par l'admin, supprime les doublons perso (demandeurs et non-demandeurs confondus — la fusion matche par nom, pas par "a demandé ou non"), marque toutes les demandes du groupe approuvées. Email générique (`envoyerCategorieCertifiee`, même pattern que `envoyerInvitationCollab`) envoyé à tous les beatmakers concernés uniquement à l'approbation, pas au rejet.
 > - Vues admin et business transformées en tables de gestion réelles (au lieu de pastilles) : colonnes Beats/Ventes/Écoutes/CA net (stats déjà utilisées pour aider la décision de certification), lignes dépliables pour éditer nom/image, onglet "Demandes" séparé et sélectionnable (plus une box toujours visible).
 >
-> Fichiers de migration Phase 7 (à exécuter dans cet ordre si reproduit sur un nouvel environnement) : `phase7_categories.sql` → `phase7_8_categories_images.sql` → `phase7_9_demandes_certification.sql` → `phase7_10_regroupement_certification.sql` → `phase7_11_fix_categorie_id_nullable.sql`.
+> Fichiers de migration Phase 7 (à exécuter dans cet ordre si reproduit sur un nouvel environnement) : `phase7_categories.sql` → `phase7_8_categories_images.sql` → `phase7_9_demandes_certification.sql` → `phase7_10_regroupement_certification.sql` → `phase7_11_fix_categorie_id_nullable.sql` → `phase7_12_instruments_icones.sql`.
+>
+> **7.12 (2026-07-29) — Nouveau design "instruments" :** Jake a fourni un paquet design (dégradé `--g1`/`--g2` + icône blanche calée à droite avec fondu diagonal, façon `shop-style-card` mais avec icône) pour remplacer le pattern photo+scrim des blocs instruments — jamais alimenté en images en pratique (`image_url` toujours `null`). 15 icônes copiées dans `public/img/instruments/` (pas via le pipeline `/api/upload/categorie-image` : celui-ci resize en 600×600 `cover`+webp, pensé pour des photos, pas pour des silhouettes transparentes). Nouvelle classe CSS `.shop-instrument-card` + override `filter:invert(1)` sur l'icône en thème Blanche & Noire (silhouette blanche invisible sur le dégradé clair de ce preset sinon). `supabase/phase7_12_instruments_icones.sql` remplace les 9 catégories `instruments` actuelles (Bells, Brass, Flûte, Guitare, Harpe, Piano, Saxophone, Synthé, Violon) par les 15 nouvelles, certifiées d'office (`source=plateforme`, `statut=certifiee`), et migre les 12 beats tagués `Guitare` vers `Guitare acoustique` (décision Jake — la nouvelle liste distingue acoustique/électrique, aucune des deux ne matchait exactement ; `Flûte` matche déjà tel quel ; `Cordes`, orpheline sur 11 beats depuis un moment déjà, hors scope). **Migration SQL pas encore exécutée** — `service_role` n'a que `SELECT` sur `beats` (`supabase/service_role_grants.sql`), l'UPDATE de migration doit passer par l'éditeur SQL Supabase (comme les migrations précédentes), pas par un script service_role.
 
 #### Checklist tests Phase 7 + Admin — ✅ 100% validée le 2026-07-20 (T0-T19)
 
@@ -956,6 +958,22 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Sécurité :**
 - [x] **T19** — Compte non-admin (déconnecté ou autre compte réel) → `/dashboard/admin` redirige vers `/dashboard/business`
+
+#### Checklist tests Phase 7.12 — Nouveau design "instruments" 🔄 Codé le 2026-07-29, pas encore testé (migration SQL en attente)
+
+**Préalable :**
+- [ ] **T0** — Exécuter `supabase/phase7_12_instruments_icones.sql` dans l'éditeur SQL Supabase (⚠️ pas via un script `service_role` — cette table n'a que `SELECT` sur `beats`, l'UPDATE de migration doit passer par l'éditeur SQL qui s'exécute en superuser)
+
+**Côté boutique publique (`/{slug}`) :**
+- [ ] **T1** — Le rail "Parcourir les instruments" affiche les 15 nouvelles catégories avec icône (dégradé + silhouette blanche calée à droite)
+- [ ] **T2** — Les 12 beats ex-"Guitare" apparaissent maintenant sous "Guitare acoustique", comptage correct
+- [ ] **T3** — Les 11 beats "Flûte" toujours présents sous "Flûte" (nom inchangé)
+- [ ] **T4** — Déclinaison Blanche & Noire : icône bien visible (inversée en noir sur le dégradé clair), pas de silhouette blanche invisible
+- [ ] **T5** — Mobile : cartes 230×104px, texte lisible, scroll horizontal fluide
+- [ ] **T6** — Clic sur une carte → `/{slug}/parcourir/instruments/<nom>` affiche bien les beats correspondants
+
+**Côté dashboard beatmaker (`/dashboard/business/beats/nouveau`) :**
+- [ ] **T7** — L'onglet Instruments du formulaire propose bien les 15 nouveaux noms (plus les 9 anciens)
 
 #### Checklist tests Étape 15 lot 1 — Admin Recherche/Support + Log Stripe + Suspension ✅ Validée le 2026-07-24 (T13/T16 bloqués, système d'abonnement plateforme pas encore construit)
 
