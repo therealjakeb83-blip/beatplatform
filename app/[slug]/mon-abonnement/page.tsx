@@ -16,7 +16,7 @@ export default async function MonAbonnementPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, abo_nom, abo_prix')
+    .select('id, nom_artiste, abo_nom, abo_prix, abo_recurrence_cadeau_mois')
     .eq('slug', slug)
     .single()
 
@@ -136,7 +136,7 @@ export default async function MonAbonnementPage({
             <ul className="space-y-2 text-sm text-gray-400">
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Accès aux beats réservés aux membres</li>
               <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Réduction sur les licences</li>
-              <li className="flex items-center gap-2"><span className="text-green-400">✓</span> 1 beat gratuit tous les 4 mois</li>
+              <li className="flex items-center gap-2"><span className="text-green-400">✓</span> 1 beat gratuit tous les {beatmaker.abo_recurrence_cadeau_mois ?? 4} mois</li>
             </ul>
           </div>
         )}
