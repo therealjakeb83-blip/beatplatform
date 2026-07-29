@@ -1081,7 +1081,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
 
 **Rappel fin d'essai (J-3) :**
-- [ ] **T3** — Pas testable en conditions réelles sans attendre 11 jours — vérifier plutôt en appelant `/api/cron/plateforme-rappels` manuellement (avec le header `Authorization: Bearer <CRON_SECRET>`) sur un abonnement de test dont `essai_fin_le` a été modifié à J+2 ou J+3 en base : email reçu, `rappel_essai_envoye_le` mis à jour, un second appel du cron ne renvoie pas de doublon
+- [x] **T3** — Testé via `essai_fin_le` avancé à J+3 en base + appel manuel de `/api/cron/plateforme-rappels` (header `Authorization: Bearer <CRON_SECRET>`) sur le déploiement Vercel : 1er appel → `{"ok":true,"envoyes":1}`, email de rappel reçu ; 2ᵉ appel → `{"ok":true,"envoyes":0}`, pas de doublon (`rappel_essai_envoye_le` fait son travail)
 
 **Paiement échoué :**
 - [ ] **T4** — Simuler un échec de renouvellement (voir technique carte `4000...0341`, mémoire `feedback_stripe_test_declines`) sur un abonnement plateforme de test → email reçu au moment précis où le statut passe à `impaye` (pas à chaque event Stripe suivant tant qu'il y reste)
