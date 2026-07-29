@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export default function InscriptionPage() {
   const [email, setEmail] = useState('')
@@ -41,7 +42,7 @@ export default function InscriptionPage() {
           <h1 className="text-2xl font-bold text-white mb-2">Vérifie ta boîte mail</h1>
           <p className="text-gray-400 text-sm leading-relaxed">
             Un lien de confirmation t&apos;a été envoyé à <strong className="text-white">{email}</strong>.
-            <br />Clique dessus pour activer ton compte My Producer.
+            <br />Clique dessus pour activer ton compte {NOM_PLATEFORME}.
           </p>
           <p className="text-gray-600 text-xs mt-4">
             Tu peux fermer cette page.
@@ -54,7 +55,7 @@ export default function InscriptionPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-white mb-2">Créer ton compte My Producer</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Créer ton compte {NOM_PLATEFORME}</h1>
         <p className="text-gray-400 mb-8">Lance ta boutique de beats en quelques minutes.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

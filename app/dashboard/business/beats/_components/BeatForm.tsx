@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { CategorieOptions } from '@/lib/categories'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const MODES = ['majeur', 'mineur']
@@ -255,7 +256,7 @@ function CollaborateursSection({ collaborateurs, onChange }: {
         {(['recherche', 'email'] as const).map(m => (
           <button key={m} type="button" onClick={() => setMode(m)}
             className={`text-xs px-3 py-1 rounded-full transition-colors ${mode === m ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
-            {m === 'recherche' ? 'Compte My Producer' : 'Inviter par email'}
+            {m === 'recherche' ? `Compte ${NOM_PLATEFORME}` : 'Inviter par email'}
           </button>
         ))}
       </div>

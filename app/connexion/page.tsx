@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export default function ConnexionPage() {
   const router = useRouter()
@@ -34,7 +35,7 @@ export default function ConnexionPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-white mb-2">Se connecter à My Producer</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Se connecter à {NOM_PLATEFORME}</h1>
         <p className="text-gray-400 mb-8">Accède à ta boutique et ton dashboard.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

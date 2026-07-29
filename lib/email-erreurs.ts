@@ -1,3 +1,5 @@
+import { NOM_PLATEFORME } from './constantes'
+
 // Traduit une erreur technique Resend (JSON brut ou message d'exception) en
 // explication compréhensible par un beatmaker non-développeur, avec une piste
 // d'action concrète — jamais le JSON brut, qui ne lui dirait rien.
@@ -26,7 +28,7 @@ export function messageErreurNaturel(erreurBrute: string | null): string | null 
     return "Trop d'emails ont été envoyés en peu de temps. Réessaie l'envoi dans quelques minutes."
   }
   if (nom === 'missing_api_key' || nom === 'invalid_api_key' || nom === 'restricted_api_key') {
-    return "Problème de configuration technique côté plateforme. Contacte le support My Producer, ce n'est pas lié à ce client."
+    return `Problème de configuration technique côté plateforme. Contacte le support ${NOM_PLATEFORME}, ce n'est pas lié à ce client.`
   }
   if (nom === 'application_error' || nom === 'internal_server_error') {
     return "Le service d'envoi a rencontré une erreur temporaire de son côté. Tu peux réessayer l'envoi, ce n'est probablement pas lié à ce client."

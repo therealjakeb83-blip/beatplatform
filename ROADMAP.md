@@ -95,7 +95,7 @@
 - [x] **F7** — Texte "beat gratuit tous les 4 mois" en dur → valeur dynamique (`app/[slug]/mon-abonnement/page.tsx:139`)
 - [x] **F8** — Validation serveur du taux de TVA (`app/api/stripe/tva/route.ts:9-17`)
 - [ ] **F9** — Petit ménage (5 items, détail donné à Jake avant validation) : code mort dans le webhook (`app/api/stripe/webhook/route.ts:1209-1210`), `ComingSoon.tsx` jamais utilisé (à supprimer), logs de debug actifs (`lib/mailing.ts`, `marketing/campagnes/page.tsx:134,138`), lien footer boutique mal étiqueté ("Tous les artistes"), `alert()` natif → style habituel (`app/[slug]/mon-abonnement/GererAbonnementButton.tsx:41,63`)
-- [ ] **F10** — Centraliser le nom "My Producer" dans une seule constante (état actuel à vérifier — probablement déjà fait pour les emails via `BRANDING_PLATEFORME`, pas pour le footer boutique/reste de l'UI)
+- [x] **F10** — Centraliser le nom "My Producer" dans une seule constante (état actuel à vérifier — probablement déjà fait pour les emails via `BRANDING_PLATEFORME`, pas pour le footer boutique/reste de l'UI)
 
 ## Ordre de priorité actuel (2026-07-17)
 
@@ -910,6 +910,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 | 7.9 | Demandes de certification dans une vraie table dédiée `demandes_certification` (historique conservé) | ✅ |
 | 7.10 | Regroupement des demandes par nom (casse ignorée strictement) + fusion atomique set-based | ✅ |
 | 7.11 | Dashboard tendances *(V2, après volume de données suffisant)* : agrégation commandes × catégories certifiées | ⬜ *(V2, volontairement pas construit — les stats CA/ventes/écoutes par catégorie existent déjà dans les vues admin/business, seule une page dédiée "tendances" reste à faire)* |
+| 7.12 | Nouveau design des blocs "instruments" (dégradé `--g1`/`--g2` + icône blanche, paquet fourni par Jake) sur `/{slug}` — remplace les 9 catégories existantes (aucune n'avait d'image) par 15 nouvelles, certifiées d'office | 🔄 *(codé le 2026-07-29, migration SQL pas encore exécutée — voir ci-dessous)* |
 
 > **Implémentation initiale (2026-07-17) :** `lib/categories.ts` centralise le chargement des options (`chargerOptionsCategories`) et la synchronisation des ajouts libres (`synchroniserCategoriesPersonnalisees`, appelée dans `/api/beats/creer` et `/api/beats/[id]/modifier`). Deux index uniques séparés sur `categories` (partiel pour les lignes plateforme, plein pour les lignes beatmaker). RLS interdit à un beatmaker de passer sa propre catégorie à `certifiee` — seule la modération (service_role) le peut. `lib/admin.ts` (`estAdmin()`, gate par **slug de boutique** `jakeb-test`) + `/dashboard/admin/categories/` créés en cours de session (trou de scope remonté par Jake : aucun moyen de gérer les catégories officielles sans SQL).
 >

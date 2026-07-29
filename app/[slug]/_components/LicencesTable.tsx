@@ -2,6 +2,7 @@
 
 import type { LicencePublic } from './BeatCard'
 import AcheterBouton from './AcheterBouton'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 const FICHIERS: Record<string, string[]> = {
   mp3:       ['MP3'],
@@ -134,7 +135,7 @@ export default function LicencesTable({
       </div>
 
       <p className="text-xs text-gray-600 mt-4 text-center">
-        Un code promo ? Applique-le depuis ton panier · Propulsé par My Producer · Paiements sécurisés
+        Un code promo ? Applique-le depuis ton panier · Propulsé par {NOM_PLATEFORME} · Paiements sécurisés
       </p>
     </div>
   )

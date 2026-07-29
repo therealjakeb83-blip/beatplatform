@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from '@/lib/email-logger'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export const runtime = 'nodejs'
 
@@ -96,7 +97,7 @@ export async function POST(
           </p>
           <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
           <p style="color:#888;font-size:11px;margin:0;">
-            Propulsé par My Producer · Cet email a été envoyé suite à votre achat.
+            Propulsé par ${NOM_PLATEFORME} · Cet email a été envoyé suite à votre achat.
           </p>
         </div>
       `,

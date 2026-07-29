@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { NOM_PLATEFORME } from './constantes'
 
 interface SplitInfo {
   nom_artiste: string
@@ -87,7 +88,7 @@ export async function genererContratPdf(data: ContratData): Promise<Uint8Array> 
   draw('VENDEUR (BEATMAKER)', { bold: true, size: 11, color: [0.15, 0.15, 0.15] })
   y -= 2
   draw(`Nom artistique : ${data.beatmaker.nom_artiste}`, {})
-  draw('Plateforme : My Producer', {})
+  draw(`Plateforme : ${NOM_PLATEFORME}`, {})
   sep()
 
   // Acheteur

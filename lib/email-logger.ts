@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getResend } from './resend'
+import { NOM_PLATEFORME } from './constantes'
 
 // Les campagnes (envoi de masse) ne passent volontairement pas par ce
 // logger : leur historique détaillé par destinataire vit déjà dans
@@ -7,7 +8,7 @@ import { getResend } from './resend'
 // noierait la liste sous des milliers de lignes identiques.
 export type TypeEmailLog = 'transactionnel' | 'automatisation'
 
-const FROM_DEFAUT = 'My Producer <noreply@jakebmusic.com>'
+const FROM_DEFAUT = `${NOM_PLATEFORME} <noreply@jakebmusic.com>`
 
 type ContexteEnvoi = {
   beatmakerId: string

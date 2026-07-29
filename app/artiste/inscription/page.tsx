@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 function InscriptionArtisteForm() {
   const searchParams = useSearchParams()
@@ -60,7 +61,7 @@ function InscriptionArtisteForm() {
           <h1 className="text-2xl font-bold text-white mb-2">Vérifie ta boîte mail</h1>
           <p className="text-gray-400 text-sm leading-relaxed">
             Un lien de confirmation t&apos;a été envoyé à <strong className="text-white">{email}</strong>.
-            <br />Clique dessus pour activer ton compte My Producer.
+            <br />Clique dessus pour activer ton compte {NOM_PLATEFORME}.
           </p>
           <p className="text-gray-600 text-xs mt-4">
             Tu peux fermer cette page.

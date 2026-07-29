@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 type CmdRow = {
   id: string
@@ -325,7 +326,7 @@ export default async function MonCompteBoutiquePage({
         {clientId && (
           <div className="pt-4 border-t border-gray-800">
             <Link href="/mon-compte" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
-              Accéder à mon compte My Producer →
+              Accéder à mon compte {NOM_PLATEFORME} →
             </Link>
           </div>
         )}

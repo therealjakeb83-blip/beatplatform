@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export default function AdminPage() {
   return (
@@ -38,7 +39,7 @@ export default function AdminPage() {
           href="/dashboard/admin/mails-plateforme"
           className="block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 transition-colors"
         >
-          <p className="text-sm font-semibold text-white">Mails My Producer</p>
+          <p className="text-sm font-semibold text-white">Mails {NOM_PLATEFORME}</p>
           <p className="text-xs text-gray-500 mt-0.5">Réglages (titre/intro) et logs des emails envoyés aux beatmakers</p>
         </Link>
       </div>

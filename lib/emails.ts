@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
+import { NOM_PLATEFORME } from './constantes'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
 const COULEUR_DEFAUT = '#4f46e5'
@@ -29,10 +30,10 @@ export async function envoyerInvitationCollab({
       `${nomProprietaire} vous invite à collaborer sur le beat "${titreBeat}".`,
       `Votre part : ${pourcentage}%.`,
       ``,
-      `Créez votre compte My Producer pour visualiser votre split et recevoir vos revenus :`,
+      `Créez votre compte ${NOM_PLATEFORME} pour visualiser votre split et recevoir vos revenus :`,
       `${APP_URL}/inscription`,
       ``,
-      `— L'équipe My Producer`,
+      `— L'équipe ${NOM_PLATEFORME}`,
     ].join('\n'),
   })
 }
@@ -53,18 +54,18 @@ export async function envoyerFondsEnAttente({
     type: 'transactionnel',
     evenement: 'fonds_en_attente',
     to,
-    subject: `${montantEuros}€ vous attendent sur My Producer`,
+    subject: `${montantEuros}€ vous attendent sur ${NOM_PLATEFORME}`,
     text: [
       `Bonjour,`,
       ``,
       `Le beat "${titreBeat}" vient d'être vendu et vous avez ${montantEuros}€ qui vous attendent.`,
       ``,
-      `Configurez votre compte Stripe sur My Producer pour recevoir votre part :`,
+      `Configurez votre compte Stripe sur ${NOM_PLATEFORME} pour recevoir votre part :`,
       `${APP_URL}/inscription`,
       ``,
       `Ces fonds seront disponibles dès que votre compte sera configuré.`,
       ``,
-      `— L'équipe My Producer`,
+      `— L'équipe ${NOM_PLATEFORME}`,
     ].join('\n'),
   })
 }
@@ -90,7 +91,7 @@ export async function envoyerRappelFonds({
     to,
     subject: urgence
       ? `⚠️ Dernier rappel — ${montantEuros}€ expirent dans ${joursRestants} jours`
-      : `Rappel — ${montantEuros}€ vous attendent sur My Producer`,
+      : `Rappel — ${montantEuros}€ vous attendent sur ${NOM_PLATEFORME}`,
     text: [
       `Bonjour,`,
       ``,
@@ -101,7 +102,7 @@ export async function envoyerRappelFonds({
       `Configurez votre compte Stripe maintenant pour récupérer vos fonds :`,
       `${APP_URL}/inscription`,
       ``,
-      `— L'équipe My Producer`,
+      `— L'équipe ${NOM_PLATEFORME}`,
     ].join('\n'),
   })
 }
@@ -124,10 +125,10 @@ export async function envoyerCategorieCertifiee({
     text: [
       `Bonjour,`,
       ``,
-      `Votre catégorie "${nomCategorie}" est maintenant officielle sur My Producer.`,
+      `Votre catégorie "${nomCategorie}" est maintenant officielle sur ${NOM_PLATEFORME}.`,
       `Elle est désormais disponible pour tous les beatmakers de la plateforme.`,
       ``,
-      `— L'équipe My Producer`,
+      `— L'équipe ${NOM_PLATEFORME}`,
     ].join('\n'),
   })
 }
@@ -155,10 +156,10 @@ export async function envoyerConfirmationExpiration({
       `Votre part de ${montantEuros}€ sur le beat "${titreBeat}" n'a pas été réclamée dans les 60 jours.`,
       `Elle a été reversée à l'autre beatmaker conformément à notre politique de rétention.`,
       ``,
-      `Pour les prochaines collaborations, pensez à configurer votre compte My Producer dès l'invitation :`,
+      `Pour les prochaines collaborations, pensez à configurer votre compte ${NOM_PLATEFORME} dès l'invitation :`,
       `${APP_URL}/inscription`,
       ``,
-      `— L'équipe My Producer`,
+      `— L'équipe ${NOM_PLATEFORME}`,
     ].join('\n'),
   })
 }
@@ -351,10 +352,10 @@ export type TypeTemplatePlateforme =
   | 'annulation'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
-  nom_artiste: 'My Producer',
+  nom_artiste: NOM_PLATEFORME,
   slug: '',
   logo_url: null,
-  signature_transactionnels: "L'équipe My Producer",
+  signature_transactionnels: `L'équipe ${NOM_PLATEFORME}`,
   couleur_marque: COULEUR_DEFAUT,
   instagram_url: null,
   youtube_url: null,
@@ -365,7 +366,7 @@ const BRANDING_PLATEFORME: BrandingTransactionnel = {
 
 const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   confirmation_email: 'Confirme ton adresse email',
-  bienvenue: 'Bienvenue sur My Producer !',
+  bienvenue: `Bienvenue sur ${NOM_PLATEFORME} !`,
   confirmation_essai: 'Ton essai gratuit a démarré',
   rappel_fin_essai: 'Ton essai se termine dans 3 jours',
   paiement_echoue: "Le paiement de ton abonnement a échoué",
@@ -377,15 +378,15 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
     case 'confirmation_email':
       return "Plus qu'une étape avant de lancer ta boutique : confirme ton adresse email en cliquant sur le bouton ci-dessous."
     case 'bienvenue':
-      return "Ton compte My Producer est créé — bienvenue ! Configure ta boutique et abonne-toi pour la rendre visible (essai gratuit de 14 jours, sans engagement)."
+      return `Ton compte ${NOM_PLATEFORME} est créé — bienvenue ! Configure ta boutique et abonne-toi pour la rendre visible (essai gratuit de 14 jours, sans engagement).`
     case 'confirmation_essai':
-      return "Ton essai gratuit de 14 jours a démarré. Tu as un accès complet à My Producer. Aucun prélèvement ne sera effectué avant la fin de l'essai."
+      return `Ton essai gratuit de 14 jours a démarré. Tu as un accès complet à ${NOM_PLATEFORME}. Aucun prélèvement ne sera effectué avant la fin de l'essai.`
     case 'rappel_fin_essai':
       return "Ton essai gratuit se termine bientôt. Passé cette date, ton abonnement démarrera automatiquement — aucune action nécessaire si tu souhaites continuer."
     case 'paiement_echoue':
-      return "Le dernier prélèvement de ton abonnement My Producer n'a pas pu être effectué. Merci de mettre à jour ton moyen de paiement pour éviter une interruption d'accès à ta boutique."
+      return `Le dernier prélèvement de ton abonnement ${NOM_PLATEFORME} n'a pas pu être effectué. Merci de mettre à jour ton moyen de paiement pour éviter une interruption d'accès à ta boutique.`
     case 'annulation':
-      return 'Ton abonnement My Producer est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.'
+      return `Ton abonnement ${NOM_PLATEFORME} est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.`
   }
 }
 
@@ -800,7 +801,7 @@ export async function confirmationCompteArtiste({
   // global (pas propre à cette boutique) — doit rester claire quel que soit
   // le texte d'intro choisi par le beatmaker (décision Jake, 2026-07-17).
   const corpsHtml = `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">
-      Ceci est un compte My Producer artiste : il te permettra de te connecter sur toutes les boutiques My Producer, pas seulement celle-ci.
+      Ceci est un compte ${NOM_PLATEFORME} artiste : il te permettra de te connecter sur toutes les boutiques ${NOM_PLATEFORME}, pas seulement celle-ci.
     </p>`
 
   await envoyerEmailUnique({
@@ -923,7 +924,7 @@ export async function genererApercuTransactionnel(
     demande_annulation_abonnement: { corpsHtml: CORPS_EXEMPLE_DEMANDE_ANNULATION },
     annulation_abonnement: { corpsHtml: '' },
     confirmation_compte_artiste: {
-      corpsHtml: `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">Ceci est un compte My Producer artiste : il te permettra de te connecter sur toutes les boutiques My Producer, pas seulement celle-ci.</p>`,
+      corpsHtml: `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">Ceci est un compte ${NOM_PLATEFORME} artiste : il te permettra de te connecter sur toutes les boutiques ${NOM_PLATEFORME}, pas seulement celle-ci.</p>`,
       cta: { texte: 'Accéder à mon compte', lien: '#' },
     },
     telechargement_gratuit: {

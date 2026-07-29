@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { TypeTemplatePlateforme } from '@/lib/emails'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 type Template = { titre: string; intro: string }
 
@@ -24,7 +25,7 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
   {
     type: 'bienvenue',
     nom: 'Bienvenue',
-    titrePlaceholder: 'Bienvenue sur My Producer !',
+    titrePlaceholder: `Bienvenue sur ${NOM_PLATEFORME} !`,
     description: 'Envoyé juste après la confirmation réelle de l\'adresse email.',
     declencheur: 'Déclencheur : clic sur le lien de confirmation (/confirmation-compte)',
   },
@@ -91,9 +92,9 @@ export default function MailsPlateformeClient({ templates, sauvegarderTemplate, 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Mails My Producer</h1>
+        <h1 className="text-xl font-bold text-white">Mails {NOM_PLATEFORME}</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Emails transactionnels envoyés par la plateforme aux beatmakers eux-mêmes — branding fixe My Producer, jamais personnalisable par eux. Titre et intro éditables ci-dessous, le reste (dates, prix, liens) reste géré par le code.
+          Emails transactionnels envoyés par la plateforme aux beatmakers eux-mêmes — branding fixe {NOM_PLATEFORME}, jamais personnalisable par eux. Titre et intro éditables ci-dessous, le reste (dates, prix, liens) reste géré par le code.
         </p>
       </div>
 

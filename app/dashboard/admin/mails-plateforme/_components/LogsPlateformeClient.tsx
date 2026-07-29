@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import RenvoyerLogPlateformeButton from './RenvoyerLogPlateformeButton'
 import { messageErreurNaturel } from '@/lib/email-erreurs'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export type LogPlateformeRow = {
   id: string
@@ -194,7 +195,7 @@ export default function LogsPlateformeClient({ logs, counts, page, totalPages, f
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Logs — Mails My Producer</h1>
+        <h1 className="text-xl font-bold text-white">Logs — Mails {NOM_PLATEFORME}</h1>
         <p className="text-sm text-gray-500 mt-0.5">{counts.tous} résultat{counts.tous !== 1 ? 's' : ''} — emails plateforme→beatmaker uniquement</p>
       </div>
 

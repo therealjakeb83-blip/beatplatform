@@ -3,6 +3,7 @@ import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat } from '@/lib
 import { genererContratPdf } from '@/lib/contrat'
 import { notFound } from 'next/navigation'
 import TelechargerBouton from './_components/TelechargerBouton'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export const runtime = 'nodejs'
 
@@ -149,7 +150,7 @@ export default async function TelechargerPage({
         ))}
 
         <p className="text-center text-gray-700 text-xs mt-6">
-          Propulsé par My Producer · Les paiements sont sécurisés
+          Propulsé par {NOM_PLATEFORME} · Les paiements sont sécurisés
         </p>
       </div>
     </div>

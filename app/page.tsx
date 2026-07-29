@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { NOM_PLATEFORME } from "@/lib/constantes";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-6 border-b border-zinc-800">
-        <span className="text-xl font-bold tracking-tight">My Producer</span>
+        <span className="text-xl font-bold tracking-tight">{NOM_PLATEFORME}</span>
         <span className="text-sm text-zinc-500">La plateforme des beatmakers</span>
       </header>
 
@@ -13,7 +14,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold tracking-tight mb-4">
-            Bienvenue sur My Producer
+            Bienvenue sur {NOM_PLATEFORME}
           </h1>
           <p className="text-zinc-400 text-lg max-w-md mx-auto">
             Boutique, paiements, splits, abonnements — tout ce dont un beatmaker a besoin pour vendre ses instrus.
@@ -85,7 +86,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-zinc-700 border-t border-zinc-900">
-        My Producer — Propulsé par Stripe · Supabase · Vercel
+        {NOM_PLATEFORME} — Propulsé par Stripe · Supabase · Vercel
       </footer>
     </div>
   );

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getAnalyticsPlateforme } from '@/lib/admin-analytics'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 function fmtEuro(euros: number): string {
   return euros.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -34,7 +35,7 @@ export default async function AdminAnalyticsPage() {
     <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-10">
       <div>
         <h1 className="text-xl font-bold text-white">Analytics plateforme</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Vue d&apos;ensemble My Producer — ton revenu réel, la santé du business des boutiques, et l&apos;état technique de la plateforme.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Vue d&apos;ensemble {NOM_PLATEFORME} — ton revenu réel, la santé du business des boutiques, et l&apos;état technique de la plateforme.</p>
       </div>
 
       <Bloc titre="Ton revenu réel" description="Ce que les beatmakers te paient (abonnements_plateforme) — le seul argent qui est vraiment le tien.">

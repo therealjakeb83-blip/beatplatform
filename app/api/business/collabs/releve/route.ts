@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export const runtime = 'nodejs'
 
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
   let y = H - 50
 
   // En-tête
-  page.drawText('My Producer', { x: ml, y, font: bold, size: 18, color: rgb(0.24, 0.31, 0.85) })
+  page.drawText(NOM_PLATEFORME, { x: ml, y, font: bold, size: 18, color: rgb(0.24, 0.31, 0.85) })
   page.drawText('beatplatform.vercel.app', { x: mr - 160, y, font, size: 9, color: gris })
   y -= 6
   page.drawLine({ start: { x: ml, y }, end: { x: mr, y }, thickness: 1, color: rgb(0.85, 0.85, 0.85) })
@@ -167,7 +168,7 @@ export async function GET(request: Request) {
   // Pied de page
   y = 40
   page.drawText(
-    'Ce relevé est fourni par My Producer à titre informatif. Il atteste des revenus distribués via la plateforme.',
+    `Ce relevé est fourni par ${NOM_PLATEFORME} à titre informatif. Il atteste des revenus distribués via la plateforme.`,
     { x: ml, y, font, size: 7, color: gris }
   )
 

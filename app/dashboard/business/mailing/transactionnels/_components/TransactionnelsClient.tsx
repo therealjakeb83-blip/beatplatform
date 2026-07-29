@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { TypeTemplateTransactionnel } from '@/lib/emails'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 type Template = { titre: string; intro: string }
 
@@ -60,7 +61,7 @@ const CARTES: { type: TypeTemplateTransactionnel; titrePlaceholder: string; desc
   {
     type: 'confirmation_compte_artiste',
     titrePlaceholder: 'Ton compte est prêt !',
-    description: "Envoyé quand un artiste confirme son inscription depuis cette boutique. Une ligne fixe (non modifiable) rappelle que c'est un compte My Producer global.",
+    description: `Envoyé quand un artiste confirme son inscription depuis cette boutique. Une ligne fixe (non modifiable) rappelle que c'est un compte ${NOM_PLATEFORME} global.`,
     declencheur: "Déclencheur : confirmation d'email après inscription artiste",
   },
   {
@@ -528,7 +529,7 @@ function CarteTemplate({
           value={template.intro}
           onChange={e => onChangeTemplate({ ...template, intro: e.target.value })}
           rows={3}
-          placeholder="Laisse vide pour utiliser le texte par défaut de My Producer"
+          placeholder={`Laisse vide pour utiliser le texte par défaut de ${NOM_PLATEFORME}`}
           className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 resize-none"
         />
         <p className="text-xs text-gray-500 mt-1">L&apos;aperçu à droite se met à jour automatiquement pendant que tu écris.</p>

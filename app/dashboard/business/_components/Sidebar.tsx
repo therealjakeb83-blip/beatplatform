@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { initiales } from '../_lib/utils'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 const BASE = '/dashboard/business'
 
@@ -118,7 +119,7 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
             <p className="text-white font-bold text-sm leading-none truncate max-w-[120px]">
               {nomArtiste}
             </p>
-            <p className="text-gray-600 text-[10px] mt-0.5">My Producer</p>
+            <p className="text-gray-600 text-[10px] mt-0.5">{NOM_PLATEFORME}</p>
           </div>
         </div>
       </div>
