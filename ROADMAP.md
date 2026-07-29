@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-07-28 (suite) — **Chantier codé : confirmation d'adresse email intégrée comme 6ᵉ email My Producer, bug de la bienvenue non-envoyée corrigé.** Pas encore testé par Jake — checklist T0/T1a-T1g ajoutée (section "Checklist tests Mails My Producer").
+> Dernière mise à jour : 2026-07-28 (suite) — **Chantier terminé et validé par Jake : confirmation d'adresse email intégrée comme 6ᵉ email My Producer, bug de la bienvenue non-envoyée corrigé.** Checklist T0/T1a-T1g + T6-T8 entièrement validée (section "Checklist tests Mails My Producer"). Reste T2-T5 (essai/rappel/paiement/annulation) à tester, hors périmètre de ce bug précis.
 > - **Approche technique retenue, différente de ce qui avait été esquissé** : plutôt que de faire passer le beatmaker par `/auth/callback` (réutilisé tel quel par les artistes, PKCE `exchangeCodeForSession`), l'inscription beatmaker passe désormais entièrement côté serveur via une nouvelle route `/api/inscription/beatmaker` qui appelle `admin.generateLink({ type: 'signup', ... })` — crée le compte (déclenche le trigger `handle_new_beatmaker` comme d'habitude) sans jamais faire partir l'email automatique de Supabase, et renvoie un `token_hash`. Ce lien est envoyé par nous (6ᵉ type `confirmation_email` dans `templates_plateforme`), et vérifié côté navigateur par une nouvelle page `/confirmation-compte` via `supabase.auth.verifyOtp()` — **même pattern déjà éprouvé dans ce projet** pour la connexion auto post-abonnement (`app/api/stripe/abonnement/succes/route.ts` → `/artiste/nouveau-mot-de-passe`), plutôt qu'un flux PKCE non testé pour ce cas précis. C'est seulement une fois `verifyOtp` réussi que la page appelle `/api/plateforme/bienvenue` (route inchangée, juste déclenchée au bon moment) puis redirige vers `/dashboard`. Le flux artiste (`/auth/callback`) reste totalement inchangé.
 > - **Fichiers touchés** : `supabase/mails_plateforme.sql` (6ᵉ valeur du CHECK, idempotent), `lib/emails.ts` (`envoyerConfirmationEmailPlateforme`), nouvelle route `app/api/inscription/beatmaker/route.ts`, nouvelle page `app/confirmation-compte/page.tsx`, `app/inscription/page.tsx` (écran "Vérifie ta boîte mail" au lieu d'une redirection immédiate — même UX que `/artiste/inscription`), carte admin dans `MailsPlateformeClient.tsx`. `tsc`/`eslint` propres (aucune erreur nouvelle introduite). Détail complet : mémoire `project_mails_my_producer` (section 2026-07-28).
 > - **À faire avant de tester** : ré-exécuter `supabase/mails_plateforme.sql` dans l'éditeur SQL Supabase (idempotent, ajoute le 6ᵉ type au CHECK).
@@ -1053,7 +1053,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Sécurité :**
 - [x] **T15** — Compte non-admin (`jakeb-test1`) → `/dashboard/admin/analytics` redirige vers `/dashboard/business` ; déconnecté → `/connexion` (comportement `proxy.ts` déjà validé au lot 1)
 
-#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ⬜ Pas encore testée par Jake (6e email confirmation_email ajouté le 2026-07-28, bug bienvenue corrigé)
+#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker 🔄 Confirmation email + Bienvenue validées le 2026-07-28 (T0/T1a-T1g/T6-T8) — reste T2-T5 (essai/rappel/paiement/annulation)
 
 > **Contexte :** Chantier identifié le 2026-07-27 en testant l'Étape 15 lot 2 — Jake pensait que "Mails transactionnels (admin)" couvrait déjà ça. Zéro email n'existait côté plateforme→beatmaker malgré `abonnements_plateforme` fonctionnel depuis le 2026-07-24. 5 emails en HTML (même moteur de rendu que les transactionnels boutique→client de la Phase 6, branding fixe "My Producer"), titre+intro personnalisables par l'admin via `/dashboard/admin/mails-plateforme` (ajouté le même jour, Jake voulait le même système de gestion que les boutiques). Détail technique complet : mémoire `project_mails_my_producer`.
 >
@@ -1092,7 +1092,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Personnalisation admin (`/dashboard/admin/mails-plateforme`) :**
 - [x] **T6** — Les 6 sections s'affichent (Confirmation d'adresse email en 1ʳᵉ position), l'aperçu en direct se met à jour en tapant dans Titre/Intro
 - [x] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1a-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
-- [ ] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
+- [x] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
