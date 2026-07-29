@@ -82,6 +82,21 @@
 >
 > **⚠️ Blocage confirmé (2026-07-16) : `myproducer.com` est indisponible.** Le nom "My Producer" n'était déjà pas définitif (voir `memory/project_naming_deferred.md`), mais ce n'était jusqu'ici qu'une hypothèse de renommage esthétique. Ce n'en est plus une : la plateforme n'a **aucun nom de domaine réservable sous son nom actuel**. Ça bloque concrètement 2 choses (voir ordre de priorité ci-dessous) : Phase 4.5 (domaine d'envoi email par boutique — DKIM/SPF/DMARC à configurer sur le domaine définitif) et l'étape 17 (déploiement — achat du nom de domaine). Tout le reste du roadmap est indépendant du nom et peut avancer normalement en attendant.
 
+## Checklist correctifs audit 2026-07-29 — bucket "à corriger maintenant"
+
+> 10 points décidés avec Jake le 2026-07-29 (détail complet : mémoire `project_audit_complet_2026_07_29`), à traiter un par un dans une prochaine session dédiée. Commit + push après chaque correctif individuel (pas un seul gros commit à la fin). Cocher au fur et à mesure.
+
+- [ ] **F1** — Campagne email bloquée "envoyée" à 0 destinataire (`lib/mailing.ts:342-346`) → passer en "échouée" si aucun email n'est parti, permettre renvoi/suppression
+- [ ] **F2** — Champ `role`/`is_admin` dédié sur `beatmakers`, déconnecté du `slug` (`lib/admin.ts`, `app/api/profil/modifier/route.ts`) → norme SaaS, interdire aussi le changement de rôle via le formulaire de profil normal
+- [ ] **F3** — Migrer les emails de collab (`envoyerFondsEnAttente`, `envoyerRappelFonds`, `envoyerConfirmationExpiration`, `envoyerInvitationCollab`) vers le système "Mails My Producer" (`templates_plateforme` + apparition dans l'onglet Logs admin) — corrige au passage le bug fire-and-forget (`app/api/cron/splits-expiration/route.ts`, `app/api/stripe/webhook/route.ts:993`)
+- [ ] **F4** — Message d'erreur + log sur l'échec de transfert Stripe (`app/api/stripe/splits/debloquer/route.ts:59-61`)
+- [ ] **F5** — Lien mailto `contact@jakebmusic.com` (temporaire) sur `/dashboard/suspendu`
+- [ ] **F6** — Message d'erreur si l'upload de logo échoue (`app/dashboard/profil/ProfilForm.tsx:52-62`) — le rognage/crop est un backlog séparé, pas dans ce lot
+- [ ] **F7** — Texte "beat gratuit tous les 4 mois" en dur → valeur dynamique (`app/[slug]/mon-abonnement/page.tsx:139`)
+- [ ] **F8** — Validation serveur du taux de TVA (`app/api/stripe/tva/route.ts:9-17`)
+- [ ] **F9** — Petit ménage (5 items, détail donné à Jake avant validation) : code mort dans le webhook (`app/api/stripe/webhook/route.ts:1209-1210`), `ComingSoon.tsx` jamais utilisé (à supprimer), logs de debug actifs (`lib/mailing.ts`, `marketing/campagnes/page.tsx:134,138`), lien footer boutique mal étiqueté ("Tous les artistes"), `alert()` natif → style habituel (`app/[slug]/mon-abonnement/GererAbonnementButton.tsx:41,63`)
+- [ ] **F10** — Centraliser le nom "My Producer" dans une seule constante (état actuel à vérifier — probablement déjà fait pour les emails via `BRANDING_PLATEFORME`, pas pour le footer boutique/reste de l'UI)
+
 ## Ordre de priorité actuel (2026-07-17)
 
 > Le tableau ci-dessous liste toutes les étapes dans leur ordre de numérotation d'origine — l'ordre réel de traitement recommandé, compte tenu des dépendances et du blocage nom/domaine, est différent. Voici l'ordre à suivre à partir de maintenant :
