@@ -4,7 +4,7 @@ import type { Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { SLUG_ADMIN } from '@/lib/admin'
+import { estRoleAdmin } from '@/lib/admin'
 import { accentPresetKey } from './_lib/theme-accent'
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
@@ -70,7 +70,7 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, slug, abonnement_exempte')
+    .select('id, nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, role, abonnement_exempte')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -90,7 +90,7 @@ export default async function BoutiqueLayout({
   // vrai 404, pas de page qui confirme qu'un slug est pris. Mêmes exemptions
   // que le gate dashboard (proxy.ts) : compte admin et boutiques de test
   // exemptées (`abonnement_exempte`).
-  if (beatmaker && beatmaker.slug !== SLUG_ADMIN && !beatmaker.abonnement_exempte) {
+  if (beatmaker && !estRoleAdmin(beatmaker.role) && !beatmaker.abonnement_exempte) {
     const { data: abonnementActif } = await admin
       .from('abonnements_plateforme')
       .select('id')

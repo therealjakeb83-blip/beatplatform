@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { SLUG_ADMIN } from '@/lib/admin'
+import { estRoleAdmin } from '@/lib/admin'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -40,7 +40,7 @@ export async function proxy(request: NextRequest) {
     // Vérifier que l'utilisateur est bien un beatmaker
     const { data: beatmaker } = await supabase
       .from('beatmakers')
-      .select('id, statut, slug, abonnement_exempte')
+      .select('id, statut, role, abonnement_exempte')
       .eq('id', user.id)
       .single()
 
@@ -62,7 +62,7 @@ export async function proxy(request: NextRequest) {
     // boutiques de test exemptées (`abonnement_exempte`, laisser-passer
     // admin) ne sont jamais bloqués. `/dashboard/abonnement` reste toujours
     // accessible pour permettre de souscrire.
-    const gateExempte = beatmaker.slug === SLUG_ADMIN || beatmaker.abonnement_exempte
+    const gateExempte = estRoleAdmin(beatmaker.role) || beatmaker.abonnement_exempte
     if (!gateExempte && pathname !== '/dashboard/abonnement' && pathname !== '/dashboard/suspendu') {
       const { data: abonnementActif } = await supabase
         .from('abonnements_plateforme')
