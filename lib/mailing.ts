@@ -257,7 +257,6 @@ export async function enregistrerConversionParClic(campagneId: string, clientId:
 export type ResultatEnvoi = { envoyes: number; echecs: number; raison?: 'sans_ciblage' | 'aucun_destinataire' }
 
 export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi> {
-  console.log('[mailing] envoyerCampagne démarré pour', campagneId)
   const admin = createAdminClient()
 
   const { data: campagne, error: campagneError } = await admin
@@ -267,10 +266,8 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
     .single()
   if (campagneError) console.error('[mailing] Erreur lecture campagne', campagneId, ':', campagneError)
   if (!campagne || campagne.statut === 'envoyee') {
-    console.log('[mailing] Arrêt : campagne introuvable ou déjà envoyée', { campagneId, trouvee: !!campagne, statut: campagne?.statut })
     return { envoyes: 0, echecs: 0 }
   }
-  console.log('[mailing] Campagne chargée', { cible_mode: campagne.cible_mode, cible_id: campagne.cible_id, nbBlocs: Array.isArray(campagne.contenu) ? campagne.contenu.length : 'non-array' })
   if (!campagne.cible_mode) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
 
   const { data: beatmaker, error: beatmakerError } = await admin
@@ -288,7 +285,6 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
     : { mode: campagne.cible_mode as 'segment' | 'liste', id: campagne.cible_id as string }
 
   const destinataires = await resolveDestinataires(campagne.beatmaker_id, cible)
-  console.log('[mailing] Destinataires résolus :', destinataires.length)
   if (destinataires.length === 0) {
     // Pas de destinataire valide (segment/liste vide, ou personne inscrit à la newsletter) —
     // on ne touche pas au statut pour que le beatmaker puisse corriger le ciblage et réessayer.

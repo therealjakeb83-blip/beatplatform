@@ -130,12 +130,8 @@ async function envoyerMaintenant(formData: FormData) {
   'use server'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    console.log('[campagnes] envoyerMaintenant: pas de user authentifié')
-    return
-  }
+  if (!user) return
   const id = formData.get('id') as string
-  console.log('[campagnes] envoyerMaintenant démarré, id =', id)
 
   const { data: campagne } = await supabase
     .from('campagnes')

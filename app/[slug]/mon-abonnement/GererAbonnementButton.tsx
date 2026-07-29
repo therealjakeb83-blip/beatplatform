@@ -24,9 +24,12 @@ export default function GererAbonnementButton({
   const [erreurPortail, setErreurPortail] = useState<string | null>(null)
   const [loadingReprise, setLoadingReprise] = useState(false)
   const [repris, setRepris] = useState(false)
+  const [erreurAnnulation, setErreurAnnulation] = useState<string | null>(null)
+  const [erreurReprise, setErreurReprise] = useState<string | null>(null)
 
   async function annuler() {
     setLoading(true)
+    setErreurAnnulation(null)
     try {
       const res = await fetch('/api/stripe/abonnement/annuler', {
         method: 'POST',
@@ -38,17 +41,18 @@ export default function GererAbonnementButton({
         setAnnule(true)
         setLoading(false)
       } else {
-        alert(data.erreur ?? 'Erreur lors de l\'annulation.')
+        setErreurAnnulation(data.erreur ?? 'Erreur lors de l\'annulation.')
         setLoading(false)
       }
     } catch {
-      alert('Impossible de joindre le serveur.')
+      setErreurAnnulation('Impossible de joindre le serveur.')
       setLoading(false)
     }
   }
 
   async function reprendre() {
     setLoadingReprise(true)
+    setErreurReprise(null)
     try {
       const res = await fetch('/api/stripe/abonnement/reprendre', {
         method: 'POST',
@@ -60,11 +64,11 @@ export default function GererAbonnementButton({
         setRepris(true)
         setLoadingReprise(false)
       } else {
-        alert(data.erreur ?? 'Erreur lors de la reprise.')
+        setErreurReprise(data.erreur ?? 'Erreur lors de la reprise.')
         setLoadingReprise(false)
       }
     } catch {
-      alert('Impossible de joindre le serveur.')
+      setErreurReprise('Impossible de joindre le serveur.')
       setLoadingReprise(false)
     }
   }
@@ -116,6 +120,7 @@ export default function GererAbonnementButton({
         >
           {loadingReprise ? 'Reprise...' : 'Reprendre mon abonnement'}
         </button>
+        {erreurReprise && <p className="text-red-400 text-xs mt-2">{erreurReprise}</p>}
       </div>
     )
   }
@@ -141,6 +146,7 @@ export default function GererAbonnementButton({
             Retour
           </button>
         </div>
+        {erreurAnnulation && <p className="text-red-400 text-xs mt-3">{erreurAnnulation}</p>}
       </div>
     )
   }

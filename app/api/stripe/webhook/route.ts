@@ -1206,9 +1206,6 @@ async function traiterCompteConnecte(account: Stripe.Account) {
   }
 
   // Récupérer tous ses split_payments en attente (par beatmaker_id OU email_invite)
-  const emailCondition = account.email ? `.eq('email_invite', '${account.email}')` : ''
-  void emailCondition
-
   const { data: pendingByBeatmakerId } = await supabase
     .from('split_payments')
     .select('id, montant, commandes(stripe_transfer_group, beats(titre))')

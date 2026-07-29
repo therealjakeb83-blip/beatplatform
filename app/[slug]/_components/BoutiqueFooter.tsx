@@ -31,7 +31,7 @@ export default function BoutiqueFooter({
         <div className="shop-footer-col">
           <h4>Type beats</h4>
           <Link href={`/${slug}#parcourir-styles`}>Tous les styles</Link>
-          <Link href={`/${slug}#parcourir-type-beat`}>Tous les artistes</Link>
+          <Link href={`/${slug}#parcourir-type-beat`}>Tous les type beats</Link>
           <Link href={`/${slug}#parcourir-instruments`}>Tous les instruments</Link>
           <Link href={`/${slug}#parcourir-ambiances`}>Toutes les ambiances</Link>
           <Link href={`/${slug}/membres`}>Réservé aux abonnés</Link>

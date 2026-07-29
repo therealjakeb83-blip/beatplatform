@@ -94,7 +94,7 @@
 - [x] **F6** — Message d'erreur si l'upload de logo échoue (`app/dashboard/profil/ProfilForm.tsx:52-62`) — le rognage/crop est un backlog séparé, pas dans ce lot
 - [x] **F7** — Texte "beat gratuit tous les 4 mois" en dur → valeur dynamique (`app/[slug]/mon-abonnement/page.tsx:139`)
 - [x] **F8** — Validation serveur du taux de TVA (`app/api/stripe/tva/route.ts:9-17`)
-- [ ] **F9** — Petit ménage (5 items, détail donné à Jake avant validation) : code mort dans le webhook (`app/api/stripe/webhook/route.ts:1209-1210`), `ComingSoon.tsx` jamais utilisé (à supprimer), logs de debug actifs (`lib/mailing.ts`, `marketing/campagnes/page.tsx:134,138`), lien footer boutique mal étiqueté ("Tous les artistes"), `alert()` natif → style habituel (`app/[slug]/mon-abonnement/GererAbonnementButton.tsx:41,63`)
+- [x] **F9** — Petit ménage (5 items, détail donné à Jake avant validation) : code mort dans le webhook (`app/api/stripe/webhook/route.ts:1209-1210`), `ComingSoon.tsx` jamais utilisé (à supprimer), logs de debug actifs (`lib/mailing.ts`, `marketing/campagnes/page.tsx:134,138`), lien footer boutique mal étiqueté ("Tous les artistes"), `alert()` natif → style habituel (`app/[slug]/mon-abonnement/GererAbonnementButton.tsx:41,63`)
 - [x] **F10** — Centraliser le nom "My Producer" dans une seule constante (état actuel à vérifier — probablement déjà fait pour les emails via `BRANDING_PLATEFORME`, pas pour le footer boutique/reste de l'UI)
 
 ## Ordre de priorité actuel (2026-07-17)
