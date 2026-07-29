@@ -1,5 +1,7 @@
 # My Producer — Roadmap V1
 
+> Dernière mise à jour : 2026-07-30 — **Bucket "à corriger maintenant" (F1-F10) entièrement codé, commité/poussé un par un, et migrations SQL vérifiées directement en base.** Incident en cours de session : la migration `admin_role_field.sql` (F2) n'avait en fait pas tourné au premier essai — colonne `role` absente, ce qui cassait la connexion au dashboard pour **tous** les comptes (`proxy.ts` échouait sur chaque requête). Diagnostiqué en 2 minutes par une requête directe (service role) plutôt que deviner depuis les symptômes — voir `feedback_verifier_migrations_sql_avant_confirmation`. Une fois exécutée, connexion restaurée, les 3 migrations (F1/F2/F3) reconfirmées correctement appliquées (colonnes/contraintes testées avec de vrais updates puis restaurés). **Checklist de tests bout en bout T1-T19 ajoutée** (section "Checklist tests correctifs audit 2026-07-29", après la checklist Mails My Producer) — pas encore testée par Jake.
+>
 > Dernière mise à jour : 2026-07-29 (suite, x3) — **Les 21 trouvailles de l'audit ont toutes été passées en revue avec Jake, une par une, décisions prises.** Répartition : 10 à corriger immédiatement (voir liste ci-dessous), 2 obligatoires avant le lancement (détection litige/chargeback Stripe, historique des paiements ratés de l'abonnement plateforme), 3 intégrées au périmètre du rang 6 (Étape 5v2), 1 rédaction de contenu (pages légales), 1 gardée telle quelle, 1 nouvelle idée backlog (rognage de logo à l'upload).
 > - **Rappel durable posé par Jake pendant cette revue** : la plateforme n'est pas encore lancée, aucun vrai utilisateur — ne plus traiter les trouvailles comme des incidents de production (mémoire `feedback_pas_encore_lance_pas_de_panique`).
 > - **À corriger maintenant** (prochaine session de correctifs) : campagne email qui reste bloquée "envoyée" à 0 destinataire ; ajout d'un vrai champ `role` admin déconnecté du slug (norme SaaS demandée explicitement) ; migration des emails de collab (fonds en attente, rappels, expiration, invitation) vers le système "Mails My Producer" (templates_plateforme + logs admin) plutôt qu'un simple correctif du bug fire-and-forget ; message d'erreur sur l'échec de transfert Stripe (déblocage de fonds) ; lien de contact temporaire (`contact@jakebmusic.com`) sur la page compte suspendu ; message d'erreur sur l'échec d'upload de logo ; correction du texte "beat gratuit" en dur ; validation serveur du taux de TVA ; petit ménage (5 items cosmétiques/code mort) ; centraliser le nom "My Producer" dans une seule constante (le nom n'est pas définitif — `myproducer.com` indisponible — pour pouvoir le changer en un seul endroit le jour venu).
@@ -1162,6 +1164,47 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T9** — Onglet "Logs" affiche bien tous les emails plateforme→beatmaker envoyés pendant les tests du jour (confirmation email, bienvenue, essai, rappel, paiement échoué, annulation), avec le bon beatmaker
 - [x] **T10** — Voir le détail d'un email (modale) fonctionne
 - [x] **T11** — Renvoyer un email depuis le log fonctionne
+
+#### Checklist tests correctifs audit 2026-07-29 (F1-F10) ⬜ Pas encore testée par Jake
+
+> **Contexte :** Les 3 migrations SQL (F1/F2/F3) sont exécutées et vérifiées directement en base (colonnes/contraintes présentes, testées avec des updates réels puis restaurés). L'incident de connexion cassée pour tous les comptes (migration `role` pas encore passée au moment du premier test) est résolu. Pas de framework de test automatisé sur ce projet (voir `feedback_checklist_test_par_lot`) — tout ci-dessous est à cliquer/vérifier manuellement. Items classés du plus simple au plus lourd (certains demandent de manipuler Stripe test mode ou des dates en base, comme pour les tests Étape 8b/Mails My Producer).
+
+**F5 — Lien mailto page suspendu :**
+- [ ] **T1** — Suspendre une boutique de test (`/dashboard/admin/boutiques/[id]`), se connecter avec ce compte → `/dashboard/suspendu` affiche le lien mailto cliquable vers `contact@jakebmusic.com`, puis réactiver le compte
+
+**F2 — Rôle admin découplé du slug :**
+- [ ] **T2** — Connexion avec `jakeb-test` → accès normal à `/dashboard/admin/**` (régression de l'incident de connexion)
+- [ ] **T3** — Connexion avec un compte non-admin → `/dashboard/admin/**` inaccessible (redirect ou 403)
+- [ ] **T4** *(optionnel, plus sensible)* — Renommer temporairement le slug de `jakeb-test` via `/dashboard/profil` → l'accès admin reste actif (preuve que le rôle ne dépend plus du slug), puis remettre le slug d'origine
+
+**F7 — Texte "beat gratuit" dynamique :**
+- [ ] **T5** — Sur une boutique de test, changer `abo_recurrence_cadeau_mois` (`/dashboard/business/plans`) à une valeur ≠ 4 (ex. 6) → `/[slug]/mon-abonnement` affiche bien "tous les 6 mois" pour un abonné actif
+
+**F8 — Validation TVA serveur :**
+- [ ] **T6** — `/dashboard/paiements` : enregistrer un taux de TVA valide (ex. 20) → toujours accepté normalement (non-régression)
+- [ ] **T7** — Forcer un taux invalide via les devtools (modifier la valeur envoyée, ou retirer temporairement `min`/`max` sur l'input) → message d'erreur affiché, rien n'est enregistré en base
+
+**F9 — Ménage (vérifs rapides) :**
+- [ ] **T8** — Footer boutique (`/[slug]`) : le lien "Tous les type beats" pointe bien vers la section Type beats (pas "Tous les artistes")
+- [ ] **T9** — `/[slug]/mon-abonnement` : tester Annuler puis Reprendre un abonnement de test → pas d'`alert()` navigateur, erreurs éventuelles affichées inline
+
+**F6 — Message d'erreur upload logo :**
+- [ ] **T10** — `/dashboard/profil` : tenter d'uploader un fichier non-image (ex. `.txt` renommé `.jpg`) → message d'erreur clair affiché, pas de plantage silencieux
+
+**F4 — Message d'erreur transfert Stripe :**
+- [ ] **T11** *(setup Stripe test mode)* — Provoquer un échec de transfert (ex. solde de test insuffisant sur le compte plateforme) sur un split en attente, cliquer "Compléter la configuration Stripe" → message d'erreur affiché sur `/dashboard/paiements`, erreur visible dans les Runtime Logs Vercel
+
+**F1 — Campagne "échouée" à 0 destinataire :**
+- [ ] **T12** — Envoyer une campagne normale à un segment/liste avec des contacts valides → toujours "Envoyée" comme avant (non-régression)
+- [ ] **T13** *(setup : casser temporairement `RESEND_API_KEY` sur Vercel, ou cibler une liste dont tous les emails sont invalides)* — Forcer un échec total d'envoi → la campagne passe en statut "Échouée" (nouvelle section dédiée), bouton "Réessayer l'envoi" fonctionne une fois la config restaurée, suppression possible
+
+**F3 — Emails de collab migrés (le plus lourd, dernier) :**
+- [ ] **T14** — Réglages (`/dashboard/admin/mails-plateforme`) : les 4 nouveaux types (Invitation à collaborer, Fonds en attente, Rappel fonds en attente, Fonds expirés) s'affichent avec aperçu en direct
+- [ ] **T15** — Modifier titre/intro d'un des 4 types, enregistrer → repris au prochain envoi réel de ce type
+- [ ] **T16** — Créer/publier un beat avec un collaborateur non inscrit (email_invite) → email d'invitation reçu, brandé My Producer, apparaît dans l'onglet Logs admin (`?tab=logs`)
+- [ ] **T17** — Vendre ce beat (checkout Stripe test) → email "Fonds en attente" reçu par le collaborateur, log admin correspondant
+- [ ] **T18** *(dates forcées en base, comme pour les tests Étape 8b)* — Avancer `created_at` du `split_payments` correspondant à J-30 puis J-50 dans le passé, appeler manuellement `/api/cron/splits-expiration` (header `Authorization: Bearer <CRON_SECRET>`) → emails de rappel reçus (normal à J+30, urgent visuellement à J+50)
+- [ ] **T19** — Avancer à J-60, rappeler le cron → email "Fonds expirés" reçu, reversal Stripe déclenché, `split_payments.statut` passe à `expire`
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
