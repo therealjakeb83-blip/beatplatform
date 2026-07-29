@@ -1084,7 +1084,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T3** — Testé via `essai_fin_le` avancé à J+3 en base + appel manuel de `/api/cron/plateforme-rappels` (header `Authorization: Bearer <CRON_SECRET>`) sur le déploiement Vercel : 1er appel → `{"ok":true,"envoyes":1}`, email de rappel reçu ; 2ᵉ appel → `{"ok":true,"envoyes":0}`, pas de doublon (`rappel_essai_envoye_le` fait son travail)
 
 **Paiement échoué :**
-- [ ] **T4** — Simuler un échec de renouvellement (voir technique carte `4000...0341`, mémoire `feedback_stripe_test_declines`) sur un abonnement plateforme de test → email reçu au moment précis où le statut passe à `impaye` (pas à chaque event Stripe suivant tant qu'il y reste)
+- [x] **T4** — Carte `4000...0341` attachée manuellement (Dashboard Stripe) + posée en `default_payment_method` sur la subscription. La technique facture hors-cycle seule (mémoire `feedback_stripe_test_declines`) **ne suffit pas pour un abonnement encore en essai** : `subscription.status` reste `trialing` tant que la vraie période d'essai n'est pas terminée, donc `statut` ne bascule jamais en `impaye` côté DB. Il a fallu forcer `trial_end: 'now'` (même technique que 15d/Analytics) pour déclencher le vrai premier prélèvement — qui échoue avec la carte de déclin déjà en défaut → `past_due` → `impaye` → email reçu. Nuance ajoutée à `feedback_stripe_test_declines` pour la prochaine fois.
 
 **Annulation :**
 - [ ] **T5** — Annuler un abonnement plateforme de test (hors période d'essai, pour une annulation immédiate) → email de confirmation reçu
