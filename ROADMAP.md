@@ -91,7 +91,7 @@
 - [ ] **F3** — Migrer les emails de collab (`envoyerFondsEnAttente`, `envoyerRappelFonds`, `envoyerConfirmationExpiration`, `envoyerInvitationCollab`) vers le système "Mails My Producer" (`templates_plateforme` + apparition dans l'onglet Logs admin) — corrige au passage le bug fire-and-forget (`app/api/cron/splits-expiration/route.ts`, `app/api/stripe/webhook/route.ts:993`)
 - [x] **F4** — Message d'erreur + log sur l'échec de transfert Stripe (`app/api/stripe/splits/debloquer/route.ts:59-61`)
 - [x] **F5** — Lien mailto `contact@jakebmusic.com` (temporaire) sur `/dashboard/suspendu`
-- [ ] **F6** — Message d'erreur si l'upload de logo échoue (`app/dashboard/profil/ProfilForm.tsx:52-62`) — le rognage/crop est un backlog séparé, pas dans ce lot
+- [x] **F6** — Message d'erreur si l'upload de logo échoue (`app/dashboard/profil/ProfilForm.tsx:52-62`) — le rognage/crop est un backlog séparé, pas dans ce lot
 - [x] **F7** — Texte "beat gratuit tous les 4 mois" en dur → valeur dynamique (`app/[slug]/mon-abonnement/page.tsx:139`)
 - [x] **F8** — Validation serveur du taux de TVA (`app/api/stripe/tva/route.ts:9-17`)
 - [ ] **F9** — Petit ménage (5 items, détail donné à Jake avant validation) : code mort dans le webhook (`app/api/stripe/webhook/route.ts:1209-1210`), `ComingSoon.tsx` jamais utilisé (à supprimer), logs de debug actifs (`lib/mailing.ts`, `marketing/campagnes/page.tsx:134,138`), lien footer boutique mal étiqueté ("Tous les artistes"), `alert()` natif → style habituel (`app/[slug]/mon-abonnement/GererAbonnementButton.tsx:41,63`)

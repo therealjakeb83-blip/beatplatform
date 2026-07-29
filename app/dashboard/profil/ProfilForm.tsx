@@ -28,6 +28,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
   const [logoLoading, setLogoLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [erreur, setErreur] = useState('')
+  const [erreurLogo, setErreurLogo] = useState('')
   const [succes, setSucces] = useState(false)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -53,12 +54,22 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
     const file = e.target.files?.[0]
     if (!file) return
     setLogoLoading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await fetch('/api/profil/logo', { method: 'POST', body: fd })
-    const data = await res.json()
-    if (data.url) setLogoUrl(data.url)
-    setLogoLoading(false)
+    setErreurLogo('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/profil/logo', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        setErreurLogo(data?.error || "Impossible d'envoyer ce logo. Réessaie.")
+      } else {
+        setLogoUrl(data.url)
+      }
+    } catch {
+      setErreurLogo("Impossible d'envoyer ce logo. Vérifie ta connexion et réessaie.")
+    } finally {
+      setLogoLoading(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -129,6 +140,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
         </div>
+        {erreurLogo && <p className="text-red-400 text-xs mt-2">{erreurLogo}</p>}
       </div>
 
       {/* Nom d'artiste */}

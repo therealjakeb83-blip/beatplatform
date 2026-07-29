@@ -12,18 +12,23 @@ export async function POST(request: Request) {
   const file = formData.get('file') as File | null
   if (!file) return Response.json({ error: 'Fichier manquant' }, { status: 400 })
 
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const webp = await sharp(buffer).resize(400, 400, { fit: 'cover' }).webp({ quality: 85 }).toBuffer()
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const webp = await sharp(buffer).resize(400, 400, { fit: 'cover' }).webp({ quality: 85 }).toBuffer()
 
-  const key = `beatmakers/${user.id}/logo.webp`
+    const key = `beatmakers/${user.id}/logo.webp`
 
-  await r2.send(new PutObjectCommand({
-    Bucket: R2_BUCKET,
-    Key: key,
-    Body: webp,
-    ContentType: 'image/webp',
-  }))
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: webp,
+      ContentType: 'image/webp',
+    }))
 
-  const url = `${process.env.R2_PUBLIC_URL}/${key}`
-  return Response.json({ url })
+    const url = `${process.env.R2_PUBLIC_URL}/${key}`
+    return Response.json({ url })
+  } catch (err) {
+    console.error('[profil/logo] Upload échoué:', err instanceof Error ? err.message : err)
+    return Response.json({ error: "Impossible d'envoyer ce logo. Vérifie que c'est bien une image, puis réessaie." }, { status: 500 })
+  }
 }
