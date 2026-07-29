@@ -17,12 +17,21 @@ export default function PaiementsClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [chargementConnect, setChargementConnect] = useState(false)
+  const [erreurDeblocage, setErreurDeblocage] = useState('')
 
   useEffect(() => {
     if (searchParams.get('connected') === 'true' && stripeAccountId) {
       fetch('/api/stripe/splits/debloquer', { method: 'POST' })
-        .then(() => router.refresh())
-        .catch(() => {})
+        .then(res => res.json())
+        .then(data => {
+          if (data?.echecs?.length) {
+            setErreurDeblocage(
+              `${data.echecs.length} paiement${data.echecs.length > 1 ? 's' : ''} en attente n'${data.echecs.length > 1 ? 'ont' : 'a'} pas pu être débloqué${data.echecs.length > 1 ? 's' : ''} (${data.echecs.map((e: { beat: string }) => e.beat).join(', ')}). Réessaie plus tard ou contacte-nous.`
+            )
+          }
+          router.refresh()
+        })
+        .catch(() => setErreurDeblocage('Erreur lors du déblocage des paiements en attente.'))
     }
   }, [])
   const [tvaActif, setTvaActif] = useState(tvaActive)
@@ -97,6 +106,9 @@ export default function PaiementsClient({
             >
               {chargementConnect ? 'Redirection...' : 'Connecter mon compte bancaire'}
             </button>
+          )}
+          {erreurDeblocage && (
+            <p className="text-orange-400 text-sm mt-3">{erreurDeblocage}</p>
           )}
         </section>
 

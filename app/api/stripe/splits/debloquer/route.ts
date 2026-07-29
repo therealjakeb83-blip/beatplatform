@@ -35,6 +35,7 @@ export async function POST() {
   }
 
   let debloques = 0
+  const echecs: { beat: string; erreur: string }[] = []
 
   for (const sp of pending as unknown as PendingSplit[]) {
     const transferGroup = sp.commandes?.stripe_transfer_group
@@ -56,10 +57,12 @@ export async function POST() {
         .eq('id', sp.id)
 
       debloques++
-    } catch {
-      // Transfer échoué silencieusement (balance insuffisante, etc.)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur inconnue'
+      console.error(`[splits/debloquer] Transfert échoué pour split_payments.id=${sp.id} (${titreBeat}):`, message)
+      echecs.push({ beat: titreBeat, erreur: message })
     }
   }
 
-  return NextResponse.json({ debloques })
+  return NextResponse.json({ debloques, echecs })
 }
