@@ -1091,7 +1091,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 **Personnalisation admin (`/dashboard/admin/mails-plateforme`) :**
 - [x] **T6** — Les 6 sections s'affichent (Confirmation d'adresse email en 1ʳᵉ position), l'aperçu en direct se met à jour en tapant dans Titre/Intro
-- [ ] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1a-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
+- [x] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1a-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
 - [ ] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
