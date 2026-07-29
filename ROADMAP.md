@@ -1090,7 +1090,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [ ] **T5** — Annuler un abonnement plateforme de test (hors période d'essai, pour une annulation immédiate) → email de confirmation reçu
 
 **Personnalisation admin (`/dashboard/admin/mails-plateforme`) :**
-- [ ] **T6** — Les 6 sections s'affichent (Confirmation d'adresse email en 1ʳᵉ position), l'aperçu en direct se met à jour en tapant dans Titre/Intro
+- [x] **T6** — Les 6 sections s'affichent (Confirmation d'adresse email en 1ʳᵉ position), l'aperçu en direct se met à jour en tapant dans Titre/Intro
 - [ ] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1a-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
 - [ ] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
 
