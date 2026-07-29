@@ -1078,7 +1078,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T1** — ✅ Corrigé et validé le 2026-07-28 (voir bloc ci-dessus, T1a-T1d)
 
 **Confirmation essai :**
-- [ ] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
+- [x] **T2** — Souscription à l'essai gratuit (`/dashboard/abonnement`) → email de confirmation reçu juste après, avec la bonne date de fin d'essai et le bon prix (mensuel/annuel selon le choix)
 
 **Rappel fin d'essai (J-3) :**
 - [ ] **T3** — Pas testable en conditions réelles sans attendre 11 jours — vérifier plutôt en appelant `/api/cron/plateforme-rappels` manuellement (avec le header `Authorization: Bearer <CRON_SECRET>`) sur un abonnement de test dont `essai_fin_le` a été modifié à J+2 ou J+3 en base : email reçu, `rappel_essai_envoye_le` mis à jour, un second appel du cron ne renvoie pas de doublon
