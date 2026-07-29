@@ -925,7 +925,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 >
 > Fichiers de migration Phase 7 (à exécuter dans cet ordre si reproduit sur un nouvel environnement) : `phase7_categories.sql` → `phase7_8_categories_images.sql` → `phase7_9_demandes_certification.sql` → `phase7_10_regroupement_certification.sql` → `phase7_11_fix_categorie_id_nullable.sql` → `phase7_12_instruments_icones.sql`.
 >
-> **7.12 (2026-07-29) — Nouveau design "instruments" :** Jake a fourni un paquet design (dégradé `--g1`/`--g2` + icône blanche calée à droite avec fondu diagonal, façon `shop-style-card` mais avec icône) pour remplacer le pattern photo+scrim des blocs instruments — jamais alimenté en images en pratique (`image_url` toujours `null`). 15 icônes copiées dans `public/img/instruments/` (pas via le pipeline `/api/upload/categorie-image` : celui-ci resize en 600×600 `cover`+webp, pensé pour des photos, pas pour des silhouettes transparentes). Nouvelle classe CSS `.shop-instrument-card` + override `filter:invert(1)` sur l'icône en thème Blanche & Noire (silhouette blanche invisible sur le dégradé clair de ce preset sinon). `supabase/phase7_12_instruments_icones.sql` remplace les 9 catégories `instruments` actuelles (Bells, Brass, Flûte, Guitare, Harpe, Piano, Saxophone, Synthé, Violon) par les 15 nouvelles, certifiées d'office (`source=plateforme`, `statut=certifiee`), et migre les 12 beats tagués `Guitare` vers `Guitare acoustique` (décision Jake — la nouvelle liste distingue acoustique/électrique, aucune des deux ne matchait exactement ; `Flûte` matche déjà tel quel ; `Cordes`, orpheline sur 11 beats depuis un moment déjà, hors scope). **Migration SQL pas encore exécutée** — `service_role` n'a que `SELECT` sur `beats` (`supabase/service_role_grants.sql`), l'UPDATE de migration doit passer par l'éditeur SQL Supabase (comme les migrations précédentes), pas par un script service_role.
+> **7.12 (2026-07-29) — Nouveau design "instruments" :** Jake a fourni un paquet design (dégradé `--g1`/`--g2` + icône blanche calée à droite avec fondu diagonal, façon `shop-style-card` mais avec icône) pour remplacer le pattern photo+scrim des blocs instruments — jamais alimenté en images en pratique (`image_url` toujours `null`). 15 icônes copiées dans `public/img/instruments/` (pas via le pipeline `/api/upload/categorie-image` : celui-ci resize en 600×600 `cover`+webp, pensé pour des photos, pas pour des silhouettes transparentes). Nouvelle classe CSS `.shop-instrument-card` + override `filter:invert(1)` sur l'icône en thème Blanche & Noire (silhouette blanche invisible sur le dégradé clair de ce preset sinon). `supabase/phase7_12_instruments_icones.sql` remplace les 9 catégories `instruments` actuelles (Bells, Brass, Flûte, Guitare, Harpe, Piano, Saxophone, Synthé, Violon) par les 15 nouvelles, certifiées d'office (`source=plateforme`, `statut=certifiee`), et migre les 12 beats tagués `Guitare` vers `Guitare acoustique` (décision Jake — la nouvelle liste distingue acoustique/électrique, aucune des deux ne matchait exactement ; `Flûte` matche déjà tel quel ; `Cordes`, orpheline sur 11 beats depuis un moment déjà, hors scope). **Migration SQL exécutée par Jake le 2026-07-29** (via l'éditeur SQL Supabase — `service_role` n'a que `SELECT` sur `beats`, voir `supabase/service_role_grants.sql`). Rendu vérifié en local via dev-browser : les 15 icônes s'affichent correctement, dégradé + fondu diagonal conformes au design fourni.
 
 #### Checklist tests Phase 7 + Admin — ✅ 100% validée le 2026-07-20 (T0-T19)
 
@@ -959,21 +959,23 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Sécurité :**
 - [x] **T19** — Compte non-admin (déconnecté ou autre compte réel) → `/dashboard/admin` redirige vers `/dashboard/business`
 
-#### Checklist tests Phase 7.12 — Nouveau design "instruments" 🔄 Codé le 2026-07-29, pas encore testé (migration SQL en attente)
+#### Checklist tests Phase 7.12 — Nouveau design "instruments" 🔄 Migration exécutée + vérifiée en local le 2026-07-29, reste la validation visuelle par Jake
 
 **Préalable :**
-- [ ] **T0** — Exécuter `supabase/phase7_12_instruments_icones.sql` dans l'éditeur SQL Supabase (⚠️ pas via un script `service_role` — cette table n'a que `SELECT` sur `beats`, l'UPDATE de migration doit passer par l'éditeur SQL qui s'exécute en superuser)
+- [x] **T0** — `supabase/phase7_12_instruments_icones.sql` exécuté par Jake dans l'éditeur SQL Supabase
 
 **Côté boutique publique (`/{slug}`) :**
-- [ ] **T1** — Le rail "Parcourir les instruments" affiche les 15 nouvelles catégories avec icône (dégradé + silhouette blanche calée à droite)
-- [ ] **T2** — Les 12 beats ex-"Guitare" apparaissent maintenant sous "Guitare acoustique", comptage correct
-- [ ] **T3** — Les 11 beats "Flûte" toujours présents sous "Flûte" (nom inchangé)
-- [ ] **T4** — Déclinaison Blanche & Noire : icône bien visible (inversée en noir sur le dégradé clair), pas de silhouette blanche invisible
+- [x] **T1** — Le rail "Parcourir les instruments" affiche les 15 nouvelles catégories avec icône (vérifié via dev-browser sur `jakeb-test`, capture conforme au design)
+- [x] **T2** — Les 12 beats ex-"Guitare" apparaissent maintenant sous "Guitare acoustique", comptage correct
+- [x] **T3** — Les 11 beats "Flûte" toujours présents sous "Flûte" (nom inchangé)
+- [ ] **T4** — Déclinaison Blanche & Noire : icône bien visible (inversée en noir sur le dégradé clair), pas de silhouette blanche invisible — *code en place, pas encore vu par Jake*
 - [ ] **T5** — Mobile : cartes 230×104px, texte lisible, scroll horizontal fluide
 - [ ] **T6** — Clic sur une carte → `/{slug}/parcourir/instruments/<nom>` affiche bien les beats correspondants
 
 **Côté dashboard beatmaker (`/dashboard/business/beats/nouveau`) :**
 - [ ] **T7** — L'onglet Instruments du formulaire propose bien les 15 nouveaux noms (plus les 9 anciens)
+
+> Données de démo : les 15 instruments sont désormais taguées sur au moins un beat public dans `jakeb-test` et les 10 boutiques dupliquées (`jakeb-test1`-`jakeb-test10`), pour que le rail complet soit visible partout où Jake teste (mapping titre→instrument identique sur les 11 boutiques, structure dupliquée).
 
 #### Checklist tests Étape 15 lot 1 — Admin Recherche/Support + Log Stripe + Suspension ✅ Validée le 2026-07-24 (T13/T16 bloqués, système d'abonnement plateforme pas encore construit)
 
