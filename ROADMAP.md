@@ -1053,7 +1053,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 **Sécurité :**
 - [x] **T15** — Compte non-admin (`jakeb-test1`) → `/dashboard/admin/analytics` redirige vers `/dashboard/business` ; déconnecté → `/connexion` (comportement `proxy.ts` déjà validé au lot 1)
 
-#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ✅ Entièrement validée les 2026-07-28/29 (T0-T8, T1a-T1g)
+#### Checklist tests "Mails My Producer" — emails transactionnels plateforme→beatmaker ✅ Entièrement validée les 2026-07-28/29 (T0-T11, T1a-T1g)
 
 > **Contexte :** Chantier identifié le 2026-07-27 en testant l'Étape 15 lot 2 — Jake pensait que "Mails transactionnels (admin)" couvrait déjà ça. Zéro email n'existait côté plateforme→beatmaker malgré `abonnements_plateforme` fonctionnel depuis le 2026-07-24. 5 emails en HTML (même moteur de rendu que les transactionnels boutique→client de la Phase 6, branding fixe "My Producer"), titre+intro personnalisables par l'admin via `/dashboard/admin/mails-plateforme` (ajouté le même jour, Jake voulait le même système de gestion que les boutiques). Détail technique complet : mémoire `project_mails_my_producer`.
 >
@@ -1093,6 +1093,14 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T6** — Les 6 sections s'affichent (Confirmation d'adresse email en 1ʳᵉ position), l'aperçu en direct se met à jour en tapant dans Titre/Intro
 - [x] **T7** — Modifier le titre/intro d'un email, Enregistrer, puis déclencher réellement cet email (ex. renvoyer via T1a-T5) → le texte personnalisé est bien utilisé, pas le texte par défaut
 - [x] **T8** — Vider le titre/intro personnalisé → l'email repasse au texte par défaut d'origine
+
+**Logs admin (`/dashboard/admin/mails-plateforme?tab=logs`, ajouté le 2026-07-29 à la demande de Jake) :**
+
+> Distinct de 15e (log détaillé toutes boutiques→clients, écarté pour raisons RGPD) : ici les emails sont ceux de la plateforme vers ses propres beatmakers, pas des données clients de tiers — même table/UX que `/dashboard/business/marketing/logs` (côté beatmaker), adaptée avec une colonne "Beatmaker" et un filtre par type d'email plateforme au lieu de transactionnel/automatisation. Réutilise `email_logs` existant (`evenement LIKE 'plateforme_%'`), aucune migration SQL.
+
+- [x] **T9** — Onglet "Logs" affiche bien tous les emails plateforme→beatmaker envoyés pendant les tests du jour (confirmation email, bienvenue, essai, rappel, paiement échoué, annulation), avec le bon beatmaker
+- [x] **T10** — Voir le détail d'un email (modale) fonctionne
+- [x] **T11** — Renvoyer un email depuis le log fonctionne
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
