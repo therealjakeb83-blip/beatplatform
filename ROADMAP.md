@@ -1070,9 +1070,9 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T1b** — Email de confirmation reçu **brandé My Producer** (pas le générique Supabase)
 - [x] **T1c** — Clic sur le lien → confirmation réussie → redirection vers `/dashboard`, connecté → gate abonnement (Étape 8b) a immédiatement pris le relais vers `/dashboard/abonnement` (comportement normal pour un compte tout juste créé sans abonnement — confirme que la session est bien active)
 - [x] **T1d** — Email de bienvenue reçu séparément, après le clic (pas au moment du formulaire) — confirmé par Jake
-- [ ] **T1e** — Recliquer sur le même lien (ou lien expiré) → `/confirmation-compte` affiche "Lien invalide ou expiré" proprement, pas de crash
-- [ ] **T1f** — Réinscription avec un email déjà utilisé → message d'erreur clair, pas de doublon de compte ni de 2ᵉ email envoyé
-- [ ] **T1g** — Non-régression flux artiste (`/artiste/inscription`) : toujours son propre comportement inchangé (email Supabase générique + `confirmationCompteArtiste` brandée à la boutique)
+- [x] **T1e** — Recliquer sur le même lien (ou lien expiré) → `/confirmation-compte` affiche "Lien invalide ou expiré" proprement, pas de crash
+- [x] **T1f** — Réinscription avec un email déjà utilisé → message d'erreur clair ("Un compte existe déjà avec cet email."), pas de doublon de compte ni de 2ᵉ email envoyé
+- [x] **T1g** — Non-régression flux artiste (`/artiste/inscription`) : fichiers (`app/artiste/inscription/page.tsx`, `app/auth/callback/route.ts`) non modifiés dans ce chantier (vérifié via `git diff`), page smoke-testée sur Vercel — comportement inchangé
 
 **Bienvenue :**
 - [x] **T1** — ✅ Corrigé et validé le 2026-07-28 (voir bloc ci-dessus, T1a-T1d)
