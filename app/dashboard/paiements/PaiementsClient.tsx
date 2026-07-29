@@ -29,6 +29,7 @@ export default function PaiementsClient({
   const [taux, setTaux] = useState(String(tvaTaux || 20))
   const [numero, setNumero] = useState(tvaNumero || '')
   const [sauvegardeOk, setSauvegardeOk] = useState(false)
+  const [erreurTva, setErreurTva] = useState('')
   const [chargementTva, setChargementTva] = useState(false)
 
   async function connecterStripe() {
@@ -42,12 +43,18 @@ export default function PaiementsClient({
   async function sauvegarderTva() {
     setChargementTva(true)
     setSauvegardeOk(false)
-    await fetch('/api/stripe/tva', {
+    setErreurTva('')
+    const res = await fetch('/api/stripe/tva', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tva_active: tvaActif, tva_taux: Number(taux), tva_numero: numero }),
     })
     setChargementTva(false)
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      setErreurTva(data?.erreur || 'Impossible de sauvegarder la TVA.')
+      return
+    }
     setSauvegardeOk(true)
     router.refresh()
   }
@@ -148,6 +155,9 @@ export default function PaiementsClient({
 
           {sauvegardeOk && (
             <p className="text-green-400 text-sm mt-2">Sauvegardé.</p>
+          )}
+          {erreurTva && (
+            <p className="text-red-400 text-sm mt-2">{erreurTva}</p>
           )}
         </section>
       </div>

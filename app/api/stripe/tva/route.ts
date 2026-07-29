@@ -7,13 +7,22 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
   const { tva_active, tva_taux, tva_numero } = await request.json()
+  const actif = Boolean(tva_active)
+
+  let taux: number | null = null
+  if (actif) {
+    taux = Number(tva_taux)
+    if (!Number.isFinite(taux) || taux < 0 || taux > 100) {
+      return NextResponse.json({ erreur: 'Le taux de TVA doit être un nombre entre 0 et 100.' }, { status: 400 })
+    }
+  }
 
   const { error } = await supabase
     .from('beatmakers')
     .update({
-      tva_active: Boolean(tva_active),
-      tva_taux: tva_active ? Number(tva_taux) : null,
-      tva_numero: tva_active ? (tva_numero ?? null) : null,
+      tva_active: actif,
+      tva_taux: taux,
+      tva_numero: actif ? (tva_numero ?? null) : null,
     })
     .eq('id', user.id)
 
