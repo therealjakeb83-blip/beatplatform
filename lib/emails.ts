@@ -5,107 +5,14 @@ import { NOM_PLATEFORME } from './constantes'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
 const COULEUR_DEFAUT = '#4f46e5'
 
-export async function envoyerInvitationCollab({
-  to,
-  nomProprietaire,
-  titreBeat,
-  pourcentage,
-  beatmakerId,
-}: {
-  to: string
-  nomProprietaire: string
-  titreBeat: string
-  pourcentage: number
-  beatmakerId: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'invitation_collab',
-    to,
-    subject: `${nomProprietaire} vous invite à collaborer sur "${titreBeat}"`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `${nomProprietaire} vous invite à collaborer sur le beat "${titreBeat}".`,
-      `Votre part : ${pourcentage}%.`,
-      ``,
-      `Créez votre compte ${NOM_PLATEFORME} pour visualiser votre split et recevoir vos revenus :`,
-      `${APP_URL}/inscription`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerFondsEnAttente({
-  to,
-  titreBeat,
-  montantEuros,
-  beatmakerId,
-}: {
-  to: string
-  titreBeat: string
-  montantEuros: string
-  beatmakerId: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'fonds_en_attente',
-    to,
-    subject: `${montantEuros}€ vous attendent sur ${NOM_PLATEFORME}`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `Le beat "${titreBeat}" vient d'être vendu et vous avez ${montantEuros}€ qui vous attendent.`,
-      ``,
-      `Configurez votre compte Stripe sur ${NOM_PLATEFORME} pour recevoir votre part :`,
-      `${APP_URL}/inscription`,
-      ``,
-      `Ces fonds seront disponibles dès que votre compte sera configuré.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerRappelFonds({
-  to,
-  titreBeat,
-  montantEuros,
-  joursRestants,
-  beatmakerId,
-}: {
-  to: string
-  titreBeat: string
-  montantEuros: string
-  joursRestants: number
-  beatmakerId: string
-}) {
-  const urgence = joursRestants <= 10
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'rappel_fonds',
-    to,
-    subject: urgence
-      ? `⚠️ Dernier rappel — ${montantEuros}€ expirent dans ${joursRestants} jours`
-      : `Rappel — ${montantEuros}€ vous attendent sur ${NOM_PLATEFORME}`,
-    text: [
-      `Bonjour,`,
-      ``,
-      urgence
-        ? `ATTENTION : Dans ${joursRestants} jours, votre part de ${montantEuros}€ sur le beat "${titreBeat}" sera définitivement reversée à l'autre beatmaker.`
-        : `Vous avez toujours ${montantEuros}€ en attente sur le beat "${titreBeat}".`,
-      ``,
-      `Configurez votre compte Stripe maintenant pour récupérer vos fonds :`,
-      `${APP_URL}/inscription`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
-  })
-}
+// envoyerInvitationCollab / envoyerFondsEnAttente / envoyerRappelFonds /
+// envoyerConfirmationExpiration ont été migrées vers le système "Mails My
+// Producer" (branding fixe, titre/intro éditables par l'admin) — voir plus
+// bas, section "Emails My Producer → beatmaker". Corrige au passage le bug
+// fire-and-forget des appelants (audit 2026-07-29, F3) : envoyerEmailUnique
+// n'a jamais levé d'exception (toujours loggé dans email_logs même en cas
+// d'échec), donc rien n'empêchait d'attendre ces appels — seuls les
+// appelants (webhook Stripe, cron splits-expiration) oubliaient le `await`.
 
 export async function envoyerCategorieCertifiee({
   to,
@@ -127,37 +34,6 @@ export async function envoyerCategorieCertifiee({
       ``,
       `Votre catégorie "${nomCategorie}" est maintenant officielle sur ${NOM_PLATEFORME}.`,
       `Elle est désormais disponible pour tous les beatmakers de la plateforme.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
-  })
-}
-
-export async function envoyerConfirmationExpiration({
-  to,
-  titreBeat,
-  montantEuros,
-  beatmakerId,
-}: {
-  to: string
-  titreBeat: string
-  montantEuros: string
-  beatmakerId: string
-}) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'confirmation_expiration',
-    to,
-    subject: `Votre part sur "${titreBeat}" a expiré`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `Votre part de ${montantEuros}€ sur le beat "${titreBeat}" n'a pas été réclamée dans les 60 jours.`,
-      `Elle a été reversée à l'autre beatmaker conformément à notre politique de rétention.`,
-      ``,
-      `Pour les prochaines collaborations, pensez à configurer votre compte ${NOM_PLATEFORME} dès l'invitation :`,
-      `${APP_URL}/inscription`,
       ``,
       `— L'équipe ${NOM_PLATEFORME}`,
     ].join('\n'),
@@ -350,6 +226,10 @@ export type TypeTemplatePlateforme =
   | 'rappel_fin_essai'
   | 'paiement_echoue'
   | 'annulation'
+  | 'collab_invitation'
+  | 'collab_fonds_attente'
+  | 'collab_rappel_fonds'
+  | 'collab_expiration'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
   nom_artiste: NOM_PLATEFORME,
@@ -371,6 +251,10 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   rappel_fin_essai: 'Ton essai se termine dans 3 jours',
   paiement_echoue: "Le paiement de ton abonnement a échoué",
   annulation: 'Ton abonnement a été annulé',
+  collab_invitation: 'Tu es invité à collaborer sur un beat',
+  collab_fonds_attente: "Des fonds t'attendent",
+  collab_rappel_fonds: "Rappel — des fonds arrivent à expiration",
+  collab_expiration: 'Tes fonds en attente ont expiré',
 }
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
@@ -387,6 +271,14 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return `Le dernier prélèvement de ton abonnement ${NOM_PLATEFORME} n'a pas pu être effectué. Merci de mettre à jour ton moyen de paiement pour éviter une interruption d'accès à ta boutique.`
     case 'annulation':
       return `Ton abonnement ${NOM_PLATEFORME} est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.`
+    case 'collab_invitation':
+      return `Un beatmaker t'invite à collaborer sur un de ses beats. Crée ton compte ${NOM_PLATEFORME} pour visualiser ta part et recevoir tes revenus.`
+    case 'collab_fonds_attente':
+      return 'Un beat sur lequel tu collabores vient d\'être vendu. Configure ton compte Stripe pour recevoir ta part.'
+    case 'collab_rappel_fonds':
+      return "Tu as des fonds en attente sur une collaboration — configure ton compte Stripe avant qu'ils ne soient définitivement reversés à l'autre beatmaker."
+    case 'collab_expiration':
+      return "Ta part sur une collaboration n'a pas été réclamée dans les 60 jours et a été reversée à l'autre beatmaker, conformément à notre politique de rétention."
   }
 }
 
@@ -409,6 +301,55 @@ function corpsAbonnementPlateforme(periode: 'mensuel' | 'annuel', prixEuros: num
       <tr>
         <td style="padding:8px 0;font-size:13px;color:#111827;">Fin de l'essai</td>
         <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(fmtDateEssai(essaiFinLe))}</td>
+      </tr>
+    </table>`
+}
+
+function corpsInvitationCollab(nomProprietaire: string, titreBeat: string, pourcentage: number): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Beat</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">${echapper(titreBeat)}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Invité par</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">${echapper(nomProprietaire)}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;font-size:13px;color:#111827;">Ta part</td>
+        <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${pourcentage}%</td>
+      </tr>
+    </table>`
+}
+
+function corpsFondsCollab(titreBeat: string, montantEuros: string, labelMontant = 'Montant en attente'): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Beat</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">${echapper(titreBeat)}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;font-size:13px;color:#111827;">${echapper(labelMontant)}</td>
+        <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(montantEuros)}€</td>
+      </tr>
+    </table>`
+}
+
+function corpsRappelFondsCollab(titreBeat: string, montantEuros: string, joursRestants: number): string {
+  const urgence = joursRestants <= 10
+  const couleur = urgence ? '#dc2626' : '#111827'
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Beat</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">${echapper(titreBeat)}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Montant en attente</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(montantEuros)}€</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;font-size:13px;color:${couleur};font-weight:${urgence ? 700 : 400};">Jours restants avant reversement</td>
+        <td style="padding:8px 0;font-size:13px;color:${couleur};font-weight:${urgence ? 700 : 400};text-align:right;white-space:nowrap;">${joursRestants} jour${joursRestants > 1 ? 's' : ''}</td>
       </tr>
     </table>`
 }
@@ -577,10 +518,138 @@ export async function envoyerConfirmationAnnulationPlateforme({
   })
 }
 
+// Ces 4 emails concernent les collaborations (splits) entre beatmakers —
+// migrés depuis de simples emails texte vers le système "Mails My
+// Producer" (audit 2026-07-29, F3) : branding cohérent, titre/intro
+// éditables par l'admin, et visibilité dans l'onglet Logs admin (tout
+// evenement préfixé `plateforme_` y apparaît automatiquement). `beatmakerId`
+// désigne ici le beatmaker propriétaire du beat (pas le destinataire `to`,
+// qui peut être un collaborateur externe pas encore inscrit) — comme avant
+// la migration, ça permet de retrouver ces envois aussi dans les logs de ce
+// beatmaker (`/dashboard/business/mailing/logs`).
+export async function envoyerInvitationCollab({
+  to,
+  nomProprietaire,
+  titreBeat,
+  pourcentage,
+  beatmakerId,
+}: {
+  to: string
+  nomProprietaire: string
+  titreBeat: string
+  pourcentage: number
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('collab_invitation')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_collab_invitation',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_invitation,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_invitation,
+      intro: intro || introDefautPlateforme('collab_invitation'),
+      corpsHtml: corpsInvitationCollab(nomProprietaire, titreBeat, pourcentage),
+      cta: { texte: 'Créer mon compte', lien: `${APP_URL}/inscription` },
+    }),
+  })
+}
+
+export async function envoyerFondsEnAttente({
+  to,
+  titreBeat,
+  montantEuros,
+  beatmakerId,
+}: {
+  to: string
+  titreBeat: string
+  montantEuros: string
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('collab_fonds_attente')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_collab_fonds_attente',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_fonds_attente,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_fonds_attente,
+      intro: intro || introDefautPlateforme('collab_fonds_attente'),
+      corpsHtml: corpsFondsCollab(titreBeat, montantEuros),
+      cta: { texte: 'Configurer mon compte Stripe', lien: `${APP_URL}/inscription` },
+    }),
+  })
+}
+
+export async function envoyerRappelFonds({
+  to,
+  titreBeat,
+  montantEuros,
+  joursRestants,
+  beatmakerId,
+}: {
+  to: string
+  titreBeat: string
+  montantEuros: string
+  joursRestants: number
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('collab_rappel_fonds')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_collab_rappel_fonds',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_rappel_fonds,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_rappel_fonds,
+      intro: intro || introDefautPlateforme('collab_rappel_fonds'),
+      corpsHtml: corpsRappelFondsCollab(titreBeat, montantEuros, joursRestants),
+      cta: { texte: 'Configurer mon compte Stripe', lien: `${APP_URL}/inscription` },
+    }),
+  })
+}
+
+export async function envoyerConfirmationExpiration({
+  to,
+  titreBeat,
+  montantEuros,
+  beatmakerId,
+}: {
+  to: string
+  titreBeat: string
+  montantEuros: string
+  beatmakerId: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('collab_expiration')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_collab_expiration',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_expiration,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_expiration,
+      intro: intro || introDefautPlateforme('collab_expiration'),
+      corpsHtml: corpsFondsCollab(titreBeat, montantEuros, 'Montant reversé'),
+    }),
+  })
+}
+
 // ── Aperçu (page réglages admin) — mêmes titre/intro par défaut que
 // l'envoi réel, données d'exemple à la place des vraies dates/prix. Ne
 // passe jamais par envoyerEmailUnique (pas d'envoi, pas de log).
 const CORPS_EXEMPLE_PLATEFORME = corpsAbonnementPlateforme('mensuel', 49.99, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString())
+const CORPS_EXEMPLE_INVITATION = corpsInvitationCollab('Jake B', 'Midnight Drive', 30)
+const CORPS_EXEMPLE_FONDS = corpsFondsCollab('Midnight Drive', '45.00')
+const CORPS_EXEMPLE_RAPPEL = corpsRappelFondsCollab('Midnight Drive', '45.00', 10)
+const CORPS_EXEMPLE_EXPIRATION = corpsFondsCollab('Midnight Drive', '45.00', 'Montant reversé')
 
 export async function genererApercuTransactionnelPlateforme(
   type: TypeTemplatePlateforme,
@@ -590,13 +659,17 @@ export async function genererApercuTransactionnelPlateforme(
   const titre = titreDraft.trim() || TITRE_DEFAUT_PLATEFORME[type]
   const intro = introDraft.trim() || introDefautPlateforme(type)
 
-  const parType: Record<TypeTemplatePlateforme, { corpsHtml: string; cta: { texte: string; lien: string } }> = {
+  const parType: Record<TypeTemplatePlateforme, { corpsHtml: string; cta?: { texte: string; lien: string } }> = {
     confirmation_email: { corpsHtml: '', cta: { texte: 'Confirmer mon adresse email', lien: '#' } },
     bienvenue: { corpsHtml: '', cta: { texte: 'Accéder à mon dashboard', lien: '#' } },
     confirmation_essai: { corpsHtml: CORPS_EXEMPLE_PLATEFORME, cta: { texte: 'Gérer mon abonnement', lien: '#' } },
     rappel_fin_essai: { corpsHtml: CORPS_EXEMPLE_PLATEFORME, cta: { texte: 'Gérer mon abonnement', lien: '#' } },
     paiement_echoue: { corpsHtml: '', cta: { texte: 'Mettre à jour ma carte', lien: '#' } },
     annulation: { corpsHtml: '', cta: { texte: 'Me réabonner', lien: '#' } },
+    collab_invitation: { corpsHtml: CORPS_EXEMPLE_INVITATION, cta: { texte: 'Créer mon compte', lien: '#' } },
+    collab_fonds_attente: { corpsHtml: CORPS_EXEMPLE_FONDS, cta: { texte: 'Configurer mon compte Stripe', lien: '#' } },
+    collab_rappel_fonds: { corpsHtml: CORPS_EXEMPLE_RAPPEL, cta: { texte: 'Configurer mon compte Stripe', lien: '#' } },
+    collab_expiration: { corpsHtml: CORPS_EXEMPLE_EXPIRATION },
   }
 
   return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })

@@ -82,12 +82,12 @@ export async function GET(request: Request) {
     }
 
     // Email de clôture au collab non inscrit
-    envoyerConfirmationExpiration({
+    await envoyerConfirmationExpiration({
       to: sp.email_invite,
       titreBeat,
       montantEuros,
       beatmakerId: commande.beatmaker_id,
-    }).catch(() => {})
+    })
 
     reversals++
   }
@@ -111,13 +111,13 @@ export async function GET(request: Request) {
   for (const sp of (splits50 ?? []) as unknown as RappelSplit[]) {
     const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
     if (!sp.commandes) continue
-    envoyerRappelFonds({
+    await envoyerRappelFonds({
       to: sp.email_invite,
       titreBeat,
       montantEuros: (sp.montant / 100).toFixed(2),
       joursRestants: 10,
       beatmakerId: sp.commandes.beatmaker_id,
-    }).catch(() => {})
+    })
     rappels50++
   }
 
@@ -133,13 +133,13 @@ export async function GET(request: Request) {
   for (const sp of (splits30 ?? []) as unknown as RappelSplit[]) {
     const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
     if (!sp.commandes) continue
-    envoyerRappelFonds({
+    await envoyerRappelFonds({
       to: sp.email_invite,
       titreBeat,
       montantEuros: (sp.montant / 100).toFixed(2),
       joursRestants: 30,
       beatmakerId: sp.commandes.beatmaker_id,
-    }).catch(() => {})
+    })
     rappels30++
   }
 

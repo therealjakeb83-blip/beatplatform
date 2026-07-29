@@ -57,6 +57,34 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     description: "Envoyé à l'annulation effective de l'abonnement plateforme.",
     declencheur: 'Déclencheur : customer.subscription.deleted',
   },
+  {
+    type: 'collab_invitation',
+    nom: 'Invitation à collaborer',
+    titrePlaceholder: 'Tu es invité à collaborer sur un beat',
+    description: "Envoyé à un collaborateur (email_invite) quand un beat avec split est publié.",
+    declencheur: 'Déclencheur : création/publication d\'un beat avec collaborateur non inscrit',
+  },
+  {
+    type: 'collab_fonds_attente',
+    nom: 'Fonds en attente',
+    titrePlaceholder: "Des fonds t'attendent",
+    description: "Envoyé quand un beat avec collaborateur non inscrit se vend.",
+    declencheur: 'Déclencheur : webhook Stripe checkout.session.completed',
+  },
+  {
+    type: 'collab_rappel_fonds',
+    nom: 'Rappel fonds en attente',
+    titrePlaceholder: 'Rappel — des fonds arrivent à expiration',
+    description: "Rappels à J+30 et J+50 avant reversement des fonds non réclamés (J+60).",
+    declencheur: 'Déclencheur : cron quotidien /api/cron/splits-expiration',
+  },
+  {
+    type: 'collab_expiration',
+    nom: 'Fonds expirés',
+    titrePlaceholder: 'Tes fonds en attente ont expiré',
+    description: "Envoyé au collaborateur quand ses fonds non réclamés sont reversés à l'autre beatmaker (J+60).",
+    declencheur: 'Déclencheur : cron quotidien /api/cron/splits-expiration',
+  },
 ]
 
 export default function MailsPlateformeClient({ templates, sauvegarderTemplate, genererApercu }: Props) {

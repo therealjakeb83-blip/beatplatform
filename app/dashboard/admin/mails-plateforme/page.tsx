@@ -5,7 +5,10 @@ import LogsPlateformeClient, { type LogPlateformeRow } from './_components/LogsP
 import type { TypeTemplatePlateforme } from '@/lib/emails'
 import Link from 'next/link'
 
-const TYPES: TypeTemplatePlateforme[] = ['confirmation_email', 'bienvenue', 'confirmation_essai', 'rappel_fin_essai', 'paiement_echoue', 'annulation']
+const TYPES: TypeTemplatePlateforme[] = [
+  'confirmation_email', 'bienvenue', 'confirmation_essai', 'rappel_fin_essai', 'paiement_echoue', 'annulation',
+  'collab_invitation', 'collab_fonds_attente', 'collab_rappel_fonds', 'collab_expiration',
+]
 
 const PAGE_SIZE = 50
 

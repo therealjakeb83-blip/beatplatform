@@ -990,7 +990,7 @@ async function distribuerSplitsArticle({
       })
       if (split.email_invite) {
         const montantEuros = (montantCents / 100).toFixed(2)
-        envoyerFondsEnAttente({ to: split.email_invite, titreBeat, montantEuros, beatmakerId }).catch(() => {})
+        await envoyerFondsEnAttente({ to: split.email_invite, titreBeat, montantEuros, beatmakerId })
       }
     }
   }

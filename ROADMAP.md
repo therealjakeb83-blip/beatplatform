@@ -85,10 +85,12 @@
 ## Checklist correctifs audit 2026-07-29 — bucket "à corriger maintenant"
 
 > 10 points décidés avec Jake le 2026-07-29 (détail complet : mémoire `project_audit_complet_2026_07_29`), à traiter un par un dans une prochaine session dédiée. Commit + push après chaque correctif individuel (pas un seul gros commit à la fin). Cocher au fur et à mesure.
+>
+> **10/10 traités et poussés (session suivante).** `tsc`/`eslint` propres après chaque correctif (aucune nouvelle erreur, dette de lint pré-existante non touchée). **2 migrations SQL à exécuter dans Supabase avant de tester** : `supabase/admin_role_field.sql` (F2 — colonne `role`, migre le compte admin actuel via son slug `jakeb-test`), `supabase/campagnes_statut_echouee.sql` (F1 — nouveau statut `echouee`), `supabase/mails_plateforme_collab.sql` (F3 — 4 nouveaux types de templates). F3 (le plus gros morceau) a migré les 4 emails de collab vers le système "Mails My Producer" existant (branding HTML cohérent, titre/intro éditables par l'admin, apparition automatique dans l'onglet Logs) plutôt que de juste corriger le `await` manquant — nouvelle section dans `/dashboard/admin/mails-plateforme`.
 
 - [x] **F1** — Campagne email bloquée "envoyée" à 0 destinataire (`lib/mailing.ts:342-346`) → passer en "échouée" si aucun email n'est parti, permettre renvoi/suppression
 - [x] **F2** — Champ `role`/`is_admin` dédié sur `beatmakers`, déconnecté du `slug` (`lib/admin.ts`, `app/api/profil/modifier/route.ts`) → norme SaaS, interdire aussi le changement de rôle via le formulaire de profil normal
-- [ ] **F3** — Migrer les emails de collab (`envoyerFondsEnAttente`, `envoyerRappelFonds`, `envoyerConfirmationExpiration`, `envoyerInvitationCollab`) vers le système "Mails My Producer" (`templates_plateforme` + apparition dans l'onglet Logs admin) — corrige au passage le bug fire-and-forget (`app/api/cron/splits-expiration/route.ts`, `app/api/stripe/webhook/route.ts:993`)
+- [x] **F3** — Migrer les emails de collab (`envoyerFondsEnAttente`, `envoyerRappelFonds`, `envoyerConfirmationExpiration`, `envoyerInvitationCollab`) vers le système "Mails My Producer" (`templates_plateforme` + apparition dans l'onglet Logs admin) — corrige au passage le bug fire-and-forget (`app/api/cron/splits-expiration/route.ts`, `app/api/stripe/webhook/route.ts:993`)
 - [x] **F4** — Message d'erreur + log sur l'échec de transfert Stripe (`app/api/stripe/splits/debloquer/route.ts:59-61`)
 - [x] **F5** — Lien mailto `contact@jakebmusic.com` (temporaire) sur `/dashboard/suspendu`
 - [x] **F6** — Message d'erreur si l'upload de logo échoue (`app/dashboard/profil/ProfilForm.tsx:52-62`) — le rognage/crop est un backlog séparé, pas dans ce lot
