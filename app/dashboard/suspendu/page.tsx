@@ -21,7 +21,13 @@ export default async function DashboardSuspenduPage() {
         {beatmaker.suspendu_raison && (
           <p className="text-sm text-gray-500 mb-4">Motif : {beatmaker.suspendu_raison}</p>
         )}
-        <p className="text-sm text-gray-500 mb-8">Contacte-nous pour en savoir plus ou débloquer ton compte.</p>
+        <p className="text-sm text-gray-500 mb-8">
+          Contacte-nous pour en savoir plus ou débloquer ton compte à{' '}
+          <a href="mailto:contact@jakebmusic.com" className="underline hover:text-white">
+            contact@jakebmusic.com
+          </a>
+          .
+        </p>
         <DeconnexionButton />
       </div>
     </main>
