@@ -242,6 +242,7 @@ body:has(.shop-root) { overflow-x: clip; }
 .shop-root[data-accent-preset="blancNoir"] .shop-beat-fallback { background: var(--surface-2); color: var(--text-3); }
 .shop-root[data-accent-preset="blancNoir"] .shop-beat-cover { box-shadow: var(--card-shadow); }
 .shop-root[data-accent-preset="blancNoir"] a.shop-style-card { border: 1px solid rgba(10,12,19,.05); box-shadow: 0 1px 2px rgba(10,12,19,.05); }
+.shop-root[data-accent-preset="blancNoir"] a.shop-instrument-card { border: 1px solid rgba(10,12,19,.05); box-shadow: 0 1px 2px rgba(10,12,19,.05); }
 .shop-root[data-accent-preset="blancNoir"] .shop-artist-card { color: var(--text); }
 .shop-root[data-accent-preset="blancNoir"] .shop-artist-card-photo { border-color: rgba(10,12,19,.18); }
 .shop-root[data-accent-preset="blancNoir"] .shop-media-card { background: var(--surface-2); }
@@ -1229,9 +1230,59 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
 .shop-media-card::after { content: ""; position: absolute; inset: 0; background: var(--scrim-media); }
 .shop-media-card-label { position: relative; z-index: 2; padding: var(--sp-4); color: #fff; }
 
-.shop-media-card--instrument { flex: 0 0 296px; height: 120px; }
-.shop-media-card--instrument .shop-media-card-label strong { font-size: 15px; font-weight: 700; display: block; }
-.shop-media-card--instrument .shop-media-card-label small { font-size: var(--fs-count); color: rgba(255,255,255,.55); }
+/* Instruments — dégradé --g1/--g2 façon shop-style-card, icône blanche
+   calée à droite avec fondu diagonal (paquet design "instruments certifiés",
+   2026-07-29). Remplace l'ancien pattern photo+scrim, jamais alimenté en
+   images (image_url systématiquement null). */
+a.shop-instrument-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 296px;
+  height: 120px;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--g1), var(--g2));
+  color: var(--style-card-text);
+  user-select: none;
+  transition: transform .18s;
+}
+@media (hover: hover) {
+  a.shop-instrument-card:hover { transform: translateY(-2px); }
+}
+a.shop-instrument-card:focus { outline: none; }
+a.shop-instrument-card:focus-visible { box-shadow: var(--shadow-style-hover); }
+
+.shop-instrument-card__art {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  height: 84%;
+  width: auto;
+  opacity: .9;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(100deg, transparent 12%, #000 52%);
+          mask-image: linear-gradient(100deg, transparent 12%, #000 52%);
+}
+/* Icônes fournies en silhouette blanche : sur le dégradé clair du thème
+   Blanche & Noire elles deviendraient invisibles — inversion pour rester
+   lisibles (la transparence du PNG n'est pas affectée par invert()). */
+.shop-root[data-accent-preset="blancNoir"] .shop-instrument-card__art { filter: invert(1); }
+
+.shop-instrument-card__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 14px;
+  max-width: 56%;
+  pointer-events: none;
+}
+.shop-instrument-card__body strong { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; line-height: 1.15; }
+.shop-instrument-card__body small { font-size: var(--fs-count); opacity: .85; }
 
 .shop-media-card--ambiance { flex: 0 0 620px; height: 150px; }
 .shop-media-card--ambiance .shop-media-card-label { display: flex; align-items: baseline; gap: 10px; }
@@ -1246,7 +1297,7 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   a.shop-style-card { flex-basis: 210px; }
   a.shop-artist-card { flex-basis: 90px; }
   .shop-artist-card-photo { width: 80px; height: 80px; }
-  .shop-media-card--instrument { flex-basis: 230px; height: 104px; }
+  a.shop-instrument-card { flex-basis: 230px; height: 104px; }
   .shop-media-card--ambiance { flex-basis: 300px; height: 120px; }
 }
 

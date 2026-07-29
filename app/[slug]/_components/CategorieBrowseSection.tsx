@@ -68,17 +68,15 @@ export default function CategorieBrowseSection({
         </div>
       )}
 
-      {/* Instruments — bandeau 296×120, photo + scrim bas. */}
+      {/* Instruments — dégradé --g1/--g2 + icône blanche calée à droite. */}
       {type === 'instruments' && (
         <div className="shop-row" ref={rowRef} data-hscroll>
           {cartes.map(carte => (
-            <Link key={carte.nom} href={href(carte.nom)} className="shop-media-card shop-media-card--instrument">
-              {carte.imageUrl ? (
-                <img src={carte.imageUrl} alt={carte.nom} draggable={false} />
-              ) : (
-                <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
+            <Link key={carte.nom} href={href(carte.nom)} className="shop-instrument-card">
+              {carte.imageUrl && (
+                <img className="shop-instrument-card__art" src={carte.imageUrl} alt="" aria-hidden="true" draggable={false} />
               )}
-              <div className="shop-media-card-label">
+              <div className="shop-instrument-card__body">
                 <strong>{carte.nom}</strong>
                 <small>{carte.count} titre{carte.count !== 1 ? 's' : ''}</small>
               </div>
