@@ -33,11 +33,13 @@ const STATUT_BADGE: Record<CampagneRow['statut'], string> = {
   brouillon: 'bg-gray-700 text-gray-300',
   planifiee: 'bg-amber-500/20 text-amber-400',
   envoyee:   'bg-green-500/20 text-green-400',
+  echouee:   'bg-red-500/20 text-red-400',
 }
 const STATUT_LABEL: Record<CampagneRow['statut'], string> = {
   brouillon: 'Brouillon',
   planifiee: 'Planifiée',
   envoyee:   'Envoyée',
+  echouee:   'Échouée',
 }
 
 export default function CampagnesClient({
@@ -50,6 +52,7 @@ export default function CampagnesClient({
   const envoyees = campagnes.filter(c => c.statut === 'envoyee')
   const planifiees = campagnes.filter(c => c.statut === 'planifiee')
   const brouillons = campagnes.filter(c => c.statut === 'brouillon')
+  const echouees = campagnes.filter(c => c.statut === 'echouee')
 
   const tauxMoyen = (champ: 'ouvertures' | 'clics' | 'conversions') => {
     const avecDest = envoyees.filter(c => c.destinataires > 0)
@@ -157,6 +160,37 @@ export default function CampagnesClient({
                         onClick={e => { if (!confirm(`Envoyer "${c.nom}" à ${c.destinataires || '…'} destinataires maintenant ?`)) e.preventDefault() }}
                       >
                         Envoyer maintenant
+                      </button>
+                    </form>
+                  </div>
+                </CarteCampagne>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Échouées */}
+        {echouees.length > 0 && (
+          <Section titre="Échouées">
+            <div className="grid grid-cols-2 gap-3">
+              {echouees.map(c => (
+                <CarteCampagne key={c.id} c={c} supprimerCampagne={supprimerCampagne} dupliquerCampagne={dupliquerCampagne}>
+                  <p className="text-xs text-red-400 mt-2">Aucun email n&apos;est parti — vérifie le ciblage et la config d&apos;envoi avant de réessayer.</p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Link
+                      href={`/dashboard/business/marketing/campagnes/${c.id}/editer`}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium transition-colors"
+                    >
+                      Éditer le contenu
+                    </Link>
+                    <form action={envoyerMaintenant}>
+                      <input type="hidden" name="id" value={c.id} />
+                      <button
+                        type="submit"
+                        className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
+                        onClick={e => { if (!confirm(`Réessayer d'envoyer "${c.nom}" maintenant ?`)) e.preventDefault() }}
+                      >
+                        Réessayer l&apos;envoi
                       </button>
                     </form>
                   </div>

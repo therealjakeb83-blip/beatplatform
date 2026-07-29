@@ -86,7 +86,7 @@
 
 > 10 points décidés avec Jake le 2026-07-29 (détail complet : mémoire `project_audit_complet_2026_07_29`), à traiter un par un dans une prochaine session dédiée. Commit + push après chaque correctif individuel (pas un seul gros commit à la fin). Cocher au fur et à mesure.
 
-- [ ] **F1** — Campagne email bloquée "envoyée" à 0 destinataire (`lib/mailing.ts:342-346`) → passer en "échouée" si aucun email n'est parti, permettre renvoi/suppression
+- [x] **F1** — Campagne email bloquée "envoyée" à 0 destinataire (`lib/mailing.ts:342-346`) → passer en "échouée" si aucun email n'est parti, permettre renvoi/suppression
 - [x] **F2** — Champ `role`/`is_admin` dédié sur `beatmakers`, déconnecté du `slug` (`lib/admin.ts`, `app/api/profil/modifier/route.ts`) → norme SaaS, interdire aussi le changement de rôle via le formulaire de profil normal
 - [ ] **F3** — Migrer les emails de collab (`envoyerFondsEnAttente`, `envoyerRappelFonds`, `envoyerConfirmationExpiration`, `envoyerInvitationCollab`) vers le système "Mails My Producer" (`templates_plateforme` + apparition dans l'onglet Logs admin) — corrige au passage le bug fire-and-forget (`app/api/cron/splits-expiration/route.ts`, `app/api/stripe/webhook/route.ts:993`)
 - [x] **F4** — Message d'erreur + log sur l'échec de transfert Stripe (`app/api/stripe/splits/debloquer/route.ts:59-61`)

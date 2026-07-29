@@ -339,6 +339,14 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
     }
   }
 
+  // Si aucun email n'est réellement parti (Resend down, domaine invalide,
+  // etc.), la campagne ne doit pas rester bloquée "envoyée" pour toujours —
+  // "echouee" reste supprimable/renvoyable (mêmes conditions que brouillon).
+  if (envoyes === 0) {
+    await admin.from('campagnes').update({ statut: 'echouee' }).eq('id', campagneId)
+    return { envoyes, echecs }
+  }
+
   await admin.from('campagnes').update({
     statut: 'envoyee',
     sent_at: new Date().toISOString(),

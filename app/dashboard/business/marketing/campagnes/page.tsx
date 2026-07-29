@@ -12,7 +12,7 @@ export type CampagneRow = {
   id: string
   nom: string
   objet: string | null
-  statut: 'brouillon' | 'planifiee' | 'envoyee'
+  statut: 'brouillon' | 'planifiee' | 'envoyee' | 'echouee'
   scheduled_at: string | null
   sent_at: string | null
   destinataires: number
