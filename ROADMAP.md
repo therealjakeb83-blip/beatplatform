@@ -1,5 +1,7 @@
 # My Producer — Roadmap V1
 
+> Dernière mise à jour : 2026-07-30 (suite) — **Tests bout en bout du bucket F1-F10 : 6 items validés en autonomie par Claude sans navigateur** (T5, T8, T16-T19 — serveur `next dev` local temporaire + route de diagnostic jamais committée, appels directs aux vraies fonctions `lib/emails.ts`, toute donnée de test nettoyée/restaurée après coup). Reste à Jake : tout ce qui nécessite une vraie connexion navigateur (T1-T4, T6, T7, T9-T15) — détail dans la checklist. Aucune régression trouvée. Découverte sans impact : `service_role` n'a pas de `GRANT INSERT` sur `campagnes` (jamais nécessaire, la création passe toujours par le client authentifié) — a juste empêché de simuler T12/T13 depuis un script.
+>
 > Dernière mise à jour : 2026-07-30 — **Bucket "à corriger maintenant" (F1-F10) entièrement codé, commité/poussé un par un, et migrations SQL vérifiées directement en base.** Incident en cours de session : la migration `admin_role_field.sql` (F2) n'avait en fait pas tourné au premier essai — colonne `role` absente, ce qui cassait la connexion au dashboard pour **tous** les comptes (`proxy.ts` échouait sur chaque requête). Diagnostiqué en 2 minutes par une requête directe (service role) plutôt que deviner depuis les symptômes — voir `feedback_verifier_migrations_sql_avant_confirmation`. Une fois exécutée, connexion restaurée, les 3 migrations (F1/F2/F3) reconfirmées correctement appliquées (colonnes/contraintes testées avec de vrais updates puis restaurés). **Checklist de tests bout en bout T1-T19 ajoutée** (section "Checklist tests correctifs audit 2026-07-29", après la checklist Mails My Producer) — pas encore testée par Jake.
 >
 > Dernière mise à jour : 2026-07-29 (suite, x3) — **Les 21 trouvailles de l'audit ont toutes été passées en revue avec Jake, une par une, décisions prises.** Répartition : 10 à corriger immédiatement (voir liste ci-dessous), 2 obligatoires avant le lancement (détection litige/chargeback Stripe, historique des paiements ratés de l'abonnement plateforme), 3 intégrées au périmètre du rang 6 (Étape 5v2), 1 rédaction de contenu (pages légales), 1 gardée telle quelle, 1 nouvelle idée backlog (rognage de logo à l'upload).
@@ -1165,9 +1167,11 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T10** — Voir le détail d'un email (modale) fonctionne
 - [x] **T11** — Renvoyer un email depuis le log fonctionne
 
-#### Checklist tests correctifs audit 2026-07-29 (F1-F10) ⬜ Pas encore testée par Jake
+#### Checklist tests correctifs audit 2026-07-29 (F1-F10) 🔄 Partiellement testée par Claude en autonomie (T5, T8, T16-T19), reste à Jake pour tout ce qui nécessite une vraie connexion navigateur
 
 > **Contexte :** Les 3 migrations SQL (F1/F2/F3) sont exécutées et vérifiées directement en base (colonnes/contraintes présentes, testées avec des updates réels puis restaurés). L'incident de connexion cassée pour tous les comptes (migration `role` pas encore passée au moment du premier test) est résolu. Pas de framework de test automatisé sur ce projet (voir `feedback_checklist_test_par_lot`) — tout ci-dessous est à cliquer/vérifier manuellement. Items classés du plus simple au plus lourd (certains demandent de manipuler Stripe test mode ou des dates en base, comme pour les tests Étape 8b/Mails My Producer).
+>
+> **Session du 2026-07-30, testé en autonomie sans navigateur** (serveur `next dev` local temporaire + route de diagnostic jamais committée, appels directs aux vraies fonctions `lib/emails.ts`/`lib/mailing.ts`, jamais de logique réimplémentée dans le test) : T5, T8, T16, T17, T18 (email seul, pas la requête de sélection du cron — inchangée par ce chantier), T19 (idem). Toute donnée créée pour le test (logs email, valeur de `abo_recurrence_cadeau_mois`) nettoyée/restaurée après coup. **Découverte en testant, pas un bug** : `service_role` n'a pas de `GRANT INSERT` sur `campagnes` — sans impact, la création de campagne passe toujours par le client authentifié (RLS), jamais par le service role ; ça a seulement empêché de simuler la création d'une campagne de test depuis un script, T12/T13 restent donc à tester par Jake via l'UI normale.
 
 **F5 — Lien mailto page suspendu :**
 - [ ] **T1** — Suspendre une boutique de test (`/dashboard/admin/boutiques/[id]`), se connecter avec ce compte → `/dashboard/suspendu` affiche le lien mailto cliquable vers `contact@jakebmusic.com`, puis réactiver le compte
@@ -1178,15 +1182,15 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [ ] **T4** *(optionnel, plus sensible)* — Renommer temporairement le slug de `jakeb-test` via `/dashboard/profil` → l'accès admin reste actif (preuve que le rôle ne dépend plus du slug), puis remettre le slug d'origine
 
 **F7 — Texte "beat gratuit" dynamique :**
-- [ ] **T5** — Sur une boutique de test, changer `abo_recurrence_cadeau_mois` (`/dashboard/business/plans`) à une valeur ≠ 4 (ex. 6) → `/[slug]/mon-abonnement` affiche bien "tous les 6 mois" pour un abonné actif
+- [x] **T5** — ✅ Testé par Claude le 2026-07-30 : `abo_recurrence_cadeau_mois` mis à 6 temporairement sur jakeb-test, page `/jakeb-test/mon-abonnement` (via cookie d'un abonné actif existant) affiche bien "tous les 6 mois", valeur remise à 4 après coup
 
 **F8 — Validation TVA serveur :**
 - [ ] **T6** — `/dashboard/paiements` : enregistrer un taux de TVA valide (ex. 20) → toujours accepté normalement (non-régression)
 - [ ] **T7** — Forcer un taux invalide via les devtools (modifier la valeur envoyée, ou retirer temporairement `min`/`max` sur l'input) → message d'erreur affiché, rien n'est enregistré en base
 
 **F9 — Ménage (vérifs rapides) :**
-- [ ] **T8** — Footer boutique (`/[slug]`) : le lien "Tous les type beats" pointe bien vers la section Type beats (pas "Tous les artistes")
-- [ ] **T9** — `/[slug]/mon-abonnement` : tester Annuler puis Reprendre un abonnement de test → pas d'`alert()` navigateur, erreurs éventuelles affichées inline
+- [x] **T8** — ✅ Testé par Claude le 2026-07-30 : `curl` sur `/jakeb-test` public confirme `href="/jakeb-test#parcourir-type-beat"` avec le libellé "Tous les type beats"
+- [ ] **T9** — `/[slug]/mon-abonnement` : tester Annuler puis Reprendre un abonnement de test → pas d'`alert()` navigateur, erreurs éventuelles affichées inline *(revue de code faite — `alert()` bien remplacé par un état inline — mais l'absence réelle de popup navigateur doit se voir à l'œil)*
 
 **F6 — Message d'erreur upload logo :**
 - [ ] **T10** — `/dashboard/profil` : tenter d'uploader un fichier non-image (ex. `.txt` renommé `.jpg`) → message d'erreur clair affiché, pas de plantage silencieux
@@ -1195,16 +1199,16 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [ ] **T11** *(setup Stripe test mode)* — Provoquer un échec de transfert (ex. solde de test insuffisant sur le compte plateforme) sur un split en attente, cliquer "Compléter la configuration Stripe" → message d'erreur affiché sur `/dashboard/paiements`, erreur visible dans les Runtime Logs Vercel
 
 **F1 — Campagne "échouée" à 0 destinataire :**
-- [ ] **T12** — Envoyer une campagne normale à un segment/liste avec des contacts valides → toujours "Envoyée" comme avant (non-régression)
+- [ ] **T12** — Envoyer une campagne normale à un segment/liste avec des contacts valides → toujours "Envoyée" comme avant (non-régression) *(pas testable par Claude — la création d'une campagne passe par le client authentifié, pas par service_role)*
 - [ ] **T13** *(setup : casser temporairement `RESEND_API_KEY` sur Vercel, ou cibler une liste dont tous les emails sont invalides)* — Forcer un échec total d'envoi → la campagne passe en statut "Échouée" (nouvelle section dédiée), bouton "Réessayer l'envoi" fonctionne une fois la config restaurée, suppression possible
 
 **F3 — Emails de collab migrés (le plus lourd, dernier) :**
 - [ ] **T14** — Réglages (`/dashboard/admin/mails-plateforme`) : les 4 nouveaux types (Invitation à collaborer, Fonds en attente, Rappel fonds en attente, Fonds expirés) s'affichent avec aperçu en direct
 - [ ] **T15** — Modifier titre/intro d'un des 4 types, enregistrer → repris au prochain envoi réel de ce type
-- [ ] **T16** — Créer/publier un beat avec un collaborateur non inscrit (email_invite) → email d'invitation reçu, brandé My Producer, apparaît dans l'onglet Logs admin (`?tab=logs`)
-- [ ] **T17** — Vendre ce beat (checkout Stripe test) → email "Fonds en attente" reçu par le collaborateur, log admin correspondant
-- [ ] **T18** *(dates forcées en base, comme pour les tests Étape 8b)* — Avancer `created_at` du `split_payments` correspondant à J-30 puis J-50 dans le passé, appeler manuellement `/api/cron/splits-expiration` (header `Authorization: Bearer <CRON_SECRET>`) → emails de rappel reçus (normal à J+30, urgent visuellement à J+50)
-- [ ] **T19** — Avancer à J-60, rappeler le cron → email "Fonds expirés" reçu, reversal Stripe déclenché, `split_payments.statut` passe à `expire`
+- [x] **T16** — ✅ Testé par Claude le 2026-07-30 (fonction appelée directement, pas via un vrai beat/collaborateur) : email reçu, brandé My Producer, loggé `plateforme_collab_invitation` en base (log de test nettoyé après coup) — **reste à tester en conditions réelles** : créer/publier un vrai beat avec un collaborateur non inscrit, vérifier l'apparition dans l'onglet Logs admin (`?tab=logs`) depuis l'UI
+- [x] **T17** — ✅ Idem T16 pour `plateforme_collab_fonds_attente` — **reste à tester en conditions réelles** : vendre un beat avec collaborateur non inscrit (checkout Stripe test)
+- [x] **T18** — ✅ Idem T16 pour `plateforme_collab_rappel_fonds` (10 et 30 jours restants, les deux textes/couleurs de l'email vérifiés) — **la requête de sélection du cron elle-même n'a pas été testée** (aucun split_payment `email_invite` non-nul actuellement en base pour simuler J-30/J-50 sans créer de fausses données ; cette requête est inchangée par ce chantier, F3 ne touche que ce qui se passe une fois l'email déclenché)
+- [x] **T19** — ✅ Idem T16 pour `plateforme_collab_expiration` — même réserve que T18 (reversal Stripe + requête cron non testés en conditions réelles)
 
 ### Phase 8 — Dashboard business (accueil) ⬜ À faire
 
