@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { chargerOptionsCategories } from '@/lib/categories'
 import ModifierBeatClient from './ModifierBeatClient'
@@ -19,7 +20,13 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
 
   if (!beat) notFound()
 
-  const { data: splitsRaw } = await supabase
+  // Client admin nécessaire ici : RLS (beatmakers_select_own) empêche de lire
+  // le nom_artiste d'un AUTRE beatmaker (le collaborateur) via le client
+  // authentifié normal — la jointure revenait vide silencieusement, laissant
+  // le nom du collaborateur blanc dans la liste. Sûr : le beat lui-même est
+  // déjà vérifié comme appartenant à `user.id` juste au-dessus.
+  const admin = createAdminClient()
+  const { data: splitsRaw } = await admin
     .from('beat_splits')
     .select('id, beatmaker_id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
     .eq('beat_id', id)
