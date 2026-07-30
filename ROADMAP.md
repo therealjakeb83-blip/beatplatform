@@ -1167,30 +1167,30 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T10** — Voir le détail d'un email (modale) fonctionne
 - [x] **T11** — Renvoyer un email depuis le log fonctionne
 
-#### Checklist tests correctifs audit 2026-07-29 (F1-F10) 🔄 Partiellement testée par Claude en autonomie (T5, T8, T16-T19), reste à Jake pour tout ce qui nécessite une vraie connexion navigateur
+#### Checklist tests correctifs audit 2026-07-29 (F1-F10) 🔄 T1-T9, T16-T19 validés (Claude + Jake), reste T10-T15
 
 > **Contexte :** Les 3 migrations SQL (F1/F2/F3) sont exécutées et vérifiées directement en base (colonnes/contraintes présentes, testées avec des updates réels puis restaurés). L'incident de connexion cassée pour tous les comptes (migration `role` pas encore passée au moment du premier test) est résolu. Pas de framework de test automatisé sur ce projet (voir `feedback_checklist_test_par_lot`) — tout ci-dessous est à cliquer/vérifier manuellement. Items classés du plus simple au plus lourd (certains demandent de manipuler Stripe test mode ou des dates en base, comme pour les tests Étape 8b/Mails My Producer).
 >
 > **Session du 2026-07-30, testé en autonomie sans navigateur** (serveur `next dev` local temporaire + route de diagnostic jamais committée, appels directs aux vraies fonctions `lib/emails.ts`/`lib/mailing.ts`, jamais de logique réimplémentée dans le test) : T5, T8, T16, T17, T18 (email seul, pas la requête de sélection du cron — inchangée par ce chantier), T19 (idem). Toute donnée créée pour le test (logs email, valeur de `abo_recurrence_cadeau_mois`) nettoyée/restaurée après coup. **Découverte en testant, pas un bug** : `service_role` n'a pas de `GRANT INSERT` sur `campagnes` — sans impact, la création de campagne passe toujours par le client authentifié (RLS), jamais par le service role ; ça a seulement empêché de simuler la création d'une campagne de test depuis un script, T12/T13 restent donc à tester par Jake via l'UI normale.
 
 **F5 — Lien mailto page suspendu :**
-- [ ] **T1** — Suspendre une boutique de test (`/dashboard/admin/boutiques/[id]`), se connecter avec ce compte → `/dashboard/suspendu` affiche le lien mailto cliquable vers `contact@jakebmusic.com`, puis réactiver le compte
+- [x] **T1** — ✅ Validé par Jake le 2026-07-30 : boutique de test "Jake 2" (`jake-2-03930f6d`) suspendue, motif + lien mailto vers `contact@jakebmusic.com` bien visibles et cliquables sur `/dashboard/suspendu`, réactivée ensuite
 
 **F2 — Rôle admin découplé du slug :**
-- [ ] **T2** — Connexion avec `jakeb-test` → accès normal à `/dashboard/admin/**` (régression de l'incident de connexion)
-- [ ] **T3** — Connexion avec un compte non-admin → `/dashboard/admin/**` inaccessible (redirect ou 403)
-- [ ] **T4** *(optionnel, plus sensible)* — Renommer temporairement le slug de `jakeb-test` via `/dashboard/profil` → l'accès admin reste actif (preuve que le rôle ne dépend plus du slug), puis remettre le slug d'origine
+- [x] **T2** — ✅ Validé par Jake le 2026-07-30 : session `jakeb-test` restée fonctionnelle sur `/dashboard/admin/**` tout au long des tests
+- [x] **T3** — ✅ Validé par Jake le 2026-07-30 : compte non-admin (`feedback.jakeb@gmail.com`) bloqué sur `/dashboard/admin`
+- [x] **T4** — ✅ Validé par Jake le 2026-07-30 : slug de `jakeb-test` renommé temporairement, accès admin resté actif (preuve que le rôle ne dépend plus du slug), slug remis d'origine
 
 **F7 — Texte "beat gratuit" dynamique :**
 - [x] **T5** — ✅ Testé par Claude le 2026-07-30 : `abo_recurrence_cadeau_mois` mis à 6 temporairement sur jakeb-test, page `/jakeb-test/mon-abonnement` (via cookie d'un abonné actif existant) affiche bien "tous les 6 mois", valeur remise à 4 après coup
 
 **F8 — Validation TVA serveur :**
-- [ ] **T6** — `/dashboard/paiements` : enregistrer un taux de TVA valide (ex. 20) → toujours accepté normalement (non-régression)
-- [ ] **T7** — Forcer un taux invalide via les devtools (modifier la valeur envoyée, ou retirer temporairement `min`/`max` sur l'input) → message d'erreur affiché, rien n'est enregistré en base
+- [x] **T6** — ✅ Validé par Jake le 2026-07-30 : taux valide (20) enregistré normalement sur `/dashboard/paiements`
+- [x] **T7** — ✅ Validé par Jake le 2026-07-30 : taux invalide (120) tapé directement dans le champ → message d'erreur rouge affiché, rien enregistré en base
 
 **F9 — Ménage (vérifs rapides) :**
 - [x] **T8** — ✅ Testé par Claude le 2026-07-30 : `curl` sur `/jakeb-test` public confirme `href="/jakeb-test#parcourir-type-beat"` avec le libellé "Tous les type beats"
-- [ ] **T9** — `/[slug]/mon-abonnement` : tester Annuler puis Reprendre un abonnement de test → pas d'`alert()` navigateur, erreurs éventuelles affichées inline *(revue de code faite — `alert()` bien remplacé par un état inline — mais l'absence réelle de popup navigateur doit se voir à l'œil)*
+- [x] **T9** — ✅ Validé par Jake le 2026-07-30 : abonnement de test annulé puis repris sur `/jakeb-test/mon-abonnement`, aucune popup navigateur, tout affiché inline
 
 **F6 — Message d'erreur upload logo :**
 - [ ] **T10** — `/dashboard/profil` : tenter d'uploader un fichier non-image (ex. `.txt` renommé `.jpg`) → message d'erreur clair affiché, pas de plantage silencieux
