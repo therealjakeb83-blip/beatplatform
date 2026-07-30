@@ -38,7 +38,7 @@ export async function POST() {
     return NextResponse.json({ erreur: 'Erreur lors de la lecture des paiements en attente.' }, { status: 500 })
   }
 
-  if (!pending?.length) return NextResponse.json({ debloques: 0 })
+  if (!pending?.length) return NextResponse.json({ debloques: [], echecs: [] })
 
   type PendingSplit = {
     id: string
@@ -47,7 +47,7 @@ export async function POST() {
     beat_splits: { beats: { titre: string } | null } | null
   }
 
-  let debloques = 0
+  const debloques: { beat: string; montant: number }[] = []
   const echecs: { beat: string; erreur: string }[] = []
 
   for (const sp of pending as unknown as PendingSplit[]) {
@@ -69,7 +69,7 @@ export async function POST() {
         .update({ statut: 'transfere', stripe_transfer_id: transfer.id })
         .eq('id', sp.id)
 
-      debloques++
+      debloques.push({ beat: titreBeat, montant: sp.montant / 100 })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur inconnue'
       console.error(`[splits/debloquer] Transfert échoué pour split_payments.id=${sp.id} (${titreBeat}):`, message)
