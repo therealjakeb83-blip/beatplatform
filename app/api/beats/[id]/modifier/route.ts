@@ -66,18 +66,38 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   await synchroniserCategoriesPersonnalisees(supabase, user.id, { styles, typeBeat: type_beat })
 
   if (collaborateurs) {
-    await supabase.from('beat_splits').delete().eq('beat_id', id)
-    if (collaborateurs.length > 0) {
-      await supabase.from('beat_splits').insert(
-        collaborateurs.map((c: { beatmaker_id?: string; email_invite?: string; pourcentage: number }) => ({
-          beat_id: id,
-          beatmaker_id: c.beatmaker_id || null,
-          email_invite: c.email_invite || null,
-          pourcentage: c.pourcentage,
-          statut: c.beatmaker_id ? 'actif' : 'en_attente',
-        }))
-      )
+    // Réconciliation par id plutôt que delete+recreate systématique : un
+    // split_payments.beat_split_id est relié avec "on delete set null"
+    // (etape10_split_payments.sql) — recréer la ligne à chaque sauvegarde du
+    // beat (même sans toucher aux collaborateurs) orphelinait silencieusement
+    // tout l'historique de paiements déjà reçus par le collaborateur, qui
+    // n'apparaissait alors plus dans /dashboard/business/collabs (bug trouvé
+    // en testant F4, audit 2026-07-29). On ne supprime désormais que les
+    // lignes réellement retirées, on met à jour celles qui existent déjà
+    // (même id conservé) et on n'insère que les nouvelles.
+    type CollabInput = { id?: string; beatmaker_id?: string; email_invite?: string; pourcentage: number }
+    const incoming = collaborateurs as CollabInput[]
+
+    const { data: existingRows } = await supabase.from('beat_splits').select('id').eq('beat_id', id)
+    const existingIds = new Set((existingRows ?? []).map(r => r.id))
+
+    const idsASupprimer = [...existingIds].filter(rid => !incoming.some(c => c.id === rid))
+    if (idsASupprimer.length) {
+      await supabase.from('beat_splits').delete().in('id', idsASupprimer)
     }
+
+    await Promise.all(incoming.map(c => {
+      const payload = {
+        beat_id: id,
+        beatmaker_id: c.beatmaker_id || null,
+        email_invite: c.email_invite || null,
+        pourcentage: c.pourcentage,
+        statut: c.beatmaker_id ? 'actif' : 'en_attente',
+      }
+      return c.id && existingIds.has(c.id)
+        ? supabase.from('beat_splits').update(payload).eq('id', c.id)
+        : supabase.from('beat_splits').insert(payload)
+    }))
   }
 
   if (licences_actives) {
