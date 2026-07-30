@@ -20,18 +20,31 @@ export async function POST() {
     return NextResponse.json({ erreur: 'Compte Stripe non connecté' }, { status: 400 })
   }
 
-  const { data: pending } = await admin
+  // `commandes` n'a plus de relation directe vers `beats` depuis le passage
+  // au panier multi-articles (Phase 2c, commande_lignes) — le titre du beat
+  // se récupère désormais via beat_split_id → beat_splits → beats. Bug trouvé
+  // en testant F4 (audit 2026-07-29) : l'ancienne requête (commandes(beats(titre)))
+  // faisait échouer toute la requête (relation inexistante), et comme l'erreur
+  // n'était pas vérifiée, la route traitait silencieusement ça comme "aucun
+  // paiement en attente" — plus aucun déblocage ne fonctionnait depuis le 2026-07-09.
+  const { data: pending, error: pendingError } = await admin
     .from('split_payments')
-    .select('id, montant, commandes(stripe_transfer_group, beats(titre))')
+    .select('id, montant, commandes(stripe_transfer_group), beat_splits(beats(titre))')
     .eq('beatmaker_id', user.id)
     .eq('statut', 'en_attente')
+
+  if (pendingError) {
+    console.error('[splits/debloquer] Erreur lecture split_payments en attente:', pendingError.message)
+    return NextResponse.json({ erreur: 'Erreur lors de la lecture des paiements en attente.' }, { status: 500 })
+  }
 
   if (!pending?.length) return NextResponse.json({ debloques: 0 })
 
   type PendingSplit = {
     id: string
     montant: number
-    commandes: { stripe_transfer_group: string | null; beats: { titre: string } | null } | null
+    commandes: { stripe_transfer_group: string | null } | null
+    beat_splits: { beats: { titre: string } | null } | null
   }
 
   let debloques = 0
@@ -39,7 +52,7 @@ export async function POST() {
 
   for (const sp of pending as unknown as PendingSplit[]) {
     const transferGroup = sp.commandes?.stripe_transfer_group
-    const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
+    const titreBeat = sp.beat_splits?.beats?.titre ?? 'Beat'
     if (!transferGroup) continue
 
     try {

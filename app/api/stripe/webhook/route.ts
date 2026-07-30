@@ -1206,23 +1206,32 @@ async function traiterCompteConnecte(account: Stripe.Account) {
   }
 
   // Récupérer tous ses split_payments en attente (par beatmaker_id OU email_invite)
-  const { data: pendingByBeatmakerId } = await supabase
+  // `commandes` n'a plus de relation directe vers `beats` depuis le passage
+  // au panier multi-articles (Phase 2c) — le titre passe par beat_split_id →
+  // beat_splits → beats. Bug trouvé en testant F4 (audit 2026-07-29) : cassait
+  // silencieusement tout déblocage automatique à la connexion Stripe depuis
+  // le 2026-07-09 (relation inexistante → requête en erreur → traité comme
+  // "aucun split en attente" sans jamais logger l'erreur réelle).
+  const { data: pendingByBeatmakerId, error: errBeatmakerId } = await supabase
     .from('split_payments')
-    .select('id, montant, commandes(stripe_transfer_group, beats(titre))')
+    .select('id, montant, commandes(stripe_transfer_group), beat_splits(beats(titre))')
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'en_attente')
+  if (errBeatmakerId) console.error('[webhook] Erreur lecture pendingByBeatmakerId:', errBeatmakerId.message)
 
-  const { data: pendingByEmail } = account.email ? await supabase
+  const { data: pendingByEmail, error: errEmail } = account.email ? await supabase
     .from('split_payments')
-    .select('id, montant, email_invite, commandes(stripe_transfer_group, beats(titre))')
+    .select('id, montant, email_invite, commandes(stripe_transfer_group), beat_splits(beats(titre))')
     .eq('email_invite', account.email)
-    .eq('statut', 'en_attente') : { data: [] }
+    .eq('statut', 'en_attente') : { data: [], error: null }
+  if (errEmail) console.error('[webhook] Erreur lecture pendingByEmail:', errEmail.message)
 
   type PendingSplit = {
     id: string
     montant: number
     email_invite?: string | null
-    commandes: { stripe_transfer_group: string | null; beats: { titre: string } | null } | null
+    commandes: { stripe_transfer_group: string | null } | null
+    beat_splits: { beats: { titre: string } | null } | null
   }
 
   const pending = [
@@ -1239,7 +1248,7 @@ async function traiterCompteConnecte(account: Stripe.Account) {
 
   for (const sp of pending) {
     const transferGroup = sp.commandes?.stripe_transfer_group
-    const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
+    const titreBeat = sp.beat_splits?.beats?.titre ?? 'Beat'
     if (!transferGroup) continue
 
     try {

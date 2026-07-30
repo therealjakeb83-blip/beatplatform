@@ -27,19 +27,26 @@ export async function GET(request: Request) {
 
   // ── J+60 : Reversal ─────────────────────────────────────────
   // Splits de collabs non inscrits, créés il y a 60+ jours
-  const { data: expires } = await supabase
+  // `commandes` n'a plus de relation directe vers `beats` depuis le passage
+  // au panier multi-articles (Phase 2c) — le titre passe désormais par
+  // beat_split_id → beat_splits → beats. Bug trouvé en testant F4 (audit
+  // 2026-07-29) : cassait silencieusement les 3 requêtes de ce cron (relation
+  // inexistante → erreur jamais vérifiée → traité comme "rien à traiter") —
+  // plus aucun reversal J+60 ni rappel J+30/J+50 ne partait depuis le 2026-07-09.
+  const { data: expires, error: errExpires } = await supabase
     .from('split_payments')
     .select(`
       id, montant, email_invite,
       commandes(
         beatmaker_id, stripe_transfer_group,
-        beats(titre),
         beatmakers(stripe_account_id, nom_artiste, email)
-      )
+      ),
+      beat_splits(beats(titre))
     `)
     .eq('statut', 'en_attente')
     .not('email_invite', 'is', null)
     .lte('created_at', new Date(now - 60 * JOUR).toISOString())
+  if (errExpires) console.error('[cron] Erreur lecture splits J+60:', errExpires.message)
 
   type ExpireSplit = {
     id: string
@@ -48,9 +55,9 @@ export async function GET(request: Request) {
     commandes: {
       beatmaker_id: string
       stripe_transfer_group: string | null
-      beats: { titre: string } | null
       beatmakers: { stripe_account_id: string | null; nom_artiste: string; email: string } | null
     } | null
+    beat_splits: { beats: { titre: string } | null } | null
   }
 
   for (const sp of (expires ?? []) as unknown as ExpireSplit[]) {
@@ -58,7 +65,7 @@ export async function GET(request: Request) {
     if (!commande) continue
 
     const proprietaire = commande.beatmakers
-    const titreBeat = commande.beats?.titre ?? 'Beat'
+    const titreBeat = sp.beat_splits?.beats?.titre ?? 'Beat'
     const transferGroup = commande.stripe_transfer_group
     const montantEuros = (sp.montant / 100).toFixed(2)
 
@@ -93,23 +100,25 @@ export async function GET(request: Request) {
   }
 
   // ── J+50 : Avertissement final ───────────────────────────────
-  const { data: splits50 } = await supabase
+  const { data: splits50, error: err50 } = await supabase
     .from('split_payments')
-    .select('id, montant, email_invite, commandes(beatmaker_id, beats(titre))')
+    .select('id, montant, email_invite, commandes(beatmaker_id), beat_splits(beats(titre))')
     .eq('statut', 'en_attente')
     .not('email_invite', 'is', null)
     .lte('created_at', new Date(now - 50 * JOUR).toISOString())
     .gte('created_at', new Date(now - 51 * JOUR).toISOString())
+  if (err50) console.error('[cron] Erreur lecture splits J+50:', err50.message)
 
   type RappelSplit = {
     id: string
     montant: number
     email_invite: string
-    commandes: { beatmaker_id: string; beats: { titre: string } | null } | null
+    commandes: { beatmaker_id: string } | null
+    beat_splits: { beats: { titre: string } | null } | null
   }
 
   for (const sp of (splits50 ?? []) as unknown as RappelSplit[]) {
-    const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
+    const titreBeat = sp.beat_splits?.beats?.titre ?? 'Beat'
     if (!sp.commandes) continue
     await envoyerRappelFonds({
       to: sp.email_invite,
@@ -122,16 +131,17 @@ export async function GET(request: Request) {
   }
 
   // ── J+30 : Premier rappel ────────────────────────────────────
-  const { data: splits30 } = await supabase
+  const { data: splits30, error: err30 } = await supabase
     .from('split_payments')
-    .select('id, montant, email_invite, commandes(beatmaker_id, beats(titre))')
+    .select('id, montant, email_invite, commandes(beatmaker_id), beat_splits(beats(titre))')
     .eq('statut', 'en_attente')
     .not('email_invite', 'is', null)
     .lte('created_at', new Date(now - 30 * JOUR).toISOString())
     .gte('created_at', new Date(now - 31 * JOUR).toISOString())
+  if (err30) console.error('[cron] Erreur lecture splits J+30:', err30.message)
 
   for (const sp of (splits30 ?? []) as unknown as RappelSplit[]) {
-    const titreBeat = sp.commandes?.beats?.titre ?? 'Beat'
+    const titreBeat = sp.beat_splits?.beats?.titre ?? 'Beat'
     if (!sp.commandes) continue
     await envoyerRappelFonds({
       to: sp.email_invite,
