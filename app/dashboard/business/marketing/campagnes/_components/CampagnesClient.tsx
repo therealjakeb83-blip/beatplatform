@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { CampagneRow, CibleOption, TemplateOption } from '../page'
 import NouvelleCampagneWizard from './NouvelleCampagneWizard'
+import EnvoyerCampagneButton from './EnvoyerCampagneButton'
 
 type Props = {
   campagnes: CampagneRow[]
@@ -154,13 +155,10 @@ export default function CampagnesClient({
                     </button>
                     <form action={envoyerMaintenant}>
                       <input type="hidden" name="id" value={c.id} />
-                      <button
-                        type="submit"
-                        className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
-                        onClick={e => { if (!confirm(`Envoyer "${c.nom}" à ${c.destinataires || '…'} destinataires maintenant ?`)) e.preventDefault() }}
-                      >
-                        Envoyer maintenant
-                      </button>
+                      <EnvoyerCampagneButton
+                        label="Envoyer maintenant"
+                        confirmMessage={`Envoyer "${c.nom}" à ${c.destinataires || '…'} destinataires maintenant ?`}
+                      />
                     </form>
                   </div>
                 </CarteCampagne>
@@ -185,13 +183,10 @@ export default function CampagnesClient({
                     </Link>
                     <form action={envoyerMaintenant}>
                       <input type="hidden" name="id" value={c.id} />
-                      <button
-                        type="submit"
-                        className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
-                        onClick={e => { if (!confirm(`Réessayer d'envoyer "${c.nom}" maintenant ?`)) e.preventDefault() }}
-                      >
-                        Réessayer l&apos;envoi
-                      </button>
+                      <EnvoyerCampagneButton
+                        label="Réessayer l'envoi"
+                        confirmMessage={`Réessayer d'envoyer "${c.nom}" maintenant ?`}
+                      />
                     </form>
                   </div>
                 </CarteCampagne>
