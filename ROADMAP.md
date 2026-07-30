@@ -1193,7 +1193,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 - [x] **T9** — ✅ Validé par Jake le 2026-07-30 : abonnement de test annulé puis repris sur `/jakeb-test/mon-abonnement`, aucune popup navigateur, tout affiché inline
 
 **F6 — Message d'erreur upload logo :**
-- [ ] **T10** — `/dashboard/profil` : tenter d'uploader un fichier non-image (ex. `.txt` renommé `.jpg`) → message d'erreur clair affiché, pas de plantage silencieux
+- [x] **T10** — ✅ Validé par Jake le 2026-07-30 : fichier `.txt` renommé `.jpg` uploadé sur `/dashboard/profil` → message "Impossible d'envoyer ce logo. Vérifie que c'est bien une image, puis réessaie." affiché correctement
 
 **F4 — Message d'erreur transfert Stripe :**
 - [ ] **T11** *(setup Stripe test mode)* — Provoquer un échec de transfert (ex. solde de test insuffisant sur le compte plateforme) sur un split en attente, cliquer "Compléter la configuration Stripe" → message d'erreur affiché sur `/dashboard/paiements`, erreur visible dans les Runtime Logs Vercel
