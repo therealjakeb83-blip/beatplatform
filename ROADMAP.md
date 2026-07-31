@@ -987,6 +987,25 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 > Données de démo : les 15 instruments sont désormais taguées sur au moins un beat public dans `jakeb-test` et les 10 boutiques dupliquées (`jakeb-test1`-`jakeb-test10`), pour que le rail complet soit visible partout où Jake teste (mapping titre→instrument identique sur les 11 boutiques, structure dupliquée).
 
+#### Checklist tests Phase 7.13 — Nouveau design "ambiances" 🔄 Code livré + vérifié partiellement en local le 2026-07-31, migration SQL pas encore exécutée
+
+> **Contexte :** paquet design fourni par Jake (`ambiances-export/`, dossier `Design system pour plateforme beatmaker (16)`) — photo N&B + masque de halo par ambiance, teinté en CSS par la couleur d'accent de la boutique (`mix-blend-mode: screen`), ratio 2.5:1 imposé par le cadrage des assets. Neuf ambiances : Agressif, Bouncy, Calme, Énergique, Love, Mélancolique, Planant, Sombre, Triste.
+>
+> Contrairement aux instruments, les tags posés sur `beats.ambiances` ne correspondaient déjà plus aux noms de la table `categories` avant cette migration (données de seed jamais réconciliées). Remap best-effort décidé par Claude (Jake a validé l'approche "comme les instruments" sans trancher les cas un par un) : Energetic/Énergétique→Énergique, Chill/Doux→Calme, Festif→Bouncy, Romantique→Love, Hypnotique→Planant, Nostalgique→Mélancolique. Mystérieux (44 beats) et Épique (11 beats) restent orphelins, sans équivalent clair — même traitement que "Cordes" pour les instruments.
+>
+> ⚠️ Le `service_role` n'a que SELECT sur `beats` (contrairement à `categories`) — impossible d'exécuter la migration via script comme pour d'autres tables, il faut la lancer manuellement.
+
+**Préalable :**
+- [ ] **T0** — `supabase/phase7_13_ambiances_design_pack.sql` exécuté par Jake dans l'éditeur SQL Supabase
+
+**Côté boutique publique (`/{slug}`) :**
+- [x] **T1** — Halo coloré fonctionnel : vérifié via dev-browser sur `jakeb-test`, carte "Sombre" (nom déjà présent avant migration) affiche photo N&B + halo bleu suivant le masque, dans la couleur d'accent de la boutique
+- [x] **T2** — Repli correct pour une ambiance hors pack (ex. "Festif") : avatar-initiales, pas de halo, pas d'erreur
+- [x] **T3** — Ratio 2.5:1 respecté desktop (400×160) et mobile (300×120)
+- [ ] **T4** — Après migration : les 9 cartes du pack affichent toutes le halo (pas seulement celles qui matchaient déjà par nom)
+- [ ] **T5** — Déclinaison Blanche & Noire : halo quasi invisible attendu (accent verrouillé noir + `screen` blend = pas d'effet), à confirmer que ce n'est pas perçu comme un bug
+- [ ] **T6** — Clic sur une carte → `/{slug}/parcourir/ambiances/<nom>` affiche bien les beats correspondants, y compris pour les tags remappés (ex. un beat ex-"Festif" apparaît sous "Bouncy")
+
 #### Checklist tests Étape 15 lot 1 — Admin Recherche/Support + Log Stripe + Suspension ✅ Validée le 2026-07-24 (T13/T16 bloqués, système d'abonnement plateforme pas encore construit)
 
 > **Contexte :** Premier lot de code de l'Étape 15 élargie, cadré par interview + scoring pertinence/dangerosité le 2026-07-24 (voir mémoire `project_admin_etape15_scope`). Items retenus : recherche multi-critères (15a), log des webhooks Stripe (15b), suspendre/réactiver une boutique avec pause en cascade des abonnements Stripe (15c), correction de champs bas risque sur un compte client/beatmaker (15a). Exclus définitivement : modifier une boutique à sa place (email/slug/Stripe Connect), supprimer un compte, corriger un statut de split/paiement collab.
