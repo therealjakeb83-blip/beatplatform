@@ -18,9 +18,12 @@
 --   Hypnotique                 → Planant
 --   Nostalgique                → Mélancolique
 -- Sombre, Mélancolique, Agressif ne bougent pas (déjà les bons noms).
--- Mystérieux (44 beats) et Épique (11 beats) n'ont pas d'équivalent
--- clair dans les 9 nouveaux slugs — laissés orphelins, hors scope,
--- même traitement que "Cordes" dans phase7_12.
+-- Épique (11 beats) n'a pas d'équivalent clair dans les 9 nouveaux slugs
+-- — laissé orphelin pour l'instant, même traitement que "Cordes" dans
+-- phase7_12. Mystérieux (44 beats) n'a pas d'équivalent non plus, mais
+-- Jake a demandé de la retirer plutôt que de la laisser orpheline
+-- (visible sur toutes les boutiques, jugée indésirable) : supprimée du
+-- tag des beats, pas juste masquée côté affichage (2026-07-31).
 
 update beats set ambiances = array_replace(ambiances, 'Energetic', 'Énergique') where ambiances @> array['Energetic'];
 update beats set ambiances = array_replace(ambiances, 'Énergétique', 'Énergique') where ambiances @> array['Énergétique'];
@@ -30,6 +33,7 @@ update beats set ambiances = array_replace(ambiances, 'Festif', 'Bouncy') where 
 update beats set ambiances = array_replace(ambiances, 'Romantique', 'Love') where ambiances @> array['Romantique'];
 update beats set ambiances = array_replace(ambiances, 'Hypnotique', 'Planant') where ambiances @> array['Hypnotique'];
 update beats set ambiances = array_replace(ambiances, 'Nostalgique', 'Mélancolique') where ambiances @> array['Nostalgique'];
+update beats set ambiances = array_remove(ambiances, 'Mystérieux') where ambiances @> array['Mystérieux'];
 
 delete from categories where type = 'ambiances';
 
