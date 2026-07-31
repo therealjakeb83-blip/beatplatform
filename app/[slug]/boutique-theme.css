@@ -24,6 +24,7 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --surface: #0D1019;
   --surface-2: #161A28;
   --surface-3: #10131F;
+  --search-bg: #101012;
   --footer-bg: #07080F;
   --drawer-bg: #0B0E17;
   --line: rgba(255,255,255,.06);
@@ -167,6 +168,7 @@ body:has(.shop-root) { overflow-x: clip; }
   --surface: #FFFFFF;
   --surface-2: #EEF0F7;
   --surface-3: #F1F3F9;
+  --search-bg: #F1F3F9;
   --footer-bg: #EFF1F8;
   --drawer-bg: #FFFFFF;
   /* .14/.2 (au lieu de .08/.12) : bordures de cartes invisibles sur fond
@@ -414,7 +416,7 @@ body:has(.shop-root) { overflow-x: clip; }
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  background: var(--surface-3);
+  background: var(--search-bg);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: var(--r-pill);
   padding: var(--sp-2) 14px;
