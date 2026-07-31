@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Fragment } from 'react'
 import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
 
 export default function Hero({
@@ -29,7 +30,14 @@ export default function Hero({
         <div className="shop-hero-fade" />
       </div>
       <div className="shop-hero-content">
-        <h1>{titre}</h1>
+        <h1>
+          {titre.split('\n').map((ligne, i, lignes) => (
+            <Fragment key={i}>
+              {ligne}
+              {i < lignes.length - 1 && <br />}
+            </Fragment>
+          ))}
+        </h1>
         <p>{sousTitre}</p>
         {afficherCta && (
           <Link href={`/${slug}/abonnement`} className="shop-cta shop-cta-hero">
