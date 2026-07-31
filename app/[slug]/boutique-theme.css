@@ -385,7 +385,7 @@ body:has(.shop-root) { overflow-x: clip; }
 .shop-header-row1 {
   max-width: 1280px;
   margin: 0 auto;
-  padding: var(--sp-3) 22px var(--sp-2);
+  padding: 14px 24px var(--sp-2);
   display: flex;
   align-items: center;
   gap: 20px;
@@ -475,8 +475,6 @@ a.shop-cta {
 
 a.shop-cta:hover { background: #fff; color: var(--ac-deep); box-shadow: var(--shadow-cta-hover); }
 
-.shop-header-row1 a.shop-cta { padding: 9px 17.5px; }
-
 a.shop-cta-hero {
   background: #fff;
   color: var(--ac-deep);
@@ -529,7 +527,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   display: flex;
   justify-content: center;
   gap: 10px;
-  padding: 2px 22px 15px;
+  padding: 2px 24px 0;
   flex-wrap: wrap;
 }
 
