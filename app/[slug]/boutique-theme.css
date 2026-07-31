@@ -1284,7 +1284,21 @@ a.shop-instrument-card:focus-visible { box-shadow: var(--shadow-style-hover); }
 .shop-instrument-card__body strong { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; line-height: 1.15; }
 .shop-instrument-card__body small { font-size: var(--fs-count); opacity: .85; }
 
-.shop-media-card--ambiance { flex: 0 0 620px; height: 150px; }
+/* Ambiances — photo N&B + halo coloré (paquet design "ambiances",
+   2026-07-31). Ratio 2.5:1 imposé par le cadrage des photos/masques
+   fournis (voir ambiances-export/README.md) : dévier de ce ratio décale
+   le halo par rapport au sujet de la photo. */
+.shop-media-card--ambiance { flex: 0 0 400px; aspect-ratio: 2.5 / 1; height: auto; }
+.shop-media-card--ambiance img { filter: grayscale(1) contrast(1.06); }
+.shop-media-card--ambiance .amb-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: var(--ac);
+  mix-blend-mode: screen;
+  opacity: .9;
+  -webkit-mask-size: cover;      mask-size: cover;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
 .shop-media-card--ambiance .shop-media-card-label { display: flex; align-items: baseline; gap: 10px; }
 .shop-media-card--ambiance .shop-media-card-label strong { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .shop-media-card--ambiance .shop-media-card-label small { font-size: var(--fs-count); color: rgba(255,255,255,.55); }
@@ -1298,7 +1312,7 @@ a.shop-instrument-card:focus-visible { box-shadow: var(--shadow-style-hover); }
   a.shop-artist-card { flex-basis: 90px; }
   .shop-artist-card-photo { width: 80px; height: 80px; }
   a.shop-instrument-card { flex-basis: 230px; height: 104px; }
-  .shop-media-card--ambiance { flex-basis: 300px; height: 120px; }
+  .shop-media-card--ambiance { flex-basis: 300px; }
 }
 
 /* ============================================================
