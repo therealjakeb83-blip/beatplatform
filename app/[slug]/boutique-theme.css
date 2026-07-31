@@ -25,6 +25,7 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --surface-2: #161A28;
   --surface-3: #10131F;
   --search-bg: #101012;
+  --icon-btn-bg: #17171A;
   --footer-bg: #07080F;
   --drawer-bg: #0B0E17;
   --line: rgba(255,255,255,.06);
@@ -169,6 +170,7 @@ body:has(.shop-root) { overflow-x: clip; }
   --surface-2: #EEF0F7;
   --surface-3: #F1F3F9;
   --search-bg: #F1F3F9;
+  --icon-btn-bg: #EEF0F7;
   --footer-bg: #EFF1F8;
   --drawer-bg: #FFFFFF;
   /* .14/.2 (au lieu de .08/.12) : bordures de cartes invisibles sur fond
@@ -492,7 +494,7 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
   width: 36px;
   height: 36px;
   border-radius: var(--r-pill);
-  background: var(--surface-2);
+  background: var(--icon-btn-bg);
   border: 1px solid var(--line-strong);
   color: #fff;
   display: grid;
