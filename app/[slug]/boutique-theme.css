@@ -28,11 +28,11 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --drawer-bg: #0B0E17;
   --line: rgba(255,255,255,.06);
   --line-strong: rgba(255,255,255,.10);
-  --glass-header: rgba(7,9,18,.55);
   --scrim-media: linear-gradient(0deg, rgba(5,6,11,.85), transparent 60%);
   --overlay-lock: rgba(5,6,11,.45);
   --tag-bg: rgba(5,6,11,.78);
   --player-fade: linear-gradient(180deg, rgba(5,6,11,0) 0%, rgba(5,6,11,.6) 14%, rgba(5,6,11,.88) 34%, rgba(5,6,11,.97) 62%, #05060B 100%);
+  --header-fade: linear-gradient(180deg, rgba(5,6,11,.72) 0%, rgba(5,6,11,.52) 45%, rgba(5,6,11,.24) 78%, rgba(5,6,11,0) 100%);
   --fav-btn-bg: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
 
   --text: #FFFFFF;
@@ -64,7 +64,6 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --fs-tag: 10px;
 
   --r-pill: 999px;
-  --r-header: 24px;
   --r-item: 12px;
 
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
@@ -75,7 +74,6 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --gap-artists: 22px;
   --mobile-gap: 12px;
 
-  --shadow-header: 0 14px 44px rgba(0,0,0,.38);
   --shadow-cta-hover: 0 0 24px var(--glow-cta);
   --shadow-style-hover: 0 8px 28px var(--glow-card);
   --shadow-player-cursor: 0 0 8px color-mix(in srgb, var(--ac) 60%, transparent);
@@ -176,9 +174,8 @@ body:has(.shop-root) { overflow-x: clip; }
   --line: rgba(10,12,19,.14);
   --line-strong: rgba(10,12,19,.2);
   --card-shadow: 0 1px 3px rgba(20,30,60,.06);
-  --glass-header: rgba(255,255,255,.72);
-  --shadow-header: 0 14px 44px rgba(20,30,60,.12);
   --player-fade: linear-gradient(180deg, rgba(247,248,252,0) 0%, rgba(247,248,252,.6) 14%, rgba(247,248,252,.9) 34%, rgba(247,248,252,.98) 62%, #F7F8FC 100%);
+  --header-fade: linear-gradient(180deg, rgba(247,248,252,.78) 0%, rgba(247,248,252,.55) 45%, rgba(247,248,252,.24) 78%, rgba(247,248,252,0) 100%);
   --fav-btn-bg: linear-gradient(160deg, rgba(10,12,19,.05), rgba(10,12,19,.01));
 
   --text: #0A0C13;
@@ -353,13 +350,16 @@ body:has(.shop-root) { overflow-x: clip; }
 @media (max-width: 767px) { .shop-root.has-player { padding-bottom: 150px; } }
 
 /* ============================================================
-   HEADER — îlot flottant sticky, toujours verre (pas de transition au scroll)
+   HEADER — v6 : plein cadre, fondu dans le background (plus de
+   panneau flottant/carte). Voile translucide + blur, tous deux
+   estompés par un mask-image pour qu'il n'y ait aucune arête
+   franche avec le contenu qui défile derrière — le pendant exact
+   du fondu du player en bas de page (--player-fade).
    ============================================================ */
 .shop-header-wrap {
   position: sticky;
-  top: 15px;
+  top: 0;
   z-index: 50;
-  padding: 0 20px;
   transition: transform .28s ease;
 }
 
@@ -370,17 +370,17 @@ body:has(.shop-root) { overflow-x: clip; }
 }
 
 .shop-header {
-  max-width: 1280px;
-  margin: 0 auto;
-  background: var(--glass-header);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255,255,255,.09);
-  border-radius: var(--r-header);
-  box-shadow: var(--shadow-header);
+  background: var(--header-fade);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, rgba(0,0,0,.55) 82%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 55%, rgba(0,0,0,.55) 82%, transparent 100%);
+  padding-bottom: 30px;
 }
 
 .shop-header-row1 {
+  max-width: 1280px;
+  margin: 0 auto;
   padding: var(--sp-3) 22px var(--sp-2);
   display: flex;
   align-items: center;
@@ -520,6 +520,8 @@ a.shop-cta-hero:hover { background: var(--ac); color: var(--ac-t); box-shadow: v
 }
 
 .shop-header-row2 {
+  max-width: 1280px;
+  margin: 0 auto;
   display: flex;
   justify-content: center;
   gap: 10px;
