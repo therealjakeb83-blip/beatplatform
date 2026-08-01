@@ -1121,7 +1121,12 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
   display: flex;
   gap: var(--gap-grid);
   width: max-content;
-  animation: membresMarquee 40s linear infinite;
+  /* --marquee-duration calculée en JS (BeatCatalogue.tsx) à partir de la
+     largeur réelle de la piste, pour une vitesse constante en px/s quelle
+     que soit le nombre de beats — 70s en fallback (avant que l'effet ne
+     tourne, ou si JS désactivé), délibérément plus lent qu'avant (40s) sur
+     retour Jake. */
+  animation: membresMarquee var(--marquee-duration, 70s) linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1145,7 +1150,7 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
             mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   }
-  .members-marquee { gap: 12px; animation-duration: 32s; }
+  .members-marquee { gap: 12px; }
 }
 
 /* ============================================================

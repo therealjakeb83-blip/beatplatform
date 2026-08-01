@@ -1,9 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import BeatCard, { type BeatPublic } from './BeatCard'
 import type { BeatMin } from './PlayerContext'
 import { useDragScroll } from '../_lib/useDragScroll'
+
+// Vitesse cible du carrousel « Réservés aux membres », en px/s — fixe quel
+// que soit le nombre de beats (sinon la boucle infinie parcourt une piste
+// plus longue dans le même temps fixe et accélère avec le catalogue).
+const MEMBRES_MARQUEE_SPEED = 28
 
 function toBeatMin(b: BeatPublic): BeatMin {
   return {
@@ -33,6 +39,24 @@ export default function BeatCatalogue({
   const queue: BeatMin[] = beats.map(toBeatMin)
   const rowNouveautesRef = useDragScroll<HTMLDivElement>()
   const rowSelectionRef = useDragScroll<HTMLDivElement>()
+  const marqueeRef = useRef<HTMLDivElement>(null)
+
+  // Piste rendue deux fois (boucle -50%) — la moitié de sa largeur réelle
+  // est la distance d'un tour. durée = distance / vitesse cible, recalculée
+  // à chaque changement de taille (résolution différente desktop/mobile,
+  // nombre de beats, chargement des covers).
+  useEffect(() => {
+    const track = marqueeRef.current
+    if (!track) return
+    const majDuree = () => {
+      const distance = track.scrollWidth / 2
+      track.style.setProperty('--marquee-duration', `${distance / MEMBRES_MARQUEE_SPEED}s`)
+    }
+    majDuree()
+    const observer = new ResizeObserver(majDuree)
+    observer.observe(track)
+    return () => observer.disconnect()
+  }, [beatsPrives.length])
 
   return (
     <div id="catalogue" className="shop-container">
@@ -49,7 +73,7 @@ export default function BeatCatalogue({
           {/* Banderole défilante en boucle infinie — la liste est rendue deux
               fois à l'identique pour une boucle sans couture (translate -50%). */}
           <div className="members-marquee-wrap">
-            <div className="members-marquee">
+            <div className="members-marquee" ref={marqueeRef}>
               {beatsPrives.map(beat => (
                 <BeatCard key={`m1-${beat.id}`} beat={beat} slug={slug} queue={[]} estAbonne={estAbonne} />
               ))}
