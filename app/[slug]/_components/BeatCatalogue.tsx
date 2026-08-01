@@ -9,7 +9,7 @@ import { useDragScroll } from '../_lib/useDragScroll'
 // Vitesse cible du carrousel « Réservés aux membres », en px/s — fixe quel
 // que soit le nombre de beats (sinon la boucle infinie parcourt une piste
 // plus longue dans le même temps fixe et accélère avec le catalogue).
-const MEMBRES_MARQUEE_SPEED = 28
+const MEMBRES_MARQUEE_SPEED = 34
 
 function toBeatMin(b: BeatPublic): BeatMin {
   return {
