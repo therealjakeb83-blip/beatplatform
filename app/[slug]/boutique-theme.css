@@ -574,7 +574,12 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      garder collé à l'écran (sticky, puis fixed, puis fixed+couche GPU)
      partaient d'un mauvais diagnostic du besoin — voir feedback mémoire. */
   .shop-header-wrap { position: static; padding: 10px 16px 0; }
-  .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; }
+  /* padding-bottom réinitialisé : les 30px ajoutés par le header v6 desktop
+     (espace pour le fondu du mask-image) cassaient le calcul du -70px
+     ci-dessous (hauteur réelle du header passée de 70px à 100px sans mise à
+     jour de la compensation), laissant 30px de fond brut (--bg, quasi noir)
+     visibles au-dessus du dégradé du hero, juste derrière logo/icônes. */
+  .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; padding-bottom: 0; }
   .shop-logo, .shop-logo-fallback { height: 40px; width: 40px; }
   .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
