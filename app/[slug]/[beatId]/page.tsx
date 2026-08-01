@@ -109,15 +109,7 @@ export default async function BeatDetailPage({
       ...(bl.licences!),
       prix: bl.prix_override ?? bl.licences!.prix,
       sur_demande: bl.sur_demande,
-    } satisfies LicencePublic & {
-      streams_limite: number | null
-      vues_video_limite: number | null
-      clips_video_limite: number | null
-      est_exclusive: boolean
-      inclut_mp3: boolean
-      inclut_wav: boolean
-      inclut_stems: boolean
-    }))
+    } satisfies LicencePublic))
 
   const tags = [
     ...(beat.type_beat ?? []),

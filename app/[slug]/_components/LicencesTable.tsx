@@ -3,21 +3,7 @@
 import type { LicencePublic } from './BeatCard'
 import AcheterBouton from './AcheterBouton'
 import { NOM_PLATEFORME } from '@/lib/constantes'
-
-const FICHIERS: Record<string, string[]> = {
-  mp3:       ['MP3'],
-  wav:       ['MP3', 'WAV'],
-  stems:     ['MP3', 'WAV', 'Stems'],
-  illimite:  ['MP3', 'WAV', 'Stems'],
-  exclusive: ['MP3', 'WAV', 'Stems'],
-}
-
-function formatStreams(n: number | null) {
-  if (n === null) return 'Illimité'
-  if (n >= 1_000_000) return `${n / 1_000_000}M`
-  if (n >= 1_000) return `${n / 1_000}k`
-  return String(n)
-}
+import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
 
 export default function LicencesTable({
   licences,
@@ -27,15 +13,7 @@ export default function LicencesTable({
   estAbonne = false,
   remisePct = 0,
 }: {
-  licences: (LicencePublic & {
-    streams_limite: number | null
-    vues_video_limite: number | null
-    clips_video_limite: number | null
-    est_exclusive: boolean
-    inclut_mp3: boolean
-    inclut_wav: boolean
-    inclut_stems: boolean
-  })[]
+  licences: LicencePublic[]
   beatId: string
   beatTitre: string
   beatImageUrl: string | null
@@ -75,7 +53,7 @@ export default function LicencesTable({
                         Exclusive
                       </span>
                     )}
-                    {FICHIERS[l.modele]?.map(f => (
+                    {FICHIERS_INCLUS[l.modele]?.map(f => (
                       <span key={f} className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
                         {f}
                       </span>

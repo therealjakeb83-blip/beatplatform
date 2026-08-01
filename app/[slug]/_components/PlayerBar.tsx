@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { usePlayer } from './PlayerContext'
-import { useCart } from './CartContext'
 import FavoriButton from './FavoriButton'
+import LicenceSelectorModal from './LicenceSelectorModal'
 
 function formatTime(seconds: number) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -68,8 +68,8 @@ export default function PlayerBar({
     currentBeat, isPlaying, progress, duration, isShuffled, loopOne,
     togglePlay, next, prev, seek, toggleShuffle, toggleLoop,
   } = usePlayer()
-  const { addItem, open } = useCart()
   const [expanded, setExpanded] = useState(false)
+  const [licenceModalOpen, setLicenceModalOpen] = useState(false)
 
   if (!currentBeat) return null
 
@@ -88,16 +88,7 @@ export default function PlayerBar({
     : null
 
   function ajouterAuPanier() {
-    if (!moinsChere || !currentBeat) return
-    addItem({
-      beatId: currentBeat.id,
-      licenceId: moinsChere.id,
-      titre: currentBeat.titre,
-      imageUrl: currentBeat.image_url,
-      licenceNom: moinsChere.nom,
-      prix: moinsChere.prix,
-    })
-    open()
+    setLicenceModalOpen(true)
   }
 
   return (
@@ -242,6 +233,12 @@ export default function PlayerBar({
           </div>
         </div>
       )}
+
+      <LicenceSelectorModal
+        open={licenceModalOpen}
+        onClose={() => setLicenceModalOpen(false)}
+        beat={currentBeat}
+      />
     </>
   )
 }

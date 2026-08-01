@@ -70,7 +70,11 @@ export default async function BoutiquePage({
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
-        licences (id, nom, modele, prix, actif)
+        licences (
+          id, nom, modele, prix, actif,
+          inclut_mp3, inclut_wav, inclut_stems,
+          streams_limite, vues_video_limite, clips_video_limite, est_exclusive
+        )
       )
     `)
     .eq('beatmaker_id', beatmaker.id)
@@ -80,9 +84,10 @@ export default async function BoutiquePage({
     .order('created_at', { ascending: false })
 
   // mp3_tague_url inclus uniquement pour les abonnés (sinon le player est bloqué côté client)
+  const licenceCols = 'licences(id, nom, modele, prix, actif, inclut_mp3, inclut_wav, inclut_stems, streams_limite, vues_video_limite, clips_video_limite, est_exclusive)'
   const selectPrives = estAbonne
-    ? `id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
-    : `id, titre, bpm, cle, image_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+    ? `id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, ${licenceCols})`
+    : `id, titre, bpm, cle, image_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, ${licenceCols})`
 
   const { data: rawBeatsPrives } = await supabase
     .from('beats')
@@ -115,6 +120,13 @@ export default async function BoutiquePage({
         modele: string
         prix: number
         actif: boolean
+        inclut_mp3: boolean
+        inclut_wav: boolean
+        inclut_stems: boolean
+        streams_limite: number | null
+        vues_video_limite: number | null
+        clips_video_limite: number | null
+        est_exclusive: boolean
       } | null
     }[] | null
   }
@@ -141,6 +153,13 @@ export default async function BoutiquePage({
           modele: bl.licences!.modele,
           prix: bl.prix_override ?? bl.licences!.prix,
           sur_demande: bl.sur_demande,
+          est_exclusive: bl.licences!.est_exclusive,
+          inclut_mp3: bl.licences!.inclut_mp3,
+          inclut_wav: bl.licences!.inclut_wav,
+          inclut_stems: bl.licences!.inclut_stems,
+          streams_limite: bl.licences!.streams_limite,
+          vues_video_limite: bl.licences!.vues_video_limite,
+          clips_video_limite: bl.licences!.clips_video_limite,
         })),
     }
   }

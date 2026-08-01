@@ -53,7 +53,8 @@ export default async function SelectionPage({
   }
 
   const now = new Date().toISOString()
-  const selectCommun = `id, titre, bpm, cle, image_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, licences(id, nom, modele, prix, actif))`
+  const licenceCols = 'licences(id, nom, modele, prix, actif, inclut_mp3, inclut_wav, inclut_stems, streams_limite, vues_video_limite, clips_video_limite, est_exclusive)'
+  const selectCommun = `id, titre, bpm, cle, image_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, ${licenceCols})`
 
   const { data: rawPublics } = await supabase
     .from('beats')
@@ -76,7 +77,7 @@ export default async function SelectionPage({
     .is('supprime_le', null)
     .order('created_at', { ascending: false })
 
-  type RawBeat = { id: string; titre: string; bpm: number | null; cle: string | null; image_url: string | null; mp3_tague_url: string | null; free_download_actif: boolean; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null; beat_licences: { actif: boolean; prix_override: number | null; sur_demande: boolean; licences: { id: string; nom: string; modele: string; prix: number; actif: boolean } | null }[] | null }
+  type RawBeat = { id: string; titre: string; bpm: number | null; cle: string | null; image_url: string | null; mp3_tague_url: string | null; free_download_actif: boolean; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null; beat_licences: { actif: boolean; prix_override: number | null; sur_demande: boolean; licences: { id: string; nom: string; modele: string; prix: number; actif: boolean; inclut_mp3: boolean; inclut_wav: boolean; inclut_stems: boolean; streams_limite: number | null; vues_video_limite: number | null; clips_video_limite: number | null; est_exclusive: boolean } | null }[] | null }
 
   function mapBeat(beat: RawBeat, prive: boolean): BeatPublic {
     return {
@@ -100,6 +101,13 @@ export default async function SelectionPage({
           modele: bl.licences!.modele,
           prix: bl.prix_override ?? bl.licences!.prix,
           sur_demande: bl.sur_demande,
+          est_exclusive: bl.licences!.est_exclusive,
+          inclut_mp3: bl.licences!.inclut_mp3,
+          inclut_wav: bl.licences!.inclut_wav,
+          inclut_stems: bl.licences!.inclut_stems,
+          streams_limite: bl.licences!.streams_limite,
+          vues_video_limite: bl.licences!.vues_video_limite,
+          clips_video_limite: bl.licences!.clips_video_limite,
         })),
     }
   }

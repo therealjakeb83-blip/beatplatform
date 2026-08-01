@@ -10,6 +10,13 @@ export type LicencePublic = {
   modele: string
   prix: number
   sur_demande: boolean
+  est_exclusive: boolean
+  inclut_mp3: boolean
+  inclut_wav: boolean
+  inclut_stems: boolean
+  streams_limite: number | null
+  vues_video_limite: number | null
+  clips_video_limite: number | null
 }
 
 export type BeatPublic = BeatMin & {

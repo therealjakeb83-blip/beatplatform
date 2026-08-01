@@ -3,7 +3,20 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 
-export type LicenceMin = { id: string; nom: string; prix: number; sur_demande: boolean }
+export type LicenceMin = {
+  id: string
+  nom: string
+  modele: string
+  prix: number
+  sur_demande: boolean
+  est_exclusive: boolean
+  inclut_mp3: boolean
+  inclut_wav: boolean
+  inclut_stems: boolean
+  streams_limite: number | null
+  vues_video_limite: number | null
+  clips_video_limite: number | null
+}
 
 export type BeatMin = {
   id: string
