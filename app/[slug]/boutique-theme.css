@@ -2194,7 +2194,6 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-lc-bullets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 22px; }
 .shop-lc-bullet { display: flex; align-items: flex-start; gap: 12px; font-size: 12.5px; line-height: 23px; color: var(--lc-tx-75); }
 .shop-lc-bullet svg { flex-shrink: 0; margin-top: 6px; }
-.shop-lc-bullet svg circle { fill: color-mix(in srgb, var(--ac) 22%, transparent); }
 .shop-lc-bullet svg path { stroke: var(--ac); }
 
 /* Pied : total + validation */

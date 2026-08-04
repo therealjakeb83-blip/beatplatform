@@ -8,7 +8,7 @@ import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
 
 const BULLET_ICON = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" /><path d="M7 12.5l3 3 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
 )
 const PAUSE_ICON = (
   <svg viewBox="0 0 12 13" width="14" height="15" fill="currentColor"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
