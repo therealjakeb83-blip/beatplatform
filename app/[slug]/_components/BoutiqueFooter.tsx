@@ -1,10 +1,16 @@
+'use client'
+
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import NewsletterForm from './NewsletterForm'
+import { estMarqueAffichageValide, estStyleNomMarqueValide, type MarqueAffichage, type StyleNomMarque } from '../_lib/marque'
 
 export default function BoutiqueFooter({
   slug,
   nomArtiste,
   logoUrl,
+  marqueAffichage,
+  styleNomMarque,
   instagramUrl,
   youtubeUrl,
   tiktokUrl,
@@ -12,15 +18,27 @@ export default function BoutiqueFooter({
   slug: string
   nomArtiste: string
   logoUrl: string | null
+  marqueAffichage: MarqueAffichage
+  styleNomMarque: StyleNomMarque
   instagramUrl: string | null
   youtubeUrl: string | null
   tiktokUrl: string | null
 }) {
+  // Aperçu live depuis la page Personnalisation — mêmes query params que le
+  // header (voir BoutiqueHeader.tsx).
+  const searchParams = useSearchParams()
+  const marqueApercu = searchParams.get('marque_apercu')
+  const marque = marqueApercu && estMarqueAffichageValide(marqueApercu) ? marqueApercu : marqueAffichage
+  const styleApercu = searchParams.get('style_apercu')
+  const style = styleApercu && estStyleNomMarqueValide(styleApercu) ? styleApercu : styleNomMarque
+
   return (
     <footer className="shop-footer">
       <div className="shop-container shop-footer-grid">
         <div className="shop-footer-col shop-footer-col--brand">
-          {logoUrl ? (
+          {marque === 'nom' && nomArtiste ? (
+            <span className={`shop-footer-wordmark shop-wordmark--${style}`}>{nomArtiste}</span>
+          ) : logoUrl ? (
             <img src={logoUrl} alt={nomArtiste} className="shop-footer-logo" />
           ) : (
             <div className="shop-logo-fallback">{nomArtiste.slice(0, 2).toUpperCase()}</div>

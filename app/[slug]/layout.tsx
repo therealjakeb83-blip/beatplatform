@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import type { Viewport } from 'next'
-import { Poppins } from 'next/font/google'
+import { Poppins, Anton, Archivo_Black, Bebas_Neue, Syne } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
@@ -46,6 +46,15 @@ const poppins = Poppins({
   weight: ['400', '500', '600', '700', '800'],
 })
 
+// Polices additionnelles pour le "nom écrit" en marque de boutique (styles
+// typographiques au choix — voir boutique-theme.css .shop-wordmark--*).
+const anton = Anton({ variable: '--font-anton', subsets: ['latin'], weight: '400' })
+const archivoBlack = Archivo_Black({ variable: '--font-archivo-black', subsets: ['latin'], weight: '400' })
+const bebasNeue = Bebas_Neue({ variable: '--font-bebas-neue', subsets: ['latin'], weight: '400' })
+const syne = Syne({ variable: '--font-syne', subsets: ['latin'], weight: ['700', '800'] })
+
+const fontVariables = `${poppins.variable} ${anton.variable} ${archivoBlack.variable} ${bebasNeue.variable} ${syne.variable}`
+
 export default async function BoutiqueLayout({
   children,
   params,
@@ -70,7 +79,7 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, logo_url, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, role, abonnement_exempte')
+    .select('id, nom_artiste, logo_url, marque_affichage, style_nom_marque, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, role, abonnement_exempte')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -108,13 +117,15 @@ export default async function BoutiqueLayout({
         <Suspense>
           <BoutiqueThemeRoot
             accentDb={beatmaker?.theme_couleur ?? '#2E4CF0'}
-            fontClassName={poppins.variable}
+            fontClassName={fontVariables}
           >
             {beatmaker && (
               <BoutiqueHeader
                 slug={slug}
                 nomArtiste={beatmaker.nom_artiste}
                 logoUrl={beatmaker.logo_url}
+                marqueAffichage={beatmaker.marque_affichage}
+                styleNomMarque={beatmaker.style_nom_marque}
                 aboActif={beatmaker.abo_actif}
                 clientUser={clientUser}
               />
@@ -125,6 +136,8 @@ export default async function BoutiqueLayout({
                 slug={slug}
                 nomArtiste={beatmaker.nom_artiste}
                 logoUrl={beatmaker.logo_url}
+                marqueAffichage={beatmaker.marque_affichage}
+                styleNomMarque={beatmaker.style_nom_marque}
                 instagramUrl={beatmaker.instagram_url}
                 youtubeUrl={beatmaker.youtube_url}
                 tiktokUrl={beatmaker.tiktok_url}

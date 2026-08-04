@@ -426,6 +426,45 @@ body:has(.shop-root) { overflow-x: clip; }
   color: #fff;
 }
 
+/* --- Marque de boutique : nom écrit (option, à la place du logo) -------- */
+.shop-wordmark {
+  margin: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  font-family: var(--font-poppins), sans-serif; /* style "Hero" par défaut */
+  font-weight: 700;
+  letter-spacing: .005em;
+  font-size: 27px;
+}
+.shop-footer-wordmark {
+  margin: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  font-family: var(--font-poppins), sans-serif;
+  font-weight: 700;
+  letter-spacing: .005em;
+  font-size: 32px;
+}
+
+/* Styles typographiques au choix (Personnalisation > Marque de la boutique). */
+.shop-wordmark--grotesque { font-family: var(--font-archivo-black), sans-serif; font-weight: 400; letter-spacing: .015em; }
+.shop-wordmark--condense  { font-family: var(--font-bebas-neue), sans-serif;    font-weight: 400; letter-spacing: .06em; }
+.shop-wordmark--massif    { font-family: var(--font-anton), sans-serif;        font-weight: 400; letter-spacing: .02em; }
+.shop-wordmark--moderne   { font-family: var(--font-syne), sans-serif;         font-weight: 800; letter-spacing: .04em; }
+.shop-wordmark--espace    { font-family: var(--font-poppins), sans-serif;      font-weight: 800; letter-spacing: .16em; }
+
+/* Ajustements de taille par style (optiques) */
+.shop-header-row1 .shop-wordmark--condense { font-size: 34px; }
+.shop-footer-wordmark.shop-wordmark--condense { font-size: 40px; }
+.shop-header-row1 .shop-wordmark--massif { font-size: 28px; }
+.shop-footer-wordmark.shop-wordmark--massif { font-size: 34px; }
+.shop-header-row1 .shop-wordmark--espace { font-size: 25px; }
+.shop-footer-wordmark.shop-wordmark--espace { font-size: 30px; }
+
 .shop-search {
   flex: 1;
   max-width: 340px;
@@ -581,6 +620,8 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
      visibles au-dessus du dégradé du hero, juste derrière logo/icônes. */
   .shop-header { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: none; box-shadow: none; border-radius: 0; padding-bottom: 0; }
   .shop-logo, .shop-logo-fallback { height: 40px; width: 40px; }
+  .shop-wordmark { font-size: 22px; }
+  .shop-wordmark--condense { font-size: 28px; }
   .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
   .shop-header-icons { margin-left: auto; gap: 10px; }

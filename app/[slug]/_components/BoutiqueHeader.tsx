@@ -1,27 +1,40 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import CartBadge from './CartBadge'
 import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
+import { estMarqueAffichageValide, estStyleNomMarqueValide, type MarqueAffichage, type StyleNomMarque } from '../_lib/marque'
 
 export default function BoutiqueHeader({
   slug,
   nomArtiste,
   logoUrl,
+  marqueAffichage,
+  styleNomMarque,
   aboActif,
   clientUser,
 }: {
   slug: string
   nomArtiste: string
   logoUrl: string | null
+  marqueAffichage: MarqueAffichage
+  styleNomMarque: StyleNomMarque
   aboActif: boolean
   clientUser: { prenom: string; nom: string } | null
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [recherche, setRecherche] = useState('')
   const wrapRef = useRef<HTMLDivElement>(null)
+
+  // Aperçu live depuis la page Personnalisation (mêmes query params que
+  // theme_apercu pour l'accent — voir BoutiqueThemeRoot.tsx).
+  const marqueApercu = searchParams.get('marque_apercu')
+  const marque = marqueApercu && estMarqueAffichageValide(marqueApercu) ? marqueApercu : marqueAffichage
+  const styleApercu = searchParams.get('style_apercu')
+  const style = styleApercu && estStyleNomMarqueValide(styleApercu) ? styleApercu : styleNomMarque
 
   const afficherCta = peutAfficherCtaAbonnement({ abo_actif: aboActif })
 
@@ -53,7 +66,9 @@ export default function BoutiqueHeader({
       <header className="shop-header">
         <div className="shop-header-row1">
           <Link href={`/${slug}`} aria-label="Accueil">
-            {logoUrl ? (
+            {marque === 'nom' && nomArtiste ? (
+              <span className={`shop-wordmark shop-wordmark--${style}`}>{nomArtiste}</span>
+            ) : logoUrl ? (
               <img className="shop-logo" src={logoUrl} alt={nomArtiste} />
             ) : (
               <div className="shop-logo-fallback">{nomArtiste.slice(0, 2).toUpperCase()}</div>

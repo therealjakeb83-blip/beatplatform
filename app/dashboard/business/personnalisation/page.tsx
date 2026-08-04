@@ -9,7 +9,7 @@ export default async function PersonnalisationPage() {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('slug, hero_titre, hero_sous_titre, theme_couleur')
+    .select('slug, hero_titre, hero_sous_titre, theme_couleur, marque_affichage, style_nom_marque')
     .eq('id', user.id)
     .single()
 
@@ -21,6 +21,8 @@ export default async function PersonnalisationPage() {
       heroTitreInitial={beatmaker.hero_titre ?? ''}
       heroSousTitreInitial={beatmaker.hero_sous_titre ?? ''}
       accentInitial={beatmaker.theme_couleur}
+      marqueAffichageInitial={beatmaker.marque_affichage}
+      styleNomMarqueInitial={beatmaker.style_nom_marque}
     />
   )
 }
