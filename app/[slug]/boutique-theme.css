@@ -42,7 +42,6 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --tag-bg: rgba(5,6,11,.78);
   --player-fade: linear-gradient(180deg, rgba(5,6,11,0) 0%, rgba(5,6,11,.6) 14%, rgba(5,6,11,.88) 34%, rgba(5,6,11,.97) 62%, #05060B 100%);
   --header-fade: linear-gradient(180deg, rgba(5,6,11,.72) 0%, rgba(5,6,11,.52) 45%, rgba(5,6,11,.24) 78%, rgba(5,6,11,0) 100%);
-  --fav-btn-bg: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
 
   --text: #FFFFFF;
   --text-2: rgba(255,255,255,.70);
@@ -194,7 +193,6 @@ body:has(.shop-root) { overflow-x: clip; }
   --card-shadow: 0 1px 3px rgba(20,30,60,.06);
   --player-fade: linear-gradient(180deg, rgba(247,248,252,0) 0%, rgba(247,248,252,.6) 14%, rgba(247,248,252,.9) 34%, rgba(247,248,252,.98) 62%, #F7F8FC 100%);
   --header-fade: linear-gradient(180deg, rgba(247,248,252,.78) 0%, rgba(247,248,252,.55) 45%, rgba(247,248,252,.24) 78%, rgba(247,248,252,0) 100%);
-  --fav-btn-bg: linear-gradient(160deg, rgba(10,12,19,.05), rgba(10,12,19,.01));
 
   --text: #0A0C13;
   --text-2: rgba(10,12,19,.72);
@@ -274,8 +272,8 @@ body:has(.shop-root) { overflow-x: clip; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-time { color: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-bg { background: rgba(10,12,19,.14); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-thumb { border: 2px solid var(--ac); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-favori { border-color: rgba(10,12,19,.18); color: rgba(10,12,19,.55); }
-.shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { border-color: var(--ac); color: var(--text); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-favori { color: rgba(10,12,19,.55); }
+.shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { color: var(--ac); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-skip:hover { color: var(--text); }
 
 /* Panneau déplié : même glass hardcodé que le mini-player mobile. */
@@ -284,8 +282,6 @@ body:has(.shop-root) { overflow-x: clip; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-progress .shop-player-time { color: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-handle { background: rgba(10,12,19,.2); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-favori {
-  background: linear-gradient(160deg, rgba(10,12,19,.05), rgba(10,12,19,.01));
-  border-color: rgba(10,12,19,.18);
   color: rgba(10,12,19,.55);
 }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-expanded-toggle-btn { color: rgba(10,12,19,.45); }
@@ -1049,25 +1045,25 @@ a.shop-all-button:hover { background: var(--ac); color: var(--ac-t); }
 }
 
 /* Favori — déplacé du cover de carte vers le player (desktop + mini mobile).
-   Style aligné sur le panneau mobile déplié (.shop-player-expanded-favori) :
-   pastille avec fond dégradé, bordure qui s'allume en accent + glow au clic. */
+   Icône seule, sans pastille (fond/bordure) — cœur affiché nu, aligné sur
+   le panneau mobile déplié (.shop-player-expanded-favori). */
 .shop-player-favori {
   width: 36px;
   height: 36px;
   border-radius: var(--r-pill);
-  background: var(--fav-btn-bg);
-  border: 1px solid rgba(255,255,255,.22);
+  background: transparent;
+  border: none;
   display: grid;
   place-items: center;
   color: rgba(255,255,255,.85);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color .18s, color .15s, transform .15s, box-shadow .25s;
+  transition: color .15s, transform .15s;
 }
 
-.shop-player-favori:hover { border-color: var(--ac); transform: scale(1.06); }
-.shop-player-favori.is-active { border-color: var(--ac); color: var(--ac); box-shadow: 0 0 12px var(--glow-cta); }
-.shop-player-favori svg { width: 15px; height: 15px; }
+.shop-player-favori:hover { color: var(--ac); transform: scale(1.06); }
+.shop-player-favori.is-active { color: var(--ac); }
+.shop-player-favori svg { width: 21px; height: 21px; }
 
 .shop-freedl-btn {
   position: absolute;
@@ -1600,16 +1596,16 @@ a.shop-instrument-card:focus-visible { box-shadow: var(--shadow-style-hover); }
 .shop-player-expanded-favori {
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
-  background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
-  border: 1px solid rgba(255,255,255,.22);
+  background: transparent;
+  border: none;
   color: rgba(255,255,255,.85);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color .15s, color .15s, box-shadow .15s;
+  transition: color .15s;
 }
-.shop-player-expanded-favori svg { width: 15px; height: 15px; }
-.shop-player-expanded-favori.is-active { border-color: var(--ac); color: var(--ac); box-shadow: 0 0 12px var(--glow-cta); }
+.shop-player-expanded-favori svg { width: 21px; height: 21px; }
+.shop-player-expanded-favori.is-active { color: var(--ac); }
 
 .shop-player-expanded-progress { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .shop-player-expanded-progress .shop-player-time { font-size: 10px; }
