@@ -7,6 +7,7 @@ export default function SuccessBanner() {
   const searchParams = useSearchParams()
   const success = searchParams.get('success')
   const sessionId = searchParams.get('session_id')
+  const expressPi = searchParams.get('express_pi')
   const [commandeId, setCommandeId] = useState<string | null>(null)
   const [chargement, setChargement] = useState(false)
 
@@ -18,6 +19,46 @@ export default function SuccessBanner() {
       .then(d => { if (d.commande_id) setCommandeId(d.commande_id) })
       .finally(() => setChargement(false))
   }, [success, sessionId])
+
+  // Retour PayPal depuis un paiement express (redirection externe obligatoire,
+  // contrairement à Apple Pay/Google Pay) — pas de bannière, redirection
+  // directe vers la page de téléchargement dès que le webhook a créé la
+  // commande. Le webhook peut mettre quelques secondes, d'où le polling.
+  useEffect(() => {
+    if (!expressPi) return
+    let annule = false
+    let tentative = 0
+
+    async function poll() {
+      while (!annule && tentative < 10) {
+        const res = await fetch(`/api/telechargement/lookup?payment_intent=${expressPi}`)
+        if (res.ok) {
+          const data = await res.json() as { commande_id?: string }
+          if (data.commande_id) {
+            window.location.href = `/telechargement/${data.commande_id}`
+            return
+          }
+        }
+        tentative++
+        await new Promise(r => setTimeout(r, 1000))
+      }
+    }
+    poll()
+    return () => { annule = true }
+  }, [expressPi])
+
+  if (expressPi) {
+    return (
+      <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 mb-8 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+          <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <p className="text-gray-400 text-xs">Paiement confirmé — préparation de tes fichiers...</p>
+      </div>
+    )
+  }
 
   if (!success) return null
 

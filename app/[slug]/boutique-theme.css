@@ -2220,6 +2220,19 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-lc-submit:hover { filter: brightness(1.15); }
 .shop-lc-submit:active { transform: scale(.98); }
 .shop-lc-submit:disabled { opacity: .45; cursor: not-allowed; }
+/* Style secondaire dès qu'un paiement express est affiché — le wallet/PayPal
+   devient l'action principale, "Ajouter au panier" repasse en option discrète. */
+.shop-lc-submit--secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  box-shadow: none;
+}
+.shop-lc-submit--secondary:hover { filter: none; border-color: var(--lc-tx-45); }
+
+.shop-lc-express { width: 100%; min-height: 46px; margin-bottom: 14px; }
+.shop-lc-express-error { color: #E11D48; font-size: 11.5px; text-align: center; margin-top: 8px; }
+.shop-lc-express-redirecting { text-align: center; font-size: 13px; color: var(--lc-tx-75); padding: 6px 0; }
 
 
 @media (max-width: 767px) {

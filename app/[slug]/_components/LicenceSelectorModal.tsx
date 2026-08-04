@@ -6,6 +6,7 @@ import type { BeatMin, LicenceMin } from './PlayerContext'
 import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
+import LicenceExpressPay from './LicenceExpressPay'
 
 const BULLET_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -38,15 +39,19 @@ export default function LicenceSelectorModal({
   open,
   onClose,
   beat,
+  slug,
 }: {
   open: boolean
   onClose: () => void
   beat: BeatMin | null
+  slug: string
 }) {
   const { addItem, open: openCart } = useCart()
   const { isPlaying, togglePlay } = usePlayer()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [portalTarget, setPortalTarget] = useState<Element | null>(null)
+  const [expressVisible, setExpressVisible] = useState(false)
+  const [expressRedirection, setExpressRedirection] = useState(false)
 
   // Porté à l'intérieur de .shop-root (pas document.body) : --ac/--text/--lc-*
   // etc. sont des custom properties scopées à .shop-root, invisibles hors de
@@ -56,7 +61,11 @@ export default function LicenceSelectorModal({
   }, [])
 
   useEffect(() => {
-    if (open) setSelectedId(null)
+    if (open) {
+      setSelectedId(null)
+      setExpressVisible(false)
+      setExpressRedirection(false)
+    }
   }, [open, beat?.id])
 
   useEffect(() => {
@@ -86,6 +95,29 @@ export default function LicenceSelectorModal({
     })
     openCart()
     onClose()
+  }
+
+  // Apple Pay/Google Pay (pas de redirection externe) : le webhook crée la
+  // commande de façon asynchrone, on interroge jusqu'à ce qu'elle existe
+  // puis on va directement à la page de téléchargement (pas de détour par
+  // la bannière boutique). PayPal (redirection externe) est géré séparément
+  // au retour, dans SuccessBanner.tsx via ?express_pi=.
+  async function apresSuccesExpress({ paymentIntentId }: { paymentIntentId: string }) {
+    setExpressRedirection(true)
+    for (let tentative = 0; tentative < 10; tentative++) {
+      const res = await fetch(`/api/telechargement/lookup?payment_intent=${paymentIntentId}`)
+      if (res.ok) {
+        const data = await res.json() as { commande_id?: string }
+        if (data.commande_id) {
+          window.location.href = `/telechargement/${data.commande_id}`
+          return
+        }
+      }
+      await new Promise(r => setTimeout(r, 1000))
+    }
+    // Le webhook a pu prendre plus de temps que prévu — le client reçoit de
+    // toute façon l'email de confirmation, on ne bloque pas indéfiniment.
+    window.location.href = `/${slug}`
   }
 
   return createPortal(
@@ -159,15 +191,35 @@ export default function LicenceSelectorModal({
         </div>
 
         <div className="shop-lc-foot">
-          <div className="shop-lc-totalRow">
-            <div className="shop-lc-total">
-              <span className="shop-lc-total-label">Total</span>
-              <span className="shop-lc-total-value">{selected ? formatPrix(selected.prix) : '—'}</span>
-            </div>
-            <button className="shop-lc-submit" type="button" disabled={!selected} onClick={confirmer}>
-              Ajouter au panier
-            </button>
-          </div>
+          {expressRedirection ? (
+            <div className="shop-lc-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>
+          ) : (
+            <>
+              {open && (
+                <LicenceExpressPay
+                  slug={slug}
+                  beatId={beat.id}
+                  selectedLicence={selected}
+                  onAvailabilityChange={setExpressVisible}
+                  onSuccess={apresSuccesExpress}
+                />
+              )}
+              <div className="shop-lc-totalRow">
+                <div className="shop-lc-total">
+                  <span className="shop-lc-total-label">Total</span>
+                  <span className="shop-lc-total-value">{selected ? formatPrix(selected.prix) : '—'}</span>
+                </div>
+                <button
+                  className={`shop-lc-submit${expressVisible ? ' shop-lc-submit--secondary' : ''}`}
+                  type="button"
+                  disabled={!selected}
+                  onClick={confirmer}
+                >
+                  Ajouter au panier
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>,

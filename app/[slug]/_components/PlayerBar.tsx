@@ -238,6 +238,7 @@ export default function PlayerBar({
         open={licenceModalOpen}
         onClose={() => setLicenceModalOpen(false)}
         beat={currentBeat}
+        slug={slug}
       />
     </>
   )

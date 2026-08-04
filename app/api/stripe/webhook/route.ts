@@ -103,6 +103,17 @@ export async function POST(request: Request) {
     if (event.type === 'payment_intent.payment_failed') {
       await traiterEchecTentative(event.data.object as Stripe.PaymentIntent)
     }
+
+    // Scopé à metadata.type === 'achat_express' : sans ce garde, cet event se
+    // déclencherait aussi pour les PaymentIntents internes des Checkout
+    // Sessions classiques (déjà traitées par checkout.session.completed),
+    // créant une commande en double.
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent
+      if (paymentIntent.metadata?.type === 'achat_express') {
+        await traiterPaiementExpress(paymentIntent)
+      }
+    }
   } catch (err) {
     const erreur = err instanceof Error ? err.message : String(err)
     console.error('[webhook] Erreur traitement event', event.type, ':', erreur)
@@ -630,30 +641,83 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
   const meta = session.metadata
   if (!meta?.beatmaker_id) return
 
-  const acheteurEmail = session.customer_details?.email?.toLowerCase().trim() ?? null
-  const acheteurNom = session.customer_details?.name ?? null
-  const totalCents = session.amount_total ?? 0
-  const prixPayeTotal = totalCents / 100
-  const stripePaymentId = typeof session.payment_intent === 'string'
-    ? session.payment_intent
-    : (session.payment_intent?.id ?? null)
+  await finaliserCommandePayee({
+    meta,
+    tentativeColonne: 'stripe_session_id',
+    tentativeValeur: session.id,
+    acheteurEmail: session.customer_details?.email?.toLowerCase().trim() ?? null,
+    acheteurNom: session.customer_details?.name ?? null,
+    totalCents: session.amount_total ?? 0,
+    stripePaymentId: typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null),
+    stripeSessionId: session.id,
+  })
+}
+
+// Paiement express (Apple Pay/Google Pay/PayPal) depuis la popup licence —
+// même pipeline de création de commande que le panier classique, juste
+// déclenché par un PaymentIntent au lieu d'une Checkout Session (voir
+// supabase/express_checkout.sql). Le garde `metadata.type === 'achat_express'`
+// est posé par l'appelant (POST du webhook) pour ne jamais retraiter les
+// PaymentIntents internes des Checkout Sessions classiques.
+async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent) {
+  const meta = paymentIntent.metadata
+  if (!meta?.beatmaker_id) return
+
+  await finaliserCommandePayee({
+    meta,
+    tentativeColonne: 'stripe_payment_intent_id',
+    tentativeValeur: paymentIntent.id,
+    acheteurEmail: paymentIntent.receipt_email?.toLowerCase().trim() ?? null,
+    acheteurNom: null,
+    totalCents: paymentIntent.amount,
+    stripePaymentId: paymentIntent.id,
+    stripeSessionId: null,
+  })
+}
+
+type ContextePaiement = {
+  meta: Stripe.Metadata
+  tentativeColonne: 'stripe_session_id' | 'stripe_payment_intent_id'
+  tentativeValeur: string
+  acheteurEmail: string | null
+  acheteurNom: string | null
+  totalCents: number
+  stripePaymentId: string | null
+  stripeSessionId: string | null
+}
+
+// Cœur commun aux deux chemins de paiement (panier classique via Checkout
+// Session, et achat express via PaymentIntent) : lecture du panier déjà
+// calculé côté serveur, création commande + commande_lignes, splits Connect,
+// contrats PDF, email de confirmation, automatisations CRM. Rien ici ne doit
+// dépendre de la forme exacte de l'objet Stripe d'origine — voir
+// traiterPaiement()/traiterPaiementExpress() pour l'adaptation en amont.
+async function finaliserCommandePayee(ctx: ContextePaiement) {
+  const { meta } = ctx
+  const acheteurEmail = ctx.acheteurEmail
+  const acheteurNom = ctx.acheteurNom
+  const prixPayeTotal = ctx.totalCents / 100
+  const stripePaymentId = ctx.stripePaymentId
   const hasSplits = meta.has_splits === 'true'
   const transferGroup = meta.transfer_group ?? null
   const promoCode = meta.code_promo ?? null
 
   const supabase = createAdminClient()
 
-  // Le détail du panier (quels beats/licences) n'est plus dans la metadata Stripe
-  // (limite de taille pour un panier à N articles) — source de vérité :
-  // tentatives_paiement_lignes, écrites en DB au moment du checkout.
+  // Le détail du panier (quels beats/licences) n'est jamais dans la metadata
+  // Stripe (limite de taille pour un panier à N articles, et absent d'un
+  // PaymentIntent express) — source de vérité : tentatives_paiement_lignes,
+  // écrites en DB au moment du checkout/de la création du PaymentIntent.
   const { data: tentative } = await supabase
     .from('tentatives_paiement')
     .select('id')
-    .eq('stripe_session_id', session.id)
+    .eq(ctx.tentativeColonne, ctx.tentativeValeur)
     .maybeSingle()
 
   if (!tentative) {
-    console.error('[webhook] Aucune tentative_paiement pour la session:', session.id)
+    console.error('[webhook] Aucune tentative_paiement pour', ctx.tentativeColonne, ':', ctx.tentativeValeur)
     return
   }
 
@@ -710,7 +774,7 @@ async function traiterPaiement(session: Stripe.Checkout.Session) {
     devise: 'EUR',
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,
-    stripe_session_id: session.id,
+    stripe_session_id: ctx.stripeSessionId,
     statut: 'payee',
     code_promo: promoCode,
     reduction_montant: reductionTotal,
