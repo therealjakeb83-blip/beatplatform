@@ -2046,11 +2046,23 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   top: 50%;
   left: 50%;
   z-index: 81;
-  width: 460px;
+  width: 560px;
   max-width: calc(100vw - 32px);
   max-height: 88vh;
   display: flex;
   flex-direction: column;
+  /* Panneau volontairement toujours clair, quel que soit le thème (sombre par
+     défaut ou "Blanche & Noire") de la boutique — contraste assumé du design. */
+  --lc-panel-bg: rgba(255,255,255,.98);
+  --lc-surface: #FFFFFF;
+  --lc-surface-2: #F1F2F7;
+  --lc-rule: rgba(10,10,12,.12);
+  --lc-tx-75: rgba(10,10,12,.75);
+  --lc-tx-45: rgba(10,10,12,.5);
+  --lc-tx-40: rgba(10,10,12,.45);
+  --line: rgba(10,12,19,.14);
+  --line-strong: rgba(10,12,19,.2);
+  --text: #0A0C13;
   color: var(--text);
   background: var(--lc-panel-bg);
   -webkit-backdrop-filter: blur(18px);
@@ -2066,17 +2078,11 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 }
 .shop-lc-modal.is-open { opacity: 1; pointer-events: auto; transform: translate(-50%,-50%) scale(1); }
 
-/* Haut : rappel du beat — le voile reprend l'accent mais s'éteint
-   à 86% pour que la séparation (--lc-rule) reste neutre. */
+/* Haut : rappel du beat — panneau plat, sans voile de couleur (handoff v2). */
 .shop-lc-head {
   position: relative;
   flex-shrink: 0;
   padding: 22px 24px;
-  background: linear-gradient(180deg,
-              color-mix(in srgb, var(--ac) 22%, transparent) 0%,
-              color-mix(in srgb, var(--ac) 8%, transparent) 55%,
-              transparent 86%);
-  border-bottom: 1px solid var(--lc-rule);
 }
 .shop-lc-close {
   position: absolute;
@@ -2096,7 +2102,7 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   justify-content: center;
   transition: background .18s, color .18s;
 }
-.shop-lc-close:hover { background: rgba(255,255,255,.18); color: var(--text); }
+.shop-lc-close:hover { background: var(--line-strong); color: var(--text); }
 
 .shop-lc-beat { display: flex; align-items: center; gap: 14px; }
 .shop-lc-cover {
@@ -2105,8 +2111,8 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   border-radius: 12px;
   object-fit: cover;
   flex-shrink: 0;
-  border: 1px solid rgba(255,255,255,.12);
-  box-shadow: 0 8px 20px rgba(0,0,0,.4);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 20px rgba(10,10,12,.2);
 }
 .shop-lc-eyebrow {
   font-size: 10.5px;
@@ -2122,75 +2128,57 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 /* Corps scrollable */
 .shop-lc-body { overflow-y: auto; overflow-x: hidden; flex: 1; }
 .shop-lc-body::-webkit-scrollbar { width: 6px; }
-.shop-lc-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
+.shop-lc-body::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
 
-.shop-lc-list { padding: 18px 20px 6px; display: flex; flex-direction: column; gap: 8px; }
+.shop-lc-list {
+  padding: 18px 20px 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
 
 .shop-lc-opt {
   position: relative;
   width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--lc-surface);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: transparent;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 14px 16px;
   font-family: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color .15s, background .15s, box-shadow .2s, transform .12s;
+  transition: border-color .15s, background .15s;
 }
-.shop-lc-opt:hover { border-color: var(--ac); transform: translateY(-1px); }
-.shop-lc-opt:active { transform: translateY(0); }
+.shop-lc-opt:hover { border-color: var(--line-strong); }
 .shop-lc-opt.is-selected {
-  background: linear-gradient(180deg, var(--lc-surface-2), var(--lc-surface));
   border-color: var(--ac);
-  box-shadow: 0 10px 28px rgba(0,0,0,.45);
+  background: color-mix(in srgb, var(--ac) 10%, transparent);
 }
+/* La licence exclusive occupe toute la largeur de la grille. */
+.shop-lc-opt--wide { grid-column: 1 / -1; }
 
-.shop-lc-opt-top { display: flex; align-items: center; gap: 8px; }
-.shop-lc-name { font-size: 14.5px; font-weight: 700; letter-spacing: .02em; }
+.shop-lc-opt-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
+.shop-lc-name { font-size: 13px; font-weight: 600; color: var(--text); }
 .shop-lc-tag {
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
   background: var(--ac);
   color: var(--ac-t);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 999px;
 }
-.shop-lc-short { font-size: 11px; color: var(--lc-tx-40); margin-top: 1px; }
-
-.shop-lc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.shop-lc-price { font-size: 16px; font-weight: 800; color: var(--text); white-space: nowrap; }
-.shop-lc-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  border: 2px solid rgba(255,255,255,.25);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.shop-lc-opt.is-selected .shop-lc-dot { border-color: var(--ac); background: var(--ac); }
-.shop-lc-dot svg { display: none; }
-.shop-lc-opt.is-selected .shop-lc-dot svg { display: block; }
-.shop-lc-dot svg path { stroke: var(--ac-t); }
+.shop-lc-price { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.shop-lc-short { font-size: 11px; color: var(--lc-tx-45); }
 
 /* Bloc « Inclus avec … » */
-.shop-lc-incl {
-  margin: 10px 20px 18px;
-  background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  padding: 15px 18px;
-}
+.shop-lc-incl { margin: 12px 20px 18px; }
 .shop-lc-incl-title {
   font-size: 10px;
   font-weight: 700;
@@ -2199,25 +2187,31 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   color: var(--lc-tx-40);
   margin-bottom: 10px;
 }
-.shop-lc-bullets { display: flex; flex-direction: column; gap: 8px; }
+.shop-lc-bullets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 22px; }
 .shop-lc-bullet { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--lc-tx-75); }
 .shop-lc-bullet svg { flex-shrink: 0; }
 .shop-lc-bullet svg circle { fill: color-mix(in srgb, var(--ac) 22%, transparent); }
 .shop-lc-bullet svg path { stroke: var(--ac); }
 
-/* Pied : validation */
-.shop-lc-foot { padding: 16px 22px 20px; flex-shrink: 0; border-top: 1px solid var(--line-strong); }
+/* Pied : total + validation */
+.shop-lc-foot { padding: 18px 22px 20px; flex-shrink: 0; border-top: 1px solid var(--lc-rule); }
+.shop-lc-totalRow { display: flex; align-items: center; gap: 14px; }
+.shop-lc-total { display: flex; flex-direction: column; }
+.shop-lc-total-label { font-size: 12px; color: var(--lc-tx-45); }
+.shop-lc-total-value { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
 .shop-lc-submit {
-  width: 100%;
+  margin-left: auto;
+  flex-shrink: 0;
   border: none;
   cursor: pointer;
   background: var(--ac);
   color: var(--ac-t);
   font-family: inherit;
   font-weight: 700;
-  font-size: 14.5px;
-  padding: 14px 0;
+  font-size: 13.5px;
+  padding: 13px 26px;
   border-radius: 999px;
+  white-space: nowrap;
   box-shadow: 0 10px 30px color-mix(in srgb, var(--ac) 35%, transparent);
   transition: filter .15s, transform .12s, opacity .15s;
 }
@@ -2226,3 +2220,23 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-lc-submit:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
 
 .shop-lc-legal { text-align: center; font-size: 10.5px; color: var(--lc-tx-40); margin-top: 10px; }
+
+@media (max-width: 767px) {
+  .shop-lc-modal {
+    top: 16px; left: 10px; right: 10px; bottom: 10px;
+    width: auto; max-width: none; max-height: none;
+    border-radius: 22px;
+    transform: translateY(100%);
+  }
+  .shop-lc-modal.is-open { transform: translateY(0); }
+
+  .shop-lc-list { padding: 14px 16px 4px; }
+  .shop-lc-opt { padding: 13px 15px; }
+  .shop-lc-opt-top .shop-lc-price { flex-basis: 100%; margin-left: 0; font-size: 17px; }
+
+  .shop-lc-bullets { grid-template-columns: 1fr; gap: 9px; }
+
+  .shop-lc-foot { padding: 16px 18px 18px; }
+  .shop-lc-total-value { font-size: 18px; }
+  .shop-lc-submit { font-size: 13px; padding: 12px 20px; }
+}
