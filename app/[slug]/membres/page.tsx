@@ -81,6 +81,7 @@ export default async function MembresPage({
     cle: beat.cle,
     image_url: beat.image_url,
     mp3_tague_url: beat.mp3_tague_url,
+    tag: beat.styles?.[0] ?? beat.type_beat?.[0] ?? null,
     styles: beat.styles,
     ambiances: beat.ambiances,
     instruments: beat.instruments,

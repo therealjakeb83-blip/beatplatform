@@ -61,6 +61,7 @@ export default async function ParcourirCategoriePage({
     image_url: beat.image_url,
     mp3_tague_url: beat.mp3_tague_url,
     free_download_actif: beat.free_download_actif,
+    tag: beat.styles?.[0] ?? beat.type_beat?.[0] ?? null,
     styles: beat.styles,
     ambiances: beat.ambiances,
     instruments: beat.instruments,
