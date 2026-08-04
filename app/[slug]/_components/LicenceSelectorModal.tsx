@@ -145,7 +145,7 @@ export default function LicenceSelectorModal({
                   )}
                 </>
               ) : (
-                <div className="shop-lc-bullet">Sélectionne une licence pour voir le détail</div>
+                <div className="shop-lc-bullet">{BULLET_ICON}Sélectionne une licence pour voir le détail</div>
               )}
             </div>
           </div>
