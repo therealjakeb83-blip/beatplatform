@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 const STYLES_NOM_MARQUE: { valeur: string; label: string }[] = [
   { valeur: 'hero', label: 'Hero' },
@@ -25,6 +26,7 @@ const PRESETS: { valeur: string; label: string }[] = [
 
 export default function PersonnalisationClient({
   slug,
+  nomArtiste,
   heroTitreInitial,
   heroSousTitreInitial,
   accentInitial,
@@ -32,6 +34,7 @@ export default function PersonnalisationClient({
   styleNomMarqueInitial,
 }: {
   slug: string
+  nomArtiste: string
   heroTitreInitial: string
   heroSousTitreInitial: string
   accentInitial: string
@@ -210,19 +213,29 @@ export default function PersonnalisationClient({
             </div>
 
             {marqueApercu === 'nom' && (
-              <div className="flex gap-2 flex-wrap">
-                {STYLES_NOM_MARQUE.map(s => (
-                  <button
-                    key={s.valeur}
-                    onClick={() => setStyleApercu(s.valeur)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                      styleApercu === s.valeur ? 'bg-white text-gray-900 border-white' : 'bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="flex gap-2 flex-wrap">
+                  {STYLES_NOM_MARQUE.map(s => (
+                    <button
+                      key={s.valeur}
+                      onClick={() => setStyleApercu(s.valeur)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                        styleApercu === s.valeur ? 'bg-white text-gray-900 border-white' : 'bg-transparent text-gray-300 border-gray-700 hover:bg-gray-800'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Nom affiché : <span className="text-gray-300 font-medium">{nomArtiste}</span>
+                  {' — '}
+                  <Link href="/dashboard/profil" className="text-indigo-400 hover:text-indigo-300 underline">
+                    modifier dans Mon profil
+                  </Link>
+                </p>
+              </>
             )}
 
             <div className="flex items-center gap-3">
