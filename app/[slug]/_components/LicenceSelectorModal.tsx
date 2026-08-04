@@ -27,6 +27,13 @@ function badgeLicence(l: LicenceMin): string | null {
   return null
 }
 
+// Format court affiché sous le nom de la carte (ex. "STEMS") — le détail
+// complet des fichiers inclus est déjà donné dans le bloc "Inclus avec".
+function formatCourt(modele: string) {
+  const fichiers = FICHIERS_INCLUS[modele]
+  return fichiers?.[fichiers.length - 1]?.toUpperCase() ?? modele.toUpperCase()
+}
+
 export default function LicenceSelectorModal({
   open,
   onClose,
@@ -126,7 +133,7 @@ export default function LicenceSelectorModal({
                     {badge && <span className="shop-lc-tag">{badge}</span>}
                     <span className="shop-lc-price">{formatPrix(l.prix)}</span>
                   </div>
-                  <div className="shop-lc-short">{FICHIERS_INCLUS[l.modele]?.join(' + ')}</div>
+                  <div className="shop-lc-short">{formatCourt(l.modele)}</div>
                 </button>
               )
             })}
