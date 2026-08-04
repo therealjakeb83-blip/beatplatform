@@ -3,11 +3,18 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BeatMin, LicenceMin } from './PlayerContext'
+import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
 
 const BULLET_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" /><path d="M7 12.5l3 3 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+)
+const PAUSE_ICON = (
+  <svg viewBox="0 0 12 13" width="14" height="15" fill="currentColor"><rect x="1" y="0.5" width="4" height="12" rx="1.5" /><rect x="7" y="0.5" width="4" height="12" rx="1.5" /></svg>
+)
+const PLAY_ICON = (
+  <svg viewBox="0 0 12 13" width="15" height="16" fill="currentColor"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
 )
 
 function formatPrix(n: number) {
@@ -30,6 +37,7 @@ export default function LicenceSelectorModal({
   beat: BeatMin | null
 }) {
   const { addItem, open: openCart } = useCart()
+  const { isPlaying, togglePlay } = usePlayer()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [portalTarget, setPortalTarget] = useState<Element | null>(null)
 
@@ -82,9 +90,20 @@ export default function LicenceSelectorModal({
         <div className="shop-lc-head">
           <button className="shop-lc-close" type="button" aria-label="Fermer" onClick={onClose}>&times;</button>
           <div className="shop-lc-beat">
-            {beat.image_url && <img className="shop-lc-cover" src={beat.image_url} alt="" />}
+            {beat.image_url && (
+              <div className="shop-lc-cover-wrap">
+                <img className="shop-lc-cover" src={beat.image_url} alt="" />
+                <button
+                  className="shop-lc-play"
+                  type="button"
+                  aria-label={isPlaying ? 'Pause' : 'Écouter'}
+                  onClick={togglePlay}
+                >
+                  {isPlaying ? PAUSE_ICON : PLAY_ICON}
+                </button>
+              </div>
+            )}
             <div>
-              <div className="shop-lc-eyebrow">Choisir une licence</div>
               <div className="shop-lc-title">{beat.titre}</div>
               {meta && <div className="shop-lc-meta">{meta}</div>}
             </div>
