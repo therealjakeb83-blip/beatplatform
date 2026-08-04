@@ -168,7 +168,6 @@ export default function LicenceSelectorModal({
               Ajouter au panier
             </button>
           </div>
-          <div className="shop-lc-legal">Licences PDF envoyées par email · téléchargement immédiat</div>
         </div>
       </div>
     </>,
