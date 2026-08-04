@@ -987,7 +987,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 > Données de démo : les 15 instruments sont désormais taguées sur au moins un beat public dans `jakeb-test` et les 10 boutiques dupliquées (`jakeb-test1`-`jakeb-test10`), pour que le rail complet soit visible partout où Jake teste (mapping titre→instrument identique sur les 11 boutiques, structure dupliquée).
 
-#### Checklist tests Phase 7.13 — Nouveau design "ambiances" 🔄 Code livré + vérifié partiellement en local le 2026-07-31, migration SQL pas encore exécutée
+#### Checklist tests Phase 7.13 — Nouveau design "ambiances" 🔄 Migration exécutée (dont le retrait de "Mystérieux") le 2026-07-31, reste la validation visuelle par Jake
 
 > **Contexte :** paquet design fourni par Jake (`ambiances-export/`, dossier `Design system pour plateforme beatmaker (16)`) — photo N&B + masque de halo par ambiance, teinté en CSS par la couleur d'accent de la boutique (`mix-blend-mode: screen`), ratio 2.5:1 imposé par le cadrage des assets. Neuf ambiances : Agressif, Bouncy, Calme, Énergique, Love, Mélancolique, Planant, Sombre, Triste.
 >
@@ -996,13 +996,13 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 > ⚠️ Le `service_role` n'a que SELECT sur `beats` (contrairement à `categories`) — impossible d'exécuter la migration via script comme pour d'autres tables, il faut la lancer manuellement.
 
 **Préalable :**
-- [ ] **T0** — `supabase/phase7_13_ambiances_design_pack.sql` exécuté par Jake dans l'éditeur SQL Supabase
+- [x] **T0** — `supabase/phase7_13_ambiances_design_pack.sql` exécuté par Jake dans l'éditeur SQL Supabase (confirmé par requête : 9 catégories certifiées avec image_url, tags beats remappés — ex. Bouncy 121, Mélancolique 132) ; ligne `array_remove(..., 'Mystérieux')` ajoutée après coup et exécutée séparément, confirmée à 0 occurrence restante
 
 **Côté boutique publique (`/{slug}`) :**
 - [x] **T1** — Halo coloré fonctionnel : vérifié via dev-browser sur `jakeb-test`, carte "Sombre" (nom déjà présent avant migration) affiche photo N&B + halo bleu suivant le masque, dans la couleur d'accent de la boutique
-- [x] **T2** — Repli correct pour une ambiance hors pack (ex. "Festif") : avatar-initiales, pas de halo, pas d'erreur
+- [x] **T2** — Repli correct pour une ambiance hors pack (ex. "Festif" avant migration) : avatar-initiales, pas de halo, pas d'erreur
 - [x] **T3** — Ratio 2.5:1 respecté desktop (400×160) et mobile (300×120)
-- [ ] **T4** — Après migration : les 9 cartes du pack affichent toutes le halo (pas seulement celles qui matchaient déjà par nom)
+- [x] **T4** — Après migration : les 9 catégories du pack ont bien `image_url` + statut certifiee en base (confirmé par requête) ; halo vérifié visuellement (accent forcé en cyan `#00F6FB`) sur Sombre/Bouncy/Énergique/Calme, mécanisme identique et non branché par nom pour les 5 autres (Agressif/Love/Mélancolique/Planant/Triste) — pas de capture individuelle des 5 restantes
 - [ ] **T5** — Déclinaison Blanche & Noire : halo quasi invisible attendu (accent verrouillé noir + `screen` blend = pas d'effet), à confirmer que ce n'est pas perçu comme un bug
 - [ ] **T6** — Clic sur une carte → `/{slug}/parcourir/ambiances/<nom>` affiche bien les beats correspondants, y compris pour les tags remappés (ex. un beat ex-"Festif" apparaît sous "Bouncy")
 
