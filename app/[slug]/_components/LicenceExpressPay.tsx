@@ -130,7 +130,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
   if (rienADetecter) return null
 
   return (
-    <div className="shop-lc-express" style={{ visibility: affichable ? 'visible' : 'hidden' }}>
+    <div className="shop-lc-express" style={{ opacity: affichable ? 1 : 0, pointerEvents: affichable ? 'auto' : 'none' }}>
       <ExpressCheckoutElement
         key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
         options={{

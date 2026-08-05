@@ -2215,7 +2215,8 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   padding: 11px 23px;
   border-radius: 999px;
   white-space: nowrap;
-  transition: filter .15s, transform .12s, opacity .15s;
+  transition: filter .15s, transform .12s, opacity .15s,
+    background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
 .shop-lc-submit:hover { filter: brightness(1.15); }
 .shop-lc-submit:active { transform: scale(.98); }
@@ -2230,7 +2231,7 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 }
 .shop-lc-submit--secondary:hover { filter: none; border-color: var(--lc-tx-45); }
 
-.shop-lc-express { width: 100%; min-height: 46px; margin-bottom: 14px; }
+.shop-lc-express { width: 100%; min-height: 46px; margin-bottom: 14px; transition: opacity .25s ease; }
 .shop-lc-express-error { color: #E11D48; font-size: 11.5px; text-align: center; margin-top: 8px; }
 .shop-lc-express-redirecting { text-align: center; font-size: 13px; color: var(--lc-tx-75); padding: 6px 0; }
 
