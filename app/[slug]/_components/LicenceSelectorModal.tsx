@@ -6,7 +6,7 @@ import type { BeatMin, LicenceMin } from './PlayerContext'
 import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
-import LicenceExpressPay from './LicenceExpressPay'
+import LicenceExpressPay, { type ExpressStatus } from './LicenceExpressPay'
 
 const BULLET_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -50,7 +50,7 @@ export default function LicenceSelectorModal({
   const { isPlaying, togglePlay } = usePlayer()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [portalTarget, setPortalTarget] = useState<Element | null>(null)
-  const [expressVisible, setExpressVisible] = useState(false)
+  const [expressStatus, setExpressStatus] = useState<ExpressStatus>('loading')
   const [expressRedirection, setExpressRedirection] = useState(false)
 
   // Porté à l'intérieur de .shop-root (pas document.body) : --ac/--text/--lc-*
@@ -63,7 +63,7 @@ export default function LicenceSelectorModal({
   useEffect(() => {
     if (open) {
       setSelectedId(null)
-      setExpressVisible(false)
+      setExpressStatus('loading')
       setExpressRedirection(false)
     }
   }, [open, beat?.id])
@@ -200,7 +200,7 @@ export default function LicenceSelectorModal({
                   slug={slug}
                   beatId={beat.id}
                   selectedLicence={selected}
-                  onAvailabilityChange={setExpressVisible}
+                  onStatusChange={setExpressStatus}
                   onSuccess={apresSuccesExpress}
                 />
               )}
@@ -210,7 +210,7 @@ export default function LicenceSelectorModal({
                   <span className="shop-lc-total-value">{selected ? formatPrix(selected.prix) : '—'}</span>
                 </div>
                 <button
-                  className={`shop-lc-submit${expressVisible ? ' shop-lc-submit--secondary' : ''}`}
+                  className={`shop-lc-submit${expressStatus === 'visible' ? ' shop-lc-submit--secondary' : ''}${expressStatus === 'loading' ? ' shop-lc-submit--loading' : ''}`}
                   type="button"
                   disabled={!selected}
                   onClick={confirmer}

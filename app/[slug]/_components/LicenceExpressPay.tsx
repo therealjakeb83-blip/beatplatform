@@ -19,11 +19,13 @@ const MONTANT_DETECTION_CENTS = 1000
 // allers-retours réseau avec Stripe, pas 1 (voir plus bas).
 const DELAI_DETECTION_MS = 8000
 
+export type ExpressStatus = 'loading' | 'visible' | 'hidden'
+
 type Props = {
   slug: string
   beatId: string
   selectedLicence: LicenceMin | undefined
-  onAvailabilityChange: (visible: boolean) => void
+  onStatusChange: (status: ExpressStatus) => void
   onSuccess: (info: { paymentIntentId: string }) => void
 }
 
@@ -56,7 +58,7 @@ function methodesVersOptions(methodes: ExpressMethod[] | null): StripeExpressChe
   }
 }
 
-function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, onSuccess }: Props) {
+function ExpressButtons({ slug, beatId, selectedLicence, onStatusChange, onSuccess }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   // null = détection brute en cours ; ensuite la liste déjà filtrée par la
@@ -94,11 +96,13 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
     return () => clearTimeout(t)
   }, [pret])
 
+  const decide = pret || expiree || loadError
   const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
+  const status: ExpressStatus = !decide ? 'loading' : (affichable ? 'visible' : 'hidden')
 
   useEffect(() => {
-    onAvailabilityChange(affichable)
-  }, [affichable, onAvailabilityChange])
+    onStatusChange(status)
+  }, [status, onStatusChange])
 
   const handleReady = useCallback((event: StripeExpressCheckoutElementReadyEvent) => {
     const dispo = event.availablePaymentMethods

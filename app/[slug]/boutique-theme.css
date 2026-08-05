@@ -2230,6 +2230,19 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   box-shadow: none;
 }
 .shop-lc-submit--secondary:hover { filter: none; border-color: var(--lc-tx-45); }
+/* Pendant la détection du paiement express : ni accent ni blanc tant qu'on
+   ne sait pas encore lequel des deux sera le bon, pour ne pas laisser
+   deviner/flasher la mauvaise couleur avant de trancher. */
+.shop-lc-submit--loading {
+  background: var(--line-strong);
+  color: var(--lc-tx-45);
+  box-shadow: none;
+  animation: shop-lc-submit-pulse 1.3s ease-in-out infinite;
+}
+@keyframes shop-lc-submit-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
 
 .shop-lc-express { width: 100%; min-height: 46px; margin-bottom: 14px; transition: opacity .25s ease; }
 .shop-lc-express-error { color: #E11D48; font-size: 11.5px; text-align: center; margin-top: 8px; }
