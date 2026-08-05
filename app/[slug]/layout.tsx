@@ -163,8 +163,6 @@ export default async function BoutiqueLayout({
             </div>
             <CartDrawer
               slug={slug}
-              aboActif={beatmaker?.abo_actif ?? false}
-              aboRemisePct={beatmaker?.abo_remise_pct ?? 0}
               reglesLot={reglesLot}
             />
           </BoutiqueThemeRoot>

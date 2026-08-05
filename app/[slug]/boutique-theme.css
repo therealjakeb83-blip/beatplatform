@@ -1851,16 +1851,6 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-cart-promo-dot.is-filled { background: var(--ac-deep); }
 .shop-cart-promo-dot.is-next { animation: promoDot 1.6s ease-in-out infinite; }
 
-.shop-cart-member-banner {
-  margin-top: 6px;
-  background: color-mix(in srgb, var(--ac) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ac) 20%, transparent);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 11.5px;
-  color: #0A0A0C;
-}
-
 .shop-cart-footer { padding: 18px 20px 20px; border-top: 1px solid rgba(10,10,12,.08); display: flex; flex-direction: column; gap: 10px; }
 
 .shop-cart-promo-row { display: flex; gap: 8px; }

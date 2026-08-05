@@ -24,13 +24,9 @@ const CHECK_ICON = (
 
 export default function CartDrawer({
   slug,
-  aboActif = false,
-  aboRemisePct = 0,
   reglesLot = [],
 }: {
   slug: string
-  aboActif?: boolean
-  aboRemisePct?: number
   reglesLot?: ReductionLotRule[]
 }) {
   const { items, isOpen, close, removeItem, clear } = useCart()
@@ -214,12 +210,6 @@ export default function CartDrawer({
                       />
                     ))}
                   </div>
-                </div>
-              )}
-
-              {aboActif && (
-                <div className="shop-cart-member-banner">
-                  👑 Membre : {aboRemisePct > 0 ? `−${aboRemisePct}% sur toutes les licences.` : 'des avantages exclusifs sur toutes les licences.'}
                 </div>
               )}
             </>
