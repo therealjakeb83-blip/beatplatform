@@ -1,26 +1,34 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier } from '@/lib/pricing'
+import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, type ItemPanier } from '@/lib/pricing'
 import { NextResponse } from 'next/server'
 
-// Paiement express (Apple Pay/Google Pay/PayPal) depuis la popup licence —
-// achat unitaire (1 beat + 1 licence), indépendant du panier. Le prix n'est
-// jamais accepté depuis le front : recalculé ici via les mêmes fonctions que
-// /api/stripe/checkout. Crée un PaymentIntent (pas une Checkout Session) car
-// l'ExpressCheckoutElement a besoin d'un client_secret prêt à confirmer dès
-// le clic — voir supabase/express_checkout.sql pour le détail du choix.
+// Paiement express (Apple Pay/Google Pay/PayPal) — soit un achat unitaire
+// depuis la popup licence (beat_id/licence_id), soit tout le panier depuis
+// CartExpressPay (items[]) ; les deux convergent vers la même liste `items`.
+// Le prix n'est jamais accepté depuis le front : recalculé ici via les mêmes
+// fonctions que /api/stripe/checkout (dont la réduction par lot, déjà gérée
+// par calculerLignesPanier). Crée un PaymentIntent (pas une Checkout Session)
+// car l'ExpressCheckoutElement a besoin d'un client_secret prêt à confirmer
+// dès le clic — voir supabase/express_checkout.sql pour le détail du choix.
 export async function POST(request: Request) {
-  const { beat_id, licence_id, slug, code_promo, email_acheteur, source_marketing } = await request.json() as {
+  const body = await request.json() as {
     beat_id?: string
     licence_id?: string
+    items?: ItemPanier[]
     slug?: string
     code_promo?: string
     email_acheteur?: string
     source_marketing?: string
   }
+  const { slug, code_promo, email_acheteur, source_marketing } = body
 
-  if (!slug || !beat_id || !licence_id) {
+  const items: ItemPanier[] = body.items?.length
+    ? body.items
+    : (body.beat_id && body.licence_id ? [{ beat_id: body.beat_id, licence_id: body.licence_id }] : [])
+
+  if (!slug || !items.length) {
     return NextResponse.json({ erreur: 'Requête invalide' }, { status: 400 })
   }
 
@@ -56,24 +64,28 @@ export async function POST(request: Request) {
   const promo = promoResult.value?.promo ?? null
   const codePromoValide = promoResult.value?.codePromoValide ?? null
 
-  const lignesResult = await calculerLignesPanier(admin, beatmaker, [{ beat_id, licence_id }], { remisePct, promo })
+  const lignesResult = await calculerLignesPanier(admin, beatmaker, items, { remisePct, promo })
   if (!lignesResult.ok) return NextResponse.json({ erreur: lignesResult.erreur }, { status: lignesResult.status })
-  const [ligne] = lignesResult.value
+  const lignes = lignesResult.value
+  const totalCents = lignes.reduce((s, l) => s + l.prixTotalCents, 0)
 
-  if (ligne.prixTotalCents < 50) {
-    // Minimum Stripe (0,50 €) — improbable pour un beat mais on l'écarte proprement.
+  if (totalCents < 50) {
+    // Minimum Stripe (0,50 €) — improbable pour un panier mais on l'écarte proprement.
     return NextResponse.json({ erreur: 'Montant trop faible pour un paiement express' }, { status: 400 })
   }
 
-  // Répartition des fonds — même logique que /api/stripe/checkout (ligne unique ici).
+  // Répartition des fonds — même logique que /api/stripe/checkout : dès qu'un
+  // article du panier a des splits, toute la session bascule en mode "fonds
+  // retenus + transferts manuels par article" (voir finaliserCommandePayee).
+  const beatIds = [...new Set(items.map(i => i.beat_id))]
   const { data: splitsData } = await admin
     .from('beat_splits')
     .select('beat_id')
-    .eq('beat_id', beat_id)
+    .in('beat_id', beatIds)
   const hasSplits = (splitsData?.length ?? 0) > 0
 
   const paymentIntentParams: import('stripe').default.PaymentIntentCreateParams = {
-    amount: ligne.prixTotalCents,
+    amount: totalCents,
     currency: 'eur',
     automatic_payment_methods: { enabled: true },
     receipt_email: user?.email ?? email_acheteur ?? undefined,
@@ -81,8 +93,6 @@ export async function POST(request: Request) {
       type: 'achat_express',
       beatmaker_id: String(beatmaker.id),
       slug,
-      beat_id,
-      licence_id,
       source_marketing: source_marketing ?? 'direct',
       ...(codePromoValide ? { code_promo: codePromoValide } : {}),
     },
@@ -104,7 +114,7 @@ export async function POST(request: Request) {
     beatmaker_id: beatmaker.id,
     client_id: user?.id ?? null,
     email: user?.email ?? email_acheteur ?? null,
-    prix: ligne.prixTotalCents / 100,
+    prix: totalCents / 100,
     code_promo: codePromoValide,
     source_marketing: source_marketing ?? 'direct',
     stripe_payment_intent_id: paymentIntent.id,
@@ -114,14 +124,17 @@ export async function POST(request: Request) {
   if (tentativeError) {
     console.error('[express-checkout] Erreur insert tentative_paiement:', JSON.stringify(tentativeError))
   } else if (tentative) {
-    const { error: ligneError } = await admin.from('tentatives_paiement_lignes').insert({
-      tentative_id: tentative.id,
-      beat_id: ligne.beat_id,
-      licence_id: ligne.licence_id,
-      prix: ligne.prixTotalCents / 100,
-      reduction_montant: ligne.reductionCodeCents / 100,
-      code_promo_applique: ligne.codePromoApplique,
-    })
+    const { error: ligneError } = await admin.from('tentatives_paiement_lignes').insert(
+      lignes.map(l => ({
+        tentative_id: tentative.id,
+        beat_id: l.beat_id,
+        licence_id: l.licence_id,
+        prix: l.prixTotalCents / 100,
+        reduction_montant: l.reductionCodeCents / 100,
+        code_promo_applique: l.codePromoApplique,
+        reduction_lot_id: l.reductionLotId,
+      }))
+    )
     if (ligneError) console.error('[express-checkout] Erreur insert tentatives_paiement_lignes:', JSON.stringify(ligneError))
   }
 

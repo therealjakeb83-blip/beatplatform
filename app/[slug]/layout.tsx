@@ -83,6 +83,20 @@ export default async function BoutiqueLayout({
     .eq('slug', slug)
     .maybeSingle()
 
+  // Réductions par lot actives — aperçu client dans le panier (le montant
+  // réel est toujours recalculé côté serveur, voir lib/pricing.ts).
+  let reglesLot: { id: string; licenceId: string; nbAAcheter: number; nbOfferts: number }[] = []
+  if (beatmaker) {
+    const { data: reglesLotData } = await admin
+      .from('reductions_lot')
+      .select('id, licence_id, nb_a_acheter, nb_offerts')
+      .eq('beatmaker_id', beatmaker.id)
+      .eq('actif', true)
+    reglesLot = (reglesLotData ?? []).map(r => ({
+      id: r.id, licenceId: r.licence_id, nbAAcheter: r.nb_a_acheter, nbOfferts: r.nb_offerts,
+    }))
+  }
+
   // Boutique suspendue depuis l'admin (Étape 15c) — bloque toute la boutique
   // publique, avant même de charger le player/panier/thème.
   if (beatmaker?.statut === 'suspendu') {
@@ -151,6 +165,7 @@ export default async function BoutiqueLayout({
               slug={slug}
               aboActif={beatmaker?.abo_actif ?? false}
               aboRemisePct={beatmaker?.abo_remise_pct ?? 0}
+              reglesLot={reglesLot}
             />
           </BoutiqueThemeRoot>
         </Suspense>

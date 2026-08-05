@@ -1,0 +1,175 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Elements, ExpressCheckoutElement, useElements, useStripe } from '@stripe/react-stripe-js'
+import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutElementClickEvent, StripeExpressCheckoutElementConfirmEvent, StripeExpressCheckoutElementOptions } from '@stripe/stripe-js'
+import { stripePromise } from '@/lib/stripe-client'
+import { selectExpressPaymentMethods, type ExpressMethod } from '../_lib/express-payments'
+import { useCart, type CartItem } from './CartContext'
+
+// Version panier (multi-articles) de LicenceExpressPay.tsx — duplique
+// volontairement la même logique de détection/priorité Apple Pay > Google
+// Pay + PayPal (voir ce fichier pour le détail des choix), adaptée pour
+// payer tout le panier en un seul PaymentIntent au lieu d'un beat unique.
+
+const MONTANT_DETECTION_CENTS = 1000
+const DELAI_DETECTION_MS = 8000
+
+export type ExpressStatus = 'loading' | 'visible' | 'hidden'
+
+type Props = {
+  slug: string
+  items: CartItem[]
+  onStatusChange: (status: ExpressStatus) => void
+  onSuccess: (info: { paymentIntentId: string }) => void
+}
+
+export default function CartExpressPay(props: Props) {
+  return (
+    <Elements stripe={stripePromise} options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}>
+      <ExpressButtons {...props} />
+    </Elements>
+  )
+}
+
+function methodesVersOptions(methodes: ExpressMethod[] | null): StripeExpressCheckoutElementOptions['paymentMethods'] {
+  if (methodes === null) {
+    return { applePay: 'auto', googlePay: 'auto', paypal: 'auto', link: 'never', amazonPay: 'never', klarna: 'never' }
+  }
+  return {
+    applePay: methodes.includes('apple_pay') ? 'always' : 'never',
+    googlePay: methodes.includes('google_pay') ? 'always' : 'never',
+    paypal: methodes.includes('paypal') ? 'auto' : 'never',
+    link: 'never',
+    amazonPay: 'never',
+    klarna: 'never',
+  }
+}
+
+function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const { clear } = useCart()
+  const [methodes, setMethodes] = useState<ExpressMethod[] | null>(null)
+  const [besoinRestriction, setBesoinRestriction] = useState(false)
+  const [pret, setPret] = useState(false)
+  const [expiree, setExpiree] = useState(false)
+  const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const enCoursRef = useRef(false)
+
+  // Montant affiché aux wallets = somme brute du panier (avant remise membre/
+  // TVA/réduction par lot, recalculées côté serveur au moment du clic) — même
+  // approximation que LicenceExpressPay avant sélection du montant final.
+  const totalRaw = items.reduce((s, i) => s + i.prix, 0)
+
+  useEffect(() => {
+    if (!elements || items.length === 0) return
+    elements.update({ amount: Math.round(totalRaw * 100) })
+  }, [elements, totalRaw, items.length])
+
+  useEffect(() => {
+    if (pret) return
+    const t = setTimeout(() => setExpiree(true), DELAI_DETECTION_MS)
+    return () => clearTimeout(t)
+  }, [pret])
+
+  const decide = pret || expiree || loadError
+  const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
+  const status: ExpressStatus = !decide ? 'loading' : (affichable ? 'visible' : 'hidden')
+
+  useEffect(() => {
+    onStatusChange(status)
+  }, [status, onStatusChange])
+
+  const handleReady = useCallback((event: StripeExpressCheckoutElementReadyEvent) => {
+    const dispo = event.availablePaymentMethods
+    if (methodes === null) {
+      const calcule = selectExpressPaymentMethods({
+        applePayAvailable: !!dispo?.applePay,
+        googlePayAvailable: !!dispo?.googlePay,
+        paypalAvailable: !!dispo?.paypal,
+      })
+      setMethodes(calcule)
+      const casRareDeuxWallets = !!dispo?.applePay && !!dispo?.googlePay
+      if (casRareDeuxWallets) {
+        setBesoinRestriction(true)
+      } else {
+        setPret(true)
+      }
+    } else {
+      setPret(true)
+    }
+  }, [methodes])
+
+  const rienADetecter = loadError || (expiree && !pret) || (methodes !== null && methodes.length === 0)
+  if (rienADetecter) return null
+
+  return (
+    <div className="shop-cart-express" style={{ opacity: affichable ? 1 : 0, pointerEvents: affichable ? 'auto' : 'none' }}>
+      <ExpressCheckoutElement
+        key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
+        options={{
+          buttonHeight: 46,
+          layout: { maxColumns: 2, maxRows: 1, overflow: 'auto' },
+          paymentMethods: methodesVersOptions(besoinRestriction ? methodes : null),
+          emailRequired: true,
+        }}
+        onReady={handleReady}
+        onLoadError={() => setLoadError(true)}
+        onClick={(event: StripeExpressCheckoutElementClickEvent) => {
+          if (items.length === 0) { event.reject(); return }
+          event.resolve()
+        }}
+        onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
+          if (!stripe || !elements || items.length === 0 || enCoursRef.current) return
+          enCoursRef.current = true
+          setConfirmErreur(null)
+          try {
+            const res = await fetch('/api/stripe/express-checkout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
+                slug,
+              }),
+            })
+            const data = await res.json() as { clientSecret?: string; erreur?: string }
+            if (!res.ok || !data.clientSecret) {
+              setConfirmErreur(data.erreur ?? 'Erreur serveur, réessaie')
+              event.paymentFailed({ reason: 'fail', message: data.erreur })
+              return
+            }
+
+            // Vidé avant confirmation (même moment que /api/stripe/checkout côté
+            // panier classique) — PayPal redirige immédiatement après cet appel,
+            // pas d'occasion propre de le faire après un succès confirmé.
+            clear()
+
+            const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+              elements,
+              clientSecret: data.clientSecret,
+              confirmParams: {
+                return_url: `${window.location.origin}/${slug}?express_pi={PAYMENT_INTENT_ID}`,
+              },
+              redirect: 'if_required',
+            })
+
+            if (confirmError) {
+              setConfirmErreur(confirmError.message ?? 'Paiement refusé')
+              event.paymentFailed({ reason: 'fail', message: confirmError.message })
+              return
+            }
+            if (paymentIntent) onSuccess({ paymentIntentId: paymentIntent.id })
+          } catch {
+            setConfirmErreur('Erreur réseau, réessaie')
+            event.paymentFailed({ reason: 'fail' })
+          } finally {
+            enCoursRef.current = false
+          }
+        }}
+      />
+      {confirmErreur && <div className="shop-cart-express-error">{confirmErreur}</div>}
+    </div>
+  )
+}
