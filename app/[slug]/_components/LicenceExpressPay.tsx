@@ -71,12 +71,9 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
-  // TEMPORAIRE — diagnostic en direct sur mobile réel, à retirer une fois le
-  // paiement express confirmé fonctionnel. Affiche ce que Stripe détecte
-  // vraiment, sans passer par l'inspecteur Stripe (pas fiable pour ce type
-  // d'Element).
-  const [debug, setDebug] = useState<string | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  // Erreur de chargement de l'Element (SDK bloqué, config invalide...) — zone
+  // masquée dans ce cas, le bouton panier repasse en style principal.
+  const [loadError, setLoadError] = useState(false)
   const enCoursRef = useRef(false)
 
   // Le montant réel n'est connu qu'une fois une licence choisie ; on met à
@@ -94,7 +91,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
     return () => clearTimeout(t)
   }, [])
 
-  const affichable = pret && !expiree && (methodes?.length ?? 0) > 0
+  const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
 
   useEffect(() => {
     onAvailabilityChange(affichable)
@@ -108,7 +105,6 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
         googlePayAvailable: !!dispo?.googlePay,
         paypalAvailable: !!dispo?.paypal,
       })
-      setDebug(JSON.stringify({ availablePaymentMethods: dispo ?? null, calcule }, null, 1))
       setMethodes(calcule)
       const casRareDeuxWallets = !!dispo?.applePay && !!dispo?.googlePay
       if (casRareDeuxWallets) {
@@ -127,26 +123,26 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
     }
   }, [methodes])
 
+  const rienADetecter = loadError || (expiree && !pret) || (methodes !== null && methodes.length === 0)
+  if (rienADetecter) return null
+
   return (
-    <>
-      {/* TEMPORAIRE — à retirer une fois le diagnostic terminé */}
-      <pre style={{ fontSize: 10, background: '#111', color: '#0f0', padding: 8, margin: '0 0 8px', borderRadius: 6, whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-        stripe={stripe ? 'charge' : 'null'} elements={elements ? 'charge' : 'null'}{'\n'}
-        expiree={String(expiree)} pret={String(pret)} besoinRestriction={String(besoinRestriction)}{'\n'}
-        loadError={loadError ?? '(aucune)'}{'\n'}
-        {debug ?? '(onReady pas encore déclenché)'}
-      </pre>
-      <div className="shop-lc-express" style={{ visibility: affichable ? 'visible' : 'hidden' }}>
+    <div className="shop-lc-express" style={{ visibility: affichable ? 'visible' : 'hidden' }}>
       <ExpressCheckoutElement
         key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
         options={{
           buttonHeight: 46,
-          layout: { maxColumns: 2, maxRows: 1, overflow: 'never' },
+          // 'overflow: never' n'est valide qu'avec maxRows:0 (erreur Stripe
+          // sinon, qui empêchait l'Element de s'initialiser silencieusement --
+          // c'était la vraie cause du blocage). On ne dépasse de toute façon
+          // jamais 2 méthodes (déjà filtrées par selectExpressPaymentMethods),
+          // donc 'auto' ne se déclenche jamais en pratique.
+          layout: { maxColumns: 2, maxRows: 1, overflow: 'auto' },
           paymentMethods: methodesVersOptions(besoinRestriction ? methodes : null),
           emailRequired: true,
         }}
         onReady={handleReady}
-        onLoadError={(event) => setLoadError(JSON.stringify(event.error))}
+        onLoadError={() => setLoadError(true)}
         onClick={(event: StripeExpressCheckoutElementClickEvent) => {
           if (!selectedLicence) { event.reject(); return }
           event.resolve()
@@ -192,7 +188,6 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
         }}
       />
       {confirmErreur && <div className="shop-lc-express-error">{confirmErreur}</div>}
-      </div>
-    </>
+    </div>
   )
 }
