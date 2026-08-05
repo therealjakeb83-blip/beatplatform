@@ -2,7 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { verifierTokenCampagne, COOKIE_CLIC } from '@/lib/mailing'
-import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, type ItemPanier } from '@/lib/pricing'
+import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -119,10 +119,11 @@ export async function POST(request: Request) {
   const session = await stripe.checkout.sessions.create(sessionParams)
 
   const prixTotalEuros = lignes.reduce((s, l) => s + l.prixTotalCents, 0) / 100
+  const clientId = await resoudreClientId(admin, user)
 
   const { data: tentative, error: tentativeError } = await admin.from('tentatives_paiement').insert({
     beatmaker_id: beatmaker.id,
-    client_id: user?.id ?? null,
+    client_id: clientId,
     email: user?.email ?? email_acheteur ?? null,
     prix: prixTotalEuros,
     code_promo: codePromoValide,

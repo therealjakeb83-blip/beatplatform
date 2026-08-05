@@ -32,6 +32,22 @@ export type UtilisateurPourPrix = { id: string; email?: string | null } | null
 
 export type ResultatPrix<T> = { ok: true; value: T } | { ok: false; erreur: string; status: number }
 
+/**
+ * `client_id` sur tentatives_paiement/commandes référence clients(id), qui
+ * référence lui-même auth.users(id) — mais un beatmaker connecté a AUSSI une
+ * session auth.users valide sans jamais avoir de ligne dans `clients` (deux
+ * types de comptes distincts). Utiliser `user.id` tel quel comme client_id
+ * dans ce cas viole la contrainte de clé étrangère et fait échouer l'insert
+ * en silence (caught + console.error, jamais renvoyé au front) : le paiement
+ * Stripe réussit mais aucune commande n'est jamais créée. Toujours vérifier
+ * l'existence réelle de la ligne clients avant de l'utiliser comme FK.
+ */
+export async function resoudreClientId(admin: SupabaseClient, user: UtilisateurPourPrix): Promise<string | null> {
+  if (!user) return null
+  const { data } = await admin.from('clients').select('id').eq('id', user.id).maybeSingle()
+  return data?.id ?? null
+}
+
 /** Remise membre si le client est abonné à la boutique (connecté ou via cookie). */
 export async function resoudreRemiseAbonne(
   admin: SupabaseClient,

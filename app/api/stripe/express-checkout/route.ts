@@ -1,7 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, type ItemPanier } from '@/lib/pricing'
+import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
 import { NextResponse } from 'next/server'
 
 // Paiement express (Apple Pay/Google Pay/PayPal) — soit un achat unitaire
@@ -108,11 +108,12 @@ export async function POST(request: Request) {
   }
 
   const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams)
+  const clientId = await resoudreClientId(admin, user)
 
   const { data: tentative, error: tentativeError } = await admin.from('tentatives_paiement').insert({
     type: 'achat_express',
     beatmaker_id: beatmaker.id,
-    client_id: user?.id ?? null,
+    client_id: clientId,
     email: user?.email ?? email_acheteur ?? null,
     prix: totalCents / 100,
     code_promo: codePromoValide,
