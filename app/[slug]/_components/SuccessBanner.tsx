@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useCart } from './CartContext'
 
 export default function SuccessBanner() {
   const searchParams = useSearchParams()
@@ -10,6 +11,7 @@ export default function SuccessBanner() {
   const expressPi = searchParams.get('express_pi')
   const [commandeId, setCommandeId] = useState<string | null>(null)
   const [chargement, setChargement] = useState(false)
+  const { clear } = useCart()
 
   useEffect(() => {
     if (!success || !sessionId) return
@@ -24,6 +26,9 @@ export default function SuccessBanner() {
   // contrairement à Apple Pay/Google Pay) — pas de bannière, redirection
   // directe vers la page de téléchargement dès que le webhook a créé la
   // commande. Le webhook peut mettre quelques secondes, d'où le polling.
+  // Panier vidé uniquement une fois la commande confirmée par le webhook (pas
+  // avant la redirection PayPal) : si le paiement échoue ou est annulé côté
+  // PayPal, l'acheteur retrouve son panier intact.
   useEffect(() => {
     if (!expressPi) return
     let annule = false
@@ -35,6 +40,7 @@ export default function SuccessBanner() {
         if (res.ok) {
           const data = await res.json() as { commande_id?: string }
           if (data.commande_id) {
+            clear()
             window.location.href = `/telechargement/${data.commande_id}`
             return
           }

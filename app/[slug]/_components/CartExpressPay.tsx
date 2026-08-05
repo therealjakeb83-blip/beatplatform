@@ -68,6 +68,26 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
     elements.update({ amount: Math.round(totalRaw * 100) })
   }, [elements, totalRaw, items.length])
 
+  // on_behalf_of doit être connu de l'Elements AVANT la confirmation, sinon
+  // Stripe rejette le paiement ("on_behalf_of mismatch") au moment de payer —
+  // recalculé à chaque changement du panier (voir /api/stripe/on-behalf-of).
+  const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
+  useEffect(() => {
+    if (!elements || !beatIdsKey) return
+    let annule = false
+    fetch('/api/stripe/on-behalf-of', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, beat_ids: beatIdsKey.split(',') }),
+    })
+      .then(r => r.json())
+      .then((data: { on_behalf_of?: string | null }) => {
+        if (!annule) elements.update({ on_behalf_of: data.on_behalf_of ?? undefined })
+      })
+      .catch(() => {})
+    return () => { annule = true }
+  }, [elements, slug, beatIdsKey])
+
   useEffect(() => {
     if (pret) return
     const t = setTimeout(() => setExpiree(true), DELAI_DETECTION_MS)
@@ -141,11 +161,6 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               return
             }
 
-            // Vidé avant confirmation (même moment que /api/stripe/checkout côté
-            // panier classique) — PayPal redirige immédiatement après cet appel,
-            // pas d'occasion propre de le faire après un succès confirmé.
-            clear()
-
             const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
               elements,
               clientSecret: data.clientSecret,
@@ -160,7 +175,16 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               event.paymentFailed({ reason: 'fail', message: confirmError.message })
               return
             }
-            if (paymentIntent) onSuccess({ paymentIntentId: paymentIntent.id })
+            if (paymentIntent) {
+              // Vidé seulement une fois le paiement confirmé (Apple/Google Pay,
+              // pas de redirection) — le vider avant aurait démonté ce composant
+              // (masqué dès que le panier est vide côté CartDrawer) en plein
+              // milieu de la confirmation Stripe. Le cas PayPal (redirection
+              // externe, ce point n'est jamais atteint dans cet onglet) est géré
+              // au retour dans SuccessBanner.tsx.
+              clear()
+              onSuccess({ paymentIntentId: paymentIntent.id })
+            }
           } catch {
             setConfirmErreur('Erreur réseau, réessaie')
             event.paymentFailed({ reason: 'fail' })

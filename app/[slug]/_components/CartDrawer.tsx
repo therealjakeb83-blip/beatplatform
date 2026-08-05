@@ -137,7 +137,7 @@ export default function CartDrawer({
         </div>
 
         <div className="shop-cart-body">
-          {items.length === 0 ? (
+          {expressRedirection ? null : items.length === 0 ? (
             <p className="shop-cart-empty">Ton panier est vide.<br />Ajoute un beat depuis la boutique pour commencer.</p>
           ) : (
             <>
@@ -216,81 +216,81 @@ export default function CartDrawer({
           )}
         </div>
 
-        {items.length > 0 && (
+        {(items.length > 0 || expressRedirection) && (
           <div className="shop-cart-footer">
-            {codeApplique ? (
-              <div className="shop-cart-promo-applied">
-                <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
-                <button onClick={() => setCodeApplique(null)} className="shop-cart-promo-remove">Supprimer</button>
-              </div>
-            ) : (
-              <div>
-                <div className="shop-cart-promo-row">
-                  <input
-                    type="text"
-                    value={codeInput}
-                    onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
-                    onKeyDown={e => e.key === 'Enter' && validerCode()}
-                    placeholder="Code promo"
-                    className="shop-cart-input"
-                  />
-                  <button
-                    onClick={validerCode}
-                    disabled={!codeInput.trim() || chargementCode}
-                    className="shop-cart-promo-apply"
-                  >
-                    {chargementCode ? '...' : 'Appliquer'}
-                  </button>
-                </div>
-                {erreurCode && <p className="shop-cart-error">{erreurCode}</p>}
-              </div>
-            )}
-
-            <input
-              type="email"
-              value={emailAcheteur}
-              onChange={e => setEmailAcheteur(e.target.value)}
-              placeholder="Ton email (si non connecté)"
-              className="shop-cart-input"
-            />
-
-            <div className="shop-cart-row">
-              <span>Sous-total</span>
-              <span>{formatPrix(total)}</span>
-            </div>
-            <div className="shop-cart-row is-total">
-              <span>Total</span>
-              <span>
-                {codeApplique && totalApresCode !== total && (
-                  <span className="shop-cart-strike">{formatPrix(total)}</span>
-                )}
-                {formatPrix(totalApresCode)}
-              </span>
-            </div>
-
-            {erreur && <p className="shop-cart-error">{erreur}</p>}
-
             {expressRedirection ? (
               <div className="shop-cart-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>
             ) : (
-              <CartExpressPay
-                slug={slug}
-                items={items}
-                onStatusChange={setExpressStatus}
-                onSuccess={apresSuccesExpress}
-              />
-            )}
+              <>
+                {codeApplique ? (
+                  <div className="shop-cart-promo-applied">
+                    <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
+                    <button onClick={() => setCodeApplique(null)} className="shop-cart-promo-remove">Supprimer</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="shop-cart-promo-row">
+                      <input
+                        type="text"
+                        value={codeInput}
+                        onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
+                        onKeyDown={e => e.key === 'Enter' && validerCode()}
+                        placeholder="Code promo"
+                        className="shop-cart-input"
+                      />
+                      <button
+                        onClick={validerCode}
+                        disabled={!codeInput.trim() || chargementCode}
+                        className="shop-cart-promo-apply"
+                      >
+                        {chargementCode ? '...' : 'Appliquer'}
+                      </button>
+                    </div>
+                    {erreurCode && <p className="shop-cart-error">{erreurCode}</p>}
+                  </div>
+                )}
 
-            {!expressRedirection && (
-              <button
-                onClick={passerCommande}
-                disabled={chargement}
-                className="shop-cart-checkout"
-              >
-                {chargement ? '...' : 'Passer commande'}
-              </button>
+                <input
+                  type="email"
+                  value={emailAcheteur}
+                  onChange={e => setEmailAcheteur(e.target.value)}
+                  placeholder="Ton email (si non connecté)"
+                  className="shop-cart-input"
+                />
+
+                <div className="shop-cart-row">
+                  <span>Sous-total</span>
+                  <span>{formatPrix(total)}</span>
+                </div>
+                <div className="shop-cart-row is-total">
+                  <span>Total</span>
+                  <span>
+                    {codeApplique && totalApresCode !== total && (
+                      <span className="shop-cart-strike">{formatPrix(total)}</span>
+                    )}
+                    {formatPrix(totalApresCode)}
+                  </span>
+                </div>
+
+                {erreur && <p className="shop-cart-error">{erreur}</p>}
+
+                <CartExpressPay
+                  slug={slug}
+                  items={items}
+                  onStatusChange={setExpressStatus}
+                  onSuccess={apresSuccesExpress}
+                />
+
+                <button
+                  onClick={passerCommande}
+                  disabled={chargement}
+                  className="shop-cart-checkout"
+                >
+                  {chargement ? '...' : 'Passer commande'}
+                </button>
+                <p className="shop-cart-note">Licences PDF envoyées par email · téléchargement immédiat</p>
+              </>
             )}
-            <p className="shop-cart-note">Licences PDF envoyées par email · téléchargement immédiat</p>
           </div>
         )}
       </aside>

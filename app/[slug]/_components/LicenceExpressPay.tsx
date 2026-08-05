@@ -86,6 +86,25 @@ function ExpressButtons({ slug, beatId, selectedLicence, onStatusChange, onSucce
     elements.update({ amount: Math.round(selectedLicence.prix * 100) })
   }, [elements, selectedLicence])
 
+  // on_behalf_of doit être connu de l'Elements AVANT la confirmation, sinon
+  // Stripe rejette le paiement ("on_behalf_of mismatch") au moment de payer,
+  // quelle que soit la carte — voir /api/stripe/on-behalf-of.
+  useEffect(() => {
+    if (!elements) return
+    let annule = false
+    fetch('/api/stripe/on-behalf-of', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, beat_ids: [beatId] }),
+    })
+      .then(r => r.json())
+      .then((data: { on_behalf_of?: string | null }) => {
+        if (!annule) elements.update({ on_behalf_of: data.on_behalf_of ?? undefined })
+      })
+      .catch(() => {})
+    return () => { annule = true }
+  }, [elements, slug, beatId])
+
   // Filet de sécurité : si Stripe.js ne répond jamais (script bloqué,
   // navigateur in-app restrictif, hors ligne), on n'attend pas indéfiniment.
   // Désarmé dès que la détection a réussi (`pret`) — sinon le minuteur
