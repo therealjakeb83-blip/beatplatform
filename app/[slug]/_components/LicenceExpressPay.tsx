@@ -86,10 +86,13 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
 
   // Filet de sécurité : si Stripe.js ne répond jamais (script bloqué,
   // navigateur in-app restrictif, hors ligne), on n'attend pas indéfiniment.
+  // Désarmé dès que la détection a réussi (`pret`) — sinon le minuteur
+  // masquait les boutons 8s après l'ouverture même en cas de succès.
   useEffect(() => {
+    if (pret) return
     const t = setTimeout(() => setExpiree(true), DELAI_DETECTION_MS)
     return () => clearTimeout(t)
-  }, [])
+  }, [pret])
 
   const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
 
