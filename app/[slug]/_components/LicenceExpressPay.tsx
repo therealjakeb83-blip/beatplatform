@@ -71,6 +71,11 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
+  // TEMPORAIRE — diagnostic en direct sur mobile réel, à retirer une fois le
+  // paiement express confirmé fonctionnel. Affiche ce que Stripe détecte
+  // vraiment, sans passer par l'inspecteur Stripe (pas fiable pour ce type
+  // d'Element).
+  const [debug, setDebug] = useState<string | null>(null)
   const enCoursRef = useRef(false)
 
   // Le montant réel n'est connu qu'une fois une licence choisie ; on met à
@@ -102,6 +107,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
         googlePayAvailable: !!dispo?.googlePay,
         paypalAvailable: !!dispo?.paypal,
       })
+      setDebug(JSON.stringify({ availablePaymentMethods: dispo ?? null, calcule }, null, 1))
       setMethodes(calcule)
       const casRareDeuxWallets = !!dispo?.applePay && !!dispo?.googlePay
       if (casRareDeuxWallets) {
@@ -120,10 +126,18 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
     }
   }, [methodes])
 
-  if (expiree && !pret) return null
-  if (methodes !== null && methodes.length === 0) return null
+  const rienADetecter = (expiree && !pret) || (methodes !== null && methodes.length === 0)
 
   return (
+    <>
+      {/* TEMPORAIRE — à retirer une fois le diagnostic terminé */}
+      {debug && (
+        <pre style={{ fontSize: 10, background: '#111', color: '#0f0', padding: 8, margin: '0 0 8px', borderRadius: 6, whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+          {debug}
+          {'\n'}expiree={String(expiree)} pret={String(pret)} besoinRestriction={String(besoinRestriction)}
+        </pre>
+      )}
+      {!rienADetecter && (
     <div className="shop-lc-express" style={{ visibility: affichable ? 'visible' : 'hidden' }}>
       <ExpressCheckoutElement
         key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
@@ -180,5 +194,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
       />
       {confirmErreur && <div className="shop-lc-express-error">{confirmErreur}</div>}
     </div>
+      )}
+    </>
   )
 }
