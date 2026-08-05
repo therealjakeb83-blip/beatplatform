@@ -18,6 +18,7 @@ export type CodePromoRow = {
   depense_max: number | null
   premiere_commande: boolean
   utilisation_individuelle: boolean
+  cumulable_reduction_lot: boolean
   beats_inclus: string[] | null
   beats_exclus: string[]
   licences_eligibles: string[] | null

@@ -16,6 +16,7 @@ export type LigneCalculee = {
   prixTotalCents: number
   reductionCodeCents: number
   codePromoApplique: boolean
+  reductionLotId: string | null
 }
 
 export type BeatmakerPourPrix = {
@@ -142,6 +143,17 @@ export async function validerCodePromo(
   return { ok: true, value: { promo: promoData, codePromoValide: codePromo.toUpperCase().trim() } }
 }
 
+type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
+
+type LigneIntermediaire = {
+  index: number
+  item: ItemPanier
+  titre: string
+  image_url: string | null
+  licence: LicenceRow
+  prixApresRemise: number // après remise abonné, avant code promo / réduction par lot
+}
+
 /** Recalcule le prix de chaque article du panier à partir de beat_id/licence_id (jamais du prix envoyé par le front). */
 export async function calculerLignesPanier(
   admin: SupabaseClient,
@@ -150,6 +162,7 @@ export async function calculerLignesPanier(
   ctx: { remisePct: number; promo: Record<string, unknown> | null },
 ): Promise<ResultatPrix<LigneCalculee[]>> {
   const beatIds = [...new Set(items.map(i => i.beat_id))]
+  const licenceIds = [...new Set(items.map(i => i.licence_id))]
 
   const { data: beatsData } = await admin
     .from('beats')
@@ -167,14 +180,32 @@ export async function calculerLignesPanier(
 
   if (beatLicencesError) console.error('[pricing] Erreur query beat_licences:', JSON.stringify(beatLicencesError))
 
-  type LicenceRow = { id: string; nom: string; modele: string; prix: number; actif: boolean }
   const beatLicenceMap = new Map(
     (beatLicencesData ?? []).map(bl => [`${bl.beat_id}:${bl.licence_id}`, bl])
   )
 
-  const lignes: LigneCalculee[] = []
+  // Règles de réduction par lot actives du beatmaker, pour les licences présentes
+  // dans ce panier (une règle = une licence, une seule active par licence — cf.
+  // supabase/reductions_lot.sql).
+  const { data: reductionsLotData, error: reductionsLotError } = await admin
+    .from('reductions_lot')
+    .select('id, licence_id, nb_a_acheter, nb_offerts')
+    .eq('beatmaker_id', beatmaker.id)
+    .eq('actif', true)
+    .in('licence_id', licenceIds)
 
-  for (const item of items) {
+  if (reductionsLotError) console.error('[pricing] Erreur query reductions_lot:', JSON.stringify(reductionsLotError))
+
+  type ReductionLotRow = { id: string; licence_id: string; nb_a_acheter: number; nb_offerts: number }
+  const reductionsLotParLicence = new Map(
+    (reductionsLotData as ReductionLotRow[] | null ?? []).map(r => [r.licence_id, r])
+  )
+
+  // Passe 1 — résout beat/licence + prix après remise abonné uniquement.
+  const intermediaires: LigneIntermediaire[] = []
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index]
     const beat = beatMap.get(item.beat_id)
     if (!beat || String(beat.beatmaker_id) !== String(beatmaker.id)) {
       return { ok: false, erreur: 'Beat introuvable', status: 404 }
@@ -201,12 +232,56 @@ export async function calculerLignesPanier(
     const estIllimite = licence.modele === 'illimite' || licence.modele === 'exclusive'
     const prixBaseHT = (beatLicence.prix_override ?? licence.prix) * 100
     const remisePctItem = estIllimite ? 0 : ctx.remisePct
-    let prixApresRemise = remisePctItem > 0 ? Math.round(prixBaseHT * (1 - remisePctItem / 100)) : prixBaseHT
+    const prixApresRemise = remisePctItem > 0 ? Math.round(prixBaseHT * (1 - remisePctItem / 100)) : prixBaseHT
+
+    intermediaires.push({ index, item, titre: beat.titre, image_url: beat.image_url, licence, prixApresRemise })
+  }
+
+  // Passe 2 — groupe par licence et détermine les articles offerts. Article
+  // offert = le moins cher parmi les éligibles ; à prix égal, le dernier
+  // ajouté au panier (index le plus grand) — décision produit 2026-08-05.
+  const groupesParLicence = new Map<string, LigneIntermediaire[]>()
+  for (const ligne of intermediaires) {
+    const groupe = groupesParLicence.get(ligne.item.licence_id) ?? []
+    groupe.push(ligne)
+    groupesParLicence.set(ligne.item.licence_id, groupe)
+  }
+
+  const reductionLotParIndex = new Map<number, string>()
+
+  for (const [licenceId, groupe] of groupesParLicence) {
+    const regle = reductionsLotParLicence.get(licenceId)
+    if (!regle) continue
+    const tailleLot = regle.nb_a_acheter + regle.nb_offerts
+    const nbOffertsTotal = Math.floor(groupe.length / tailleLot) * regle.nb_offerts
+    if (nbOffertsTotal === 0) continue
+
+    const trie = [...groupe].sort((a, b) => a.prixApresRemise - b.prixApresRemise || b.index - a.index)
+    for (const ligne of trie.slice(0, nbOffertsTotal)) {
+      reductionLotParIndex.set(ligne.index, regle.id)
+    }
+  }
+
+  // Un code promo marqué non-cumulable (par code, cf. codes_promo.cumulable_reduction_lot)
+  // est refusé dès qu'une réduction par lot s'est effectivement déclenchée sur ce panier.
+  const promoNonCumulable = ctx.promo
+    ? (ctx.promo as { cumulable_reduction_lot?: boolean }).cumulable_reduction_lot === false
+    : false
+  if (promoNonCumulable && reductionLotParIndex.size > 0) {
+    return { ok: false, erreur: 'Ce code ne peut pas être cumulé avec la réduction par lot active sur ce panier', status: 400 }
+  }
+
+  // Passe 3 — applique le code promo (jamais sur un article déjà offert) et la TVA.
+  const lignes: LigneCalculee[] = []
+
+  for (const ligne of intermediaires) {
+    const reductionLotId = reductionLotParIndex.get(ligne.index) ?? null
+    let prixApresRemise = reductionLotId ? 0 : ligne.prixApresRemise
 
     let reductionCodeCents = 0
     let codePromoAppliqueItem = false
 
-    if (ctx.promo) {
+    if (!reductionLotId && ctx.promo) {
       const promo = ctx.promo
       const beatsInclus = promo.beats_inclus as string[] | null
       const beatsExclus = promo.beats_exclus as string[] | null
@@ -215,9 +290,9 @@ export async function calculerLignesPanier(
       const depenseMax = promo.depense_max as number | null
 
       const eligible =
-        (!beatsInclus?.length || beatsInclus.includes(item.beat_id)) &&
-        !beatsExclus?.includes(item.beat_id) &&
-        (!licencesEligibles?.length || licencesEligibles.includes(licence.nom)) &&
+        (!beatsInclus?.length || beatsInclus.includes(ligne.item.beat_id)) &&
+        !beatsExclus?.includes(ligne.item.beat_id) &&
+        (!licencesEligibles?.length || licencesEligibles.includes(ligne.licence.nom)) &&
         (!depenseMin || (prixApresRemise / 100) >= Number(depenseMin)) &&
         (!depenseMax || (prixApresRemise / 100) <= Number(depenseMax))
 
@@ -236,14 +311,15 @@ export async function calculerLignesPanier(
     const prixTotal = Math.round(prixApresRemise * (1 + tvaMultiplier))
 
     lignes.push({
-      beat_id: item.beat_id,
-      licence_id: item.licence_id,
-      titre: beat.titre,
-      image_url: beat.image_url,
-      nomLicence: licence.nom,
+      beat_id: ligne.item.beat_id,
+      licence_id: ligne.item.licence_id,
+      titre: ligne.titre,
+      image_url: ligne.image_url,
+      nomLicence: ligne.licence.nom,
       prixTotalCents: prixTotal,
       reductionCodeCents,
       codePromoApplique: codePromoAppliqueItem,
+      reductionLotId,
     })
   }
 

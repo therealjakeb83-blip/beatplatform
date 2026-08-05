@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       depense_max:             body.depense_max != null ? Number(body.depense_max) : null,
       premiere_commande:       !!body.premiere_commande,
       utilisation_individuelle: !!body.utilisation_individuelle,
+      cumulable_reduction_lot: body.cumulable_reduction_lot ?? true,
       beats_inclus:            body.beats_inclus?.length ? body.beats_inclus : null,
       beats_exclus:            body.beats_exclus ?? [],
       licences_eligibles:      body.licences_eligibles?.length ? body.licences_eligibles : null,

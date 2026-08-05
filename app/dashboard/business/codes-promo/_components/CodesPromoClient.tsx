@@ -27,6 +27,7 @@ type FormData = {
   depenseMax: string
   premiereCommande: boolean
   utilisationIndividuelle: boolean
+  cumulableReductionLot: boolean
   modeBeats: 'tous' | 'inclure' | 'exclure'
   beatsSelectionnes: string[]
   emailsAutorises: string
@@ -64,7 +65,7 @@ const INITIAL_FORM: FormData = {
   dateDebut: '', heureDebut: '', dateExpiration: '', heureExpiration: '',
   licencesMode: 'toutes', licencesSelectionnees: [],
   depenseMin: '', depenseMax: '',
-  premiereCommande: false, utilisationIndividuelle: false,
+  premiereCommande: false, utilisationIndividuelle: false, cumulableReductionLot: true,
   modeBeats: 'tous', beatsSelectionnes: [],
   emailsAutorises: '', emailsExclus: '',
   limiteParCode: '', limiteParArticle: '', limiteParUtilisateur: '',
@@ -119,6 +120,7 @@ function formFromCode(c: CodePromoRow): FormData {
     depenseMax:             c.depense_max != null ? String(c.depense_max) : '',
     premiereCommande:       c.premiere_commande,
     utilisationIndividuelle: c.utilisation_individuelle,
+    cumulableReductionLot:  c.cumulable_reduction_lot,
     modeBeats:              c.beats_inclus?.length ? 'inclure' : c.beats_exclus?.length ? 'exclure' : 'tous',
     beatsSelectionnes:      c.beats_inclus ?? c.beats_exclus ?? [],
     emailsAutorises:        c.emails_autorises.join('\n'),
@@ -136,7 +138,7 @@ function sectionHasDonnees(key: string, f: FormData): boolean {
     case 'valeur':       return !!f.valeur
     case 'dates':        return !!f.dateDebut || !!f.dateExpiration
     case 'licences':     return f.licencesMode === 'specifiques' && f.licencesSelectionnees.length > 0
-    case 'restrictions': return !!f.depenseMin || !!f.depenseMax || f.premiereCommande || f.utilisationIndividuelle || f.modeBeats !== 'tous' || !!f.emailsAutorises || !!f.emailsExclus
+    case 'restrictions': return !!f.depenseMin || !!f.depenseMax || f.premiereCommande || f.utilisationIndividuelle || !f.cumulableReductionLot || f.modeBeats !== 'tous' || !!f.emailsAutorises || !!f.emailsExclus
     case 'limites':      return !!f.limiteParCode || !!f.limiteParArticle || !!f.limiteParUtilisateur
     default: return false
   }
@@ -252,6 +254,7 @@ export default function CodesPromoClient({
       depense_max:             form.depenseMax ? parseFloat(form.depenseMax) : null,
       premiere_commande:       form.premiereCommande,
       utilisation_individuelle: form.utilisationIndividuelle,
+      cumulable_reduction_lot: form.cumulableReductionLot,
       beats_inclus:            form.modeBeats === 'inclure' ? form.beatsSelectionnes : null,
       beats_exclus:            form.modeBeats === 'exclure' ? form.beatsSelectionnes : [],
       licences_eligibles:      form.licencesMode === 'specifiques' ? form.licencesSelectionnees : null,
@@ -763,10 +766,11 @@ function SectionContent({
           {([
             ['premiereCommande',       'Première commande uniquement (nouveaux clients)'],
             ['utilisationIndividuelle','Non combinable avec d\'autres codes promo'],
+            ['cumulableReductionLot',  'Cumulable avec une réduction par lot active sur le panier'],
           ] as [keyof FormData, string][]).map(([key, label]) => (
             <label key={key} className="flex items-center gap-3 cursor-pointer group">
               <div
-                onClick={() => setF(key as 'premiereCommande' | 'utilisationIndividuelle', !form[key] as boolean)}
+                onClick={() => setF(key as 'premiereCommande' | 'utilisationIndividuelle' | 'cumulableReductionLot', !form[key] as boolean)}
                 className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 relative ${form[key] ? 'bg-indigo-600' : 'bg-gray-700'}`}
               >
                 <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />

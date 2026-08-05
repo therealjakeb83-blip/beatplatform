@@ -142,6 +142,7 @@ export async function POST(request: Request) {
         prix: l.prixTotalCents / 100,
         reduction_montant: l.reductionCodeCents / 100,
         code_promo_applique: l.codePromoApplique,
+        reduction_lot_id: l.reductionLotId,
       }))
     )
     if (lignesError) console.error('[checkout] Erreur insert tentatives_paiement_lignes:', JSON.stringify(lignesError))

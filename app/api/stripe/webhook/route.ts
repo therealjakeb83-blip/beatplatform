@@ -723,7 +723,7 @@ async function finaliserCommandePayee(ctx: ContextePaiement) {
 
   const { data: tentativeLignes } = await supabase
     .from('tentatives_paiement_lignes')
-    .select('id, beat_id, licence_id, prix, reduction_montant')
+    .select('id, beat_id, licence_id, prix, reduction_montant, reduction_lot_id')
     .eq('tentative_id', tentative.id)
 
   if (!tentativeLignes || tentativeLignes.length === 0) {
@@ -817,6 +817,7 @@ async function finaliserCommandePayee(ctx: ContextePaiement) {
       licence_id: tLigne.licence_id,
       prix_paye: tLigne.prix,
       reduction_montant: tLigne.reduction_montant ?? 0,
+      reduction_lot_id: tLigne.reduction_lot_id ?? null,
       splits_snapshot: splitsSnapshot,
     }).select('id').single()
 
