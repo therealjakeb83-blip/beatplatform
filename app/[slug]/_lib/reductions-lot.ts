@@ -64,8 +64,8 @@ export type PromoBannerState = {
   nbOfferts: number
   tailleLot: number
   position: number // nb d'articles déjà dans le cycle courant (0 = vient de débloquer)
-  remaining: number // nb d'articles encore à ajouter avant de compléter le lot
-  ready: boolean // le prochain article ajouté dans cette licence complète le lot
+  remaining: number // nb d'articles PAYANTS encore à ajouter avant que le PROCHAIN article devienne offert
+  ready: boolean // le prochain article ajouté dans cette licence est lui-même l'article offert
 }
 
 /** Bandeau incitatif : la licence la plus avancée dans son cycle courant
@@ -90,7 +90,10 @@ export function computePromoBanner(items: CartItem[], regles: ReductionLotRule[]
 
   if (!best) return null
   const tailleLot = best.regle.nbAAcheter + best.regle.nbOfferts
-  const remaining = tailleLot - best.position
+  // Nb d'articles payants restants avant que le PROCHAIN ajout soit lui-même
+  // l'article offert (ex : 2 achetés + 1 offert, 1 déjà au panier -> encore 1
+  // à ajouter avant que le 3e soit gratuit).
+  const remaining = (tailleLot - 1) - best.position
 
   return {
     licenceNom: best.licenceNom,
@@ -98,7 +101,7 @@ export function computePromoBanner(items: CartItem[], regles: ReductionLotRule[]
     tailleLot,
     position: best.position,
     remaining,
-    ready: remaining === 1,
+    ready: remaining === 0,
   }
 }
 

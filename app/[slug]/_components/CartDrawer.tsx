@@ -192,12 +192,17 @@ export default function CartDrawer({
                     <div className="shop-cart-banner-icon">{GIFT_ICON}</div>
                     <div className="shop-cart-banner-text">
                       {promoBanner.ready ? (
-                        <>Ton prochain beat en <strong>{promoBanner.licenceNom}</strong> est <strong>offert</strong> — ajoute-le maintenant !</>
+                        promoBanner.nbOfferts > 1 ? (
+                          <>Ton prochain beat en <strong>{promoBanner.licenceNom}</strong> débloque <strong>{promoBanner.nbOfferts} beats offerts</strong> — ajoute-le maintenant !</>
+                        ) : (
+                          <>Ton {promoBanner.tailleLot}<sup>e</sup> beat en <strong>{promoBanner.licenceNom}</strong> est <strong>offert</strong> — ajoute-le maintenant !</>
+                        )
                       ) : (
-                        <>
-                          Ajoute encore <strong>{promoBanner.remaining} beat{promoBanner.remaining > 1 ? 's' : ''} en {promoBanner.licenceNom}</strong>
-                          {' '}pour débloquer {promoBanner.nbOfferts > 1 ? `${promoBanner.nbOfferts} beats offerts` : 'un beat offert'} !
-                        </>
+                        promoBanner.nbOfferts > 1 ? (
+                          <>Ajoute encore <strong>{promoBanner.remaining} beat{promoBanner.remaining > 1 ? 's' : ''} en {promoBanner.licenceNom}</strong> pour débloquer {promoBanner.nbOfferts} beats offerts !</>
+                        ) : (
+                          <>Ajoute encore <strong>{promoBanner.remaining} beat{promoBanner.remaining > 1 ? 's' : ''} en {promoBanner.licenceNom}</strong>, le {promoBanner.tailleLot}<sup>e</sup> sera offert !</>
+                        )
                       )}
                     </div>
                   </div>
