@@ -76,6 +76,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
   // vraiment, sans passer par l'inspecteur Stripe (pas fiable pour ce type
   // d'Element).
   const [debug, setDebug] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const enCoursRef = useRef(false)
 
   // Le montant réel n'est connu qu'une fois une licence choisie ; on met à
@@ -126,19 +127,16 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
     }
   }, [methodes])
 
-  const rienADetecter = (expiree && !pret) || (methodes !== null && methodes.length === 0)
-
   return (
     <>
       {/* TEMPORAIRE — à retirer une fois le diagnostic terminé */}
-      {debug && (
-        <pre style={{ fontSize: 10, background: '#111', color: '#0f0', padding: 8, margin: '0 0 8px', borderRadius: 6, whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
-          {debug}
-          {'\n'}expiree={String(expiree)} pret={String(pret)} besoinRestriction={String(besoinRestriction)}
-        </pre>
-      )}
-      {!rienADetecter && (
-    <div className="shop-lc-express" style={{ visibility: affichable ? 'visible' : 'hidden' }}>
+      <pre style={{ fontSize: 10, background: '#111', color: '#0f0', padding: 8, margin: '0 0 8px', borderRadius: 6, whiteSpace: 'pre-wrap', overflowX: 'auto' }}>
+        stripe={stripe ? 'charge' : 'null'} elements={elements ? 'charge' : 'null'}{'\n'}
+        expiree={String(expiree)} pret={String(pret)} besoinRestriction={String(besoinRestriction)}{'\n'}
+        loadError={loadError ?? '(aucune)'}{'\n'}
+        {debug ?? '(onReady pas encore déclenché)'}
+      </pre>
+      <div className="shop-lc-express" style={{ visibility: affichable ? 'visible' : 'hidden' }}>
       <ExpressCheckoutElement
         key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
         options={{
@@ -148,6 +146,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
           emailRequired: true,
         }}
         onReady={handleReady}
+        onLoadError={(event) => setLoadError(JSON.stringify(event.error))}
         onClick={(event: StripeExpressCheckoutElementClickEvent) => {
           if (!selectedLicence) { event.reject(); return }
           event.resolve()
@@ -193,8 +192,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onAvailabilityChange, o
         }}
       />
       {confirmErreur && <div className="shop-lc-express-error">{confirmErreur}</div>}
-    </div>
-      )}
+      </div>
     </>
   )
 }
