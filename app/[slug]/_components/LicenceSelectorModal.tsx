@@ -215,7 +215,12 @@ export default function LicenceSelectorModal({
                   disabled={!selected}
                   onClick={confirmer}
                 >
-                  Ajouter au panier
+                  <span className="shop-lc-submit-label">Ajouter au panier</span>
+                  <span className="shop-lc-submit-spinner" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="42" strokeDashoffset="14" opacity=".9" />
+                    </svg>
+                  </span>
                 </button>
               </div>
             </>

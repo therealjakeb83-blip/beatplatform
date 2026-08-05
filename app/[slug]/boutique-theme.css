@@ -2203,6 +2203,7 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-lc-total-label { font-size: 12px; color: var(--lc-tx-45); }
 .shop-lc-total-value { font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
 .shop-lc-submit {
+  position: relative;
   margin-left: auto;
   flex-shrink: 0;
   border: none;
@@ -2232,16 +2233,31 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-lc-submit--secondary:hover { filter: none; border-color: var(--lc-tx-45); }
 /* Pendant la détection du paiement express : ni accent ni blanc tant qu'on
    ne sait pas encore lequel des deux sera le bon, pour ne pas laisser
-   deviner/flasher la mauvaise couleur avant de trancher. */
+   deviner/flasher la mauvaise couleur avant de trancher. Le spinner
+   (superposé, en fondu) masque le texte le temps de la décision. */
 .shop-lc-submit--loading {
   background: var(--line-strong);
   color: var(--lc-tx-45);
   box-shadow: none;
-  animation: shop-lc-submit-pulse 1.3s ease-in-out infinite;
 }
-@keyframes shop-lc-submit-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .55; }
+
+.shop-lc-submit-label { transition: opacity .25s ease; }
+.shop-lc-submit--loading .shop-lc-submit-label { opacity: 0; }
+
+.shop-lc-submit-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+}
+.shop-lc-submit--loading .shop-lc-submit-spinner { opacity: 1; }
+.shop-lc-submit-spinner svg { animation: shop-lc-submit-spin .7s linear infinite; }
+@keyframes shop-lc-submit-spin {
+  to { transform: rotate(360deg); }
 }
 
 .shop-lc-express { width: 100%; min-height: 46px; margin-bottom: 14px; transition: opacity .25s ease; }
