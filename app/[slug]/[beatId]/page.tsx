@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { Suspense } from 'react'
 import SuccessBanner from '../_components/SuccessBanner'
 import FreeDLButton from '../_components/FreeDLButton'
@@ -213,14 +212,6 @@ export default async function BeatDetailPage({
 
   return (
     <div className="shop-container">
-      <nav className="shop-product-crumbs">
-        <Link href={`/${slug}`}>Accueil</Link>
-        <span>›</span>
-        <Link href={`/${slug}/beats`}>Boutique</Link>
-        <span>›</span>
-        <span className="is-current">{beat.titre}</span>
-      </nav>
-
       <Suspense>
         <SuccessBanner />
       </Suspense>

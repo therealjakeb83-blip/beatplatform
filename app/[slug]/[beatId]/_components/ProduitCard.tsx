@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { usePlayer } from '../../_components/PlayerContext'
 import FavoriButton from '../../_components/FavoriButton'
 import LicenceSelectorModal from '../../_components/LicenceSelectorModal'
@@ -63,6 +64,14 @@ export default function ProduitCard({
         <div className="shop-hero-blob shop-hero-blob--a" />
         <div className="shop-hero-blob shop-hero-blob--b" />
       </div>
+
+      <nav className="shop-product-crumbs">
+        <Link href={`/${slug}`}>Accueil</Link>
+        <span>›</span>
+        <Link href={`/${slug}/beats`}>Boutique</Link>
+        <span>›</span>
+        <span className="is-current">{beat.titre}</span>
+      </nav>
 
       <div className="shop-product-card">
         <div className="shop-product-cover-wrap">

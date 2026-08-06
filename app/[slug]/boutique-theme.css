@@ -2313,6 +2313,8 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
    (390-430px) — le desktop garde son gabarit large hérité via .shop-container.
    ============================================================ */
 .shop-product-crumbs {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2329,6 +2331,15 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   isolation: isolate;
   padding-top: 8px;
   margin-bottom: 30px;
+}
+
+/* Header mobile transparent (voir .shop-header-wrap position:static) : sans
+   cette remontée, son dégradé n'a rien derrière lui que le fond brut --bg,
+   quasi noir — même bug/même fix que .shop-hero, voir la mémoire dédiée
+   (feedback_header_mobile_black_band_diagnostic). Le padding-top compense
+   la remontée pour que le fil d'Ariane reste à la même position visuelle. */
+@media (max-width: 767px) {
+  .shop-product { margin-top: -70px; padding-top: 78px; }
 }
 
 .shop-product-glow {
