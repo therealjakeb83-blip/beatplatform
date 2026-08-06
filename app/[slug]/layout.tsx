@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
 import { accentPresetKey } from './_lib/theme-accent'
+import { estClientAbonne } from './_lib/abonnement'
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
 import { CartProvider } from './_components/CartContext'
@@ -83,6 +84,18 @@ export default async function BoutiqueLayout({
     .eq('slug', slug)
     .maybeSingle()
 
+  // Remise membre affichée dans la pop-up de licence (player + fiche produit)
+  // — calculée une seule fois ici pour toute la boutique.
+  const estAbonne = beatmaker
+    ? await estClientAbonne({
+        admin,
+        beatmakerId: beatmaker.id,
+        aboActif: beatmaker.abo_actif,
+        slug,
+        user,
+      })
+    : false
+
   // Réductions par lot actives — aperçu client dans le panier (le montant
   // réel est toujours recalculé côté serveur, voir lib/pricing.ts).
   let reglesLot: { id: string; licenceId: string; nbAAcheter: number; nbOfferts: number }[] = []
@@ -158,7 +171,12 @@ export default async function BoutiqueLayout({
               />
             )}
             <div className="shop-bottom-dock">
-              <PlayerBar slug={slug} clientId={user?.id ?? null} />
+              <PlayerBar
+                slug={slug}
+                clientId={user?.id ?? null}
+                estAbonne={estAbonne}
+                remisePct={beatmaker?.abo_remise_pct ?? 0}
+              />
               <MobileTabBar slug={slug} />
             </div>
             <CartDrawer

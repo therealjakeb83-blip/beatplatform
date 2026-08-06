@@ -1,14 +1,14 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import LicencesTable from '../_components/LicencesTable'
-import BeatDetailPlayButton from '../_components/BeatDetailPlayButton'
 import SuccessBanner from '../_components/SuccessBanner'
 import FreeDLButton from '../_components/FreeDLButton'
-import type { LicencePublic } from '../_components/BeatCard'
+import ProduitCard from './_components/ProduitCard'
+import MemeStyleSection from './_components/MemeStyleSection'
+import { estClientAbonne } from '../_lib/abonnement'
+import type { LicencePublic, BeatPublic } from '../_components/BeatCard'
 
 export default async function BeatDetailPage({
   params,
@@ -17,7 +17,6 @@ export default async function BeatDetailPage({
 }) {
   const { slug, beatId } = await params
   const supabase = await createClient()
-
   const admin = createAdminClient()
 
   const { data: beatmaker } = await admin
@@ -31,7 +30,7 @@ export default async function BeatDetailPage({
   const { data: beat } = await supabase
     .from('beats')
     .select(`
-      id, titre, bpm, cle, image_url, mp3_tague_url, statut, free_download_actif,
+      id, titre, bpm, cle, date_sortie, created_at, image_url, mp3_tague_url, statut, free_download_actif,
       styles, ambiances, instruments, type_beat,
       beat_licences (
         actif, prix_override, sur_demande,
@@ -50,35 +49,10 @@ export default async function BeatDetailPage({
 
   if (!beat) notFound()
 
-  // Vérifier abonnement — session Supabase en priorité, cookie en fallback
   const { data: { user } } = await supabase.auth.getUser()
-  let estAbonne = false
-
-  if (user && beatmaker.abo_actif) {
-    const { data: abo } = await admin
-      .from('abonnements_boutique')
-      .select('id')
-      .eq('beatmaker_id', beatmaker.id)
-      .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
-      .eq('statut', 'actif')
-      .maybeSingle()
-    estAbonne = !!abo
-  }
-
-  if (!estAbonne) {
-    const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
-    if (emailCookie && beatmaker.abo_actif) {
-      const { data: abo } = await admin
-        .from('abonnements_boutique')
-        .select('id')
-        .eq('beatmaker_id', beatmaker.id)
-        .eq('acheteur_email', emailCookie)
-        .eq('statut', 'actif')
-        .maybeSingle()
-      estAbonne = !!abo
-    }
-  }
+  const estAbonne = await estClientAbonne({
+    admin, beatmakerId: beatmaker.id, aboActif: beatmaker.abo_actif, slug, user,
+  })
 
   if (beat.statut === 'prive' && !estAbonne) redirect(`/${slug}/membres`)
 
@@ -111,118 +85,174 @@ export default async function BeatDetailPage({
       sur_demande: bl.sur_demande,
     } satisfies LicencePublic))
 
-  const tags = [
-    ...(beat.type_beat ?? []),
-    ...(beat.styles ?? []),
-    ...(beat.ambiances ?? []),
-    ...(beat.instruments ?? []),
-  ]
+  const tagPrincipal = beat.styles?.[0] ?? beat.type_beat?.[0] ?? null
+
+  // Icônes instruments — mêmes catégories (plateforme/certifiées/propres au
+  // beatmaker) que le rail "Parcourir les instruments" de la home.
+  const { data: categoriesInstruments } = await admin
+    .from('categories')
+    .select('nom, image_url')
+    .eq('type', 'instruments')
+    .or(`source.eq.plateforme,beatmaker_id.eq.${beatmaker.id},statut.eq.certifiee`)
+  const iconeParInstrument = new Map(
+    (categoriesInstruments ?? []).map(c => [c.nom, c.image_url as string | null])
+  )
+  const instruments = ((beat.instruments ?? []) as string[]).map(nom => ({
+    nom,
+    icone: iconeParInstrument.get(nom) ?? null,
+  }))
+
+  // Crédits "ft." — collaborateurs du beat avec un compte beatmaker existant
+  // (une invitation en attente par email n'a pas de nom public à afficher).
+  const { data: splitsData } = await admin
+    .from('beat_splits')
+    .select('beatmaker_id, beatmakers(nom_artiste)')
+    .eq('beat_id', beatId)
+    .not('beatmaker_id', 'is', null)
+  const featuring = ((splitsData ?? []) as unknown as { beatmakers: { nom_artiste: string } | null }[])
+    .map(s => s.beatmakers?.nom_artiste)
+    .filter((n): n is string => !!n)
+  const credits = featuring.length ? `${beatmaker.nom_artiste} ft. ${featuring.join(', ')}` : beatmaker.nom_artiste
+
+  // Beats similaires — même style/type beat principal, même boutique,
+  // complété par les plus récents si pas assez de correspondances.
+  const { data: candidatsRaw } = await supabase
+    .from('beats')
+    .select(`
+      id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif,
+      styles, ambiances, instruments, type_beat,
+      beat_licences (
+        actif, prix_override, sur_demande,
+        licences (
+          id, nom, modele, prix, actif,
+          inclut_mp3, inclut_wav, inclut_stems,
+          streams_limite, vues_video_limite, clips_video_limite, est_exclusive
+        )
+      )
+    `)
+    .eq('beatmaker_id', beatmaker.id)
+    .eq('statut', 'public')
+    .neq('id', beatId)
+    .is('supprime_le', null)
+    .order('created_at', { ascending: false })
+    .limit(40)
+
+  type RawCandidat = {
+    id: string
+    titre: string
+    bpm: number | null
+    cle: string | null
+    image_url: string | null
+    mp3_tague_url: string | null
+    free_download_actif: boolean
+    styles: string[] | null
+    ambiances: string[] | null
+    instruments: string[] | null
+    type_beat: string[] | null
+    beat_licences: RawBeatLicence[] | null
+  }
+
+  function mapCandidat(b: RawCandidat): BeatPublic {
+    return {
+      id: b.id,
+      titre: b.titre,
+      bpm: b.bpm,
+      cle: b.cle,
+      image_url: b.image_url,
+      mp3_tague_url: b.mp3_tague_url,
+      free_download_actif: b.free_download_actif,
+      tag: b.styles?.[0] ?? b.type_beat?.[0] ?? null,
+      styles: b.styles,
+      ambiances: b.ambiances,
+      instruments: b.instruments,
+      type_beat: b.type_beat,
+      licences: (b.beat_licences ?? [])
+        .filter(bl => bl.actif && bl.licences?.actif)
+        .map((bl): LicencePublic => ({
+          id: bl.licences!.id,
+          nom: bl.licences!.nom,
+          modele: bl.licences!.modele,
+          prix: bl.prix_override ?? bl.licences!.prix,
+          sur_demande: bl.sur_demande,
+          est_exclusive: bl.licences!.est_exclusive,
+          inclut_mp3: bl.licences!.inclut_mp3,
+          inclut_wav: bl.licences!.inclut_wav,
+          inclut_stems: bl.licences!.inclut_stems,
+          streams_limite: bl.licences!.streams_limite,
+          vues_video_limite: bl.licences!.vues_video_limite,
+          clips_video_limite: bl.licences!.clips_video_limite,
+        })),
+    }
+  }
+
+  const candidats = ((candidatsRaw ?? []) as unknown as RawCandidat[]).map(mapCandidat)
+  const memeStyle = tagPrincipal
+    ? candidats.filter(b => b.styles?.includes(tagPrincipal) || b.type_beat?.includes(tagPrincipal))
+    : []
+  const complement = candidats.filter(b => !memeStyle.some(m => m.id === b.id))
+  const similaires = [...memeStyle, ...complement].slice(0, 8)
+
+  const dateAffichee = new Date(beat.date_sortie ?? beat.created_at).toLocaleDateString('fr-FR')
+
+  const beatPourCarte: BeatPublic = {
+    id: beat.id,
+    titre: beat.titre,
+    bpm: beat.bpm,
+    cle: beat.cle,
+    image_url: beat.image_url,
+    mp3_tague_url: beat.mp3_tague_url,
+    free_download_actif: beat.free_download_actif,
+    tag: tagPrincipal,
+    styles: beat.styles,
+    ambiances: beat.ambiances,
+    instruments: beat.instruments,
+    type_beat: beat.type_beat,
+    licences,
+  }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      {/* Navigation */}
-      <Link
-        href={`/${slug}`}
-        className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8"
-      >
-        ← Boutique de {beatmaker.nom_artiste}
-      </Link>
+    <div className="shop-container">
+      <nav className="shop-product-crumbs">
+        <Link href={`/${slug}`}>Accueil</Link>
+        <span>›</span>
+        <Link href={`/${slug}/beats`}>Boutique</Link>
+        <span>›</span>
+        <span className="is-current">{beat.titre}</span>
+      </nav>
 
-      {/* Banner succès paiement */}
       <Suspense>
         <SuccessBanner />
       </Suspense>
 
-      <div className="flex flex-col sm:flex-row gap-8">
-        {/* Cover */}
-        <div className="w-full sm:w-56 sm:flex-shrink-0">
-          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-800">
-            {beat.image_url ? (
-              <img src={beat.image_url} alt={beat.titre} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl font-black text-gray-600">
-                {beat.titre.slice(0, 2).toUpperCase()}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Infos */}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-3xl font-black text-white">{beat.titre}</h1>
-
-          <div className="flex items-center gap-3 mt-2 text-gray-400 text-sm">
-            {beat.bpm && <span>{beat.bpm} BPM</span>}
-            {beat.bpm && beat.cle && <span>·</span>}
-            {beat.cle && <span>{beat.cle}</span>}
-          </div>
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {(beat.type_beat ?? []).map((t: string) => (
-                <span key={t} className="text-xs px-2.5 py-1 rounded-full bg-brand-900/50 text-brand-300">
-                  {t}
-                </span>
-              ))}
-              {(beat.styles ?? []).map((s: string) => (
-                <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400">
-                  {s}
-                </span>
-              ))}
-              {(beat.ambiances ?? []).map((a: string) => (
-                <span key={a} className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-500">
-                  {a}
-                </span>
-              ))}
-              {(beat.instruments ?? []).map((i: string) => (
-                <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-500">
-                  {i}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Bouton play */}
-          <div className="mt-6">
-            <BeatDetailPlayButton
-              beat={{
-                id: beat.id,
-                titre: beat.titre,
-                image_url: beat.image_url,
-                mp3_tague_url: beat.mp3_tague_url,
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Licences */}
-      <LicencesTable
-        licences={licences}
-        beatId={beatId}
-        beatTitre={beat.titre}
-        beatImageUrl={beat.image_url}
+      <ProduitCard
+        slug={slug}
+        beat={beatPourCarte}
+        credits={credits}
+        moods={beat.ambiances ?? []}
+        instruments={instruments}
+        dateAffichee={dateAffichee}
+        clientId={user?.id ?? null}
         estAbonne={estAbonne}
         remisePct={beatmaker.abo_remise_pct ?? 0}
+        queue={[beatPourCarte, ...similaires]}
       />
 
       {beat.free_download_actif && beat.mp3_tague_url && (
-        <div className="mt-6 border-t border-gray-800 pt-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-sm font-semibold text-white mb-0.5">Téléchargement gratuit disponible</p>
-              <p className="text-xs text-gray-500">Usage personnel uniquement — non commercial</p>
-            </div>
-            <FreeDLButton
-              beatId={beatId}
-              beatTitre={beat.titre}
-              slug={slug}
-              clientId={user?.id ?? null}
-            />
+        <div className="shop-product-freedl">
+          <div>
+            <p className="shop-product-freedl-title">Téléchargement gratuit disponible</p>
+            <p className="shop-product-freedl-sub">Usage personnel uniquement — non commercial</p>
           </div>
+          <FreeDLButton
+            beatId={beatId}
+            beatTitre={beat.titre}
+            slug={slug}
+            clientId={user?.id ?? null}
+          />
         </div>
       )}
+
+      <MemeStyleSection slug={slug} beats={similaires} estAbonne={estAbonne} />
     </div>
   )
 }

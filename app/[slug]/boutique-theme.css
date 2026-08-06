@@ -60,6 +60,11 @@ html:has(.shop-root[data-accent-preset="blancNoir"]), body:has(.shop-root[data-a
   --tint-member: color-mix(in srgb, var(--ac) 10%, transparent);
   --style-card-text: #FFFFFF;
 
+  /* Carte "glass" de la fiche produit — translucide pour laisser transparaître
+     les nappes --g1/--g2 derrière (voir .shop-product-glow). */
+  --product-card-bg: linear-gradient(180deg, rgba(22,23,32,.72), rgba(13,14,20,.88));
+  --product-card-border: rgba(255,255,255,.09);
+
   --font-body: var(--font-poppins), sans-serif;
   --font-mono: monospace;
   --fs-h1: 46px; --lh-h1: 1.2;
@@ -209,6 +214,9 @@ body:has(.shop-root) { overflow-x: clip; }
   --glow2: rgb(242,242,242);
   --hero-bg: radial-gradient(130% 120% at 50% -20%, var(--glow1) 0%, var(--glow2) 48%, var(--bg) 92%);
   --hero-bg-mobile: radial-gradient(160% 100% at 50% -15%, var(--glow1) 0%, var(--glow2) 48%, var(--bg) 92%);
+
+  --product-card-bg: linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.88));
+  --product-card-border: rgba(10,12,19,.08);
 }
 
 /* Logo : fourni en blanc par le beatmaker, rendu noir sur fond clair
@@ -272,6 +280,8 @@ body:has(.shop-root) { overflow-x: clip; }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-track-thumb { border: 2px solid var(--ac); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori { color: rgba(10,12,19,.55); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-favori:hover { color: var(--ac); }
+.shop-root[data-accent-preset="blancNoir"] .shop-product-favori { color: rgba(10,12,19,.55); }
+.shop-root[data-accent-preset="blancNoir"] .shop-product-favori:hover { color: var(--ac); }
 .shop-root[data-accent-preset="blancNoir"] .shop-player-skip:hover { color: var(--text); }
 
 /* Panneau déplié : même glass hardcodé que le mini-player mobile. */
@@ -2209,7 +2219,12 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   border-radius: 999px;
 }
 .shop-lc-price { margin-left: auto; font-size: 15px; font-weight: 700; line-height: 1; color: var(--text); white-space: nowrap; }
+.shop-lc-price--sur-demande { font-size: 12px; font-weight: 600; color: var(--ac); text-transform: none; letter-spacing: 0; }
+.shop-lc-price-wrap { margin-left: auto; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.shop-lc-price-wrap .shop-lc-price { margin-left: 0; }
+.shop-lc-price-original { font-size: 11.5px; color: var(--lc-tx-45); text-decoration: line-through; }
 .shop-lc-short { font-size: 11px; line-height: 1; color: var(--lc-tx-45); }
+.shop-lc-remise-tag { color: var(--ac); font-weight: 600; }
 
 /* Bloc « Inclus avec … » */
 .shop-lc-incl { margin: 22px 26px 24px; }
@@ -2259,6 +2274,12 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 }
 .shop-lc-submit--secondary:hover { filter: none; border-color: var(--lc-tx-45); }
 
+/* Licence "sur demande" (Exclusive sans prix fixe) — remplace le total +
+   les moyens de paiement par un renvoi vers la page Contact. */
+.shop-lc-sur-demande { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.shop-lc-sur-demande-text { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--lc-tx-75); }
+.shop-lc-sur-demande .shop-lc-submit { margin-left: 0; }
+
 .shop-lc-express { width: 100%; min-height: 46px; margin-bottom: 14px; transition: opacity .25s ease; }
 .shop-lc-express-error { color: #E11D48; font-size: 11.5px; text-align: center; margin-top: 8px; }
 .shop-lc-express-redirecting { text-align: center; font-size: 13px; color: var(--lc-tx-75); padding: 6px 0; }
@@ -2276,6 +2297,8 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   .shop-lc-list { padding: 14px 16px 4px; }
   .shop-lc-opt { padding: 13px 15px; }
   .shop-lc-opt-top .shop-lc-price { flex-basis: 100%; margin-left: 0; font-size: 17px; }
+  .shop-lc-opt-top .shop-lc-price-wrap { flex-basis: 100%; margin-left: 0; }
+  .shop-lc-opt-top .shop-lc-price-wrap .shop-lc-price { font-size: 17px; }
 
   .shop-lc-bullets { grid-template-columns: 1fr; gap: 9px; }
 
@@ -2283,3 +2306,218 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   .shop-lc-total-value { font-size: 18px; }
   .shop-lc-submit { font-size: 13px; padding: 12px 20px; }
 }
+
+/* ============================================================
+   FICHE PRODUIT — fil d'Ariane + carte "glass" (cover/play/waveform,
+   titre, tags, infos, CTA licence). Mobile uniquement pour l'instant
+   (390-430px) — le desktop garde son gabarit large hérité via .shop-container.
+   ============================================================ */
+.shop-product-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 0 2px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.shop-product-crumbs a { color: var(--text-3); }
+.shop-product-crumbs a:hover { color: var(--text); }
+.shop-product-crumbs .is-current { color: var(--text); font-weight: 600; }
+
+.shop-product {
+  position: relative;
+  isolation: isolate;
+  padding-top: 8px;
+  margin-bottom: 30px;
+}
+
+.shop-product-glow {
+  position: absolute;
+  inset: -80px -20px auto -20px;
+  height: 480px;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 32px;
+}
+.shop-product-glow .shop-hero-blob--a { top: -40%; left: -20%; width: 90%; height: 140%; }
+.shop-product-glow .shop-hero-blob--b { top: -30%; right: -24%; width: 90%; height: 140%; }
+
+.shop-product-card {
+  position: relative;
+  z-index: 1;
+  max-width: 460px;
+  width: 92%;
+  margin: 0 auto;
+  background: var(--product-card-bg);
+  border: 1px solid var(--product-card-border);
+  border-radius: var(--r-card);
+  padding: 22px 24px 26px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 26px 64px rgba(0,0,0,.4);
+}
+
+.shop-product-cover-wrap {
+  position: relative;
+  width: 206px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: var(--r-item);
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(0,0,0,.45);
+}
+.shop-product-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Waveform animée — deux vagues décalées qui défilent en boucle, visible
+   uniquement pendant la lecture de ce beat précis. */
+.shop-product-wave {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 46%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.shop-product-wave svg {
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 200%;
+  height: 100%;
+  transform-origin: bottom center;
+}
+.shop-product-wave path { fill: rgba(255,255,255,.8); }
+.shop-product-wave-a { animation: shopWaveSlide 4.5s linear infinite, shopWaveBob 2.6s ease-in-out infinite; }
+.shop-product-wave-b { animation: shopWaveSlide 7s linear infinite reverse, shopWaveBob 3.4s ease-in-out infinite .4s; }
+.shop-product-wave-b path { fill: rgba(255,255,255,.5); }
+
+@keyframes shopWaveSlide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes shopWaveBob { 0%, 100% { scale: 1 .88; } 50% { scale: 1 1.12; } }
+
+.shop-product-play {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  cursor: pointer;
+  background: var(--ac);
+  color: var(--ac-t);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 9px 20px;
+  border-radius: 999px;
+  transition: transform .15s, filter .15s;
+}
+.shop-product-play:hover { filter: brightness(1.1); }
+.shop-product-play:active { transform: translateX(-50%) scale(.95); }
+.shop-product-play--disabled { opacity: .5; cursor: not-allowed; }
+
+.shop-product-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.shop-product-head-info { min-width: 0; }
+.shop-product-title { margin: 0; font-size: 25px; line-height: 1.12; font-weight: 800; letter-spacing: -.02em; }
+.shop-product-credits {
+  margin: 5px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.shop-product-favori {
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: color .15s, transform .15s;
+}
+.shop-product-favori:hover { transform: scale(1.1); }
+.shop-product-favori:active { transform: scale(.9); }
+.shop-product-favori.is-active { color: var(--ac); }
+.shop-product-favori svg { width: 23px; height: 23px; }
+
+.shop-product-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.shop-product-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.shop-product-tag--instrument { padding-left: 7px; }
+.shop-product-tag-icon { width: 17px; height: 17px; object-fit: contain; opacity: .9; }
+.shop-root[data-accent-preset="blancNoir"] .shop-product-tag-icon { filter: invert(1); }
+
+.shop-product-info { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.shop-product-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.shop-product-info-row svg { flex-shrink: 0; }
+.shop-product-info-row svg path, .shop-product-info-row svg circle { stroke: var(--ac); }
+.shop-product-info-row strong { color: var(--text); font-weight: 700; }
+
+.shop-product-cta {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--ac);
+  color: var(--ac-t);
+  border: none;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  height: 54px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform .15s, filter .15s;
+}
+.shop-product-cta:hover { filter: brightness(1.1); }
+.shop-product-cta:active { transform: scale(.98); }
+
+/* Bloc téléchargement gratuit sous la carte */
+.shop-product-freedl {
+  max-width: 460px;
+  width: 92%;
+  margin: 22px auto 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.shop-product-freedl-title { margin: 0 0 2px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.shop-product-freedl-sub { margin: 0; font-size: 11.5px; color: var(--text-3); }

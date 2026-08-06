@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import type { BeatMin, LicenceMin } from './PlayerContext'
 import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
@@ -40,11 +41,16 @@ export default function LicenceSelectorModal({
   onClose,
   beat,
   slug,
+  estAbonne = false,
+  remisePct = 0,
 }: {
   open: boolean
   onClose: () => void
   beat: BeatMin | null
   slug: string
+  // Remise membre abonné (Étape 8) — ne s'applique jamais à Illimité/Exclusive.
+  estAbonne?: boolean
+  remisePct?: number
 }) {
   const { addItem, open: openCart } = useCart()
   const { isPlaying, togglePlay } = usePlayer()
@@ -77,21 +83,36 @@ export default function LicenceSelectorModal({
 
   if (!beat || !portalTarget) return null
 
+  // "Sur demande" (Exclusive sans prix fixe) toujours en dernier — son prix
+  // de repli (licences.prix global) n'a aucun sens pour le tri par prix.
   const licences = (beat.licences ?? [])
-    .filter(l => !l.sur_demande)
-    .sort((a, b) => a.prix - b.prix)
+    .sort((a, b) => (a.sur_demande === b.sur_demande ? a.prix - b.prix : a.sur_demande ? 1 : -1))
   const selected: LicenceMin | undefined = licences.find(l => l.id === selectedId)
   const meta = [beat.tag, beat.bpm ? `${beat.bpm} BPM` : null].filter(Boolean).join(' · ')
 
+  // Remise membre abonné — jamais sur Illimité/Exclusive ni sur une licence
+  // sur demande (prix non fixé, rien à réduire).
+  function prixRemise(l: LicenceMin): { prix: number; remise: boolean } {
+    const eligible = estAbonne && remisePct > 0 && !l.sur_demande && l.modele !== 'illimite' && l.modele !== 'exclusive'
+    return eligible ? { prix: Math.round(l.prix * (1 - remisePct / 100)), remise: true } : { prix: l.prix, remise: false }
+  }
+
+  // Prix déjà remisé transmis au panier et au paiement express — jamais le
+  // prix plein, sinon le panier et la feuille Apple/Google Pay affichent un
+  // montant différent de celui réellement facturé (recalculé côté serveur).
+  const selectedPourPaiement: LicenceMin | undefined = selected
+    ? { ...selected, prix: prixRemise(selected).prix }
+    : undefined
+
   function confirmer() {
-    if (!selected || !beat) return
+    if (!selectedPourPaiement || !beat) return
     addItem({
       beatId: beat.id,
-      licenceId: selected.id,
+      licenceId: selectedPourPaiement.id,
       titre: beat.titre,
       imageUrl: beat.image_url,
-      licenceNom: selected.nom,
-      prix: selected.prix,
+      licenceNom: selectedPourPaiement.nom,
+      prix: selectedPourPaiement.prix,
     })
     openCart()
     onClose()
@@ -153,6 +174,7 @@ export default function LicenceSelectorModal({
           <div className="shop-lc-list">
             {licences.map(l => {
               const badge = badgeLicence(l)
+              const { prix, remise } = prixRemise(l)
               return (
                 <button
                   key={l.id}
@@ -163,9 +185,21 @@ export default function LicenceSelectorModal({
                   <div className="shop-lc-opt-top">
                     <span className="shop-lc-name">{l.nom}</span>
                     {badge && <span className="shop-lc-tag">{badge}</span>}
-                    <span className="shop-lc-price">{formatPrix(l.prix)}</span>
+                    {l.sur_demande ? (
+                      <span className="shop-lc-price shop-lc-price--sur-demande">Sur demande</span>
+                    ) : remise ? (
+                      <span className="shop-lc-price-wrap">
+                        <span className="shop-lc-price-original">{formatPrix(l.prix)}</span>
+                        <span className="shop-lc-price">{formatPrix(prix)}</span>
+                      </span>
+                    ) : (
+                      <span className="shop-lc-price">{formatPrix(prix)}</span>
+                    )}
                   </div>
-                  <div className="shop-lc-short">{formatCourt(l.modele)}</div>
+                  <div className="shop-lc-short">
+                    {formatCourt(l.modele)}
+                    {remise && <span className="shop-lc-remise-tag"> · -{remisePct}% membre</span>}
+                  </div>
                 </button>
               )
             })}
@@ -193,13 +227,22 @@ export default function LicenceSelectorModal({
         <div className="shop-lc-foot">
           {expressRedirection ? (
             <div className="shop-lc-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>
+          ) : selected?.sur_demande ? (
+            <div className="shop-lc-sur-demande">
+              <p className="shop-lc-sur-demande-text">
+                Cette licence n&apos;a pas de prix fixe — contacte le beatmaker pour obtenir une offre.
+              </p>
+              <Link href={`/${slug}/contact`} className="shop-lc-submit" onClick={onClose}>
+                Me contacter
+              </Link>
+            </div>
           ) : (
             <>
               {open && (
                 <LicenceExpressPay
                   slug={slug}
                   beatId={beat.id}
-                  selectedLicence={selected}
+                  selectedLicence={selectedPourPaiement}
                   onStatusChange={setExpressStatus}
                   onSuccess={apresSuccesExpress}
                 />
@@ -207,7 +250,7 @@ export default function LicenceSelectorModal({
               <div className="shop-lc-totalRow">
                 <div className="shop-lc-total">
                   <span className="shop-lc-total-label">Total</span>
-                  <span className="shop-lc-total-value">{selected ? formatPrix(selected.prix) : '—'}</span>
+                  <span className="shop-lc-total-value">{selectedPourPaiement ? formatPrix(selectedPourPaiement.prix) : '—'}</span>
                 </div>
                 <button
                   className={`shop-lc-submit${expressStatus === 'visible' ? ' shop-lc-submit--secondary' : ''}`}

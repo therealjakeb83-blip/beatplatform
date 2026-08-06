@@ -60,9 +60,13 @@ function LoopIcon() {
 export default function PlayerBar({
   slug,
   clientId,
+  estAbonne = false,
+  remisePct = 0,
 }: {
   slug: string
   clientId: string | null
+  estAbonne?: boolean
+  remisePct?: number
 }) {
   const {
     currentBeat, isPlaying, progress, duration, isShuffled, loopOne,
@@ -239,6 +243,8 @@ export default function PlayerBar({
         onClose={() => setLicenceModalOpen(false)}
         beat={currentBeat}
         slug={slug}
+        estAbonne={estAbonne}
+        remisePct={remisePct}
       />
     </>
   )
