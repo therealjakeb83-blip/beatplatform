@@ -86,6 +86,7 @@ export default async function BeatDetailPage({
     } satisfies LicencePublic))
 
   const tagPrincipal = beat.styles?.[0] ?? beat.type_beat?.[0] ?? null
+  const tagPrincipalType: 'styles' | 'type-beat' = beat.styles?.[0] ? 'styles' : 'type-beat'
 
   // Icônes instruments — mêmes catégories (plateforme/certifiées/propres au
   // beatmaker) que le rail "Parcourir les instruments" de la home.
@@ -252,7 +253,12 @@ export default async function BeatDetailPage({
         </div>
       )}
 
-      <MemeStyleSection slug={slug} beats={similaires} estAbonne={estAbonne} />
+      <MemeStyleSection
+        slug={slug}
+        beats={similaires}
+        estAbonne={estAbonne}
+        toutVoirHref={tagPrincipal ? `/${slug}/parcourir/${tagPrincipalType}/${encodeURIComponent(tagPrincipal)}` : null}
+      />
     </div>
   )
 }
