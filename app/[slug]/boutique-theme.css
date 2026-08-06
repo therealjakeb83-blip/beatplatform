@@ -629,8 +629,8 @@ a.shop-pill.is-private:hover { background: #E7E9F5; color: #05060B; }
   .shop-header-row1 { padding: 8px 0; gap: var(--sp-3); }
   .shop-search, .shop-header-links, .shop-header-row1 .shop-cta, .shop-header-row2 { display: none; }
   .shop-header-icons { margin-left: auto; gap: 10px; }
-  .shop-icon-btn { width: 44px; height: 44px; border: none; background: rgba(16,18,24,.55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-  .shop-icon-btn svg { width: 22px; height: 22px; }
+  .shop-icon-btn { width: 46px; height: 46px; border: none; background: rgba(16,18,24,.55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .shop-icon-btn svg { width: 23px; height: 23px; }
   .shop-cart-count { top: -2px; right: -2px; min-width: 16px; height: 16px; font-size: 9.5px; }
 }
 
@@ -2315,9 +2315,10 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-product-crumbs {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 0 2px;
-  font-size: 11.5px;
+  gap: 9px;
+  padding: 10px 0 10px;
+  font-size: 12px;
+  letter-spacing: .01em;
   color: var(--text-3);
 }
 .shop-product-crumbs a { color: var(--text-3); }
@@ -2327,14 +2328,14 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-product {
   position: relative;
   isolation: isolate;
-  padding-top: 8px;
-  margin-bottom: 30px;
+  padding-top: 10px;
+  margin-bottom: 34px;
 }
 
 .shop-product-glow {
   position: absolute;
-  inset: -80px -20px auto -20px;
-  height: 480px;
+  inset: -84px -20px auto -20px;
+  height: 500px;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
@@ -2346,25 +2347,25 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-product-card {
   position: relative;
   z-index: 1;
-  max-width: 460px;
-  width: 92%;
+  max-width: 480px;
+  width: 94%;
   margin: 0 auto;
   background: var(--product-card-bg);
   border: 1px solid var(--product-card-border);
   border-radius: var(--r-card);
-  padding: 22px 24px 26px;
+  padding: 27px 27px 30px;
   backdrop-filter: blur(14px);
-  box-shadow: 0 26px 64px rgba(0,0,0,.4);
+  box-shadow: 0 32px 76px rgba(0,0,0,.4);
 }
 
 .shop-product-cover-wrap {
   position: relative;
-  width: 206px;
+  width: 226px;
   aspect-ratio: 1;
   margin: 0 auto;
   border-radius: var(--r-item);
   overflow: hidden;
-  box-shadow: 0 20px 48px rgba(0,0,0,.45);
+  box-shadow: 0 24px 56px rgba(0,0,0,.45);
 }
 .shop-product-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
@@ -2423,22 +2424,23 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 .shop-product-head-info { min-width: 0; }
-.shop-product-title { margin: 0; font-size: 25px; line-height: 1.12; font-weight: 800; letter-spacing: -.02em; }
+.shop-product-title { margin: 0; font-size: 28px; line-height: 1.12; font-weight: 800; letter-spacing: -.02em; }
 .shop-product-credits {
-  margin: 5px 0 0;
-  font-size: 11px;
+  margin: 6px 0 0;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: .08em;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--text-3);
 }
 
 .shop-product-favori {
-  width: 40px; height: 40px;
+  width: 42px; height: 42px;
   flex-shrink: 0;
+  margin-top: 2px;
   border-radius: var(--r-pill);
   background: transparent;
   border: none;
@@ -2451,43 +2453,51 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 .shop-product-favori:hover { transform: scale(1.1); }
 .shop-product-favori:active { transform: scale(.9); }
 .shop-product-favori.is-active { color: var(--ac); }
-.shop-product-favori svg { width: 23px; height: 23px; }
+.shop-product-favori svg { width: 24px; height: 24px; }
 
-.shop-product-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.shop-product-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.shop-product-tags + .shop-product-tags { margin-top: 9px; }
 .shop-product-tag {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
   color: var(--text-2);
   font-size: 10.5px;
   font-weight: 500;
-  padding: 5px 11px;
+  padding: 7px 13px;
   border-radius: 999px;
   white-space: nowrap;
 }
-.shop-product-tag--instrument { padding-left: 7px; }
-.shop-product-tag-icon { width: 17px; height: 17px; object-fit: contain; opacity: .9; }
+.shop-product-tag--instrument { padding-left: 8px; }
+.shop-product-tag-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  object-fit: contain;
+  opacity: .9;
+  display: block;
+}
 .shop-root[data-accent-preset="blancNoir"] .shop-product-tag-icon { filter: invert(1); }
 
-.shop-product-info { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.shop-product-info { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
 .shop-product-info-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-size: 13px;
   color: var(--text-2);
 }
-.shop-product-info-row svg { flex-shrink: 0; }
+.shop-product-info-row svg { width: 18px; height: 18px; flex-shrink: 0; }
 .shop-product-info-row svg path, .shop-product-info-row svg circle { stroke: var(--ac); }
-.shop-product-info-row strong { color: var(--text); font-weight: 700; }
+.shop-product-info-row strong { color: var(--text); font-weight: 800; }
 
 .shop-product-cta {
   position: relative;
   z-index: 1;
   width: 100%;
-  margin-top: 14px;
+  margin-top: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2497,8 +2507,8 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   border: none;
   font-family: inherit;
   font-weight: 700;
-  font-size: 15px;
-  height: 54px;
+  font-size: 16px;
+  height: 58px;
   border-radius: 999px;
   cursor: pointer;
   transition: transform .15s, filter .15s;
@@ -2508,10 +2518,10 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 
 /* Bloc téléchargement gratuit sous la carte */
 .shop-product-freedl {
-  max-width: 460px;
-  width: 92%;
-  margin: 22px auto 0;
-  padding-top: 22px;
+  max-width: 480px;
+  width: 94%;
+  margin: 26px auto 0;
+  padding-top: 24px;
   border-top: 1px solid var(--line);
   display: flex;
   align-items: center;
