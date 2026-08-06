@@ -25,8 +25,39 @@ type Props = {
 }
 
 export default function CartExpressPay(props: Props) {
+  const { slug, items } = props
+  const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
+  // Voir LicenceExpressPay.tsx : PayPal n'accepte pas `on_behalf_of` côté
+  // Stripe — le résoudre après le montage d'Elements (ancien comportement)
+  // faisait apparaître puis disparaître silencieusement le bouton PayPal dès
+  // que la mise à jour était prise en compte. Résolu ici AVANT le montage.
+  const [onBehalfOf, setOnBehalfOf] = useState<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (!beatIdsKey) return
+    let annule = false
+    fetch('/api/stripe/on-behalf-of', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, beat_ids: beatIdsKey.split(',') }),
+    })
+      .then(r => r.json())
+      .then((data: { on_behalf_of?: string | null }) => { if (!annule) setOnBehalfOf(data.on_behalf_of ?? null) })
+      .catch(() => { if (!annule) setOnBehalfOf(null) })
+    return () => { annule = true }
+  }, [slug, beatIdsKey])
+
+  // Panier vide : pas d'article donc pas d'appel API à faire, mais on ne
+  // reste jamais bloqué en "détection" indéfiniment pour autant.
+  const resolu = beatIdsKey ? onBehalfOf : null
+  if (resolu === undefined) return null
+
   return (
-    <Elements stripe={stripePromise} options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}>
+    <Elements
+      key={resolu ?? 'aucun'}
+      stripe={stripePromise}
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', on_behalf_of: resolu ?? undefined }}
+    >
       <ExpressButtons {...props} />
     </Elements>
   )
@@ -67,26 +98,6 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
     if (!elements || items.length === 0) return
     elements.update({ amount: Math.round(totalRaw * 100) })
   }, [elements, totalRaw, items.length])
-
-  // on_behalf_of doit être connu de l'Elements AVANT la confirmation, sinon
-  // Stripe rejette le paiement ("on_behalf_of mismatch") au moment de payer —
-  // recalculé à chaque changement du panier (voir /api/stripe/on-behalf-of).
-  const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
-  useEffect(() => {
-    if (!elements || !beatIdsKey) return
-    let annule = false
-    fetch('/api/stripe/on-behalf-of', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, beat_ids: beatIdsKey.split(',') }),
-    })
-      .then(r => r.json())
-      .then((data: { on_behalf_of?: string | null }) => {
-        if (!annule) elements.update({ on_behalf_of: data.on_behalf_of ?? undefined })
-      })
-      .catch(() => {})
-    return () => { annule = true }
-  }, [elements, slug, beatIdsKey])
 
   useEffect(() => {
     if (pret) return

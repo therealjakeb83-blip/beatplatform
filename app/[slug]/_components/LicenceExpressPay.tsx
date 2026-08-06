@@ -30,8 +30,37 @@ type Props = {
 }
 
 export default function LicenceExpressPay(props: Props) {
+  const { slug, beatId } = props
+  // PayPal n'accepte pas du tout le paramètre `on_behalf_of` côté Stripe
+  // (contrairement à Apple/Google Pay) — s'il est appliqué après coup via
+  // `elements.update()`, Stripe retire silencieusement PayPal du bouton une
+  // fois la mise à jour prise en compte, sans prévenir nos callbacks React :
+  // c'était la cause du bouton PayPal qui apparaissait puis disparaissait
+  // aussitôt. On résout donc `on_behalf_of` AVANT de monter `Elements`, pour
+  // que la détection initiale des wallets se fasse déjà dans le bon contexte.
+  const [onBehalfOf, setOnBehalfOf] = useState<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    let annule = false
+    fetch('/api/stripe/on-behalf-of', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, beat_ids: [beatId] }),
+    })
+      .then(r => r.json())
+      .then((data: { on_behalf_of?: string | null }) => { if (!annule) setOnBehalfOf(data.on_behalf_of ?? null) })
+      .catch(() => { if (!annule) setOnBehalfOf(null) })
+    return () => { annule = true }
+  }, [slug, beatId])
+
+  if (onBehalfOf === undefined) return null
+
   return (
-    <Elements stripe={stripePromise} options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}>
+    <Elements
+      key={onBehalfOf ?? 'aucun'}
+      stripe={stripePromise}
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', on_behalf_of: onBehalfOf ?? undefined }}
+    >
       <ExpressButtons {...props} />
     </Elements>
   )
@@ -85,25 +114,6 @@ function ExpressButtons({ slug, beatId, selectedLicence, onStatusChange, onSucce
     if (!elements || !selectedLicence) return
     elements.update({ amount: Math.round(selectedLicence.prix * 100) })
   }, [elements, selectedLicence])
-
-  // on_behalf_of doit être connu de l'Elements AVANT la confirmation, sinon
-  // Stripe rejette le paiement ("on_behalf_of mismatch") au moment de payer,
-  // quelle que soit la carte — voir /api/stripe/on-behalf-of.
-  useEffect(() => {
-    if (!elements) return
-    let annule = false
-    fetch('/api/stripe/on-behalf-of', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, beat_ids: [beatId] }),
-    })
-      .then(r => r.json())
-      .then((data: { on_behalf_of?: string | null }) => {
-        if (!annule) elements.update({ on_behalf_of: data.on_behalf_of ?? undefined })
-      })
-      .catch(() => {})
-    return () => { annule = true }
-  }, [elements, slug, beatId])
 
   // Filet de sécurité : si Stripe.js ne répond jamais (script bloqué,
   // navigateur in-app restrictif, hors ligne), on n'attend pas indéfiniment.
