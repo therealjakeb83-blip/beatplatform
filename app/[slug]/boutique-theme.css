@@ -2319,8 +2319,10 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   align-items: center;
   gap: 7px;
   padding: 6px 0 2px;
+  margin-bottom: 12px;
   font-size: 11.5px;
   color: var(--text-2);
+  text-shadow: 0 1px 3px rgba(0,0,0,.55);
 }
 .shop-product-crumbs a { color: var(--text-2); }
 .shop-product-crumbs a:hover { color: var(--text); }
@@ -2339,17 +2341,21 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
    (feedback_header_mobile_black_band_diagnostic). Le padding-top compense
    la remontée pour que le fil d'Ariane reste à la même position visuelle. */
 @media (max-width: 767px) {
-  .shop-product { margin-top: -70px; padding-top: 78px; }
+  .shop-product { margin-top: -70px; padding-top: 72px; }
 }
 
 .shop-product-glow {
   position: absolute;
   inset: -84px -20px auto -20px;
-  height: 500px;
+  height: 440px;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
   border-radius: 32px;
+  /* S'éteint progressivement vers la moitié de la carte (hauteur du cœur
+     favori) — pas de dégradé plaqué sur toute la carte jusqu'aux tags/CTA. */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 90%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 90%);
 }
 .shop-product-glow .shop-hero-blob--a { top: -40%; left: -20%; width: 90%; height: 140%; }
 .shop-product-glow .shop-hero-blob--b { top: -30%; right: -24%; width: 90%; height: 140%; }
@@ -2411,17 +2417,19 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 7px;
-  border: none;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.22);
   cursor: pointer;
-  background: var(--ac);
-  color: var(--ac-t);
+  background: rgba(8,10,18,.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #FFFFFF;
   font-family: inherit;
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: .05em;
+  font-size: 12.5px;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  padding: 9px 20px;
+  padding: 10px 22px;
   border-radius: 999px;
   transition: transform .15s, filter .15s;
 }
@@ -2500,7 +2508,7 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
   color: var(--text-2);
 }
 .shop-product-info-row svg { width: 16px; height: 16px; flex-shrink: 0; }
-.shop-product-info-row svg path, .shop-product-info-row svg circle { stroke: var(--ac); }
+.shop-product-info-row svg path, .shop-product-info-row svg circle, .shop-product-info-row svg rect { stroke: var(--ac); }
 .shop-product-info-row strong { color: var(--text); font-weight: 700; }
 
 .shop-product-cta {
