@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePlayer } from '../../_components/PlayerContext'
 import FavoriButton from '../../_components/FavoriButton'
@@ -22,6 +22,12 @@ function ScaleIcon() {
 }
 function DateIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
+}
+function ShareIcon() {
+  return <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+}
+function CheckIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" stroke="var(--ac)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
 }
 
 export default function ProduitCard({
@@ -49,6 +55,8 @@ export default function ProduitCard({
 }) {
   const { currentBeat, isPlaying, play } = usePlayer()
   const [licenceOpen, setLicenceOpen] = useState(false)
+  const [partage, setPartage] = useState(false)
+  const partageTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const enLecture = currentBeat?.id === beat.id && isPlaying
   const hasAudio = !!beat.mp3_tague_url
@@ -56,6 +64,13 @@ export default function ProduitCard({
   function handlePlay() {
     if (!hasAudio) return
     play(beat, queue)
+  }
+
+  function handleShare() {
+    if (navigator.clipboard) navigator.clipboard.writeText(location.href).catch(() => {})
+    setPartage(true)
+    if (partageTimeout.current) clearTimeout(partageTimeout.current)
+    partageTimeout.current = setTimeout(() => setPartage(false), 2200)
   }
 
   return (
@@ -102,44 +117,61 @@ export default function ProduitCard({
           </button>
         </div>
 
-        <div className="shop-product-head">
-          <div className="shop-product-head-info">
-            <h1 className="shop-product-title">{beat.titre}</h1>
-            <p className="shop-product-credits">{credits}</p>
+        <div className="shop-product-body">
+          <div className="shop-product-head">
+            <div className="shop-product-head-info">
+              <h1 className="shop-product-title">{beat.titre}</h1>
+              <p className="shop-product-credits">{credits}</p>
+            </div>
+            <div className="shop-product-actions">
+              <FavoriButton beatId={beat.id} clientId={clientId} slug={slug} className="shop-product-favori" />
+              <button
+                onClick={handleShare}
+                title="Partager"
+                aria-label="Partager"
+                className={`shop-product-share${partage ? ' is-copied' : ''}`}
+              >
+                <ShareIcon />
+              </button>
+            </div>
           </div>
-          <FavoriButton beatId={beat.id} clientId={clientId} slug={slug} className="shop-product-favori" />
-        </div>
 
-        {moods.length > 0 && (
-          <div className="shop-product-tags">
-            {moods.map(m => <span key={m} className="shop-product-tag">{m}</span>)}
-          </div>
-        )}
-
-        {instruments.length > 0 && (
-          <div className="shop-product-tags">
-            {instruments.map(i => (
-              <span key={i.nom} className="shop-product-tag shop-product-tag--instrument">
-                {i.icone && <img className="shop-product-tag-icon" src={i.icone} alt="" aria-hidden="true" />}
-                {i.nom}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="shop-product-info">
-          {beat.bpm && (
-            <div className="shop-product-info-row"><BpmIcon /><span><strong>BPM :</strong> {beat.bpm}</span></div>
+          {moods.length > 0 && (
+            <div className="shop-product-tags">
+              {moods.map(m => <span key={m} className="shop-product-tag">{m}</span>)}
+            </div>
           )}
-          {beat.cle && (
-            <div className="shop-product-info-row"><ScaleIcon /><span><strong>Gamme :</strong> {beat.cle}</span></div>
-          )}
-          <div className="shop-product-info-row"><DateIcon /><span><strong>Date de publication :</strong> {dateAffichee}</span></div>
-        </div>
 
-        <button onClick={() => setLicenceOpen(true)} className="shop-product-cta">
-          Choisir une licence
-        </button>
+          {instruments.length > 0 && (
+            <div className="shop-product-tags">
+              {instruments.map(i => (
+                <span key={i.nom} className="shop-product-tag shop-product-tag--instrument">
+                  {i.icone && <img className="shop-product-tag-icon" src={i.icone} alt="" aria-hidden="true" />}
+                  {i.nom}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="shop-product-info">
+            {beat.bpm && (
+              <div className="shop-product-info-row"><BpmIcon /><span><strong>BPM :</strong> {beat.bpm}</span></div>
+            )}
+            {beat.cle && (
+              <div className="shop-product-info-row"><ScaleIcon /><span><strong>Gamme :</strong> {beat.cle}</span></div>
+            )}
+            <div className="shop-product-info-row"><DateIcon /><span><strong>Date de publication :</strong> {dateAffichee}</span></div>
+          </div>
+
+          <button onClick={() => setLicenceOpen(true)} className="shop-product-cta">
+            Choisir une licence
+          </button>
+        </div>
+      </div>
+
+      <div className={`shop-product-share-toast${partage ? ' is-visible' : ''}`}>
+        <CheckIcon />
+        Lien du beat copié
       </div>
 
       <LicenceSelectorModal
