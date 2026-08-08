@@ -2362,16 +2362,29 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 
 /* Desktop — fond plus riche (nappe radiale + 2 halos), comme la section
    hero de la maquette PC : le halo n'est plus recadré en pastille ronde
-   au-dessus de la carte mais bleed sur toute la largeur de la section,
-   même formule de dégradé que la maquette (glow0) plutôt que --hero-bg
-   du site (paramètres de nappe légèrement différents). Les % de position
-   des 2 halos sont repris tels quels de la maquette — recalculés en % de
-   la largeur de .shop-product (pas du viewport brut comme dans le fichier
-   source autonome), donc proportionnellement fidèles sans être identiques
-   au pixel près (conteneur différent). */
+   au-dessus de la carte mais bleed sur toute la largeur de l'écran, même
+   formule de dégradé que la maquette (glow0) plutôt que --hero-bg du site
+   (paramètres de nappe légèrement différents). .shop-product vit dans
+   .shop-container (max-width 1280px, centré) — sans casser cette largeur,
+   le halo resterait coincé dedans (retour Jake : ne prenait pas toute la
+   largeur de l'écran). Cassé en pleine largeur via le classique
+   left:50%/width:100vw/margin-left:-50vw — fonctionne ici parce que
+   .shop-product est lui-même centré dans la page (son 50% == le centre
+   du viewport), pas besoin que .shop-product soit déjà en 100vw.
+   80vw / -40vw (pas 100/-50) : ce seuil (1280px) est exactement celui où
+   le zoom desktop 125% s'active (voir plus haut) — `zoom` redimensionne
+   le rendu après coup mais `vw` reste calculé sur le vrai viewport, donc
+   100vw zoomé déborde de 25% du viewport réel. On divise par 1.25 pour
+   compenser (validé en mesurant le rect rendu : 100vw+zoom débordait de
+   480px sur un écran 1920px, corrigé en 80vw). */
 @media (min-width: 1280px) {
   .shop-product-glow {
-    inset: -170px -20px auto -20px;
+    top: -170px;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: 80vw;
+    margin-left: -40vw;
     height: 640px;
     border-radius: 0;
     background: radial-gradient(120% 78% at 50% 10%, var(--glow1) 0%, var(--glow2) 44%, var(--bg) 86%);
