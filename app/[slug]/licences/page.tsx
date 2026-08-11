@@ -18,5 +18,5 @@ export default async function LicencesPage({
 
   if (!beatmaker) notFound()
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Licences" />
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Licences" contenu="Contenu à compléter." />
 }

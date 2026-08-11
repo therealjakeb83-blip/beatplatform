@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound } from 'next/navigation'
 import PageLegale from '../_components/PageLegale'
+import { texteTemplate } from '@/lib/pages-legales'
 
 export default async function ConfidentialitePage({
   params,
@@ -12,11 +13,20 @@ export default async function ConfidentialitePage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste')
+    .select('id, nom_artiste')
     .eq('slug', slug)
     .single()
 
   if (!beatmaker) notFound()
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Politique de confidentialité" />
+  const { data: pageAdoptee } = await admin
+    .from('boutique_pages_legales')
+    .select('contenu')
+    .eq('beatmaker_id', beatmaker.id)
+    .eq('type_page', 'confidentialite')
+    .maybeSingle()
+
+  const contenu = pageAdoptee?.contenu ?? texteTemplate('confidentialite', beatmaker.nom_artiste, slug)
+
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Politique de confidentialité" contenu={contenu} />
 }

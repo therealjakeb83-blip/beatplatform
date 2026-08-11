@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound } from 'next/navigation'
 import PageLegale from '../_components/PageLegale'
+import { texteTemplate } from '@/lib/pages-legales'
 
 export default async function PlanDeSitePage({
   params,
@@ -12,11 +13,20 @@ export default async function PlanDeSitePage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste')
+    .select('id, nom_artiste')
     .eq('slug', slug)
     .single()
 
   if (!beatmaker) notFound()
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Plan de site" />
+  const { data: pageAdoptee } = await admin
+    .from('boutique_pages_legales')
+    .select('contenu')
+    .eq('beatmaker_id', beatmaker.id)
+    .eq('type_page', 'plan_de_site')
+    .maybeSingle()
+
+  const contenu = pageAdoptee?.contenu ?? texteTemplate('plan_de_site', beatmaker.nom_artiste, slug)
+
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Plan de site" contenu={contenu} />
 }

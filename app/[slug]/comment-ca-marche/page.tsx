@@ -18,5 +18,5 @@ export default async function CommentCaMarchePage({
 
   if (!beatmaker) notFound()
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Comment ça marche ?" />
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Comment ça marche ?" contenu="Contenu à compléter." />
 }
