@@ -91,6 +91,19 @@ export default function PagesLegalesForm({
     }
   }
 
+  // Revient au modèle proposé par My Producer, quelles que soient les
+  // modifications en cours — ne publie rien tout seul, juste le brouillon
+  // dans le champ ; il faut encore cliquer "Enregistrer et publier".
+  function reinitialiserModele(type: TypePageLegale) {
+    const cible = pages.find(p => p.type === type)!
+    if (contenus[type].trim() && !window.confirm('Revenir au modèle par défaut ? Le texte actuel dans ce champ sera perdu (la version déjà publiée, si elle existe, n\'est pas touchée tant que tu n\'enregistres pas).')) {
+      return
+    }
+    setContenus({ ...contenus, [type]: resoudreVariables(cible.templateBrut, infos) })
+    setPagesAutoMaj(new Set(pagesAutoMaj).add(type))
+    setSucces(null)
+  }
+
   async function enregistrer() {
     setSaving(true)
     setErreur('')
@@ -169,15 +182,24 @@ export default function PagesLegalesForm({
 
       <div className="flex items-center justify-between mb-2">
         <label className="block text-sm text-gray-300">{page.titre}</label>
-        {page.adopteLe && (
-          <a
-            href={`/${slug}/${page.route}`}
-            target="_blank"
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => reinitialiserModele(ongletActif)}
             className="text-xs text-gray-500 hover:text-white transition-colors"
           >
-            Voir la page en ligne ↗
-          </a>
-        )}
+            ↻ Utiliser le modèle par défaut
+          </button>
+          {page.adopteLe && (
+            <a
+              href={`/${slug}/${page.route}`}
+              target="_blank"
+              className="text-xs text-gray-500 hover:text-white transition-colors"
+            >
+              Voir la page en ligne ↗
+            </a>
+          )}
+        </div>
       </div>
 
       <textarea
