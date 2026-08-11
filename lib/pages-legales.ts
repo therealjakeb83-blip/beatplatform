@@ -69,7 +69,7 @@ Les produits étant des fichiers numériques, la livraison est effectuée par t�
 Conformément à l'article L221-28 du Code de la consommation, le droit de rétractation ne s'applique pas aux contenus numériques fournis sur un support immatériel dont l'exécution a commencé avec l'accord du client, qui renonce ainsi expressément à son droit de rétractation.
 
 6. Remboursement
-[À compléter par le vendeur : conditions dans lesquelles un remboursement peut être accordé.]
+Les produits vendus sur cette boutique sont des fichiers numériques livrés immédiatement après paiement. Sauf erreur manifeste du vendeur (fichier corrompu, absent, ou non conforme à la commande), aucun remboursement n'est accordé une fois le téléchargement effectué, conformément à la renonciation au droit de rétractation mentionnée à l'article 5. Le vendeur peut modifier cette politique à tout moment (par exemple pour accorder des remboursements dans d'autres cas).
 
 7. Contact
 Pour toute question relative à une commande : {{email_contact}}
@@ -98,7 +98,7 @@ Sauf mention contraire, les contenus proposés à la vente sur cette boutique so
 
 {{raison_sociale}} (ci-après "le vendeur") collecte certaines données personnelles des clients de cette boutique (nom, email, informations de commande) dans le cadre du traitement des commandes et de la relation client.
 
-Ces données sont nécessaires à l'exécution des commandes (livraison des fichiers, facturation) et peuvent être utilisées pour communiquer avec le client au sujet de sa commande. [À compléter par le vendeur : autres usages éventuels, ex. communication marketing, et modalités.]
+Ces données sont nécessaires à l'exécution des commandes (livraison des fichiers, facturation) et sont utilisées pour communiquer avec le client au sujet de sa commande. Elles ne sont pas cédées à des tiers à des fins commerciales. Le vendeur peut modifier cette politique à tout moment (par exemple pour ajouter une communication marketing avec consentement préalable).
 
 Le paiement est traité par un prestataire de paiement tiers, qui applique sa propre politique de confidentialité.
 
