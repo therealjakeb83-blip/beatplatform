@@ -10,11 +10,37 @@ export const TYPES_PAGES_LEGALES: { type: TypePageLegale; titre: string; route: 
   { type: 'plan_de_site', titre: 'Plan de site', route: 'plan-de-site' },
 ]
 
+export type InfosLegalesBeatmaker = {
+  nom_artiste: string
+  raison_sociale: string | null
+  numero_entreprise: string | null
+  adresse: string | null
+  ville: string | null
+  code_postal: string | null
+  email_contact_public: string | null
+}
+
+export const CHAMPS_INFOS_LEGALES: { cle: keyof InfosLegalesBeatmaker; label: string; placeholder: string }[] = [
+  { cle: 'raison_sociale', label: 'Nom légal / raison sociale', placeholder: 'ex: Jean Dupont, ou Dupont Prod SASU' },
+  { cle: 'numero_entreprise', label: 'SIRET (si applicable)', placeholder: '123 456 789 00012' },
+  { cle: 'adresse', label: 'Adresse', placeholder: '12 rue des Beats' },
+  { cle: 'code_postal', label: 'Code postal', placeholder: '75001' },
+  { cle: 'ville', label: 'Ville', placeholder: 'Paris' },
+  { cle: 'email_contact_public', label: 'Email de contact (affiché publiquement)', placeholder: 'contact@tondomaine.com' },
+]
+
 // Modèles de départ proposés par My Producer — le beatmaker peut les
 // adopter tels quels, les modifier librement, ou repartir de zéro (Phase 1
 // de la refonte article 9 bis, décision "licences éditables" du Grill Me
 // appliquée ici aux CGV). Ce ne sont pas des textes juridiques définitifs :
 // à faire relire par un professionnel avant un vrai lancement commercial.
+//
+// Les {{variables}} sont résolues à partir des infos du beatmaker au
+// moment de l'enregistrement (resoudreVariables ci-dessous) — figées dans
+// le texte sauvegardé, jamais une référence "live" : si le beatmaker met
+// à jour son SIRET plus tard, ses pages déjà publiées ne changent pas
+// silencieusement (même principe que le snapshot transactionnel prévu en
+// Phase 4 du plan de refonte).
 export function texteTemplate(type: TypePageLegale, nomArtiste: string, slug: string): string {
   const url = `${slug}`
 
@@ -22,7 +48,8 @@ export function texteTemplate(type: TypePageLegale, nomArtiste: string, slug: st
     case 'cgv':
       return `CONDITIONS GÉNÉRALES DE VENTE
 
-Vendeur : ${nomArtiste}, ci-après "le vendeur". [À compléter : forme juridique, numéro SIRET si applicable, adresse].
+Vendeur : {{raison_sociale}}{{numero_entreprise_ligne}}
+Adresse : {{adresse_complete}}
 
 Ces conditions générales de vente s'appliquent à toute commande passée sur cette boutique. ${NOM_PLATEFORME} fournit l'infrastructure technique de cette boutique (hébergement, paiement, livraison des fichiers) pour le compte du vendeur, mais n'est pas partie au contrat de vente conclu entre le vendeur et le client.
 
@@ -44,17 +71,21 @@ Conformément à l'article L221-28 du Code de la consommation, le droit de rétr
 6. Remboursement
 [À compléter par le vendeur : conditions dans lesquelles un remboursement peut être accordé.]
 
-7. Droit applicable
+7. Contact
+Pour toute question relative à une commande : {{email_contact}}
+
+8. Droit applicable
 Les présentes conditions sont soumises au droit français.`
 
     case 'mentions_legales':
       return `MENTIONS LÉGALES
 
 Éditeur de la boutique
-${nomArtiste}
-[À compléter : forme juridique, numéro SIRET si applicable, adresse, email de contact]
+{{raison_sociale}}{{numero_entreprise_ligne}}
+{{adresse_complete}}
+Contact : {{email_contact}}
 
-Cette boutique est un produit vendu par ${nomArtiste}. ${NOM_PLATEFORME} fournit l'infrastructure technique (hébergement, paiement, outils de vente) utilisée par le vendeur pour exploiter cette boutique.
+Cette boutique est un produit vendu par {{raison_sociale}}. ${NOM_PLATEFORME} fournit l'infrastructure technique (hébergement, paiement, outils de vente) utilisée par le vendeur pour exploiter cette boutique.
 
 Hébergement
 Ce site est hébergé par les prestataires techniques de ${NOM_PLATEFORME}.
@@ -65,20 +96,21 @@ Sauf mention contraire, les contenus proposés à la vente sur cette boutique so
     case 'confidentialite':
       return `POLITIQUE DE CONFIDENTIALITÉ
 
-${nomArtiste} (ci-après "le vendeur") collecte certaines données personnelles des clients de cette boutique (nom, email, informations de commande) dans le cadre du traitement des commandes et de la relation client.
+{{raison_sociale}} (ci-après "le vendeur") collecte certaines données personnelles des clients de cette boutique (nom, email, informations de commande) dans le cadre du traitement des commandes et de la relation client.
 
 Ces données sont nécessaires à l'exécution des commandes (livraison des fichiers, facturation) et peuvent être utilisées pour communiquer avec le client au sujet de sa commande. [À compléter par le vendeur : autres usages éventuels, ex. communication marketing, et modalités.]
 
 Le paiement est traité par un prestataire de paiement tiers, qui applique sa propre politique de confidentialité.
 
-Conformément au Règlement Général sur la Protection des Données (RGPD), le client dispose d'un droit d'accès, de rectification et de suppression de ses données personnelles. Pour exercer ce droit, il peut contacter le vendeur via la page Contact de cette boutique.`
+Conformément au Règlement Général sur la Protection des Données (RGPD), le client dispose d'un droit d'accès, de rectification et de suppression de ses données personnelles. Pour exercer ce droit, il peut contacter le vendeur à {{email_contact}}.`
 
     case 'contact':
       return `CONTACT
 
-Pour toute question concernant une commande, une licence ou cette boutique, tu peux contacter ${nomArtiste} directement.
+Pour toute question concernant une commande, une licence ou cette boutique, tu peux contacter ${nomArtiste} :
 
-[À compléter par le vendeur : email de contact, ou tout autre moyen de contact souhaité.]`
+Email : {{email_contact}}
+{{adresse_ligne_optionnelle}}`
 
     case 'plan_de_site':
       return `PLAN DE SITE
@@ -89,4 +121,29 @@ Pour toute question concernant une commande, une licence ou cette boutique, tu p
 - Politique de confidentialité — /${url}/confidentialite
 - Contact — /${url}/contact`
   }
+}
+
+const PLACEHOLDER = '[à compléter]'
+
+// Résout les {{variables}} d'un template à partir des infos du beatmaker.
+// Appelée au moment de l'enregistrement (dashboard) : le texte sauvegardé
+// est toujours une valeur figée, jamais une référence live vers le profil
+// du beatmaker.
+export function resoudreVariables(texte: string, infos: InfosLegalesBeatmaker): string {
+  const numeroEntrepriseLigne = infos.numero_entreprise ? `\nSIRET : ${infos.numero_entreprise}` : ''
+  const adresseComplete = [infos.adresse, infos.code_postal, infos.ville].filter(Boolean).join(', ') || PLACEHOLDER
+  const adresseLigneOptionnelle = [infos.adresse, infos.code_postal, infos.ville].filter(Boolean).length
+    ? `Adresse : ${[infos.adresse, infos.code_postal, infos.ville].filter(Boolean).join(', ')}`
+    : ''
+
+  return texte
+    .replaceAll('{{raison_sociale}}', infos.raison_sociale || infos.nom_artiste)
+    .replaceAll('{{numero_entreprise_ligne}}', numeroEntrepriseLigne)
+    .replaceAll('{{adresse_complete}}', adresseComplete)
+    .replaceAll('{{adresse_ligne_optionnelle}}', adresseLigneOptionnelle)
+    .replaceAll('{{email_contact}}', infos.email_contact_public || PLACEHOLDER)
+}
+
+export function infosLegalesCompletes(infos: InfosLegalesBeatmaker): boolean {
+  return Boolean(infos.raison_sociale && infos.adresse && infos.email_contact_public)
 }

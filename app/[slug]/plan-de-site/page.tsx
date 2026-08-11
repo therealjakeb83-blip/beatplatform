@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound } from 'next/navigation'
 import PageLegale from '../_components/PageLegale'
-import { texteTemplate } from '@/lib/pages-legales'
 
 export default async function PlanDeSitePage({
   params,
@@ -26,7 +25,7 @@ export default async function PlanDeSitePage({
     .eq('type_page', 'plan_de_site')
     .maybeSingle()
 
-  const contenu = pageAdoptee?.contenu ?? texteTemplate('plan_de_site', beatmaker.nom_artiste, slug)
+  const contenu = pageAdoptee?.contenu ?? 'Contenu à compléter.'
 
   return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Plan de site" contenu={contenu} />
 }

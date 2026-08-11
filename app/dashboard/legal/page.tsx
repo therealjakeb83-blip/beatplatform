@@ -11,7 +11,7 @@ export default async function PagesLegalesPage() {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('slug, nom_artiste')
+    .select('slug, nom_artiste, raison_sociale, numero_entreprise, adresse, ville, code_postal, email_contact_public')
     .eq('id', user.id)
     .single()
 
@@ -28,7 +28,11 @@ export default async function PagesLegalesPage() {
       type,
       titre,
       route,
-      contenu: existante?.contenu ?? texteTemplate(type, beatmaker.nom_artiste, beatmaker.slug),
+      // Contenu déjà publié (peut contenir des {{variables}} non résolues
+      // si jamais enregistré, ou du texte déjà figé si déjà sauvegardé) —
+      // le template brut sert de point de départ tant que rien n'est publié.
+      contenuActuel: existante?.contenu ?? null,
+      templateBrut: texteTemplate(type, beatmaker.nom_artiste, beatmaker.slug),
       version: existante?.version ?? null,
       adopteLe: existante?.adopte_le ?? null,
     }
@@ -45,12 +49,24 @@ export default async function PagesLegalesPage() {
         </Link>
         <h1 className="text-2xl font-bold mb-2">Pages légales de ta boutique</h1>
         <p className="text-gray-400 text-sm mb-8">
-          CGV, mentions légales, confidentialité, contact et plan de site — visibles par tes clients sur{' '}
-          <span className="text-gray-300">{beatmaker.slug}</span>. Tu peux garder le modèle proposé tel quel,
-          le modifier, ou repartir de zéro. Ce ne sont pas des textes juridiques définitifs — fais-les relire
-          par un professionnel avant un vrai lancement commercial.
+          CGV, mentions légales, confidentialité, contact et plan de site. Tant que tu n&apos;as pas cliqué
+          &quot;Enregistrer et publier&quot; sur une page, elle reste vide pour tes clients — rien ne se
+          publie automatiquement. Ce ne sont pas des textes juridiques définitifs — fais-les relire par un
+          professionnel avant un vrai lancement commercial.
         </p>
-        <PagesLegalesForm pages={pages} slug={beatmaker.slug} />
+        <PagesLegalesForm
+          pages={pages}
+          slug={beatmaker.slug}
+          infosInitiales={{
+            nom_artiste: beatmaker.nom_artiste,
+            raison_sociale: beatmaker.raison_sociale,
+            numero_entreprise: beatmaker.numero_entreprise,
+            adresse: beatmaker.adresse,
+            ville: beatmaker.ville,
+            code_postal: beatmaker.code_postal,
+            email_contact_public: beatmaker.email_contact_public,
+          }}
+        />
       </div>
     </main>
   )
