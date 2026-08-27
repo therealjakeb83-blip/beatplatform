@@ -24,21 +24,19 @@ type Props = {
   onSuccess: (info: { paymentIntentId: string }) => void
 }
 
-type ContextePaiement = { mode: 'direct' | 'destination'; on_behalf_of: string | null; stripe_account_id: string | null }
+type ContextePaiement = { mode: 'direct' | 'held'; stripe_account_id: string | null }
 
 export default function CartExpressPay(props: Props) {
   const { slug, items } = props
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
-  // Voir LicenceExpressPay.tsx : PayPal n'accepte pas `on_behalf_of` côté
-  // Stripe — le résoudre après le montage d'Elements (ancien comportement)
-  // faisait apparaître puis disparaître silencieusement le bouton PayPal dès
-  // que la mise à jour était prise en compte. Résolu ici AVANT le montage.
+  // Résolu avant le montage d'Elements (pas après coup) — Stripe.js doit
+  // connaître le compte connecté dès le chargement pour le paiement express.
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
 
   useEffect(() => {
     if (!beatIdsKey) return
     let annule = false
-    fetch('/api/stripe/on-behalf-of', {
+    fetch('/api/stripe/contexte-paiement', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug, beat_ids: beatIdsKey.split(',') }),
@@ -54,23 +52,18 @@ export default function CartExpressPay(props: Props) {
   const resolu = beatIdsKey ? contexte : null
   if (resolu === undefined) return null
 
-  // Direct Charge : Stripe.js chargé avec le contexte du compte connecté,
-  // jamais de `on_behalf_of` en option Elements (n'a de sens qu'en
-  // destination charge). Ancien flux inchangé sinon.
+  // Direct Charge : Stripe.js chargé avec le contexte du compte connecté.
+  // "held" (splits collab) : fonds retenus sur la plateforme, client Stripe.js
+  // plateforme classique, sans contexte de compte connecté.
   const stripeClient = resolu?.mode === 'direct' && resolu.stripe_account_id
     ? chargerStripePourCompte(resolu.stripe_account_id)
     : stripePromise
 
   return (
     <Elements
-      key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : (resolu?.on_behalf_of ?? 'aucun')}
+      key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : 'held'}
       stripe={stripeClient}
-      options={{
-        mode: 'payment',
-        amount: MONTANT_DETECTION_CENTS,
-        currency: 'eur',
-        ...(resolu?.mode === 'destination' && resolu.on_behalf_of ? { on_behalf_of: resolu.on_behalf_of } : {}),
-      }}
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
       <ExpressButtons {...props} />
     </Elements>

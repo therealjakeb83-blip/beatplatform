@@ -37,11 +37,11 @@ export async function POST(request: Request) {
 
   const { data: beatmakerRow } = await supabase
     .from('beatmakers')
-    .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct, direct_charge_actif')
+    .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
     .eq('slug', slug)
     .single()
 
-  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean; direct_charge_actif: boolean }
+  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
   let beatmaker = beatmakerRow as BeatmakerRow | null
 
   const admin = createAdminClient()
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   if (!beatmaker) {
     const { data: bm } = await admin
       .from('beatmakers')
-      .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct, direct_charge_actif')
+      .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
       .eq('slug', slug)
       .single()
     beatmaker = bm as BeatmakerRow | null
@@ -98,19 +98,13 @@ export async function POST(request: Request) {
     },
   }
 
-  // Même règle que /api/stripe/checkout : Direct Charge seulement hors split
-  // et boutique explicitement basculée.
-  const directChargeActif = !hasSplits && beatmaker.direct_charge_actif && !!beatmaker.stripe_account_id
+  // Même règle que /api/stripe/checkout : Direct Charge sauf split (fonds
+  // retenus) ou beatmaker pas encore connecté à Stripe.
+  const directChargeActif = !hasSplits && !!beatmaker.stripe_account_id
 
   if (hasSplits) {
     paymentIntentParams.transfer_group = crypto.randomUUID()
     paymentIntentParams.metadata = { ...paymentIntentParams.metadata, has_splits: 'true' }
-  } else if (!directChargeActif && beatmaker.stripe_account_id) {
-    // Ancien flux (destination charge) — inchangé tant que direct_charge_actif
-    // n'est pas activé pour cette boutique.
-    paymentIntentParams.application_fee_amount = 0
-    paymentIntentParams.on_behalf_of = beatmaker.stripe_account_id
-    paymentIntentParams.transfer_data = { destination: beatmaker.stripe_account_id }
   }
 
   // Direct Charge : le PaymentIntent est créé directement sur le compte

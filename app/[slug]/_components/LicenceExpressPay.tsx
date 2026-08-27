@@ -29,51 +29,41 @@ type Props = {
   onSuccess: (info: { paymentIntentId: string }) => void
 }
 
-type ContextePaiement = { mode: 'direct' | 'destination'; on_behalf_of: string | null; stripe_account_id: string | null }
+type ContextePaiement = { mode: 'direct' | 'held'; stripe_account_id: string | null }
 
 export default function LicenceExpressPay(props: Props) {
   const { slug, beatId } = props
-  // PayPal n'accepte pas du tout le paramètre `on_behalf_of` côté Stripe
-  // (contrairement à Apple/Google Pay) — s'il est appliqué après coup via
-  // `elements.update()`, Stripe retire silencieusement PayPal du bouton une
-  // fois la mise à jour prise en compte, sans prévenir nos callbacks React :
-  // c'était la cause du bouton PayPal qui apparaissait puis disparaissait
-  // aussitôt. On résout donc le contexte AVANT de monter `Elements`, pour
-  // que la détection initiale des wallets se fasse déjà dans le bon contexte.
+  // Résolu avant le montage d'Elements (pas après coup) — Stripe.js doit
+  // connaître le compte connecté dès le chargement pour le paiement express.
   const [contexte, setContexte] = useState<ContextePaiement | undefined>(undefined)
 
   useEffect(() => {
     let annule = false
-    fetch('/api/stripe/on-behalf-of', {
+    fetch('/api/stripe/contexte-paiement', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug, beat_ids: [beatId] }),
     })
       .then(r => r.json())
       .then((data: ContextePaiement) => { if (!annule) setContexte(data) })
-      .catch(() => { if (!annule) setContexte({ mode: 'destination', on_behalf_of: null, stripe_account_id: null }) })
+      .catch(() => { if (!annule) setContexte({ mode: 'held', stripe_account_id: null }) })
     return () => { annule = true }
   }, [slug, beatId])
 
   if (contexte === undefined) return null
 
-  // Direct Charge : Stripe.js chargé avec le contexte du compte connecté,
-  // jamais de `on_behalf_of` en option Elements (n'a de sens qu'en
-  // destination charge). Ancien flux inchangé sinon.
+  // Direct Charge : Stripe.js chargé avec le contexte du compte connecté.
+  // "held" (splits collab) : fonds retenus sur la plateforme, client Stripe.js
+  // plateforme classique, sans contexte de compte connecté.
   const stripeClient = contexte.mode === 'direct' && contexte.stripe_account_id
     ? chargerStripePourCompte(contexte.stripe_account_id)
     : stripePromise
 
   return (
     <Elements
-      key={contexte.mode === 'direct' ? `direct:${contexte.stripe_account_id}` : (contexte.on_behalf_of ?? 'aucun')}
+      key={contexte.mode === 'direct' ? `direct:${contexte.stripe_account_id}` : 'held'}
       stripe={stripeClient}
-      options={{
-        mode: 'payment',
-        amount: MONTANT_DETECTION_CENTS,
-        currency: 'eur',
-        ...(contexte.mode === 'destination' && contexte.on_behalf_of ? { on_behalf_of: contexte.on_behalf_of } : {}),
-      }}
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
       <ExpressButtons {...props} />
     </Elements>
