@@ -1,37 +1,37 @@
 // Moyens de paiement — Niveau A (décision commerciale du beatmaker) vs
 // Niveau B (implémentation technique Stripe, jamais exposée comme un choix).
-// Décision du Grill Me (2026-08-08) : carte/PayPal/virement sont des
+// Décision du Grill Me (2026-08-08) : carte/PayPal/virement listés comme
 // catégories à substance commerciale, réglables par le beatmaker — Apple
 // Pay/Google Pay/SCA restent de l'infrastructure gérée par My Producer.
+//
+// "Virement" retiré le 2026-08-27 (Jake ne se souvenait pas d'avoir vraiment
+// voulu cette option — pas de cas d'usage identifié) : possibilité gardée
+// pour plus tard si un vrai besoin apparaît, pas réintroduite pour l'instant.
+// Seule 'carte' (baseline) et 'paypal' restent des choix actifs.
 //
 // Cette couche de mapping existe pour ne jamais injecter le tableau UI
 // directement dans les paramètres Stripe (cf. plan Phase 2, correction du
 // Grill Me) : le Niveau A ne change qu'ici, jamais dans les routes de
 // checkout elles-mêmes.
 
-export type MoyenPaiementNiveauA = 'carte' | 'paypal' | 'virement'
+export type MoyenPaiementNiveauA = 'carte' | 'paypal'
 
-export const MOYENS_PAIEMENT_TOGGLABLES: MoyenPaiementNiveauA[] = ['paypal', 'virement']
+export const MOYENS_PAIEMENT_TOGGLABLES: MoyenPaiementNiveauA[] = ['paypal']
 
 // Carte toujours active — baseline, jamais désactivable (pas de config
-// checkout vide possible). Les deux autres sont de vrais choix beatmaker.
+// checkout vide possible).
 export const MOYEN_PAIEMENT_BASELINE: MoyenPaiementNiveauA = 'carte'
 
 export function normaliserMoyensPaiement(input: unknown): MoyenPaiementNiveauA[] {
-  const valides = new Set<MoyenPaiementNiveauA>(['carte', 'paypal', 'virement'])
+  const valides = new Set<MoyenPaiementNiveauA>(['carte', 'paypal'])
   const choisis = Array.isArray(input) ? input.filter((m): m is MoyenPaiementNiveauA => valides.has(m)) : []
   return [...new Set([MOYEN_PAIEMENT_BASELINE, ...choisis])]
 }
 
-// Niveau B — Checkout Session classique (redirection). 'virement' se
-// traduit par le SEPA Direct Debit Stripe (`sepa_debit`), l'équivalent le
-// plus proche disponible sur Checkout pour un paiement bancaire européen —
-// pas un vrai virement libre, à valider techniquement avant activation réelle
-// (cf. contraintes de rollout Phase 2 : Niveau B reste géré par My Producer).
-export function mapperVersPaymentMethodTypes(moyens: MoyenPaiementNiveauA[]): ('card' | 'paypal' | 'sepa_debit')[] {
-  const types: ('card' | 'paypal' | 'sepa_debit')[] = ['card']
+// Niveau B — Checkout Session classique (redirection).
+export function mapperVersPaymentMethodTypes(moyens: MoyenPaiementNiveauA[]): ('card' | 'paypal')[] {
+  const types: ('card' | 'paypal')[] = ['card']
   if (moyens.includes('paypal')) types.push('paypal')
-  if (moyens.includes('virement')) types.push('sepa_debit')
   return types
 }
 

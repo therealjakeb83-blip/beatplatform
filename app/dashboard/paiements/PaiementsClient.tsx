@@ -9,7 +9,6 @@ import { validerStatementDescriptor } from '@/lib/statement-descriptor'
 const LABEL_MOYEN_PAIEMENT: Record<MoyenPaiementNiveauA, string> = {
   carte: 'Carte bancaire',
   paypal: 'PayPal',
-  virement: 'Virement bancaire',
 }
 
 type RapportDeblocage = {
