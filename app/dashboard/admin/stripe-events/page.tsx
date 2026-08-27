@@ -13,7 +13,7 @@ export default async function StripeEventsPage({ searchParams }: { searchParams:
 
   let query = admin
     .from('stripe_events')
-    .select('id, stripe_event_id, type, statut, erreur, created_at, traite_at')
+    .select('id, stripe_event_id, type, statut, erreur, created_at, traite_at, compte_connecte')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -48,7 +48,14 @@ export default async function StripeEventsPage({ searchParams }: { searchParams:
         {events?.map(ev => (
           <div key={ev.id} className="px-4 py-3 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white">{ev.type}</span>
+              <span className="text-sm text-white">
+                {ev.type}
+                {ev.compte_connecte && (
+                  <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded border bg-indigo-500/15 text-indigo-400 border-indigo-500/30">
+                    Connect · {ev.compte_connecte}
+                  </span>
+                )}
+              </span>
               <span className={`text-[11px] px-1.5 py-0.5 rounded border ${STATUT_STYLES[ev.statut] ?? ''}`}>{ev.statut}</span>
             </div>
             <p className="text-xs text-gray-500">{new Date(ev.created_at).toLocaleString('fr-FR')}</p>
