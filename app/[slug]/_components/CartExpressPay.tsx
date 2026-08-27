@@ -181,6 +181,8 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }
             if (!res.ok || !data.clientSecret) {
+              // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
+              alert(`[debug] serveur: HTTP ${res.status} / ${data.erreur ?? '(sans message)'}`)
               setConfirmErreur(data.erreur ?? 'Erreur serveur, réessaie')
               event.paymentFailed({ reason: 'fail', message: data.erreur })
               return
@@ -196,6 +198,8 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
             })
 
             if (confirmError) {
+              // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
+              alert(`[debug] confirmError: ${confirmError.type ?? '?'} / ${confirmError.code ?? '?'} / ${confirmError.message ?? '(sans message)'}`)
               setConfirmErreur(confirmError.message ?? 'Paiement refusé')
               event.paymentFailed({ reason: 'fail', message: confirmError.message })
               return
@@ -210,7 +214,9 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               clear()
               onSuccess({ paymentIntentId: paymentIntent.id })
             }
-          } catch {
+          } catch (err) {
+            // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
+            alert(`[debug] catch: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`)
             setConfirmErreur('Erreur réseau, réessaie')
             event.paymentFailed({ reason: 'fail' })
           } finally {
