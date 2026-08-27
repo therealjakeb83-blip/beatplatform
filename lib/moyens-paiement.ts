@@ -28,11 +28,19 @@ export function normaliserMoyensPaiement(input: unknown): MoyenPaiementNiveauA[]
   return [...new Set([MOYEN_PAIEMENT_BASELINE, ...choisis])]
 }
 
-// Niveau B — Checkout Session classique (redirection).
-export function mapperVersPaymentMethodTypes(moyens: MoyenPaiementNiveauA[]): ('card' | 'paypal')[] {
-  const types: ('card' | 'paypal')[] = ['card']
-  if (moyens.includes('paypal')) types.push('paypal')
-  return types
+// Niveau B — Checkout Session classique (redirection). PayPal n'est PAS
+// utilisable ici quel que soit le choix du beatmaker : Stripe refuse
+// catégoriquement 'paypal' dans payment_method_types dès qu'une Checkout
+// Session est créée pour un compte connecté (Direct Charge OU on_behalf_of)
+// — vérifié directement via l'API le 2026-08-27 ("The Paypal payment method
+// does not support Connect charges created on behalf of connected accounts,
+// including Direct Charges and charges created with on_behalf_of"). PayPal
+// reste disponible uniquement via le paiement express (voir
+// paypalAutoriseEnExpress ci-dessous), qui passe par un mécanisme Stripe
+// différent (PaymentIntent + ExpressCheckoutElement) où ça fonctionne.
+export function mapperVersPaymentMethodTypes(moyens: MoyenPaiementNiveauA[]): ('card')[] {
+  void moyens
+  return ['card']
 }
 
 // Niveau B — paiement express (ExpressCheckoutElement). Apple Pay/Google Pay
