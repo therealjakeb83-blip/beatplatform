@@ -161,13 +161,19 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
           emailRequired: true,
         }}
         onReady={handleReady}
-        onLoadError={() => setLoadError(true)}
+        onLoadError={(err) => { alert(`[debug] onLoadError: ${JSON.stringify(err)}`); setLoadError(true) }}
         onClick={(event: StripeExpressCheckoutElementClickEvent) => {
+          alert(`[debug] onClick — items:${items.length}`)
           if (items.length === 0) { event.reject(); return }
           event.resolve()
         }}
         onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
-          if (!stripe || !elements || items.length === 0 || enCoursRef.current) return
+          // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
+          alert(`[debug] onConfirm appelé — stripe:${!!stripe} elements:${!!elements} items:${items.length} enCours:${enCoursRef.current}`)
+          if (!stripe || !elements || items.length === 0 || enCoursRef.current) {
+            alert('[debug] arrêt sur la garde — rien ne se passera')
+            return
+          }
           enCoursRef.current = true
           setConfirmErreur(null)
           try {
