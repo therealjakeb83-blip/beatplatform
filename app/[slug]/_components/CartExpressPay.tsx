@@ -103,6 +103,12 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   const [loadError, setLoadError] = useState(false)
   const enCoursRef = useRef(false)
 
+  // DEBUG TEMPORAIRE — panneau de log visible à l'écran (alert() peut être
+  // silencieusement bloqué par Safari iOS dans un contexte async) — à
+  // retirer une fois la cause identifiée.
+  const [debugLog, setDebugLog] = useState<string[]>([])
+  const log = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString('fr-FR')} ${msg}`])
+
   // Montant affiché aux wallets = somme brute du panier (avant remise membre/
   // TVA/réduction par lot, recalculées côté serveur au moment du clic) — même
   // approximation que LicenceExpressPay avant sélection du montant final.
@@ -161,22 +167,23 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
           emailRequired: true,
         }}
         onReady={handleReady}
-        onLoadError={(err) => { alert(`[debug] onLoadError: ${JSON.stringify(err)}`); setLoadError(true) }}
+        onLoadError={(err) => { log(`onLoadError: ${JSON.stringify(err)}`); setLoadError(true) }}
+        onCancel={() => log('onCancel — le wallet a été fermé/annulé sans confirmer')}
         onClick={(event: StripeExpressCheckoutElementClickEvent) => {
-          alert(`[debug] onClick — items:${items.length}`)
+          log(`onClick — items:${items.length}`)
           if (items.length === 0) { event.reject(); return }
           event.resolve()
         }}
         onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
-          // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
-          alert(`[debug] onConfirm appelé — stripe:${!!stripe} elements:${!!elements} items:${items.length} enCours:${enCoursRef.current}`)
+          log(`onConfirm appelé — stripe:${!!stripe} elements:${!!elements} items:${items.length} enCours:${enCoursRef.current}`)
           if (!stripe || !elements || items.length === 0 || enCoursRef.current) {
-            alert('[debug] arrêt sur la garde — rien ne se passera')
+            log('arrêt sur la garde — rien ne se passera')
             return
           }
           enCoursRef.current = true
           setConfirmErreur(null)
           try {
+            log('appel /api/stripe/express-checkout...')
             const res = await fetch('/api/stripe/express-checkout', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -186,14 +193,15 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               }),
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }
+            log(`réponse serveur: HTTP ${res.status}, clientSecret:${!!data.clientSecret}`)
             if (!res.ok || !data.clientSecret) {
-              // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
-              alert(`[debug] serveur: HTTP ${res.status} / ${data.erreur ?? '(sans message)'}`)
+              log(`erreur serveur: ${data.erreur ?? '(sans message)'}`)
               setConfirmErreur(data.erreur ?? 'Erreur serveur, réessaie')
               event.paymentFailed({ reason: 'fail', message: data.erreur })
               return
             }
 
+            log('appel stripe.confirmPayment...')
             const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
               elements,
               clientSecret: data.clientSecret,
@@ -202,10 +210,10 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               },
               redirect: 'if_required',
             })
+            log(`confirmPayment terminé — erreur:${!!confirmError} paymentIntent:${!!paymentIntent} status:${paymentIntent?.status ?? '?'}`)
 
             if (confirmError) {
-              // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
-              alert(`[debug] confirmError: ${confirmError.type ?? '?'} / ${confirmError.code ?? '?'} / ${confirmError.message ?? '(sans message)'}`)
+              log(`confirmError: ${confirmError.type ?? '?'} / ${confirmError.code ?? '?'} / ${confirmError.message ?? '(sans message)'}`)
               setConfirmErreur(confirmError.message ?? 'Paiement refusé')
               event.paymentFailed({ reason: 'fail', message: confirmError.message })
               return
@@ -221,8 +229,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               onSuccess({ paymentIntentId: paymentIntent.id })
             }
           } catch (err) {
-            // DEBUG TEMPORAIRE — à retirer une fois la cause identifiée.
-            alert(`[debug] catch: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`)
+            log(`catch: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`)
             setConfirmErreur('Erreur réseau, réessaie')
             event.paymentFailed({ reason: 'fail' })
           } finally {
@@ -231,6 +238,11 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
         }}
       />
       {confirmErreur && <div className="shop-cart-express-error">{confirmErreur}</div>}
+      {debugLog.length > 0 && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxHeight: '40vh', overflowY: 'auto', background: 'rgba(0,0,0,0.92)', color: '#0f0', fontSize: 11, fontFamily: 'monospace', padding: 10, zIndex: 999999, whiteSpace: 'pre-wrap' }}>
+          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
     </div>
   )
 }
