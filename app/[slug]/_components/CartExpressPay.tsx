@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Elements, ExpressCheckoutElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutElementClickEvent, StripeExpressCheckoutElementConfirmEvent, StripeExpressCheckoutElementOptions } from '@stripe/stripe-js'
-import { stripePromise } from '@/lib/stripe-client'
+import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { selectExpressPaymentMethods, type ExpressMethod } from '../_lib/express-payments'
 import { useCart, type CartItem } from './CartContext'
 
@@ -24,6 +24,8 @@ type Props = {
   onSuccess: (info: { paymentIntentId: string }) => void
 }
 
+type ContextePaiement = { mode: 'direct' | 'destination'; on_behalf_of: string | null; stripe_account_id: string | null }
+
 export default function CartExpressPay(props: Props) {
   const { slug, items } = props
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
@@ -31,7 +33,7 @@ export default function CartExpressPay(props: Props) {
   // Stripe — le résoudre après le montage d'Elements (ancien comportement)
   // faisait apparaître puis disparaître silencieusement le bouton PayPal dès
   // que la mise à jour était prise en compte. Résolu ici AVANT le montage.
-  const [onBehalfOf, setOnBehalfOf] = useState<string | null | undefined>(undefined)
+  const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
 
   useEffect(() => {
     if (!beatIdsKey) return
@@ -42,21 +44,33 @@ export default function CartExpressPay(props: Props) {
       body: JSON.stringify({ slug, beat_ids: beatIdsKey.split(',') }),
     })
       .then(r => r.json())
-      .then((data: { on_behalf_of?: string | null }) => { if (!annule) setOnBehalfOf(data.on_behalf_of ?? null) })
-      .catch(() => { if (!annule) setOnBehalfOf(null) })
+      .then((data: ContextePaiement) => { if (!annule) setContexte(data) })
+      .catch(() => { if (!annule) setContexte(null) })
     return () => { annule = true }
   }, [slug, beatIdsKey])
 
   // Panier vide : pas d'article donc pas d'appel API à faire, mais on ne
   // reste jamais bloqué en "détection" indéfiniment pour autant.
-  const resolu = beatIdsKey ? onBehalfOf : null
+  const resolu = beatIdsKey ? contexte : null
   if (resolu === undefined) return null
+
+  // Direct Charge : Stripe.js chargé avec le contexte du compte connecté,
+  // jamais de `on_behalf_of` en option Elements (n'a de sens qu'en
+  // destination charge). Ancien flux inchangé sinon.
+  const stripeClient = resolu?.mode === 'direct' && resolu.stripe_account_id
+    ? chargerStripePourCompte(resolu.stripe_account_id)
+    : stripePromise
 
   return (
     <Elements
-      key={resolu ?? 'aucun'}
-      stripe={stripePromise}
-      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', on_behalf_of: resolu ?? undefined }}
+      key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : (resolu?.on_behalf_of ?? 'aucun')}
+      stripe={stripeClient}
+      options={{
+        mode: 'payment',
+        amount: MONTANT_DETECTION_CENTS,
+        currency: 'eur',
+        ...(resolu?.mode === 'destination' && resolu.on_behalf_of ? { on_behalf_of: resolu.on_behalf_of } : {}),
+      }}
     >
       <ExpressButtons {...props} />
     </Elements>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Elements, ExpressCheckoutElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutElementClickEvent, StripeExpressCheckoutElementConfirmEvent, StripeExpressCheckoutElementOptions } from '@stripe/stripe-js'
-import { stripePromise } from '@/lib/stripe-client'
+import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { selectExpressPaymentMethods, type ExpressMethod } from '../_lib/express-payments'
 import type { LicenceMin } from './PlayerContext'
 
@@ -29,6 +29,8 @@ type Props = {
   onSuccess: (info: { paymentIntentId: string }) => void
 }
 
+type ContextePaiement = { mode: 'direct' | 'destination'; on_behalf_of: string | null; stripe_account_id: string | null }
+
 export default function LicenceExpressPay(props: Props) {
   const { slug, beatId } = props
   // PayPal n'accepte pas du tout le paramètre `on_behalf_of` côté Stripe
@@ -36,9 +38,9 @@ export default function LicenceExpressPay(props: Props) {
   // `elements.update()`, Stripe retire silencieusement PayPal du bouton une
   // fois la mise à jour prise en compte, sans prévenir nos callbacks React :
   // c'était la cause du bouton PayPal qui apparaissait puis disparaissait
-  // aussitôt. On résout donc `on_behalf_of` AVANT de monter `Elements`, pour
+  // aussitôt. On résout donc le contexte AVANT de monter `Elements`, pour
   // que la détection initiale des wallets se fasse déjà dans le bon contexte.
-  const [onBehalfOf, setOnBehalfOf] = useState<string | null | undefined>(undefined)
+  const [contexte, setContexte] = useState<ContextePaiement | undefined>(undefined)
 
   useEffect(() => {
     let annule = false
@@ -48,18 +50,30 @@ export default function LicenceExpressPay(props: Props) {
       body: JSON.stringify({ slug, beat_ids: [beatId] }),
     })
       .then(r => r.json())
-      .then((data: { on_behalf_of?: string | null }) => { if (!annule) setOnBehalfOf(data.on_behalf_of ?? null) })
-      .catch(() => { if (!annule) setOnBehalfOf(null) })
+      .then((data: ContextePaiement) => { if (!annule) setContexte(data) })
+      .catch(() => { if (!annule) setContexte({ mode: 'destination', on_behalf_of: null, stripe_account_id: null }) })
     return () => { annule = true }
   }, [slug, beatId])
 
-  if (onBehalfOf === undefined) return null
+  if (contexte === undefined) return null
+
+  // Direct Charge : Stripe.js chargé avec le contexte du compte connecté,
+  // jamais de `on_behalf_of` en option Elements (n'a de sens qu'en
+  // destination charge). Ancien flux inchangé sinon.
+  const stripeClient = contexte.mode === 'direct' && contexte.stripe_account_id
+    ? chargerStripePourCompte(contexte.stripe_account_id)
+    : stripePromise
 
   return (
     <Elements
-      key={onBehalfOf ?? 'aucun'}
-      stripe={stripePromise}
-      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', on_behalf_of: onBehalfOf ?? undefined }}
+      key={contexte.mode === 'direct' ? `direct:${contexte.stripe_account_id}` : (contexte.on_behalf_of ?? 'aucun')}
+      stripe={stripeClient}
+      options={{
+        mode: 'payment',
+        amount: MONTANT_DETECTION_CENTS,
+        currency: 'eur',
+        ...(contexte.mode === 'destination' && contexte.on_behalf_of ? { on_behalf_of: contexte.on_behalf_of } : {}),
+      }}
     >
       <ExpressButtons {...props} />
     </Elements>

@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { verifierTokenCampagne, COOKIE_CLIC } from '@/lib/mailing'
 import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
+import { mapperVersPaymentMethodTypes, normaliserMoyensPaiement } from '@/lib/moyens-paiement'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -25,11 +26,11 @@ export async function POST(request: Request) {
 
   const { data: beatmakerRow } = await supabase
     .from('beatmakers')
-    .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+    .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct, direct_charge_actif, moyens_paiement_acceptes')
     .eq('slug', slug)
     .single()
 
-  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
+  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean; direct_charge_actif: boolean; moyens_paiement_acceptes: string[] | null }
   let beatmaker = beatmakerRow as BeatmakerRow | null
 
   // Fallback admin si l'artiste connecté ne peut pas lire beatmakers via RLS
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     const admin = createAdminClient()
     const { data: bm } = await admin
       .from('beatmakers')
-      .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+      .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct, direct_charge_actif, moyens_paiement_acceptes')
       .eq('slug', slug)
       .single()
     beatmaker = bm as BeatmakerRow | null
@@ -75,9 +76,16 @@ export async function POST(request: Request) {
     .in('beat_id', beatIds)
   const hasSplits = (splitsData?.length ?? 0) > 0
 
+  // Direct Charge (Phase 2) uniquement si la boutique l'a explicitement
+  // activé ET qu'il n'y a aucun split sur ce panier — un panier avec split
+  // reste sur le mode "fonds retenus" quel que soit ce flag (cf plus bas).
+  const directChargeActif = !hasSplits && beatmaker.direct_charge_actif && !!beatmaker.stripe_account_id
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
-    payment_method_types: ['card'],
+    payment_method_types: directChargeActif
+      ? mapperVersPaymentMethodTypes(normaliserMoyensPaiement(beatmaker.moyens_paiement_acceptes))
+      : ['card'],
     line_items: lignes.map(l => ({
       price_data: {
         currency: 'eur',
@@ -108,7 +116,9 @@ export async function POST(request: Request) {
     const transferGroup = crypto.randomUUID()
     sessionParams.payment_intent_data = { transfer_group: transferGroup }
     sessionParams.metadata = { ...sessionParams.metadata, transfer_group: transferGroup, has_splits: 'true' }
-  } else if (beatmaker.stripe_account_id) {
+  } else if (!directChargeActif && beatmaker.stripe_account_id) {
+    // Ancien flux (destination charge) — inchangé tant que direct_charge_actif
+    // n'est pas activé pour cette boutique.
     sessionParams.payment_intent_data = {
       application_fee_amount: 0,
       on_behalf_of: beatmaker.stripe_account_id,
@@ -116,7 +126,13 @@ export async function POST(request: Request) {
     }
   }
 
-  const session = await stripe.checkout.sessions.create(sessionParams)
+  // Direct Charge : la Checkout Session est créée directement sur le compte
+  // connecté (options `stripeAccount`, pas un paramètre du corps de la
+  // requête) — jamais application_fee_amount/on_behalf_of/transfer_data,
+  // invalides sur ce mode.
+  const session = directChargeActif
+    ? await stripe.checkout.sessions.create(sessionParams, { stripeAccount: beatmaker.stripe_account_id! })
+    : await stripe.checkout.sessions.create(sessionParams)
 
   const prixTotalEuros = lignes.reduce((s, l) => s + l.prixTotalCents, 0) / 100
   const clientId = await resoudreClientId(admin, user)
