@@ -8,7 +8,6 @@ import { validerStatementDescriptor } from '@/lib/statement-descriptor'
 
 const LABEL_MOYEN_PAIEMENT: Record<MoyenPaiementNiveauA, string> = {
   carte: 'Carte bancaire',
-  paypal: 'PayPal',
 }
 
 type RapportDeblocage = {
@@ -257,7 +256,7 @@ export default function PaiementsClient({
         <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
           <h2 className="text-lg font-bold mb-1">Moyens de paiement</h2>
           <p className="text-gray-400 text-sm mb-4">
-            Choisis les moyens de paiement que tes acheteurs peuvent utiliser. La mise en œuvre technique (Apple Pay, Google Pay, sécurité des paiements) reste gérée automatiquement.
+            La carte bancaire est toujours acceptée. Apple Pay et Google Pay sont proposés automatiquement quand l&apos;appareil de l&apos;acheteur le permet, sans réglage à faire ici.
           </p>
 
           <div className="flex flex-col gap-3 mb-4">
