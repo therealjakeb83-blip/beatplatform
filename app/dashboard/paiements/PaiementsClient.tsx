@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { MANDAT_FULFILLMENT_VERSION_ACTUELLE, texteMandatFulfillment } from '@/lib/fulfillment'
+import { MOYENS_PAIEMENT_TOGGLABLES, normaliserMoyensPaiement, type MoyenPaiementNiveauA } from '@/lib/moyens-paiement'
+import { validerStatementDescriptor } from '@/lib/statement-descriptor'
+
+const LABEL_MOYEN_PAIEMENT: Record<MoyenPaiementNiveauA, string> = {
+  carte: 'Carte bancaire',
+  paypal: 'PayPal',
+  virement: 'Virement bancaire',
+}
 
 type RapportDeblocage = {
   debloques: { beat: string; montant: number }[]
@@ -15,6 +24,11 @@ export default function PaiementsClient({
   tvaNumero,
   fondsEnAttenteCount,
   fondsEnAttenteTotal,
+  mandatFulfillmentActif,
+  mandatFulfillmentVersion,
+  mandatFulfillmentAccepteLe,
+  moyensPaiementAcceptes,
+  statementDescriptor,
 }: {
   stripeAccountId: string | null
   tvaActive: boolean
@@ -22,6 +36,11 @@ export default function PaiementsClient({
   tvaNumero: string
   fondsEnAttenteCount: number
   fondsEnAttenteTotal: number
+  mandatFulfillmentActif: boolean
+  mandatFulfillmentVersion: number | null
+  mandatFulfillmentAccepteLe: string | null
+  moyensPaiementAcceptes: string[]
+  statementDescriptor: string
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -58,6 +77,100 @@ export default function PaiementsClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  const [chargementMandat, setChargementMandat] = useState(false)
+  const [erreurMandat, setErreurMandat] = useState('')
+
+  async function agirSurMandat(action: 'accepter' | 'revoquer') {
+    setChargementMandat(true)
+    setErreurMandat('')
+    try {
+      const res = await fetch('/api/stripe/fulfillment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setErreurMandat(data?.erreur || 'Impossible de mettre à jour le mandat de livraison.')
+        return
+      }
+      router.refresh()
+    } catch {
+      setErreurMandat('Erreur réseau, réessaie.')
+    } finally {
+      setChargementMandat(false)
+    }
+  }
+
+  const [moyens, setMoyens] = useState<MoyenPaiementNiveauA[]>(normaliserMoyensPaiement(moyensPaiementAcceptes))
+  const [chargementMoyens, setChargementMoyens] = useState(false)
+  const [erreurMoyens, setErreurMoyens] = useState('')
+  const [sauvegardeMoyensOk, setSauvegardeMoyensOk] = useState(false)
+
+  function toggleMoyen(moyen: MoyenPaiementNiveauA) {
+    setSauvegardeMoyensOk(false)
+    setMoyens(prev => prev.includes(moyen) ? prev.filter(m => m !== moyen) : [...prev, moyen])
+  }
+
+  async function sauvegarderMoyens() {
+    setChargementMoyens(true)
+    setErreurMoyens('')
+    setSauvegardeMoyensOk(false)
+    try {
+      const res = await fetch('/api/stripe/moyens-paiement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moyens_paiement_acceptes: moyens }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setErreurMoyens(data?.erreur || 'Impossible de sauvegarder les moyens de paiement.')
+        return
+      }
+      setSauvegardeMoyensOk(true)
+      router.refresh()
+    } catch {
+      setErreurMoyens('Erreur réseau, réessaie.')
+    } finally {
+      setChargementMoyens(false)
+    }
+  }
+
+  const [descripteur, setDescripteur] = useState(statementDescriptor)
+  const [chargementDescripteur, setChargementDescripteur] = useState(false)
+  const [erreurDescripteur, setErreurDescripteur] = useState('')
+  const [sauvegardeDescripteurOk, setSauvegardeDescripteurOk] = useState(false)
+
+  async function sauvegarderDescripteur() {
+    setChargementDescripteur(true)
+    setErreurDescripteur('')
+    setSauvegardeDescripteurOk(false)
+    const validation = validerStatementDescriptor(descripteur)
+    if (!validation.ok) {
+      setErreurDescripteur(validation.erreur)
+      setChargementDescripteur(false)
+      return
+    }
+    try {
+      const res = await fetch('/api/stripe/statement-descriptor', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statement_descriptor: descripteur }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setErreurDescripteur(data?.erreur || "Impossible de sauvegarder l'identité sur le relevé.")
+        return
+      }
+      setSauvegardeDescripteurOk(true)
+      router.refresh()
+    } catch {
+      setErreurDescripteur('Erreur réseau, réessaie.')
+    } finally {
+      setChargementDescripteur(false)
+    }
+  }
+
   const [tvaActif, setTvaActif] = useState(tvaActive)
   const [taux, setTaux] = useState(String(tvaTaux || 20))
   const [numero, setNumero] = useState(tvaNumero || '')
@@ -99,6 +212,125 @@ export default function PaiementsClient({
           <h1 className="text-2xl font-bold mb-1">Paiements</h1>
           <p className="text-gray-400 text-sm">Connecte ton compte bancaire et configure ta TVA.</p>
         </div>
+
+        {/* Mandat de fulfillment */}
+        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-lg font-bold mb-1">Mode de livraison</h2>
+          <p className="text-gray-400 text-sm mb-4 whitespace-pre-line">
+            {texteMandatFulfillment(mandatFulfillmentVersion ?? MANDAT_FULFILLMENT_VERSION_ACTUELLE)}
+          </p>
+
+          {mandatFulfillmentActif ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-green-400 font-medium">Mandat actif</span>
+                {mandatFulfillmentAccepteLe && (
+                  <span className="text-gray-600 text-xs">
+                    depuis le {new Date(mandatFulfillmentAccepteLe).toLocaleDateString('fr-FR')}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => agirSurMandat('revoquer')}
+                disabled={chargementMandat}
+                className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium disabled:opacity-50 transition-colors w-fit"
+              >
+                {chargementMandat ? 'Mise à jour...' : 'Révoquer'}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => agirSurMandat('accepter')}
+              disabled={chargementMandat}
+              className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
+            >
+              {chargementMandat ? 'Enregistrement...' : "J'accepte ce mode de livraison"}
+            </button>
+          )}
+
+          {erreurMandat && (
+            <p className="text-red-400 text-sm mt-3">{erreurMandat}</p>
+          )}
+        </section>
+
+        {/* Moyens de paiement */}
+        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-lg font-bold mb-1">Moyens de paiement</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Choisis les moyens de paiement que tes acheteurs peuvent utiliser. La mise en œuvre technique (Apple Pay, Google Pay, sécurité des paiements) reste gérée automatiquement.
+          </p>
+
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 rounded bg-indigo-600 flex items-center justify-center text-white text-xs">✓</div>
+              <span className="text-sm text-gray-300">{LABEL_MOYEN_PAIEMENT.carte} <span className="text-gray-600 text-xs">(toujours activée)</span></span>
+            </div>
+            {MOYENS_PAIEMENT_TOGGLABLES.map(moyen => (
+              <label key={moyen} className="flex items-center gap-3 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={moyens.includes(moyen)}
+                  onChange={() => toggleMoyen(moyen)}
+                  className="w-5 h-5 rounded bg-gray-800 border-gray-700 accent-indigo-600"
+                />
+                <span className="text-sm text-gray-300">{LABEL_MOYEN_PAIEMENT[moyen]}</span>
+              </label>
+            ))}
+          </div>
+
+          <button
+            onClick={sauvegarderMoyens}
+            disabled={chargementMoyens}
+            className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold disabled:opacity-50 transition-colors"
+          >
+            {chargementMoyens ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+
+          {sauvegardeMoyensOk && (
+            <p className="text-green-400 text-sm mt-2">Sauvegardé.</p>
+          )}
+          {erreurMoyens && (
+            <p className="text-red-400 text-sm mt-2">{erreurMoyens}</p>
+          )}
+        </section>
+
+        {/* Identité sur le relevé bancaire */}
+        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-lg font-bold mb-1">Identité sur le relevé bancaire</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Le nom qui apparaît sur le relevé de carte bancaire de tes acheteurs. Entre 5 et 22 caractères, au moins une lettre.
+          </p>
+
+          <div className="flex flex-col gap-2 mb-4">
+            <input
+              type="text"
+              value={descripteur}
+              onChange={e => { setDescripteur(e.target.value); setSauvegardeDescripteurOk(false) }}
+              maxLength={22}
+              placeholder="MON BEATMAKER"
+              className="w-full max-w-xs px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+            />
+            <p className="text-gray-500 text-xs">
+              Aperçu relevé : <span className="text-gray-300 font-mono">{(descripteur.trim() || 'MON BEATMAKER').toUpperCase()}</span>
+            </p>
+          </div>
+
+          <button
+            onClick={sauvegarderDescripteur}
+            disabled={chargementDescripteur}
+            className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold disabled:opacity-50 transition-colors"
+          >
+            {chargementDescripteur ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+
+          {sauvegardeDescripteurOk && (
+            <p className="text-green-400 text-sm mt-2">Sauvegardé.</p>
+          )}
+          {erreurDescripteur && (
+            <p className="text-red-400 text-sm mt-2">{erreurDescripteur}</p>
+          )}
+        </section>
 
         {/* Stripe Connect */}
         <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">

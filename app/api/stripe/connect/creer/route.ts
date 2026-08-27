@@ -9,7 +9,7 @@ export async function POST(request: Request) {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('stripe_account_id, email, nom_artiste')
+    .select('stripe_account_id, email, nom_artiste, statement_descriptor')
     .eq('id', user.id)
     .single()
 
@@ -27,6 +27,12 @@ export async function POST(request: Request) {
         transfers: { requested: true },
       },
       metadata: { beatmaker_id: user.id },
+      // Repris s'il a déjà été choisi avant la connexion du compte (voir
+      // /api/stripe/statement-descriptor, qui le pousse directement sur les
+      // comptes déjà connectés — ici on couvre le cas inverse).
+      ...(beatmaker.statement_descriptor
+        ? { settings: { payments: { statement_descriptor: beatmaker.statement_descriptor } } }
+        : {}),
     })
     accountId = account.id
 
