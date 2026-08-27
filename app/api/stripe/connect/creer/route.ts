@@ -51,6 +51,29 @@ export async function POST(request: Request) {
 
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
+  // Apple Pay (Direct Charge, Phase 2) — l'enregistrement de domaine fait
+  // sur le compte plateforme ne vaut QUE pour ce compte, jamais pour les
+  // comptes connectés : chaque compte connecté doit enregistrer le domaine
+  // séparément pour que le bouton Apple Pay apparaisse une fois le paiement
+  // créé avec {stripeAccount}. Découvert en testant Direct Charge le
+  // 2026-08-27 (Apple Pay invisible sur jakeb-test malgré un domaine déjà
+  // vérifié côté plateforme). Toujours ré-exécuté (pas juste à la création)
+  // pour rattraper les comptes déjà connectés avant ce correctif —
+  // idempotent, l'erreur "domaine déjà enregistré" est silencieusement
+  // ignorée. Jamais tenté en local (localhost n'est pas un domaine public
+  // valide pour Apple Pay).
+  const hostname = new URL(origin).hostname
+  if (hostname !== 'localhost') {
+    try {
+      await stripe.applePayDomains.create({ domain_name: hostname }, { stripeAccount: accountId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (!/already exists|already registered/i.test(message)) {
+        console.error('[connect/creer] Erreur enregistrement domaine Apple Pay:', message)
+      }
+    }
+  }
+
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
     refresh_url: `${origin}/dashboard/paiements?refresh=true`,
