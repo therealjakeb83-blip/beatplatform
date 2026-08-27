@@ -82,15 +82,47 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
 // supabase/express_checkout.sql). Le garde `metadata.type === 'achat_express'`
 // est posé par l'appelant (webhook plateforme ou Connect) pour ne jamais
 // retraiter les PaymentIntents internes des Checkout Sessions classiques.
+// `receipt_email` n'est renseigné que si notre serveur l'a explicitement
+// passé à la création du PaymentIntent (client connecté, ou email tapé dans
+// le champ panier "si non connecté") — un acheteur anonyme au paiement
+// express (Apple Pay/Google Pay, emailRequired:true côté Elements) n'a
+// jamais ce champ rempli, alors que le wallet a bien collecté son email de
+// contact. Repli sur billing_details.email de la méthode de paiement
+// confirmée avant d'abandonner. Découvert en testant Direct Charge le
+// 2026-08-27 mais préexistant à Direct Charge (même trou côté destination
+// charge, jamais remarqué car les tests précédents utilisaient un compte
+// déjà connu).
+async function resoudreEmailAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<string | null> {
+  const direct = paymentIntent.receipt_email?.toLowerCase().trim()
+  if (direct) return direct
+
+  const paymentMethodId = typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method?.id
+  if (!paymentMethodId) return null
+
+  try {
+    const paymentMethod = await stripe.paymentMethods.retrieve(
+      paymentMethodId,
+      undefined,
+      stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+    )
+    return paymentMethod.billing_details?.email?.toLowerCase().trim() ?? null
+  } catch (err) {
+    console.error('[webhook-paiement] Erreur récupération payment_method pour email:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
 export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null) {
   const meta = paymentIntent.metadata
   if (!meta?.beatmaker_id) return
+
+  const acheteurEmail = await resoudreEmailAchatExpress(paymentIntent, stripeAccountId)
 
   await finaliserCommandePayee({
     meta,
     tentativeColonne: 'stripe_payment_intent_id',
     tentativeValeur: paymentIntent.id,
-    acheteurEmail: paymentIntent.receipt_email?.toLowerCase().trim() ?? null,
+    acheteurEmail,
     acheteurNom: null,
     totalCents: paymentIntent.amount,
     stripePaymentId: paymentIntent.id,
