@@ -7,7 +7,6 @@ export type CommandeRow = {
   id: string
   created_at: string
   prix_paye: number
-  devise: string | null
   statut: 'en_attente' | 'payee' | 'remboursee' | 'litige' | 'creee' | 'expiree' | 'echouee'
   code_promo: string | null
   reduction_montant: number | null
@@ -56,7 +55,7 @@ export default async function CommandesPage({
   const { data } = await admin
     .from('commandes')
     .select(
-      `id, created_at, prix_paye, devise, statut,
+      `id, created_at, prix_paye, statut,
        code_promo, reduction_montant, fichiers_livres,
        source_marketing, type_commande, plateforme_source,
        acheteur_email, acheteur_nom, methode_paiement,
@@ -93,7 +92,6 @@ export default async function CommandesPage({
     id: string
     created_at: string
     prix_paye: number
-    devise: string | null
     statut: CommandeRow['statut']
     code_promo: string | null
     reduction_montant: number | null
@@ -142,7 +140,6 @@ export default async function CommandesPage({
     id: t.id,
     created_at: t.created_at,
     prix_paye: t.prix,
-    devise: 'EUR',
     statut: t.statut,
     code_promo: t.code_promo,
     reduction_montant: null,

@@ -16,7 +16,7 @@ export default async function CommandeAdminDetailPage({ params }: { params: Prom
   const { data: commande } = await admin
     .from('commandes')
     .select(`
-      id, created_at, prix_paye, devise, statut, methode_paiement, code_promo, reduction_montant,
+      id, created_at, prix_paye, statut, methode_paiement, code_promo, reduction_montant,
       fichiers_livres, source_marketing, type_commande, plateforme_source, acheteur_email, acheteur_nom,
       client_id, beatmaker_id,
       clients ( id, prenom, nom, email ),

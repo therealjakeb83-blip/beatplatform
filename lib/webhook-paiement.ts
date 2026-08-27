@@ -230,7 +230,6 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     acheteur_email: acheteurEmail,
     acheteur_nom: acheteurNom,
     prix_paye: prixPayeTotal,
-    devise: 'EUR',
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,
     stripe_session_id: ctx.stripeSessionId,

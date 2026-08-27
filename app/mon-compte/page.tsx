@@ -22,7 +22,6 @@ type CmdRow = {
   id: string
   created_at: string
   prix_paye: number
-  devise: string
   commande_lignes: LigneRow[]
 }
 
@@ -55,7 +54,7 @@ export default async function MonComptePage() {
   // Commandes (par client_id ou email)
   const { data: commandes } = await admin
     .from('commandes')
-    .select('id, created_at, prix_paye, devise, commande_lignes(beats(titre, image_url), licences(nom))')
+    .select('id, created_at, prix_paye, commande_lignes(beats(titre, image_url), licences(nom))')
     .or(`client_id.eq.${user.id},acheteur_email.eq.${email}`)
     .order('created_at', { ascending: false })
 

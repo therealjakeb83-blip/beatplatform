@@ -41,7 +41,6 @@ type CommandeDetail = {
   id: string
   created_at: string
   prix_paye: number
-  devise: string | null
   statut: 'en_attente' | 'payee' | 'remboursee' | 'litige'
   methode_paiement: string | null
   code_promo: string | null
@@ -140,7 +139,7 @@ export default async function CommandeDetailPage({
   const { data: commande } = await admin
     .from('commandes')
     .select(`
-      id, created_at, prix_paye, devise, statut,
+      id, created_at, prix_paye, statut,
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, facture_pdf_url,
       source_marketing, type_commande, plateforme_source,

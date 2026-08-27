@@ -140,13 +140,12 @@ export default async function AbonnementDetailPage({
     statut: string
     type_commande: string | null
     prix_paye: number
-    devise: string
   }> = []
 
   if (clientId) {
     const { data: cmds } = await admin
       .from('commandes')
-      .select('id, created_at, statut, type_commande, prix_paye, devise')
+      .select('id, created_at, statut, type_commande, prix_paye')
       .eq('beatmaker_id', user.id)
       .eq('client_id', clientId)
       .in('type_commande', ['CREATION_ABONNEMENT', 'RENOUVELLEMENT'])

@@ -13,7 +13,6 @@ type CmdRow = {
   id: string
   created_at: string
   prix_paye: number
-  devise: string
   commande_lignes: LigneRow[]
 }
 
@@ -53,7 +52,7 @@ export default async function AchatsBoutiquePage({
   if (clientId) {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, devise, commande_lignes(beats(titre, image_url), licences(nom))')
+      .select('id, created_at, prix_paye, commande_lignes(beats(titre, image_url), licences(nom))')
       .eq('beatmaker_id', beatmaker.id)
       .or(`client_id.eq.${clientId},acheteur_email.eq.${emailIdentifie}`)
       .order('created_at', { ascending: false })
@@ -61,7 +60,7 @@ export default async function AchatsBoutiquePage({
   } else {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, devise, commande_lignes(beats(titre, image_url), licences(nom))')
+      .select('id, created_at, prix_paye, commande_lignes(beats(titre, image_url), licences(nom))')
       .eq('beatmaker_id', beatmaker.id)
       .eq('acheteur_email', emailIdentifie)
       .order('created_at', { ascending: false })

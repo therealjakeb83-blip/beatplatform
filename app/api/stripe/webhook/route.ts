@@ -667,7 +667,6 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     client_id: abo.client_id,
     beatmaker_id: abo.beatmaker_id,
     prix_paye: prixPaye,
-    devise: 'EUR',
     methode_paiement: 'stripe',
     statut: 'payee',
     plateforme_source: 'my_producer',
