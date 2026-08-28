@@ -2,7 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdf } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
-import { envoyerFondsEnAttente, confirmationCommande } from '@/lib/emails'
+import { envoyerFondsEnAttente, confirmationCommande, alerteProblemeLivraison } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
@@ -373,6 +373,17 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     fichiers_livres: contratsOk === tentativeLignes.length,
     statut_livraison: statutLivraison,
   }).eq('id', commande.id)
+
+  // Alerte au beatmaker (Phase 5) — jamais fire-and-forget dans un webhook
+  // (voir lib/emails.ts::alerteProblemeLivraison), envoyée une seule fois ici,
+  // pas à chaque reprise (voir app/api/business/commandes/[id]/reprendre-livraison).
+  if (statutLivraison === 'probleme' && beatmaker?.email) {
+    await alerteProblemeLivraison({
+      to: beatmaker.email,
+      beatmakerId: meta.beatmaker_id,
+      commandeId: commande.id,
+    }).catch(err => console.error('[webhook-paiement] Erreur envoi alerte problème livraison:', err))
+  }
 
   // 3. Marquer la tentative de paiement correspondante comme complète
   const { error: tentativeError } = await supabase

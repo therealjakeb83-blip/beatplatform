@@ -1014,3 +1014,52 @@ export async function genererApercuTransactionnel(
     ...parType[type],
   })
 }
+
+// Alerte au beatmaker (Phase 5, refonte 9 bis) — envoyée une seule fois,
+// juste après l'achat, si statut_livraison reste 'probleme' (voir
+// lib/webhook-paiement.ts). Volontairement simple (pas le système "Mails My
+// Producer" plus haut, pensé pour du contenu générique éditable par
+// l'admin) — le détail exact de ce qui a échoué est propre à chaque
+// commande, il vit déjà sur la fiche commande elle-même, pas dans l'email.
+export async function alerteProblemeLivraison({
+  to,
+  beatmakerId,
+  commandeId,
+}: {
+  to: string
+  beatmakerId: string
+  commandeId: string
+}) {
+  const lienCommande = `${APP_URL}/dashboard/business/commandes/${commandeId}`
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'alerte_probleme_livraison',
+    commandeId,
+    to,
+    subject: 'Un problème est survenu sur une commande',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111;background:#fff;padding:32px;border-radius:12px;">
+        <h2 style="color:#dc2626;margin-top:0;">Un problème technique a été détecté</h2>
+        <p>
+          Une commande vient d'être payée, mais une étape automatique (contrat PDF ou
+          transfert vers un collaborateur) n'a pas pu être finalisée.
+        </p>
+        <p>
+          Le client a déjà reçu ses fichiers — ce problème ne le concerne pas directement,
+          mais il faut le réparer de ton côté.
+        </p>
+        <p style="margin:28px 0;">
+          <a href="${lienCommande}"
+             style="background:#dc2626;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;font-size:15px;">
+            Voir la commande et réparer
+          </a>
+        </p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
+        <p style="color:#888;font-size:11px;margin:0;">
+          Envoyé par ${NOM_PLATEFORME} suite à un problème détecté automatiquement sur ta boutique.
+        </p>
+      </div>
+    `,
+  })
+}
