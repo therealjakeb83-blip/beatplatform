@@ -5,6 +5,7 @@ import Link from 'next/link'
 import RenvoyerButton from './_components/RenvoyerButton'
 import CopyButton from './_components/CopyButton'
 import RemboursementButton from './_components/RemboursementButton'
+import { calculerStatutLivraison } from '@/lib/livraison-statut'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -50,6 +51,7 @@ type CommandeDetail = {
   code_promo: string | null
   reduction_montant: number | null
   fichiers_livres: boolean | null
+  statut_livraison: 'en_cours' | 'livree' | 'probleme'
   facture_pdf_url: string | null
   source_marketing: string | null
   type_commande: string | null
@@ -84,6 +86,12 @@ const STATUT = {
   payee:      { label: 'Payée',      cls: 'bg-green-500/15  text-green-400  border border-green-500/20' },
   remboursee: { label: 'Remboursée', cls: 'bg-red-500/15    text-red-400    border border-red-500/20' },
   litige:     { label: 'Litige',     cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
+} as const
+
+const STATUT_LIVRAISON = {
+  en_cours: { label: 'En cours',           cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
+  livree:   { label: 'Livrée',             cls: 'bg-green-500/15 text-green-400 border border-green-500/20' },
+  probleme: { label: 'Problème détecté',   cls: 'bg-red-500/15   text-red-400   border border-red-500/20' },
 } as const
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -147,7 +155,7 @@ export default async function CommandeDetailPage({
     .select(`
       id, created_at, prix_paye, statut,
       methode_paiement, code_promo, reduction_montant,
-      fichiers_livres, facture_pdf_url,
+      fichiers_livres, statut_livraison, facture_pdf_url,
       source_marketing, type_commande, plateforme_source,
       acheteur_email, acheteur_nom, notes, client_id, stripe_transfer_group, tva_taux,
       clients (id, prenom, nom, email, pays),
@@ -192,6 +200,24 @@ export default async function CommandeDetailPage({
 
   const lignes = c.commande_lignes ?? []
   const multiArticles = lignes.length > 1
+
+  /* Détail des problèmes de livraison (Phase 5) — recalculé depuis l'état
+     réel, jamais depuis un texte figé, pour ne jamais afficher un problème
+     déjà réparé entre-temps sans que le statut n'ait été relu. */
+  const { problemes: problemesLivraison } = c.statut_livraison === 'probleme'
+    ? await calculerStatutLivraison(id)
+    : { problemes: [] }
+  const { data: splitsDetail } = problemesLivraison.some(p => p.type === 'transfert_echoue')
+    ? await admin.from('split_payments').select('id, beatmakers(nom_artiste)').eq('commande_id', id)
+    : { data: null }
+  const beatParLigneId = new Map(lignes.map(l => [l.id, l.beats?.titre ?? 'Beat']))
+  const nomParSplitId = new Map(((splitsDetail ?? []) as unknown as { id: string; beatmakers: { nom_artiste: string } | null }[])
+    .map(sp => [sp.id, sp.beatmakers?.nom_artiste ?? 'un collaborateur']))
+  const problemesTextes = problemesLivraison.map(p =>
+    p.type === 'contrat_manquant'
+      ? `Contrat PDF manquant — ${beatParLigneId.get(p.commandeLigneId) ?? 'un article'}`
+      : `Transfert échoué vers ${nomParSplitId.get(p.splitPaymentId) ?? 'un collaborateur'}`
+  )
 
   /* Fichiers disponibles par article (licence + fichiers audio + contrat) */
   const lignesDispo = lignes.map(l => {
@@ -305,6 +331,19 @@ export default async function CommandeDetailPage({
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${s.cls}`}>
                   {s.label}
                 </span>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-600 mb-0.5">Livraison</p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${STATUT_LIVRAISON[c.statut_livraison]?.cls ?? STATUT_LIVRAISON.en_cours.cls}`}>
+                  {STATUT_LIVRAISON[c.statut_livraison]?.label ?? 'En cours'}
+                </span>
+                {problemesTextes.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5">
+                    {problemesTextes.map((texte, i) => (
+                      <li key={i} className="text-xs text-red-400">{texte}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div>
                 <p className="text-[10px] text-gray-600 mb-0.5">Type</p>
