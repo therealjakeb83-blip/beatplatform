@@ -22,12 +22,12 @@ export default async function VerificationEnCoursPage({
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold mb-2">Petit souci technique</h1>
           <p className="text-gray-400 mb-1">
-            On n&apos;arrive pas à vérifier ta connexion à {NOM_PLATEFORME} pour le moment.
+            Le système de connexion à {NOM_PLATEFORME} rencontre une panne actuellement.
           </p>
           <p className="text-sm text-gray-500 mb-8">
-            Ce n&apos;est pas lié à ton compte ni à ton mot de passe — un souci technique
-            de notre côté. Ça peut se résoudre en quelques secondes comme prendre plus de
-            temps selon la panne. Réessaie maintenant, ou reviens un peu plus tard si ça persiste.
+            Le problème vient de notre côté, pas du tien — tu n&apos;as rien à faire de
+            particulier. On suit la situation de près pour la rétablir au plus vite.
+            Réessaie maintenant, ou reviens un peu plus tard si ça persiste.
           </p>
           <a
             href={retourUrl}
