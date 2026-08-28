@@ -1,4 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
+import { stripe } from '@/lib/stripe'
+import { descriptionAvecTva } from '@/lib/prix-affiche'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(request: Request) {
@@ -27,6 +29,21 @@ export async function PATCH(request: Request) {
     .eq('id', user.id)
 
   if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+
+  // Répercute la mention TVA sur la description Stripe de l'abonnement (page
+  // de paiement hébergée, hors de notre contrôle sinon) — jamais le prix lui-
+  // même : les abonnés déjà actifs gardent leur montant, seule la mention
+  // change pour les futurs abonnés (TVA toujours absorbée, voir lib/pricing.ts).
+  const { data: beatmaker } = await supabase
+    .from('beatmakers')
+    .select('stripe_product_id, abo_prix, abo_description')
+    .eq('id', user.id)
+    .single()
+
+  if (beatmaker?.stripe_product_id && beatmaker.abo_prix) {
+    const descriptionComplete = descriptionAvecTva(beatmaker.abo_description, beatmaker.abo_prix, { tvaActive: actif, tvaTaux: taux })
+    await stripe.products.update(beatmaker.stripe_product_id, { description: descriptionComplete })
+  }
 
   return NextResponse.json({ ok: true })
 }

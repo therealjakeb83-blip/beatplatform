@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import SAbonnerButton from './SAbonnerButton'
+import { detailTva } from '@/lib/prix-affiche'
 
 export default async function AbonnementPage({
   params,
@@ -16,7 +17,7 @@ export default async function AbonnementPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_recurrence_cadeau_mois, stripe_price_id')
+    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, abo_recurrence_cadeau_mois, stripe_price_id, tva_active, tva_taux')
     .eq('slug', slug)
     .single()
 
@@ -54,6 +55,9 @@ export default async function AbonnementPage({
   }
 
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
+  const tva = beatmaker.abo_prix
+    ? detailTva(beatmaker.abo_prix / 100, { tvaActive: beatmaker.tva_active, tvaTaux: beatmaker.tva_taux })
+    : null
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 py-16">
@@ -100,6 +104,11 @@ export default async function AbonnementPage({
                 {prixAffiche && (
                   <p className="text-4xl font-black text-white mb-1">
                     {prixAffiche}€<span className="text-gray-400 text-lg font-normal">/mois</span>
+                  </p>
+                )}
+                {tva && (
+                  <p className="text-xs text-gray-500">
+                    TTC · dont TVA ({tva.taux}%) : {tva.montant.toFixed(2).replace('.', ',')}€
                   </p>
                 )}
               </div>

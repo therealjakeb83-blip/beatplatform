@@ -62,11 +62,15 @@ export default function PlayerBar({
   clientId,
   estAbonne = false,
   remisePct = 0,
+  tvaActive = false,
+  tvaTaux = null,
 }: {
   slug: string
   clientId: string | null
   estAbonne?: boolean
   remisePct?: number
+  tvaActive?: boolean
+  tvaTaux?: number | null
 }) {
   const {
     currentBeat, isPlaying, progress, duration, isShuffled, loopOne,
@@ -245,6 +249,8 @@ export default function PlayerBar({
         slug={slug}
         estAbonne={estAbonne}
         remisePct={remisePct}
+        tvaActive={tvaActive}
+        tvaTaux={tvaTaux}
       />
     </>
   )

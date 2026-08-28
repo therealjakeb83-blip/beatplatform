@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
+import { descriptionAvecTva } from '@/lib/prix-affiche'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -13,7 +14,7 @@ export async function PUT(request: Request) {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('stripe_product_id, stripe_price_id, abo_prix')
+    .select('stripe_product_id, stripe_price_id, abo_prix, tva_active, tva_taux')
     .eq('id', user.id)
     .single()
 
@@ -21,17 +22,18 @@ export async function PUT(request: Request) {
 
   let productId = beatmaker.stripe_product_id as string | null
   let priceId = beatmaker.stripe_price_id as string | null
+  const descriptionComplete = descriptionAvecTva(description ?? null, prix_cents ?? beatmaker.abo_prix ?? 0, { tvaActive: beatmaker.tva_active, tvaTaux: beatmaker.tva_taux })
 
   if (!productId) {
     const product = await stripe.products.create({
       name: nom || 'Abonnement boutique',
-      ...(description ? { description } : {}),
+      description: descriptionComplete || undefined,
     })
     productId = product.id
   } else {
     await stripe.products.update(productId, {
       name: nom || 'Abonnement boutique',
-      ...(description ? { description } : {}),
+      description: descriptionComplete,
     })
   }
 

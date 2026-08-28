@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import BeatCard from '../_components/BeatCard'
 import type { BeatPublic, LicencePublic } from '../_components/BeatCard'
+import { detailTva } from '@/lib/prix-affiche'
 
 export default async function MembresPage({
   params,
@@ -17,7 +18,7 @@ export default async function MembresPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct')
+    .select('id, nom_artiste, abo_actif, abo_nom, abo_description, abo_prix, abo_remise_pct, tva_active, tva_taux')
     .eq('slug', slug)
     .single()
 
@@ -106,6 +107,9 @@ export default async function MembresPage({
   }))
 
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
+  const tva = beatmaker.abo_prix
+    ? detailTva(beatmaker.abo_prix / 100, { tvaActive: beatmaker.tva_active, tvaTaux: beatmaker.tva_taux })
+    : null
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
@@ -136,6 +140,9 @@ export default async function MembresPage({
             {prixAffiche && (
               <div className="text-center">
                 <p className="text-2xl font-black text-white">{prixAffiche}€<span className="text-gray-400 text-base font-normal">/mois</span></p>
+                {tva && (
+                  <p className="text-xs text-gray-500">TTC · dont TVA ({tva.taux}%) : {tva.montant.toFixed(2).replace('.', ',')}€</p>
+                )}
               </div>
             )}
             {beatmaker.abo_remise_pct > 0 && (

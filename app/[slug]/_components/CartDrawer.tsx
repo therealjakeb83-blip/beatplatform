@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useCart } from './CartContext'
 import CartExpressPay, { type ExpressStatus } from './CartExpressPay'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
+import { detailTva } from '@/lib/prix-affiche'
 
 const TRASH_ICON = (
   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -25,9 +26,13 @@ const CHECK_ICON = (
 export default function CartDrawer({
   slug,
   reglesLot = [],
+  tvaActive = false,
+  tvaTaux = null,
 }: {
   slug: string
   reglesLot?: ReductionLotRule[]
+  tvaActive?: boolean
+  tvaTaux?: number | null
 }) {
   const { items, isOpen, close, removeItem, clear } = useCart()
 
@@ -271,6 +276,12 @@ export default function CartDrawer({
                     {formatPrix(totalApresCode)}
                   </span>
                 </div>
+                {(() => {
+                  const tva = detailTva(totalApresCode, { tvaActive, tvaTaux })
+                  return tva ? (
+                    <div className="shop-cart-tva-note">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</div>
+                  ) : null
+                })()}
 
                 {erreur && <p className="shop-cart-error">{erreur}</p>}
 

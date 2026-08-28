@@ -80,7 +80,7 @@ export default async function BoutiqueLayout({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, logo_url, marque_affichage, style_nom_marque, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, role, abonnement_exempte')
+    .select('id, nom_artiste, logo_url, marque_affichage, style_nom_marque, instagram_url, youtube_url, tiktok_url, abo_actif, abo_remise_pct, theme_couleur, statut, role, abonnement_exempte, tva_active, tva_taux')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -176,12 +176,16 @@ export default async function BoutiqueLayout({
                 clientId={user?.id ?? null}
                 estAbonne={estAbonne}
                 remisePct={beatmaker?.abo_remise_pct ?? 0}
+                tvaActive={beatmaker?.tva_active ?? false}
+                tvaTaux={beatmaker?.tva_taux ?? null}
               />
               <MobileTabBar slug={slug} />
             </div>
             <CartDrawer
               slug={slug}
               reglesLot={reglesLot}
+              tvaActive={beatmaker?.tva_active ?? false}
+              tvaTaux={beatmaker?.tva_taux ?? null}
             />
           </BoutiqueThemeRoot>
         </Suspense>

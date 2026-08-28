@@ -8,6 +8,7 @@ import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
 import LicenceExpressPay, { type ExpressStatus } from './LicenceExpressPay'
+import { detailTva } from '@/lib/prix-affiche'
 
 const BULLET_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -43,6 +44,8 @@ export default function LicenceSelectorModal({
   slug,
   estAbonne = false,
   remisePct = 0,
+  tvaActive = false,
+  tvaTaux = null,
 }: {
   open: boolean
   onClose: () => void
@@ -51,6 +54,8 @@ export default function LicenceSelectorModal({
   // Remise membre abonné (Étape 8) — ne s'applique jamais à Illimité/Exclusive.
   estAbonne?: boolean
   remisePct?: number
+  tvaActive?: boolean
+  tvaTaux?: number | null
 }) {
   const { addItem, open: openCart } = useCart()
   const { isPlaying, togglePlay } = usePlayer()
@@ -251,6 +256,12 @@ export default function LicenceSelectorModal({
                 <div className="shop-lc-total">
                   <span className="shop-lc-total-label">Total</span>
                   <span className="shop-lc-total-value">{selectedPourPaiement ? formatPrix(selectedPourPaiement.prix) : '—'}</span>
+                  {selectedPourPaiement && (() => {
+                    const tva = detailTva(selectedPourPaiement.prix, { tvaActive, tvaTaux })
+                    return tva ? (
+                      <span className="shop-lc-total-tva">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</span>
+                    ) : null
+                  })()}
                 </div>
                 <button
                   className={`shop-lc-submit${expressStatus === 'visible' ? ' shop-lc-submit--secondary' : ''}`}

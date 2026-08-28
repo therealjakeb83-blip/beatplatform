@@ -20,7 +20,7 @@ export default async function BeatDetailPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, slug, abo_actif, abo_remise_pct')
+    .select('id, nom_artiste, slug, abo_actif, abo_remise_pct, tva_active, tva_taux')
     .eq('slug', slug)
     .single()
 
@@ -226,6 +226,8 @@ export default async function BeatDetailPage({
         clientId={user?.id ?? null}
         estAbonne={estAbonne}
         remisePct={beatmaker.abo_remise_pct ?? 0}
+        tvaActive={beatmaker.tva_active ?? false}
+        tvaTaux={beatmaker.tva_taux ?? null}
         queue={[beatPourCarte, ...similaires]}
       />
 

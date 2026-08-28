@@ -40,6 +40,8 @@ export default function ProduitCard({
   clientId,
   estAbonne,
   remisePct,
+  tvaActive = false,
+  tvaTaux = null,
   queue,
 }: {
   slug: string
@@ -51,6 +53,8 @@ export default function ProduitCard({
   clientId: string | null
   estAbonne: boolean
   remisePct: number
+  tvaActive?: boolean
+  tvaTaux?: number | null
   queue: BeatMin[]
 }) {
   const { currentBeat, isPlaying, play } = usePlayer()
@@ -181,6 +185,8 @@ export default function ProduitCard({
         slug={slug}
         estAbonne={estAbonne}
         remisePct={remisePct}
+        tvaActive={tvaActive}
+        tvaTaux={tvaTaux}
       />
     </section>
   )
