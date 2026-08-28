@@ -287,7 +287,12 @@ export async function calculerLignesPanier(
     return { ok: false, erreur: 'Ce code ne peut pas être cumulé avec la réduction par lot active sur ce panier', status: 400 }
   }
 
-  // Passe 3 — applique le code promo (jamais sur un article déjà offert) et la TVA.
+  // Passe 3 — applique le code promo (jamais sur un article déjà offert).
+  // TVA toujours absorbée dans le prix (décision produit 2026-08-28) : le
+  // prix tapé par le beatmaker EST le prix final payé par le client, jamais
+  // recalculé à la hausse — la TVA n'est qu'une extraction comptable interne
+  // (voir commandes.tva_taux, capturé à part dans finaliserCommandePayee
+  // pour les déclarations, sans jamais modifier ce qui est facturé ici).
   const lignes: LigneCalculee[] = []
 
   for (const ligne of intermediaires) {
@@ -323,8 +328,7 @@ export async function calculerLignesPanier(
       }
     }
 
-    const tvaMultiplier = beatmaker.tva_active && beatmaker.tva_taux ? beatmaker.tva_taux / 100 : 0
-    const prixTotal = Math.round(prixApresRemise * (1 + tvaMultiplier))
+    const prixTotal = prixApresRemise
 
     lignes.push({
       beat_id: ligne.item.beat_id,
