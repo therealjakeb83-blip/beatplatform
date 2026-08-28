@@ -20,12 +20,12 @@ export default async function CgvPage({
 
   const { data: pageAdoptee } = await admin
     .from('boutique_pages_legales')
-    .select('contenu')
+    .select('contenu, adopte_le')
     .eq('beatmaker_id', beatmaker.id)
     .eq('type_page', 'cgv')
     .maybeSingle()
 
   const contenu = pageAdoptee?.contenu ?? 'Contenu à compléter.'
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Conditions générales de vente" contenu={contenu} />
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Conditions générales de vente" contenu={contenu} adopteLe={pageAdoptee?.adopte_le} />
 }
