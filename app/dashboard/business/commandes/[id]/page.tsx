@@ -5,6 +5,7 @@ import Link from 'next/link'
 import RenvoyerButton from './_components/RenvoyerButton'
 import CopyButton from './_components/CopyButton'
 import RemboursementButton from './_components/RemboursementButton'
+import ReprendreLivraisonButton from './_components/ReprendreLivraisonButton'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -338,11 +339,16 @@ export default async function CommandeDetailPage({
                   {STATUT_LIVRAISON[c.statut_livraison]?.label ?? 'En cours'}
                 </span>
                 {problemesTextes.length > 0 && (
-                  <ul className="mt-1.5 space-y-0.5">
-                    {problemesTextes.map((texte, i) => (
-                      <li key={i} className="text-xs text-red-400">{texte}</li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="mt-1.5 space-y-0.5">
+                      {problemesTextes.map((texte, i) => (
+                        <li key={i} className="text-xs text-red-400">{texte}</li>
+                      ))}
+                    </ul>
+                    <div className="mt-2">
+                      <ReprendreLivraisonButton commandeId={id} />
+                    </div>
+                  </>
                 )}
               </div>
               <div>
