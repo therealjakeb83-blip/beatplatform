@@ -113,11 +113,26 @@ function ExpressButtons({ slug, beatId, selectedLicence, onStatusChange, onSucce
 
   // Le montant réel n'est connu qu'une fois une licence choisie ; on met à
   // jour l'instance Elements existante plutôt que de la remonter (pas de
-  // flash, pas d'aller-retour serveur).
+  // flash). Toujours le vrai montant qui sera facturé (TVA, remise membre,
+  // réduction par lot déjà appliquées côté serveur) — jamais le prix brut de
+  // la licence seul, sinon la fenêtre Apple Pay/Google Pay peut afficher un
+  // montant différent de celui réellement débité au clic (bug réel trouvé
+  // le 2026-08-28 : TVA absente de l'ancien calcul local).
   useEffect(() => {
     if (!elements || !selectedLicence) return
-    elements.update({ amount: Math.round(selectedLicence.prix * 100) })
-  }, [elements, selectedLicence])
+    let annule = false
+    fetch('/api/stripe/prix-panier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, beat_id: beatId, licence_id: selectedLicence.id }),
+    })
+      .then(r => r.json())
+      .then((data: { totalCents?: number }) => {
+        if (!annule && typeof data.totalCents === 'number') elements.update({ amount: data.totalCents })
+      })
+      .catch(() => {})
+    return () => { annule = true }
+  }, [elements, slug, beatId, selectedLicence])
 
   // Filet de sécurité : si Stripe.js ne répond jamais (script bloqué,
   // navigateur in-app restrictif, hors ligne), on n'attend pas indéfiniment.

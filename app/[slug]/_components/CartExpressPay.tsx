@@ -96,15 +96,29 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   const [loadError, setLoadError] = useState(false)
   const enCoursRef = useRef(false)
 
-  // Montant affiché aux wallets = somme brute du panier (avant remise membre/
-  // TVA/réduction par lot, recalculées côté serveur au moment du clic) — même
-  // approximation que LicenceExpressPay avant sélection du montant final.
-  const totalRaw = items.reduce((s, i) => s + i.prix, 0)
+  // Montant affiché aux wallets = le vrai montant qui sera facturé (TVA,
+  // remise membre, réduction par lot déjà appliquées côté serveur) — jamais
+  // une approximation locale, sinon la fenêtre Apple Pay/Google Pay peut
+  // afficher un montant différent de celui réellement débité au clic
+  // (bug réel trouvé le 2026-08-28 : TVA absente de l'ancien calcul local).
+  const itemsKey = items.map(i => `${i.beatId}:${i.licenceId}`).sort().join(',')
 
   useEffect(() => {
     if (!elements || items.length === 0) return
-    elements.update({ amount: Math.round(totalRaw * 100) })
-  }, [elements, totalRaw, items.length])
+    let annule = false
+    fetch('/api/stripe/prix-panier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })) }),
+    })
+      .then(r => r.json())
+      .then((data: { totalCents?: number }) => {
+        if (!annule && typeof data.totalCents === 'number') elements.update({ amount: data.totalCents })
+      })
+      .catch(() => {})
+    return () => { annule = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, slug, itemsKey, items.length])
 
   useEffect(() => {
     if (pret) return
