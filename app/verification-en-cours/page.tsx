@@ -26,7 +26,8 @@ export default async function VerificationEnCoursPage({
           </p>
           <p className="text-sm text-gray-500 mb-8">
             Ce n&apos;est pas lié à ton compte ni à ton mot de passe — un souci technique
-            passager. Ça se résout généralement en quelques secondes.
+            de notre côté. Ça peut se résoudre en quelques secondes comme prendre plus de
+            temps selon la panne. Réessaie maintenant, ou reviens un peu plus tard si ça persiste.
           </p>
           <a
             href={retourUrl}
