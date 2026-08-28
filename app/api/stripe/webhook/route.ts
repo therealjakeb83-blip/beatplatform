@@ -672,7 +672,10 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     plateforme_source: 'my_producer',
     external_order_id: invoiceId,
     type_commande: typeCommande,
+    // Pas de contrat PDF / fichier pour une commande d'abonnement — toujours
+    // "livrée" dès la création, aucune opération asynchrone à suivre ici.
     fichiers_livres: true,
+    statut_livraison: 'livree',
     source_marketing: abo.source_marketing ?? 'direct',
   })
 

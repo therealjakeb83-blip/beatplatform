@@ -6,6 +6,7 @@ import { envoyerFondsEnAttente, confirmationCommande } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
+import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import type Stripe from 'stripe'
 
 // Traitement des paiements de vente (panier classique + achat express) —
@@ -249,7 +250,12 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     mandat_fulfillment_version: MANDAT_FULFILLMENT_VERSION_ACTUELLE,
     code_promo: promoCode,
     reduction_montant: reductionTotal,
+    // Statut de livraison réel (Phase 5) — calculé après coup une fois les
+    // contrats/transferts tentés, jamais figé ici. fichiers_livres reste
+    // écrit pour compatibilité tant que la colonne existe (voir migration
+    // phase5_statut_livraison.sql), sera retiré dans un nettoyage séparé.
     fichiers_livres: false,
+    statut_livraison: 'en_cours',
     plateforme_source: 'my_producer',
     source_marketing: meta.source_marketing ?? 'direct',
     type_commande: 'LICENCE',
@@ -359,9 +365,14 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     }
   }
 
-  if (contratsOk === tentativeLignes.length) {
-    await supabase.from('commandes').update({ fichiers_livres: true }).eq('id', commande.id)
-  }
+  // Statut de livraison réel (Phase 5) — recalculé depuis l'état effectif
+  // des contrats/transferts, jamais déduit d'un simple compteur local (un
+  // échec de transfert Stripe ne fait pas échouer contratsOk, par exemple).
+  const { statut: statutLivraison } = await calculerStatutLivraison(commande.id)
+  await supabase.from('commandes').update({
+    fichiers_livres: contratsOk === tentativeLignes.length,
+    statut_livraison: statutLivraison,
+  }).eq('id', commande.id)
 
   // 3. Marquer la tentative de paiement correspondante comme complète
   const { error: tentativeError } = await supabase
