@@ -54,6 +54,7 @@ type CommandeDetail = {
   acheteur_nom: string | null
   notes: Note[] | null
   client_id: string | null
+  stripe_transfer_group: string | null
   clients: {
     id: string
     prenom: string | null
@@ -143,7 +144,7 @@ export default async function CommandeDetailPage({
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, facture_pdf_url,
       source_marketing, type_commande, plateforme_source,
-      acheteur_email, acheteur_nom, notes, client_id,
+      acheteur_email, acheteur_nom, notes, client_id, stripe_transfer_group,
       clients (id, prenom, nom, email, pays),
       commande_lignes (
         id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
@@ -463,8 +464,16 @@ export default async function CommandeDetailPage({
             </div>
           </div>
 
-          {/* Bouton remboursement — caché si produit déjà téléchargé */}
-          {c.statut === 'payee' && !aTelechargé && (
+          {/* Bouton remboursement — caché si produit déjà téléchargé.
+              Vente avec collaborateur(s) : badge à la place, remboursement
+              Stripe pas encore automatisé (clawback des parts déjà transférées
+              gelé jusqu'au choix du processeur collab, Phase 13). */}
+          {c.statut === 'payee' && !aTelechargé && c.stripe_transfer_group && (
+            <div className="px-5 py-3 border-t border-gray-800">
+              <span className="text-xs text-amber-400">Vente avec collaborateur(s) — remboursement à traiter manuellement pour le moment.</span>
+            </div>
+          )}
+          {c.statut === 'payee' && !aTelechargé && !c.stripe_transfer_group && (
             <div className="px-5 py-3 border-t border-gray-800">
               <RemboursementButton commandeId={id} montant={prixTTC} />
             </div>

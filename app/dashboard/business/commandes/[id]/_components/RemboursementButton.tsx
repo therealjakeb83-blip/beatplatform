@@ -11,6 +11,7 @@ export default function RemboursementButton({
   montant: number
 }) {
   const [state, setState] = useState<'idle' | 'confirming' | 'loading' | 'done' | 'error'>('idle')
+  const [erreur, setErreur] = useState<string | null>(null)
   const router = useRouter()
 
   async function handleConfirm() {
@@ -19,17 +20,25 @@ export default function RemboursementButton({
       const res = await fetch(`/api/business/commandes/${commandeId}/rembourser`, {
         method: 'POST',
       })
-      if (!res.ok) throw new Error()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErreur(data.error ?? 'Erreur inconnue')
+        throw new Error()
+      }
       setState('done')
       setTimeout(() => router.refresh(), 800)
     } catch {
       setState('error')
-      setTimeout(() => setState('idle'), 3000)
+      setTimeout(() => setState('idle'), 5000)
     }
   }
 
   if (state === 'done') {
-    return <span className="text-xs text-green-400">Commande marquée comme remboursée.</span>
+    return <span className="text-xs text-green-400">Client remboursé sur Stripe, commande marquée comme remboursée.</span>
+  }
+
+  if (state === 'error') {
+    return <span className="text-xs text-red-400">{erreur ?? 'Erreur lors du remboursement.'}</span>
   }
 
   if (state === 'confirming') {
