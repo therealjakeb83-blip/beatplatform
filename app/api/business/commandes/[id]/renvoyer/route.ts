@@ -19,12 +19,16 @@ export async function POST(
   const admin = createAdminClient()
 
   // Vérifier que la commande appartient à ce beatmaker
+  // Note : `commandes` n'a plus de relation directe vers `beats`/`licences`
+  // depuis le passage au panier multi-articles (Phase 2c) — ces infos vivent
+  // désormais dans `commande_lignes` (même pattern que confirmationCommande
+  // dans lib/emails.ts). Bug réel trouvé en Phase 5 (audit 2026-08-28) :
+  // cette requête ciblait encore l'ancienne relation et échouait
+  // silencieusement pour toute commande créée après le 2026-07-09.
   const { data: commande } = await admin
     .from('commandes')
     .select(`
       id, acheteur_email, acheteur_nom, beatmaker_id, client_id,
-      beats (titre),
-      licences (nom),
       clients (email, prenom, nom)
     `)
     .eq('id', commandeId)
@@ -35,6 +39,11 @@ export async function POST(
     return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
   }
 
+  const { data: lignes } = await admin
+    .from('commande_lignes')
+    .select('beats(titre), licences(nom)')
+    .eq('commande_id', commandeId)
+
   // Résoudre l'email destinataire
   const c = commande as unknown as {
     id: string
@@ -42,10 +51,9 @@ export async function POST(
     acheteur_nom: string | null
     beatmaker_id: string
     client_id: string | null
-    beats: { titre: string } | null
-    licences: { nom: string } | null
     clients: { email: string; prenom: string | null; nom: string } | null
   }
+  const items = (lignes ?? []) as unknown as { beats: { titre: string } | null; licences: { nom: string } | null }[]
 
   const destinataire = c.clients?.email ?? c.acheteur_email
   const nomDestinataire = c.clients
@@ -64,9 +72,17 @@ export async function POST(
 
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://beatplatform.vercel.app'
   const downloadUrl = `${APP_URL}/telechargement/${commandeId}`
-  const titreBeat = c.beats?.titre ?? 'votre beat'
-  const nomLicence = c.licences?.nom ?? 'Licence'
   const nomArtiste = beatmaker?.nom_artiste ?? 'votre beatmaker'
+
+  const sujetArticles = items.length === 1
+    ? `${items[0].beats?.titre ?? 'votre beat'} (${items[0].licences?.nom ?? 'Licence'})`
+    : `${items.length || 1} beat(s)`
+
+  const listeArticlesHtml = items.length
+    ? `<ul style="padding-left:20px;margin:16px 0;">
+        ${items.map(l => `<li>${l.beats?.titre ?? 'Beat'} — <strong>${l.licences?.nom ?? 'Licence'}</strong></li>`).join('')}
+      </ul>`
+    : ''
 
   // Envoyer l'email
   const { error: envoiError } = await envoyerEmailUnique({
@@ -76,16 +92,13 @@ export async function POST(
     clientId: c.client_id,
     commandeId,
     to: destinataire,
-    subject: `Vos fichiers — ${titreBeat} (${nomLicence})`,
+    subject: `Vos fichiers — ${sujetArticles}`,
     html: `
         <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111;background:#fff;padding:32px;border-radius:12px;">
           <h2 style="color:#4f46e5;margin-top:0;">Vos fichiers sont disponibles</h2>
           <p>Bonjour ${nomDestinataire},</p>
-          <p>
-            Voici votre lien de téléchargement pour le beat
-            <strong>${titreBeat}</strong> — licence <strong>${nomLicence}</strong>
-            de <strong>${nomArtiste}</strong>.
-          </p>
+          <p>Voici votre lien de téléchargement pour votre achat chez <strong>${nomArtiste}</strong> :</p>
+          ${listeArticlesHtml}
           <p style="margin:28px 0;">
             <a href="${downloadUrl}"
                style="background:#4f46e5;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;font-size:15px;">
