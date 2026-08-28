@@ -370,7 +370,7 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('abo_prix')
+    .select('abo_prix, tva_active, tva_taux')
     .eq('id', meta.beatmaker_id)
     .single()
 
@@ -385,6 +385,10 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
     plan: 'standard',
     periode: 'mensuel',
     prix: beatmaker?.abo_prix ?? 0,
+    // TVA toujours absorbée (jamais ajoutée) — figée pour cet abonné à cet
+    // instant, jamais recalculée même si le beatmaker change son réglage
+    // TVA ensuite. Sert uniquement à extraire HT/TVA du prix déjà payé.
+    tva_taux: beatmaker?.tva_active && beatmaker?.tva_taux ? beatmaker.tva_taux : null,
     devise: 'EUR',
     statut: 'actif',
     methode_paiement: 'stripe',
@@ -598,7 +602,7 @@ async function traiterPaiementAbonnementPlateforme(invoice: Stripe.Invoice) {
   else console.log('[webhook] Paiement abonnement plateforme confirmé:', subscriptionId)
 }
 
-type AboLookup = { id: string; client_id: string | null; beatmaker_id: string; prix: number; source_marketing: string | null }
+type AboLookup = { id: string; client_id: string | null; beatmaker_id: string; prix: number; tva_taux: number | null; source_marketing: string | null }
 
 async function attendreAbonnement(
   supabase: ReturnType<typeof createAdminClient>,
@@ -609,7 +613,7 @@ async function attendreAbonnement(
   for (let i = 0; i < tentatives; i++) {
     const { data: abo } = await supabase
       .from('abonnements_boutique')
-      .select('id, client_id, beatmaker_id, prix, source_marketing')
+      .select('id, client_id, beatmaker_id, prix, tva_taux, source_marketing')
       .eq('stripe_subscription_id', subscriptionId)
       .maybeSingle()
     if (abo) return abo
@@ -676,6 +680,9 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     // "livrée" dès la création, aucune opération asynchrone à suivre ici.
     fichiers_livres: true,
     statut_livraison: 'livree',
+    // Taux figé à la souscription (TVA toujours absorbée) — jamais le taux
+    // actuel du beatmaker, qui a pu changer depuis pour d'autres abonnés.
+    tva_taux: abo.tva_taux,
     source_marketing: abo.source_marketing ?? 'direct',
   })
 
