@@ -5,6 +5,7 @@ import { uploadPdfContrat } from '@/lib/livraison'
 import { envoyerFondsEnAttente, confirmationCommande } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
+import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
 import type Stripe from 'stripe'
 
 // Traitement des paiements de vente (panier classique + achat express) —
@@ -203,11 +204,12 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     beatmakers: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
   }
 
-  const [{ data: beatsData }, { data: licencesData }, { data: splitsData }, { data: beatmaker }] = await Promise.all([
+  const [{ data: beatsData }, { data: licencesData }, { data: splitsData }, { data: beatmaker }, { data: cgvData }] = await Promise.all([
     supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
-    supabase.from('licences').select('id, nom').in('id', licenceIds),
+    supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems').in('id', licenceIds),
     supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
-    supabase.from('beatmakers').select('nom_artiste, email, stripe_account_id').eq('id', meta.beatmaker_id).single(),
+    supabase.from('beatmakers').select('nom_artiste, email, stripe_account_id, tva_active, tva_taux').eq('id', meta.beatmaker_id).single(),
+    supabase.from('boutique_pages_legales').select('version').eq('beatmaker_id', meta.beatmaker_id).eq('type_page', 'cgv').maybeSingle(),
   ])
 
   const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
@@ -239,6 +241,12 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     // la vente, jamais le stripe_account_id *actuel* du beatmaker.
     stripe_account_id: ctx.stripeAccountId,
     statut: 'payee',
+    // Snapshot transactionnel (Phase 4) — TVA/CGV/mandat de fulfillment
+    // réellement en vigueur pour ce beatmaker à l'instant de la vente,
+    // jamais recalculés depuis leur état *actuel* plus tard.
+    tva_taux: beatmaker?.tva_active && beatmaker?.tva_taux ? beatmaker.tva_taux : 0,
+    cgv_version: cgvData?.version ?? null,
+    mandat_fulfillment_version: MANDAT_FULFILLMENT_VERSION_ACTUELLE,
     code_promo: promoCode,
     reduction_montant: reductionTotal,
     fichiers_livres: false,
@@ -282,6 +290,15 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
       reduction_montant: tLigne.reduction_montant ?? 0,
       reduction_lot_id: tLigne.reduction_lot_id ?? null,
       splits_snapshot: splitsSnapshot,
+      // Snapshot transactionnel (Phase 4) — ce que la licence incluait au
+      // moment de l'achat, indépendant d'une modification future de la
+      // licence elle-même (les fichiers réels restent volontairement live,
+      // voir telechargement/[commandeId]/page.tsx).
+      licence_nom: licence?.nom ?? null,
+      licence_modele: licence?.modele ?? null,
+      licence_inclut_mp3: licence?.inclut_mp3 ?? null,
+      licence_inclut_wav: licence?.inclut_wav ?? null,
+      licence_inclut_stems: licence?.inclut_stems ?? null,
     }).select('id').single()
 
     if (ligneError || !ligne) {

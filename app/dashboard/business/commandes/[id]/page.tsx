@@ -18,6 +18,10 @@ type LigneDetail = {
   reduction_montant: number | null
   contrat_pdf_url: string | null
   type_transaction: string | null
+  licence_nom: string | null
+  licence_inclut_mp3: boolean | null
+  licence_inclut_wav: boolean | null
+  licence_inclut_stems: boolean | null
   beats: {
     id: string
     titre: string
@@ -55,6 +59,7 @@ type CommandeDetail = {
   notes: Note[] | null
   client_id: string | null
   stripe_transfer_group: string | null
+  tva_taux: number | null
   clients: {
     id: string
     prenom: string | null
@@ -144,10 +149,11 @@ export default async function CommandeDetailPage({
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, facture_pdf_url,
       source_marketing, type_commande, plateforme_source,
-      acheteur_email, acheteur_nom, notes, client_id, stripe_transfer_group,
+      acheteur_email, acheteur_nom, notes, client_id, stripe_transfer_group, tva_taux,
       clients (id, prenom, nom, email, pays),
       commande_lignes (
         id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
+        licence_nom, licence_inclut_mp3, licence_inclut_wav, licence_inclut_stems,
         beats (id, titre, couleur, image_url, mp3_propre_url, wav_url, stems_url),
         licences (id, nom, modele, inclut_mp3, inclut_wav, inclut_stems)
       )
@@ -189,13 +195,21 @@ export default async function CommandeDetailPage({
 
   /* Fichiers disponibles par article (licence + fichiers audio + contrat) */
   const lignesDispo = lignes.map(l => {
+    // Snapshot transactionnel (Phase 4) — ce que la licence incluait au
+    // moment de l'achat (licence_inclut_*), jamais ce qu'elle inclut
+    // *aujourd'hui* (l.licences.inclut_*) si elle a été modifiée depuis
+    // (licences éditables, Phase 6). NULL sur les commandes antérieures à
+    // la Phase 4 : comportement inchangé, on retombe sur la licence actuelle.
     const fichiers: { label: string; url: string | null }[] = []
     if (l.licences && l.beats) {
-      if (l.licences.inclut_mp3 && l.beats.mp3_propre_url)
+      const incluMp3 = l.licence_inclut_mp3 ?? l.licences.inclut_mp3
+      const incluWav = l.licence_inclut_wav ?? l.licences.inclut_wav
+      const incluStems = l.licence_inclut_stems ?? l.licences.inclut_stems
+      if (incluMp3 && l.beats.mp3_propre_url)
         fichiers.push({ label: 'MP3 (sans tag)', url: l.beats.mp3_propre_url })
-      if (l.licences.inclut_wav && l.beats.wav_url)
+      if (incluWav && l.beats.wav_url)
         fichiers.push({ label: 'WAV', url: l.beats.wav_url })
-      if (l.licences.inclut_stems && l.beats.stems_url)
+      if (incluStems && l.beats.stems_url)
         fichiers.push({ label: 'Stems (ZIP)', url: l.beats.stems_url })
     }
     if (l.contrat_pdf_url)
@@ -217,12 +231,17 @@ export default async function CommandeDetailPage({
   const uneLigneEstUpgrade = lignes.some(l => l.type_transaction === 'upgrade')
   const typeDisplay = TYPE_LABEL[c.type_commande ?? (uneLigneEstUpgrade ? 'upgrade' : '')] ?? 'Achat de licence'
 
-  /* Calculs financiers globaux (header) */
+  /* Calculs financiers globaux (header) — taux réellement appliqué à cette
+     vente (Phase 4, snapshot transactionnel), jamais le taux *actuel* du
+     beatmaker. 20% de repli uniquement pour les commandes antérieures à la
+     Phase 4 (tva_taux non renseigné), comportement inchangé pour elles. */
   const remiseTTC    = c.reduction_montant ?? 0
   const prixTTC      = c.prix_paye
-  const prixHT       = prixTTC / 1.2
+  const tauxTva      = c.tva_taux ?? 20
+  const diviseurTva  = 1 + tauxTva / 100
+  const prixHT       = prixTTC / diviseurTva
   const tva          = prixTTC - prixHT
-  const remiseHT     = remiseTTC / 1.2
+  const remiseHT     = remiseTTC / diviseurTva
   const htAvantRemise = prixHT + remiseHT
 
   /* URL permanente de téléchargement */

@@ -16,10 +16,26 @@ export async function PATCH(request: Request) {
 
   const { data: existante } = await supabase
     .from('boutique_pages_legales')
-    .select('version')
+    .select('contenu, version, adopte_le')
     .eq('beatmaker_id', user.id)
     .eq('type_page', type_page as TypePageLegale)
     .maybeSingle()
+
+  // Archive la version remplacée avant de l'écraser (Phase 4, snapshot
+  // transactionnel) — sans ça, le texte exact d'une ancienne version des
+  // CGV/mentions légales/etc. serait perdu pour toujours, alors qu'une
+  // commande peut avoir besoin de prouver quelle version était en vigueur
+  // au moment de la vente.
+  if (existante) {
+    const { error: historiqueError } = await supabase.from('boutique_pages_legales_historique').insert({
+      beatmaker_id: user.id,
+      type_page,
+      contenu: existante.contenu,
+      version: existante.version,
+      adopte_le: existante.adopte_le,
+    })
+    if (historiqueError) console.error('[pages-legales] Erreur archivage historique:', JSON.stringify(historiqueError))
+  }
 
   const { error } = await supabase
     .from('boutique_pages_legales')

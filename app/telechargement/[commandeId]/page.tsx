@@ -34,7 +34,7 @@ export default async function TelechargerPage({
 
   const { data: lignes, error: lignesError } = await supabase
     .from('commande_lignes')
-    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot')
+    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot, licence_modele')
     .eq('commande_id', commandeId)
 
   if (lignesError) console.error('[telechargement] Erreur query commande_lignes:', JSON.stringify(lignesError))
@@ -83,7 +83,11 @@ export default async function TelechargerPage({
       }
     }
 
-    const fichiersSignes = await genererUrlsSignees(beat, licence.modele ?? 'mp3')
+    // Snapshot transactionnel (Phase 4) — le modèle de licence au moment de
+    // l'achat, jamais celui *actuel* de la licence (qui pourra être modifié
+    // par le beatmaker à partir de la Phase 6, licences éditables).
+    const modeleAuMomentDeLAchat = ligne.licence_modele ?? licence.modele ?? 'mp3'
+    const fichiersSignes = await genererUrlsSignees(beat, modeleAuMomentDeLAchat)
     const pdfFilename = `Contrat - ${beat.titre} (${licence.nom}).pdf`
     const pdfSigneUrl = contratUrl ? await genererUrlSigneePdf(contratUrl, pdfFilename).catch(() => null) : null
 
