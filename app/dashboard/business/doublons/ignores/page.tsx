@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DesignorerButton from './_components/DesignorerButton'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 // ── Algorithme de détection (miroir de doublons/page.tsx) ─────────────────────
 
@@ -76,8 +77,8 @@ function formatLtv(cents: number) {
   return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+function formatDate(iso: string, tz: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: tz })
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -90,6 +91,8 @@ export default async function DoublonsIgnoresPage() {
   if (!user) redirect('/connexion')
 
   const beatmakerId = user.id
+  const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', beatmakerId).single()
+  const tz = fuseauSur(beatmakerRow?.fuseau_horaire)
 
   const { data: ignoresRaw } = await supabase
     .from('doublons_ignores')
@@ -175,7 +178,7 @@ export default async function DoublonsIgnoresPage() {
 
                   {/* Actions */}
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <p className="text-xs text-gray-600">{formatDate(pair.created_at)}</p>
+                    <p className="text-xs text-gray-600">{formatDate(pair.created_at, tz)}</p>
                     {raisons.length > 0 && (
                       <div className="flex flex-wrap gap-1 justify-end">
                         {raisons.map((r, i) => (

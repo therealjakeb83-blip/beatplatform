@@ -2,6 +2,7 @@ import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -28,8 +29,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
   const { id } = await params
-  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
+
+  const { data: beatmaker } = await admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
+  const { from, to, periode } = getPeriodDates(request, tz)
 
   const { data: beat } = await admin
     .from('beats')
@@ -178,7 +182,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   // Historique adaptatif selon période
   const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
-  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => ({
     label:    slot.label,
     fullLabel: slot.fullLabel,

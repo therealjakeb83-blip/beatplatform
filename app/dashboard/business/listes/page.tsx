@@ -2,9 +2,10 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import ListesClient from './_components/ListesClient'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+function formatDate(iso: string, tz: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: tz })
 }
 
 async function creerListe(formData: FormData) {
@@ -48,8 +49,9 @@ export default async function ListesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const { data: bm } = await supabase.from('beatmakers').select('id').eq('id', user.id).single()
+  const { data: bm } = await supabase.from('beatmakers').select('id, fuseau_horaire').eq('id', user.id).single()
   if (!bm) redirect('/')
+  const tz = fuseauSur(bm.fuseau_horaire)
 
   const { data: listesRaw } = await supabase
     .from('listes_crm')
@@ -61,7 +63,7 @@ export default async function ListesPage() {
     id:          l.id,
     nom:         l.nom,
     description: l.description,
-    dateLabel:   formatDate(l.created_at),
+    dateLabel:   formatDate(l.created_at, tz),
     count:       ((l.listes_crm_contacts ?? []) as { client_id: string }[]).length,
   }))
 

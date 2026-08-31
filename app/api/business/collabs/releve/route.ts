@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -10,8 +11,8 @@ function fmt(cents: number) {
   return (cents / 100).toFixed(2) + ' EUR'
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+function fmtDate(iso: string, tz: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: tz })
 }
 
 export async function GET(request: Request) {
@@ -26,9 +27,11 @@ export async function GET(request: Request) {
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('nom_artiste, email')
+    .select('nom_artiste, email, fuseau_horaire')
     .eq('id', user.id)
     .single()
+
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
 
   const { data: { user: fullUser } } = await admin.auth.admin.getUserById(user.id)
   const userEmail = fullUser?.email ?? ''
@@ -99,7 +102,7 @@ export async function GET(request: Request) {
 
   page.drawText(`RELEVÉ DE REVENUS COLLABORATIONS — ${annee}`, { x: ml, y, font: bold, size: 13, color: noir })
   y -= 18
-  page.drawText(`Généré le ${fmtDate(new Date().toISOString())}`, { x: ml, y, font, size: 9, color: gris })
+  page.drawText(`Généré le ${fmtDate(new Date().toISOString(), tz)}`, { x: ml, y, font, size: 9, color: gris })
   y -= 30
 
   // Infos beatmaker
@@ -133,7 +136,7 @@ export async function GET(request: Request) {
         const par   = (bs?.beats?.beatmakers?.nom_artiste ?? '—').slice(0, 18)
         const pct   = bs ? `${bs.pourcentage}%` : '—'
         const ref   = p.stripe_transfer_id ? p.stripe_transfer_id.slice(0, 14) + '…' : '—'
-        page.drawText(fmtDate(p.created_at), { x: cols.date,    y, font: f, size: sz, color: c })
+        page.drawText(fmtDate(p.created_at, tz), { x: cols.date,    y, font: f, size: sz, color: c })
         page.drawText(titre,                  { x: cols.beat,    y, font: f, size: sz, color: c })
         page.drawText(par,                    { x: cols.proprio, y, font: f, size: sz, color: c })
         page.drawText(pct,                    { x: cols.pct,     y, font: f, size: sz, color: c })

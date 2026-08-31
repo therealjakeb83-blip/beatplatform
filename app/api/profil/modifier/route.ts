@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 function sanitizeSlug(raw: string): string {
   return raw
@@ -15,7 +16,7 @@ export async function PATCH(request: Request) {
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
 
   const body = await request.json()
-  const { slug: rawSlug, nom_artiste, tagline, logo_url, instagram_url, youtube_url, tiktok_url } = body
+  const { slug: rawSlug, nom_artiste, tagline, logo_url, instagram_url, youtube_url, tiktok_url, fuseau_horaire } = body
 
   const updates: Record<string, string | null> = {}
 
@@ -41,6 +42,9 @@ export async function PATCH(request: Request) {
   if (instagram_url !== undefined) updates.instagram_url = instagram_url || null
   if (youtube_url !== undefined) updates.youtube_url = youtube_url || null
   if (tiktok_url !== undefined) updates.tiktok_url = tiktok_url || null
+  // fuseauSur() valide contre la liste IANA connue et retombe sur Europe/Paris
+  // si invalide — jamais d'injection d'une valeur arbitraire en base.
+  if (fuseau_horaire !== undefined) updates.fuseau_horaire = fuseauSur(fuseau_horaire)
 
   const { error } = await supabase
     .from('beatmakers')

@@ -1,6 +1,8 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 const STATUT_STYLES: Record<string, string> = {
   en_attente: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
@@ -11,6 +13,12 @@ const STATUT_STYLES: Record<string, string> = {
 
 export default async function CommandeAdminDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/connexion')
+  const { data: adminRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const tz = fuseauSur(adminRow?.fuseau_horaire)
+
   const admin = createAdminClient()
 
   const { data: commande } = await admin
@@ -39,7 +47,7 @@ export default async function CommandeAdminDetailPage({ params }: { params: Prom
         <div>
           <Link href="/dashboard/admin/recherche" className="text-xs text-gray-500 hover:text-gray-300">← Recherche</Link>
           <h1 className="text-xl font-bold text-white mt-1">Commande #{commande.id.slice(0, 8).toUpperCase()}</h1>
-          <p className="text-sm text-gray-500">{new Date(commande.created_at).toLocaleString('fr-FR')}</p>
+          <p className="text-sm text-gray-500">{new Date(commande.created_at).toLocaleString('fr-FR', { timeZone: tz })}</p>
         </div>
         <span className={`text-xs px-2 py-1 rounded border ${STATUT_STYLES[commande.statut] ?? ''}`}>{commande.statut}</span>
       </div>

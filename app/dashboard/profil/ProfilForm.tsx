@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { FUSEAUX_HORAIRES, FUSEAU_HORAIRE_DEFAUT } from '@/lib/fuseau-horaire'
 
 type Profil = {
   slug: string
@@ -11,6 +12,7 @@ type Profil = {
   instagram_url: string | null
   youtube_url: string | null
   tiktok_url: string | null
+  fuseau_horaire: string | null
 }
 
 export default function ProfilForm({ profil }: { profil: Profil }) {
@@ -22,6 +24,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
   const [instagram, setInstagram] = useState(profil.instagram_url ?? '')
   const [youtube, setYoutube] = useState(profil.youtube_url ?? '')
   const [tiktok, setTiktok] = useState(profil.tiktok_url ?? '')
+  const [fuseauHoraire, setFuseauHoraire] = useState(profil.fuseau_horaire ?? FUSEAU_HORAIRE_DEFAUT)
 
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'disponible' | 'pris' | 'court'>('idle')
   const [slugSanitized, setSlugSanitized] = useState(profil.slug)
@@ -90,6 +93,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
         instagram_url: instagram,
         youtube_url: youtube,
         tiktok_url: tiktok,
+        fuseau_horaire: fuseauHoraire,
       }),
     })
 
@@ -182,6 +186,21 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
           placeholder="ex: Beats trap & afro exclusifs"
           className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
         />
+      </div>
+
+      {/* Fuseau horaire */}
+      <div>
+        <label className="block text-sm text-gray-300 mb-1">Fuseau horaire</label>
+        <select
+          value={fuseauHoraire}
+          onChange={e => setFuseauHoraire(e.target.value)}
+          className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+        >
+          {FUSEAUX_HORAIRES.map(f => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+        <p className="text-gray-500 text-xs mt-1">Utilisé pour l&apos;affichage des dates et le découpage des périodes dans les Analytics.</p>
       </div>
 
       {/* Réseaux sociaux */}

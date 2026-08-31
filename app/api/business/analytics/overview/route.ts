@@ -2,6 +2,7 @@ import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { fuseauSur, startOfMonthInTz } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +11,6 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [
@@ -58,10 +58,13 @@ export async function GET(request: Request) {
       .select('created_at, beats!inner(beatmaker_id)')
       .eq('beats.beatmaker_id', user.id),
     admin.from('beatmakers')
-      .select('tva_active, tva_taux')
+      .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
       .single(),
   ])
+
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
+  const { from, to, periode } = getPeriodDates(request, tz)
 
   // Filtrer par période pour les KPIs
   const cmds   = (allCommandes   ?? []).filter(c => inPeriod(c.created_at,   from, to))
@@ -112,7 +115,7 @@ export async function GET(request: Request) {
     .map(b => ({ ...b }))
 
   const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
-  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => {
     const mCmds    = (allCommandes ?? []).filter(c => c.created_at    >= slot.from && c.created_at    < slot.to)
     const mLignes  = (allLignes   ?? []).filter(l => l.created_at     >= slot.from && l.created_at     < slot.to)
@@ -151,7 +154,7 @@ export async function GET(request: Request) {
 
   // Abonnés stats
   const now = new Date()
-  const debutMois = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const debutMois = startOfMonthInTz(now, tz).toISOString()
   const abonnes = {
     actifs:   (abonActifs ?? []).length,
     nouveaux: (allAbonnements ?? []).filter(a => a.created_at >= debutMois).length,

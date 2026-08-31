@@ -3,13 +3,14 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import StatutButton from './_components/StatutButton'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 /* ─── helpers ─────────────────────────────────────────────────────── */
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string | null | undefined, tz: string): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('fr-FR', {
-    day: '2-digit', month: 'short', year: 'numeric',
+    day: '2-digit', month: 'short', year: 'numeric', timeZone: tz,
   })
 }
 
@@ -113,7 +114,7 @@ export default async function AbonnementDetailPage({
 
     admin
       .from('beatmakers')
-      .select('abo_nom, abo_prix')
+      .select('abo_nom, abo_prix, fuseau_horaire')
       .eq('id', user.id)
       .single(),
 
@@ -128,6 +129,7 @@ export default async function AbonnementDetailPage({
   ])
 
   const tentativesEchouees = tentativesRaw ?? []
+  const tz = fuseauSur((beatmakerData as { fuseau_horaire?: string } | null)?.fuseau_horaire)
 
   const abo = rawAbo as unknown as AboDetail | null
   if (!abo) notFound()
@@ -276,7 +278,7 @@ export default async function AbonnementDetailPage({
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              {nomClient} · {planNom} · {formatDate(abo.date_debut)}
+              {nomClient} · {planNom} · {formatDate(abo.date_debut, tz)}
             </p>
           </div>
         </div>
@@ -411,7 +413,7 @@ export default async function AbonnementDetailPage({
                           <span className="text-xs text-gray-400">{c.relation}</span>
                         </td>
                         <td className="px-5 py-2.5">
-                          <span className="text-xs text-gray-500" title={formatDate(c.created_at)}>
+                          <span className="text-xs text-gray-500" title={formatDate(c.created_at, tz)}>
                             {formatRelative(c.created_at)}
                           </span>
                         </td>
@@ -443,7 +445,7 @@ export default async function AbonnementDetailPage({
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-700 mt-1.5 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-300">{h.texte}</p>
-                      <p className="text-xs text-gray-600 mt-0.5" title={formatDate(h.date)}>
+                      <p className="text-xs text-gray-600 mt-0.5" title={formatDate(h.date, tz)}>
                         {formatRelative(h.date)}
                       </p>
                     </div>
@@ -473,18 +475,18 @@ export default async function AbonnementDetailPage({
               <div className="space-y-0 divide-y divide-gray-800">
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-xs text-gray-500">Date de début</span>
-                  <span className="text-xs text-gray-300">{formatDate(abo.date_debut)}</span>
+                  <span className="text-xs text-gray-300">{formatDate(abo.date_debut, tz)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-xs text-gray-500">Paiement suivant</span>
                   <span className={`text-xs ${paiementSuivant ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {formatDate(paiementSuivant)}
+                    {formatDate(paiementSuivant, tz)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-xs text-gray-500">Date de fin</span>
                   <span className={`text-xs ${dateFinDisplay ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {formatDate(dateFinDisplay)}
+                    {formatDate(dateFinDisplay, tz)}
                   </span>
                 </div>
               </div>

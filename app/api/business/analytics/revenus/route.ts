@@ -2,6 +2,7 @@ import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { fuseauSur, dayKeyInTz } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +11,6 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [{ data: allCommandes }, { data: beatmaker }] = await Promise.all([
@@ -20,10 +20,13 @@ export async function GET(request: Request) {
       .eq('statut', 'payee')
       .order('created_at', { ascending: false }),
     admin.from('beatmakers')
-      .select('tva_active, tva_taux')
+      .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
       .single(),
   ])
+
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
+  const { from, to, periode } = getPeriodDates(request, tz)
 
   const cmds = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
   const tvaTaux = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) : 0
@@ -57,7 +60,7 @@ export async function GET(request: Request) {
   // Table journalière (regrouper par date)
   const dayMap = new Map<string, { nb: number; brut: number; remises: number }>()
   for (const c of cmds) {
-    const day = c.created_at.slice(0, 10)
+    const day = dayKeyInTz(c.created_at, tz)
     const ex  = dayMap.get(day) ?? { nb: 0, brut: 0, remises: 0 }
     ex.nb     += 1
     ex.brut   += c.prix_paye
@@ -74,7 +77,7 @@ export async function GET(request: Request) {
     })
 
   const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
-  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => {
     const mCmds = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)

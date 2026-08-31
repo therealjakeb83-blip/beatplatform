@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import IdentiteSaveButton from './_components/IdentiteSaveButton'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -122,6 +123,9 @@ export default async function FicheClientPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
   const beatmakerId = user.id
+
+  const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', beatmakerId).single()
+  const tz = fuseauSur(beatmakerRow?.fuseau_horaire)
 
   // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
@@ -493,7 +497,7 @@ export default async function FicheClientPage({
     : nbAchats > 0 ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-700 text-gray-400'
 
   const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
-  const fmtDate    = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  const fmtDate    = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: tz })
   const fmtDateRel = (iso: string | null) => {
     if (!iso) return '–'
     const j = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)

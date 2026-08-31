@@ -3,9 +3,10 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DefusionnerButton from './_components/DefusionnerButton'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+function formatDate(iso: string, tz: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: tz })
 }
 
 function formatLtv(cents: number) {
@@ -18,6 +19,9 @@ export default async function HistoriquePage() {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
+
+  const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const tz = fuseauSur(beatmakerRow?.fuseau_horaire)
 
   const { data: fusions } = await supabase
     .from('fusions_crm')
@@ -133,7 +137,7 @@ export default async function HistoriquePage() {
 
                   {/* Méta + défusion */}
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <p className="text-xs text-gray-600">{formatDate(f.created_at)}</p>
+                    <p className="text-xs text-gray-600">{formatDate(f.created_at, tz)}</p>
                     <Link
                       href={`/dashboard/business/contacts/${f.client_id_conserve}`}
                       className="text-xs text-gray-600 hover:text-indigo-400 transition-colors"

@@ -1,3 +1,8 @@
+import {
+  startOfDayInTz, startOfWeekInTz, startOfMonthInTz, startOfQuarterInTz, startOfYearInTz,
+  addMonthsInTz, addDaysInstant, getZonedParts,
+} from '@/lib/fuseau-horaire'
+
 export type Periode =
   | 'tout'
   | 'cette-semaine'
@@ -32,71 +37,57 @@ export function periodeToSearch(periode: Periode, debut?: string, fin?: string):
   return p.toString()
 }
 
-export function getPeriodDates(request: Request): { from: string | null; to: string | null; periode: Periode } {
+// `tz` = fuseau IANA du beatmaker (lib/fuseau-horaire.ts, fuseauSur() déjà
+// appliqué par l'appelant — défaut Europe/Paris si non réglé). Les bornes de
+// période sont calculées sur le calendrier de CE fuseau, pas en UTC : un
+// beatmaker en Guyane/Martinique ou à Tokyo doit voir "ce mois-ci" démarrer
+// à minuit chez lui, pas à minuit à Greenwich.
+export function getPeriodDates(request: Request, tz: string): { from: string | null; to: string | null; periode: Periode } {
   const { searchParams } = new URL(request.url)
   const periode = (searchParams.get('periode') ?? 'tout') as Periode
   const now = new Date()
 
   switch (periode) {
     case 'cette-semaine': {
-      const dow = now.getDay() || 7
-      const lundi = new Date(now)
-      lundi.setDate(now.getDate() - (dow - 1))
-      lundi.setHours(0, 0, 0, 0)
+      const lundi = startOfWeekInTz(now, tz)
       return { from: lundi.toISOString(), to: now.toISOString(), periode }
     }
     case 'semaine-derniere': {
-      const dow = now.getDay() || 7
-      const lundiCette = new Date(now)
-      lundiCette.setDate(now.getDate() - (dow - 1))
-      lundiCette.setHours(0, 0, 0, 0)
-      const lundiDerniere = new Date(lundiCette)
-      lundiDerniere.setDate(lundiCette.getDate() - 7)
-      const dimanche = new Date(lundiCette)
-      dimanche.setDate(lundiCette.getDate() - 1)
-      dimanche.setHours(23, 59, 59, 999)
-      return { from: lundiDerniere.toISOString(), to: dimanche.toISOString(), periode }
+      const lundiCette = startOfWeekInTz(now, tz)
+      const lundiDerniere = addDaysInstant(lundiCette, -7)
+      const finDerniere = new Date(lundiCette.getTime() - 1)
+      return { from: lundiDerniere.toISOString(), to: finDerniere.toISOString(), periode }
     }
-    case 'ce-mois':
-      return {
-        from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
-        to:   now.toISOString(),
-        periode,
-      }
-    case 'mois-dernier':
-      return {
-        from: new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString(),
-        to:   new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).toISOString(),
-        periode,
-      }
+    case 'ce-mois': {
+      const debut = startOfMonthInTz(now, tz)
+      return { from: debut.toISOString(), to: now.toISOString(), periode }
+    }
+    case 'mois-dernier': {
+      const debutCe = startOfMonthInTz(now, tz)
+      const debutDernier = addMonthsInTz(debutCe, -1, tz)
+      const finDernier = new Date(debutCe.getTime() - 1)
+      return { from: debutDernier.toISOString(), to: finDernier.toISOString(), periode }
+    }
     case 'ce-trimestre': {
-      const q = Math.floor(now.getMonth() / 3)
-      return {
-        from: new Date(now.getFullYear(), q * 3, 1).toISOString(),
-        to:   now.toISOString(),
-        periode,
-      }
+      const debut = startOfQuarterInTz(now, tz)
+      return { from: debut.toISOString(), to: now.toISOString(), periode }
     }
     case 'dernier-trimestre': {
-      const q = Math.floor(now.getMonth() / 3)
-      return {
-        from: new Date(now.getFullYear(), (q - 1) * 3, 1).toISOString(),
-        to:   new Date(now.getFullYear(), q * 3, 0, 23, 59, 59, 999).toISOString(),
-        periode,
-      }
+      const debutCe = startOfQuarterInTz(now, tz)
+      const debutDernier = addMonthsInTz(debutCe, -3, tz)
+      const finDernier = new Date(debutCe.getTime() - 1)
+      return { from: debutDernier.toISOString(), to: finDernier.toISOString(), periode }
     }
-    case 'cette-annee':
-      return {
-        from: new Date(now.getFullYear(), 0, 1).toISOString(),
-        to:   now.toISOString(),
-        periode,
-      }
-    case 'annee-derniere':
-      return {
-        from: new Date(now.getFullYear() - 1, 0, 1).toISOString(),
-        to:   new Date(now.getFullYear(), 0, 0, 23, 59, 59, 999).toISOString(),
-        periode,
-      }
+    case 'cette-annee': {
+      const debut = startOfYearInTz(now, tz)
+      return { from: debut.toISOString(), to: now.toISOString(), periode }
+    }
+    case 'annee-derniere': {
+      const debutCette = startOfYearInTz(now, tz)
+      const debutDerniere = addMonthsInTz(debutCette, -12, tz)
+      const finDerniere = new Date(debutCette.getTime() - 1)
+      return { from: debutDerniere.toISOString(), to: finDerniere.toISOString(), periode }
+    }
     case 'custom':
       return {
         from: searchParams.get('debut') ?? null,
@@ -163,88 +154,93 @@ export function getHistoriqueSlots(
   periode: Periode,
   from: string | null,
   to: string | null,
-  dataFrom?: string,
+  dataFrom: string | undefined,
+  tz: string,
 ): HistoriqueSlot[] {
   const now  = new Date()
   const gran = granularite(periode, from, to)
 
   if (gran === 'mois') {
-    const debut    = new Date(from ?? dataFrom ?? new Date(now.getFullYear() - 2, now.getMonth(), 1))
-    const fin      = new Date(to ?? now)
-    const curr     = new Date(debut.getFullYear(), debut.getMonth(), 1)
-    const finMois  = new Date(fin.getFullYear(), fin.getMonth(), 1)
-    const spanMois = (finMois.getFullYear() - curr.getFullYear()) * 12 + finMois.getMonth() - curr.getMonth()
+    const debutInstant = from ? new Date(from) : (dataFrom ? new Date(dataFrom) : addMonthsInTz(now, -24, tz))
+    const finInstant    = to ? new Date(to) : now
+
+    let curr           = startOfMonthInTz(debutInstant, tz)
+    const finMoisStart = startOfMonthInTz(finInstant, tz)
+
+    const pCurr    = getZonedParts(curr, tz)
+    const pFin     = getZonedParts(finMoisStart, tz)
+    const spanMois = (pFin.year - pCurr.year) * 12 + (pFin.month - pCurr.month)
     const showYear = spanMois > 11
 
     const slots: HistoriqueSlot[] = []
-    while (curr <= finMois) {
-      const y = curr.getFullYear()
-      const m = curr.getMonth()
+    while (curr <= finMoisStart) {
+      const p    = getZonedParts(curr, tz)
+      const next = addMonthsInTz(curr, 1, tz)
       slots.push({
-        label:     showYear ? `${MOIS_COURTS[m]} ${String(y).slice(2)}` : MOIS_COURTS[m],
-        fullLabel: `${MOIS_COURTS[m]}. ${y}`,
-        from:      new Date(y, m, 1).toISOString(),
-        to:        new Date(y, m + 1, 1).toISOString(),
+        label:     showYear ? `${MOIS_COURTS[p.month - 1]} ${String(p.year).slice(2)}` : MOIS_COURTS[p.month - 1],
+        fullLabel: `${MOIS_COURTS[p.month - 1]}. ${p.year}`,
+        from:      curr.toISOString(),
+        to:        next.toISOString(),
       })
-      curr.setMonth(curr.getMonth() + 1)
+      curr = next
     }
     return slots
   }
 
   if (gran === 'semaines') {
-    const debut = new Date(from ?? now)
-    const fin   = new Date(to ?? now)
-    const curr  = new Date(debut)
-    const dow   = curr.getDay() || 7
-    curr.setDate(curr.getDate() - (dow - 1))
-    curr.setHours(0, 0, 0, 0)
+    const debutInstant = from ? new Date(from) : now
+    const fin          = to ? new Date(to) : now
+
+    let curr = startOfWeekInTz(debutInstant, tz)
 
     const slots: HistoriqueSlot[] = []
     let i = 1
     while (curr <= fin) {
-      const start   = new Date(curr)
-      const end     = new Date(curr)
-      end.setDate(end.getDate() + 7)
-      const lastDay = new Date(end.getTime() - 1)
-      const d1 = start.getDate(),   m1 = MOIS_COURTS[start.getMonth()]
-      const d2 = lastDay.getDate(), m2 = MOIS_COURTS[lastDay.getMonth()]
+      const end          = addDaysInstant(curr, 7)
+      const startParts   = getZonedParts(curr, tz)
+      const lastDayParts = getZonedParts(new Date(end.getTime() - 1), tz)
+      const d1 = startParts.day,   m1 = MOIS_COURTS[startParts.month - 1]
+      const d2 = lastDayParts.day, m2 = MOIS_COURTS[lastDayParts.month - 1]
       slots.push({
         label:     `S${i}`,
         fullLabel: m1 === m2 ? `${d1}-${d2} ${m1}` : `${d1} ${m1}–${d2} ${m2}`,
-        from:      start.toISOString(),
+        from:      curr.toISOString(),
         to:        end.toISOString(),
       })
-      curr.setDate(curr.getDate() + 7)
+      // Resnap sur le lundi 00:00 local plutôt que +7 jours fixes, pour ne
+      // pas dériver d'une heure au passage d'un changement d'heure (DST).
+      curr = startOfWeekInTz(end, tz)
       i++
     }
     return slots
   }
 
   // jours
-  const debut = new Date(from ?? new Date(now.getFullYear(), now.getMonth(), 1))
-  const fin   = new Date(to ?? now)
-  const curr  = new Date(debut)
-  curr.setHours(0, 0, 0, 0)
-  const endInclusive = new Date(fin)
-  endInclusive.setHours(23, 59, 59, 999)
+  const debutInstant = from ? new Date(from) : startOfMonthInTz(now, tz)
+  const finInstant    = to ? new Date(to) : now
 
+  let curr               = startOfDayInTz(debutInstant, tz)
+  const finDayStart      = startOfDayInTz(finInstant, tz)
+  const endInclusive     = addDaysInstant(finDayStart, 1) // exclusif
+
+  const startParts = getZonedParts(curr, tz)
+  const finParts    = getZonedParts(finDayStart, tz)
   const useWeekLabels = periode === 'cette-semaine' || periode === 'semaine-derniere'
-  const multiMonth    = fin.getMonth() !== debut.getMonth() || fin.getFullYear() !== debut.getFullYear()
+  const multiMonth    = finParts.month !== startParts.month || finParts.year !== startParts.year
 
   const slots: HistoriqueSlot[] = []
-  while (curr <= endInclusive) {
-    const d   = curr.getDate()
-    const m   = curr.getMonth()
-    const dow = (curr.getDay() + 6) % 7
-    const next = new Date(curr)
-    next.setDate(next.getDate() + 1)
+  while (curr < endInclusive) {
+    const p    = getZonedParts(curr, tz)
+    const next = addDaysInstant(curr, 1)
+    const dow  = p.weekday - 1 // 1=lundi..7=dimanche -> index 0=lundi dans JOURS_COURTS
     slots.push({
-      label:     useWeekLabels ? JOURS_COURTS[dow] : multiMonth ? `${d} ${MOIS_COURTS[m]}` : String(d),
-      fullLabel: `${JOURS_COURTS[dow]} ${d} ${MOIS_COURTS[m]} ${curr.getFullYear()}`,
-      from:      new Date(curr).toISOString(),
+      label:     useWeekLabels ? JOURS_COURTS[dow] : multiMonth ? `${p.day} ${MOIS_COURTS[p.month - 1]}` : String(p.day),
+      fullLabel: `${JOURS_COURTS[dow]} ${p.day} ${MOIS_COURTS[p.month - 1]} ${p.year}`,
+      from:      curr.toISOString(),
       to:        next.toISOString(),
     })
-    curr.setDate(curr.getDate() + 1)
+    // Resnap sur minuit local (même raison que pour les semaines ci-dessus).
+    curr = startOfDayInTz(next, tz)
   }
   return slots
 }

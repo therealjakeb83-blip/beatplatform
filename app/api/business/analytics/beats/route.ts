@@ -2,6 +2,7 @@ import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +11,6 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [
@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     { data: allCommandes },
     { data: allPlays },
     { data: allFreeDl },
+    { data: beatmaker },
   ] = await Promise.all([
     admin.from('beats')
       .select('id, titre, couleur, styles')
@@ -35,7 +36,11 @@ export async function GET(request: Request) {
     admin.from('free_downloads')
       .select('beat_id, downloaded_at')
       .eq('beatmaker_id', user.id),
+    admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single(),
   ])
+
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
+  const { from, to, periode } = getPeriodDates(request, tz)
 
   const beats   = allBeats ?? []
   const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at,    from, to))
@@ -93,7 +98,7 @@ export async function GET(request: Request) {
     : null
 
   const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
-  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => {
     const mCmds   = (allCommandes ?? []).filter(c => c.created_at   >= slot.from && c.created_at   < slot.to)
     const mPlays  = (allPlays    ?? []).filter(p => p.played_at     >= slot.from && p.played_at     < slot.to)

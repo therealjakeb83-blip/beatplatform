@@ -2,6 +2,7 @@ import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +11,6 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [{ data: codes }, { data: allCommandes }, { data: beatmaker }] = await Promise.all([
@@ -23,8 +23,11 @@ export async function GET(request: Request) {
       .eq('beatmaker_id', user.id)
       .eq('statut', 'payee')
       .not('code_promo', 'is', null),
-    admin.from('beatmakers').select('tva_active, tva_taux').eq('id', user.id).single(),
+    admin.from('beatmakers').select('tva_active, tva_taux, fuseau_horaire').eq('id', user.id).single(),
   ])
+
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
+  const { from, to, periode } = getPeriodDates(request, tz)
 
   const promos = codes ?? []
 
@@ -69,7 +72,7 @@ export async function GET(request: Request) {
     .filter(c => c.utilisations > 0)
 
   const dataFrom = periode === 'tout' ? cmds.map(c => c.created_at).sort()[0] : undefined
-  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => {
     const mCmds  = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const brut   = mCmds.reduce((s, c) => s + c.prix_paye, 0)

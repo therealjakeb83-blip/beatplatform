@@ -1,6 +1,8 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 const STATUT_STYLES: Record<string, string> = {
   actif: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -11,6 +13,12 @@ const STATUT_STYLES: Record<string, string> = {
 
 export default async function AbonnementAdminDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/connexion')
+  const { data: adminRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const tz = fuseauSur(adminRow?.fuseau_horaire)
+
   const admin = createAdminClient()
 
   const { data: abo } = await admin
@@ -36,7 +44,7 @@ export default async function AbonnementAdminDetailPage({ params }: { params: Pr
         <div>
           <Link href="/dashboard/admin/recherche" className="text-xs text-gray-500 hover:text-gray-300">← Recherche</Link>
           <h1 className="text-xl font-bold text-white mt-1">Abonnement A-{abo.id.slice(0, 8).toUpperCase()}</h1>
-          <p className="text-sm text-gray-500">Souscrit le {new Date(abo.created_at).toLocaleDateString('fr-FR')}</p>
+          <p className="text-sm text-gray-500">Souscrit le {new Date(abo.created_at).toLocaleDateString('fr-FR', { timeZone: tz })}</p>
         </div>
         <span className={`text-xs px-2 py-1 rounded border ${STATUT_STYLES[abo.statut] ?? ''}`}>{abo.statut}</span>
       </div>
@@ -61,9 +69,9 @@ export default async function AbonnementAdminDetailPage({ params }: { params: Pr
         <p className="text-gray-400">Prix <span className="text-white float-right">{(abo.prix / 100).toFixed(2)}{abo.devise === 'USD' ? '$' : '€'}</span></p>
         <p className="text-gray-400">Mois consécutifs <span className="text-white float-right">{abo.mois_consecutifs}</span></p>
         <p className="text-gray-400">Crédit licences <span className="text-white float-right">{abo.credit_licences}</span></p>
-        <p className="text-gray-400">Début <span className="text-white float-right">{new Date(abo.date_debut).toLocaleDateString('fr-FR')}</span></p>
-        <p className="text-gray-400">Fin de cycle <span className="text-white float-right">{new Date(abo.date_fin).toLocaleDateString('fr-FR')}</span></p>
-        {abo.date_annulation && <p className="text-gray-400">Annulation <span className="text-white float-right">{new Date(abo.date_annulation).toLocaleDateString('fr-FR')} ({abo.motif_annulation})</span></p>}
+        <p className="text-gray-400">Début <span className="text-white float-right">{new Date(abo.date_debut).toLocaleDateString('fr-FR', { timeZone: tz })}</span></p>
+        <p className="text-gray-400">Fin de cycle <span className="text-white float-right">{new Date(abo.date_fin).toLocaleDateString('fr-FR', { timeZone: tz })}</span></p>
+        {abo.date_annulation && <p className="text-gray-400">Annulation <span className="text-white float-right">{new Date(abo.date_annulation).toLocaleDateString('fr-FR', { timeZone: tz })} ({abo.motif_annulation})</span></p>}
       </div>
 
       <p className="text-xs text-gray-600">

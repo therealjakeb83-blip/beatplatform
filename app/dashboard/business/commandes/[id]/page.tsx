@@ -7,6 +7,7 @@ import CopyButton from './_components/CopyButton'
 import RemboursementButton from './_components/RemboursementButton'
 import ReprendreLivraisonButton from './_components/ReprendreLivraisonButton'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
+import { fuseauSur, formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -110,7 +111,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 /* ─── helpers ────────────────────────────────────────────────────── */
 
-function dateRelative(iso: string): string {
+function dateRelative(iso: string, tz: string): string {
   const diff  = Date.now() - new Date(iso).getTime()
   const mins  = Math.floor(diff / 60_000)
   const hours = Math.floor(diff / 3_600_000)
@@ -120,20 +121,15 @@ function dateRelative(iso: string): string {
   if (hours < 24) return `il y a ${hours}h`
   if (days === 1) return 'hier'
   if (days < 30)  return `il y a ${days} jours`
-  return fmtDate(iso)
+  return fmtDate(iso, tz)
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  })
+function fmtDate(iso: string, tz: string) {
+  return formatDateTz(iso, tz, { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString('fr-FR', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+function fmtDateTime(iso: string, tz: string) {
+  return formatDateTimeTz(iso, tz, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 /* ─── page ───────────────────────────────────────────────────────── */
@@ -150,6 +146,9 @@ export default async function CommandeDetailPage({
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()
+
+  const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const tz = fuseauSur(beatmakerRow?.fuseau_horaire)
 
   const { data: commande } = await admin
     .from('commandes')
@@ -307,7 +306,7 @@ export default async function CommandeDetailPage({
               Commande #{c.id.slice(0, 8).toUpperCase()}
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Paiement via {c.methode_paiement ?? 'Stripe'} · {dateRelative(c.created_at)} · Origine : {sourceDisplay}
+              Paiement via {c.methode_paiement ?? 'Stripe'} · {dateRelative(c.created_at, tz)} · Origine : {sourceDisplay}
             </p>
           </div>
           <span className={`text-[10px] px-2.5 py-1 rounded-full border font-medium ${s.cls}`}>
@@ -324,8 +323,8 @@ export default async function CommandeDetailPage({
             <div className="space-y-3">
               <div>
                 <p className="text-[10px] text-gray-600 mb-0.5">Date de création</p>
-                <p className="text-sm text-gray-300">{dateRelative(c.created_at)}</p>
-                <p className="text-xs text-gray-600">{fmtDate(c.created_at)}</p>
+                <p className="text-sm text-gray-300">{dateRelative(c.created_at, tz)}</p>
+                <p className="text-xs text-gray-600">{fmtDate(c.created_at, tz)}</p>
               </div>
               <div>
                 <p className="text-[10px] text-gray-600 mb-0.5">État</p>
@@ -586,8 +585,8 @@ export default async function CommandeDetailPage({
                     <td className="py-2.5 pr-4 text-xs text-gray-600">{i + 1}</td>
                     <td className="py-2.5 text-sm text-gray-300 capitalize">{dl.fichier.replace(/_/g, ' ')}</td>
                     <td className="py-2.5 text-sm text-gray-400">
-                      {dateRelative(dl.downloaded_at)}
-                      <span className="block text-[10px] text-gray-600">{fmtDateTime(dl.downloaded_at)}</span>
+                      {dateRelative(dl.downloaded_at, tz)}
+                      <span className="block text-[10px] text-gray-600">{fmtDateTime(dl.downloaded_at, tz)}</span>
                     </td>
                     <td className="py-2.5 text-sm font-mono text-gray-500">{dl.ip_address ?? '—'}</td>
                   </tr>
@@ -655,7 +654,7 @@ export default async function CommandeDetailPage({
             {timeline.map((e, i) => (
               <div key={i} className="bg-gray-800/50 rounded-lg px-4 py-3">
                 <p className="text-sm text-gray-300">{e.texte}</p>
-                <p className="text-[10px] text-gray-600 mt-1">{fmtDateTime(e.date)}</p>
+                <p className="text-[10px] text-gray-600 mt-1">{fmtDateTime(e.date, tz)}</p>
               </div>
             ))}
           </div>

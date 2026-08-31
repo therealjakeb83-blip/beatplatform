@@ -10,7 +10,7 @@ export default async function ProfilPage() {
 
   const { data: profil } = await supabase
     .from('beatmakers')
-    .select('slug, nom_artiste, tagline, logo_url, instagram_url, youtube_url, tiktok_url')
+    .select('slug, nom_artiste, tagline, logo_url, instagram_url, youtube_url, tiktok_url, fuseau_horaire')
     .eq('id', user.id)
     .single()
 

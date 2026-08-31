@@ -1,5 +1,8 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 const STATUT_STYLES: Record<string, string> = {
   recu: 'bg-gray-700/30 text-gray-400 border-gray-600/30',
@@ -9,6 +12,13 @@ const STATUT_STYLES: Record<string, string> = {
 
 export default async function StripeEventsPage({ searchParams }: { searchParams: Promise<{ filtre?: string }> }) {
   const { filtre } = await searchParams
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/connexion')
+  const { data: adminRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const tz = fuseauSur(adminRow?.fuseau_horaire)
+
   const admin = createAdminClient()
 
   let query = admin
@@ -58,7 +68,7 @@ export default async function StripeEventsPage({ searchParams }: { searchParams:
               </span>
               <span className={`text-[11px] px-1.5 py-0.5 rounded border ${STATUT_STYLES[ev.statut] ?? ''}`}>{ev.statut}</span>
             </div>
-            <p className="text-xs text-gray-500">{new Date(ev.created_at).toLocaleString('fr-FR')}</p>
+            <p className="text-xs text-gray-500">{new Date(ev.created_at).toLocaleString('fr-FR', { timeZone: tz })}</p>
             {ev.erreur && <p className="text-xs text-red-400">{ev.erreur}</p>}
           </div>
         ))}

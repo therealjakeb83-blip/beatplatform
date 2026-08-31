@@ -2,6 +2,7 @@ import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots, type HistoriqueSlot } from '@/app/dashboard/business/analytics/_lib/periode'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
@@ -103,7 +104,6 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  const { from, to, periode } = getPeriodDates(request)
   const admin = createAdminClient()
 
   const [
@@ -111,6 +111,7 @@ export async function GET(request: Request) {
     { data: allPlays },
     { data: allFreeDl },
     { data: allFavoris },
+    { data: beatmaker },
   ] = await Promise.all([
     // Niveau article (commande_lignes) — un panier de plusieurs beats donne
     // plusieurs lignes ici, chacune avec ses propres styles/licence.
@@ -127,7 +128,11 @@ export async function GET(request: Request) {
     admin.from('favoris')
       .select('created_at, beats!inner(beatmaker_id, styles, ambiances, instruments, type_beat)')
       .eq('beats.beatmaker_id', user.id),
+    admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single(),
   ])
+
+  const tz = fuseauSur(beatmaker?.fuseau_horaire)
+  const { from, to, periode } = getPeriodDates(request, tz)
 
   const allCmds    = (allCommandes ?? []) as RawCmd[]
   const allPlaysN  = (allPlays   ?? []).map(p => ({ created_at: p.played_at,     beats: p.beats })) as RawEvt[]
@@ -146,7 +151,7 @@ export async function GET(request: Request) {
   const type_beat   = buildBeatGroups(cmds, plays, freeDl, favoris, 'type_beat')
 
   const dataFrom = periode === 'tout' ? allCmds.map(c => c.created_at).sort()[0] : undefined
-  const slots = getHistoriqueSlots(periode, from, to, dataFrom)
+  const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
 
   // Historique par vue : total agrégé + une série par catégorie (pour l'analyse ciblée dans le graphique)
   const licenceHisto = {
