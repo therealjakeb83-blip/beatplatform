@@ -25,7 +25,15 @@ const STATUT_LABEL: Record<string, { label: string; cls: string }> = {
   suspendu: { label: 'Suspendu', cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
 }
 
-export default function AbonnementPlateformeClient({ abonnement }: { abonnement: Abonnement }) {
+type EchecPaiement = { id: string; created_at: string; prix: number }
+
+export default function AbonnementPlateformeClient({
+  abonnement,
+  echecsPaiement = [],
+}: {
+  abonnement: Abonnement
+  echecsPaiement?: EchecPaiement[]
+}) {
   const [periode, setPeriode] = useState<'mensuel' | 'annuel'>('mensuel')
   const [loading, setLoading] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -127,6 +135,22 @@ export default function AbonnementPlateformeClient({ abonnement }: { abonnement:
           >
             {loading ? 'Redirection…' : "Démarrer l'essai gratuit"}
           </button>
+        </div>
+      )}
+
+      {echecsPaiement.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 mt-4">
+          <p className="text-sm font-semibold text-white mb-3">Échecs de paiement</p>
+          <div className="space-y-2">
+            {echecsPaiement.map(e => (
+              <div key={e.id} className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">
+                  Renouvellement échoué ({e.prix.toFixed(2)}{abonnement?.devise === 'USD' ? '$' : '€'})
+                </span>
+                <span className="text-gray-500">{new Date(e.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

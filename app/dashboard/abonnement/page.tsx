@@ -15,5 +15,15 @@ export default async function AbonnementPlateformePage() {
     .limit(1)
     .maybeSingle()
 
-  return <AbonnementPlateformeClient abonnement={abo} />
+  // Historique des échecs de paiement (rang 9 ROADMAP) — table dormante tant
+  // que supabase/tentatives_paiement_plateforme.sql n'est pas exécutée.
+  const { data: echecs } = abo
+    ? await supabase
+        .from('tentatives_paiement')
+        .select('id, created_at, prix')
+        .eq('abonnement_plateforme_id', abo.id)
+        .order('created_at', { ascending: false })
+    : { data: null }
+
+  return <AbonnementPlateformeClient abonnement={abo} echecsPaiement={echecs ?? []} />
 }

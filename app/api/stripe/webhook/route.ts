@@ -733,25 +733,49 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
     .eq('stripe_subscription_id', subscriptionId)
     .maybeSingle()
 
-  if (!abo) {
-    console.log('[webhook] invoice.payment_failed — abonnement boutique non trouvé:', subscriptionId)
+  if (abo) {
+    const { error } = await supabase.from('tentatives_paiement').upsert({
+      type: 'renouvellement_abonnement',
+      beatmaker_id: abo.beatmaker_id,
+      abonnement_id: abo.id,
+      client_id: abo.client_id,
+      email: abo.acheteur_email,
+      prix: (invoice.amount_due ?? 0) / 100,
+      source_marketing: abo.source_marketing,
+      stripe_invoice_id: invoice.id,
+      statut: 'echouee',
+    }, { onConflict: 'stripe_invoice_id' })
+
+    if (error) console.error('[webhook] Erreur insert tentative renouvellement:', JSON.stringify(error))
+    else console.log('[webhook] Échec de renouvellement tracé pour abo', abo.id)
+    return
+  }
+
+  // Pas un abonnement boutique — vérifier l'abonnement plateforme (rang 9
+  // ROADMAP, 2026-08-31) : jusqu'ici aucun échec de paiement de l'abonnement
+  // beatmaker → My Producer n'était tracé, contrairement au côté boutique.
+  const { data: aboPlateforme } = await supabase
+    .from('abonnements_plateforme')
+    .select('id, beatmaker_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+
+  if (!aboPlateforme) {
+    console.log('[webhook] invoice.payment_failed — aucun abonnement (boutique ou plateforme) trouvé:', subscriptionId)
     return
   }
 
   const { error } = await supabase.from('tentatives_paiement').upsert({
-    type: 'renouvellement_abonnement',
-    beatmaker_id: abo.beatmaker_id,
-    abonnement_id: abo.id,
-    client_id: abo.client_id,
-    email: abo.acheteur_email,
+    type: 'renouvellement_abonnement_plateforme',
+    beatmaker_id: aboPlateforme.beatmaker_id,
+    abonnement_plateforme_id: aboPlateforme.id,
     prix: (invoice.amount_due ?? 0) / 100,
-    source_marketing: abo.source_marketing,
     stripe_invoice_id: invoice.id,
     statut: 'echouee',
   }, { onConflict: 'stripe_invoice_id' })
 
-  if (error) console.error('[webhook] Erreur insert tentative renouvellement:', JSON.stringify(error))
-  else console.log('[webhook] Échec de renouvellement tracé pour abo', abo.id)
+  if (error) console.error('[webhook] Erreur insert tentative renouvellement plateforme:', JSON.stringify(error))
+  else console.log('[webhook] Échec de renouvellement plateforme tracé pour abo', aboPlateforme.id)
 }
 
 async function traiterCompteConnecte(account: Stripe.Account) {
