@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const [{ data: allCommandes }, { data: beatmaker }, { data: remboursees }, { data: litigesEnCours }, { data: litigesTous }] = await Promise.all([
+  const [{ data: allCommandes }, { data: beatmaker }, { data: remboursees }, { data: litigesEnCours }] = await Promise.all([
     admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant')
       .eq('beatmaker_id', user.id)
@@ -32,15 +32,12 @@ export async function GET(request: Request) {
     // "Litiges en cours" = instantané, toujours l'état actuel — pas filtré
     // par période (décision de Jake, 2026-08-31) : l'argent est séquestré
     // en ce moment, peu importe la période consultée dans les Analytics.
+    // Historique daté complet : page dédiée /dashboard/business/litiges,
+    // pas ici (déplacé du brouillon initial sur demande de Jake).
     admin.from('litiges')
       .select('montant')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'en_cours'),
-    // Historique daté complet, filtré par période (via ouvert_le) plus bas.
-    admin.from('litiges')
-      .select('id, commande_id, montant, statut, ouvert_le, ferme_le')
-      .eq('beatmaker_id', user.id)
-      .order('ouvert_le', { ascending: false }),
   ])
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
@@ -111,24 +108,9 @@ export async function GET(request: Request) {
   const remboursementsPeriode = (remboursees ?? []).filter(c => inPeriod(c.created_at, from, to))
   const remboursements_total = remboursementsPeriode.reduce((s, c) => s + (c.montant_rembourse ?? 0), 0)
 
-  // Historique des litiges — période sur la date d'ouverture du litige, pas
-  // la date de la commande (ex. une vente de l'an dernier peut être
-  // contestée cette année — c'est la date du litige qui compte ici).
-  const litiges = (litigesTous ?? [])
-    .filter(l => inPeriod(l.ouvert_le, from, to))
-    .map(l => ({
-      id:          l.id,
-      commande_id: l.commande_id,
-      montant:     Number(l.montant),
-      statut:      l.statut as 'en_cours' | 'gagne' | 'perdu',
-      ouvert_le:   l.ouvert_le,
-      ferme_le:    l.ferme_le,
-    }))
-
   return NextResponse.json({
     kpis: { ventes_brutes, remises_total, ventes_nettes, tva, tva_taux: tvaTaux, moy_brut, moy_net, litiges_en_cours, remboursements_total },
     jours,
     historique,
-    litiges,
   })
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link                from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } from '../_lib/periode'
@@ -9,9 +8,6 @@ import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } fr
 type Props = { periode: Periode; debut: string; fin: string }
 
 type MoyValues = { jour: number; semaine: number; mois: number; trimestre: number; an: number }
-
-type LitigeStatut = 'en_cours' | 'gagne' | 'perdu'
-type LitigeRow = { id: string; commande_id: string; montant: number; statut: LitigeStatut; ouvert_le: string; ferme_le: string | null }
 
 type Data = {
   kpis: {
@@ -21,14 +17,6 @@ type Data = {
   }
   jours: Array<{ date: string; nb: number; brut: number; remises: number; net: number; tva: number }>
   historique: Array<Record<string, unknown>>
-  litiges: LitigeRow[]
-}
-
-const LITIGE_STATUT_LABEL: Record<LitigeStatut, string> = { en_cours: 'En cours', gagne: 'Gagné', perdu: 'Perdu' }
-const LITIGE_STATUT_CLS: Record<LitigeStatut, string> = {
-  en_cours: 'bg-orange-500/15 text-orange-400 border border-orange-500/20',
-  gagne:    'bg-green-500/15  text-green-400  border border-green-500/20',
-  perdu:    'bg-red-500/15    text-red-400    border border-red-500/20',
 }
 
 type MoyBase = 'net' | 'brut'
@@ -58,10 +46,6 @@ function fmtJourShort(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
 export default function TabRevenus({ periode, debut, fin }: Props) {
   const [data,     setData]    = useState<Data | null>(null)
   const [loading,  setLoading] = useState(true)
@@ -80,7 +64,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
   if (loading) return <Skeleton />
   if (!data)   return <p className="text-gray-500 text-sm">Erreur de chargement.</p>
 
-  const { kpis, jours, historique, litiges } = data
+  const { kpis, jours, historique } = data
   const kpiConf   = KPI_CONFIG.find(k => k.key === kpiActif) ?? KPI_CONFIG[0]
   const totCmds   = jours.reduce((s, j) => s + j.nb, 0)
   const moyConf   = MOY_GRAN.find(g => g.key === moyGran)!
@@ -274,48 +258,6 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         </div>
       </div>
 
-      {/* Historique des litiges — pratique pour les déclarations fiscales */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-800">
-          <p className="text-xs font-semibold text-white">Historique des litiges</p>
-          <p className="text-[10px] text-gray-600 mt-0.5">Filtré par date d&apos;ouverture du litige — utile pour tes déclarations.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
-                <th className="text-left px-4 py-2">Ouvert le</th>
-                <th className="text-left px-4 py-2">Fermé le</th>
-                <th className="text-right px-4 py-2">Montant</th>
-                <th className="text-left px-4 py-2">Statut</th>
-                <th className="text-right px-4 py-2">Commande</th>
-              </tr>
-            </thead>
-            <tbody>
-              {litiges.map(l => (
-                <tr key={l.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                  <td className="px-4 py-2.5 text-gray-300">{fmtDateTime(l.ouvert_le)}</td>
-                  <td className="px-4 py-2.5 text-gray-400">{l.ferme_le ? fmtDateTime(l.ferme_le) : '—'}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-300 font-medium">{fmtEuroDisplay(l.montant)}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${LITIGE_STATUT_CLS[l.statut]}`}>
-                      {LITIGE_STATUT_LABEL[l.statut]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <Link href={`/dashboard/business/commandes/${l.commande_id}`} className="text-indigo-400 hover:text-indigo-300 transition-colors">
-                      Voir →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {litiges.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Aucun litige sur cette période</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   )
 }
