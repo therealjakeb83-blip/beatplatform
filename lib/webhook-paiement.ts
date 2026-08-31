@@ -595,3 +595,62 @@ async function distribuerSplitsArticle({
     else console.log('[webhook-paiement] split_payments insérés:', splitPayments.length)
   }
 }
+
+// ─── Litiges Stripe (rang 9 ROADMAP, décidé avec Jake le 2026-08-31) ────────
+// Affichage passif uniquement, aucune décision prise à la place du
+// beatmaker : Stripe gère déjà tout le mécanisme (fonds bloqués dès la
+// création du litige, preuves, verdict) directement avec lui sur son propre
+// compte connecté (Direct Charge). On se contente de refléter le statut sur
+// la commande pour qu'elle ne reste pas affichée "Payée" pendant/après un
+// litige — jamais d'appel Stripe ici, uniquement de la lecture d'event.
+
+function idPaymentIntent(dispute: Stripe.Dispute): string | null {
+  return typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null
+}
+
+export async function marquerLitige(dispute: Stripe.Dispute, stripeAccountId: string | null) {
+  if (!stripeAccountId) return
+  const paymentIntentId = idPaymentIntent(dispute)
+  if (!paymentIntentId) return
+
+  const admin = createAdminClient()
+  // Ne jamais écraser un autre état (ex. déjà remboursée manuellement entre-temps).
+  await admin
+    .from('commandes')
+    .update({ statut: 'litige' })
+    .eq('stripe_payment_id', paymentIntentId)
+    .eq('stripe_account_id', stripeAccountId)
+    .eq('statut', 'payee')
+}
+
+// `dispute.status` au moment de charge.dispute.closed vaut 'won' ou 'lost'
+// (les autres valeurs possibles de l'objet — warning_*, needs_response,
+// under_review — décrivent des étapes avant clôture, jamais reçues sur cet
+// event précis).
+export async function resoudreLitige(dispute: Stripe.Dispute, stripeAccountId: string | null) {
+  if (!stripeAccountId) return
+  if (dispute.status !== 'won' && dispute.status !== 'lost') return
+  const paymentIntentId = idPaymentIntent(dispute)
+  if (!paymentIntentId) return
+
+  const admin = createAdminClient()
+  const { data: commande } = await admin
+    .from('commandes')
+    .select('id, prix_paye')
+    .eq('stripe_payment_id', paymentIntentId)
+    .eq('stripe_account_id', stripeAccountId)
+    .eq('statut', 'litige')
+    .maybeSingle()
+
+  if (!commande) return
+
+  if (dispute.status === 'won') {
+    await admin.from('commandes').update({ statut: 'payee' }).eq('id', commande.id)
+  } else {
+    // Litige perdu — décision de Jake (2026-08-31) : réutilise le badge
+    // "Remboursée" existant, pas de statut distinct. L'argent a déjà quitté
+    // le solde du beatmaker à la création du litige ; Stripe ne fait rien de
+    // plus à la clôture — ceci n'est qu'un miroir côté My Producer.
+    await admin.from('commandes').update({ statut: 'remboursee', montant_rembourse: commande.prix_paye }).eq('id', commande.id)
+  }
+}

@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { traiterPaiement, traiterPaiementExpress } from '@/lib/webhook-paiement'
+import { traiterPaiement, traiterPaiementExpress, marquerLitige, resoudreLitige } from '@/lib/webhook-paiement'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -22,6 +22,13 @@ export const runtime = 'nodejs'
 // mode 'payment', payment_intent.succeeded scopé achat_express) — les
 // abonnements et les splits collab ne passent jamais par ce chemin (ils
 // restent sur l'ancien modèle, voir plan Phase 2).
+//
+// + litiges Stripe (charge.dispute.created/closed, rang 9 ROADMAP, décidé
+// avec Jake le 2026-08-31) — affichage passif du badge "Litige"/"Remboursée"
+// sur la commande, aucune décision prise à la place du beatmaker (voir
+// lib/webhook-paiement.ts). Ces 2 events doivent être cochés manuellement
+// dans le Dashboard Stripe si jamais ce endpoint est reconfiguré depuis
+// zéro — activés via l'API le 2026-08-31 sur l'endpoint existant.
 export async function POST(request: Request) {
   const body = await request.text()
   const headersList = await headers()
@@ -76,6 +83,14 @@ export async function POST(request: Request) {
       if (paymentIntent.metadata?.type === 'achat_express') {
         await traiterPaiementExpress(paymentIntent, stripeAccountId)
       }
+    }
+
+    if (event.type === 'charge.dispute.created') {
+      await marquerLitige(event.data.object as Stripe.Dispute, stripeAccountId)
+    }
+
+    if (event.type === 'charge.dispute.closed') {
+      await resoudreLitige(event.data.object as Stripe.Dispute, stripeAccountId)
     }
   } catch (err) {
     const erreur = err instanceof Error ? err.message : String(err)
