@@ -625,7 +625,7 @@ export async function marquerLitige(dispute: Stripe.Dispute, stripeAccountId: st
   for (let tentative = 0; tentative < 5; tentative++) {
     const { data: commande } = await admin
       .from('commandes')
-      .select('id, statut')
+      .select('id, statut, beatmaker_id, prix_paye')
       .eq('stripe_payment_id', paymentIntentId)
       .eq('stripe_account_id', stripeAccountId)
       .maybeSingle()
@@ -635,6 +635,21 @@ export async function marquerLitige(dispute: Stripe.Dispute, stripeAccountId: st
       if (commande.statut === 'payee') {
         await admin.from('commandes').update({ statut: 'litige' }).eq('id', commande.id)
       }
+      // Historique daté (rang 9, Analytics → Revenus) — indépendant du
+      // statut de la commande ci-dessus, toujours enregistré tant qu'un
+      // litige Stripe existe. `ignoreDuplicates` : Stripe peut redélivrer le
+      // même event, `stripe_dispute_id` est unique.
+      await admin.from('litiges').upsert(
+        {
+          commande_id: commande.id,
+          beatmaker_id: commande.beatmaker_id,
+          stripe_dispute_id: dispute.id,
+          montant: commande.prix_paye,
+          statut: 'en_cours',
+          ouvert_le: new Date(dispute.created * 1000).toISOString(),
+        },
+        { onConflict: 'stripe_dispute_id', ignoreDuplicates: true }
+      )
       return
     }
 
@@ -662,6 +677,11 @@ export async function resoudreLitige(dispute: Stripe.Dispute, stripeAccountId: s
     .maybeSingle()
 
   if (!commande) return
+
+  await admin
+    .from('litiges')
+    .update({ statut: dispute.status === 'won' ? 'gagne' : 'perdu', ferme_le: new Date().toISOString() })
+    .eq('stripe_dispute_id', dispute.id)
 
   if (dispute.status === 'won') {
     await admin.from('commandes').update({ statut: 'payee' }).eq('id', commande.id)

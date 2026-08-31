@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const [{ data: allCommandes }, { data: beatmaker }] = await Promise.all([
+  const [{ data: allCommandes }, { data: beatmaker }, { data: remboursees }, { data: litigesEnCours }, { data: litigesTous }] = await Promise.all([
     admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant')
       .eq('beatmaker_id', user.id)
@@ -23,6 +23,24 @@ export async function GET(request: Request) {
       .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
       .single(),
+    // Remboursements (manuels ET litiges perdus, même statut 'remboursee') —
+    // filtrés par période via created_at plus bas, comme le reste de l'onglet.
+    admin.from('commandes')
+      .select('id, created_at, montant_rembourse')
+      .eq('beatmaker_id', user.id)
+      .eq('statut', 'remboursee'),
+    // "Litiges en cours" = instantané, toujours l'état actuel — pas filtré
+    // par période (décision de Jake, 2026-08-31) : l'argent est séquestré
+    // en ce moment, peu importe la période consultée dans les Analytics.
+    admin.from('litiges')
+      .select('montant')
+      .eq('beatmaker_id', user.id)
+      .eq('statut', 'en_cours'),
+    // Historique daté complet, filtré par période (via ouvert_le) plus bas.
+    admin.from('litiges')
+      .select('id, commande_id, montant, statut, ouvert_le, ferme_le')
+      .eq('beatmaker_id', user.id)
+      .order('ouvert_le', { ascending: false }),
   ])
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
@@ -86,9 +104,31 @@ export async function GET(request: Request) {
     return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva }
   })
 
+  // Litiges en cours — instantané, indépendant de la période (voir requête).
+  const litiges_en_cours = (litigesEnCours ?? []).reduce((s, l) => s + Number(l.montant), 0)
+
+  // Remboursements (manuels + litiges perdus) — période sur la date de la commande.
+  const remboursementsPeriode = (remboursees ?? []).filter(c => inPeriod(c.created_at, from, to))
+  const remboursements_total = remboursementsPeriode.reduce((s, c) => s + (c.montant_rembourse ?? 0), 0)
+
+  // Historique des litiges — période sur la date d'ouverture du litige, pas
+  // la date de la commande (ex. une vente de l'an dernier peut être
+  // contestée cette année — c'est la date du litige qui compte ici).
+  const litiges = (litigesTous ?? [])
+    .filter(l => inPeriod(l.ouvert_le, from, to))
+    .map(l => ({
+      id:          l.id,
+      commande_id: l.commande_id,
+      montant:     Number(l.montant),
+      statut:      l.statut as 'en_cours' | 'gagne' | 'perdu',
+      ouvert_le:   l.ouvert_le,
+      ferme_le:    l.ferme_le,
+    }))
+
   return NextResponse.json({
-    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, tva_taux: tvaTaux, moy_brut, moy_net },
+    kpis: { ventes_brutes, remises_total, ventes_nettes, tva, tva_taux: tvaTaux, moy_brut, moy_net, litiges_en_cours, remboursements_total },
     jours,
     historique,
+    litiges,
   })
 }
