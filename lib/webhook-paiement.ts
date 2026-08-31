@@ -614,13 +614,32 @@ export async function marquerLitige(dispute: Stripe.Dispute, stripeAccountId: st
   if (!paymentIntentId) return
 
   const admin = createAdminClient()
-  // Ne jamais écraser un autre état (ex. déjà remboursée manuellement entre-temps).
-  await admin
-    .from('commandes')
-    .update({ statut: 'litige' })
-    .eq('stripe_payment_id', paymentIntentId)
-    .eq('stripe_account_id', stripeAccountId)
-    .eq('statut', 'payee')
+
+  // Cas limite constaté en testant (carte Stripe 4000000000000259, qui ouvre
+  // un litige quasi instantanément — bien plus vite qu'un vrai litige, qui
+  // met des jours) : l'event peut arriver AVANT que la commande n'existe en
+  // base, celle-ci n'étant créée qu'une fois checkout.session.completed
+  // traité (génération du contrat PDF, email...), plus lent. Petite
+  // tolérance plutôt que de perdre silencieusement le signal si la commande
+  // n'est pas encore là.
+  for (let tentative = 0; tentative < 5; tentative++) {
+    const { data: commande } = await admin
+      .from('commandes')
+      .select('id, statut')
+      .eq('stripe_payment_id', paymentIntentId)
+      .eq('stripe_account_id', stripeAccountId)
+      .maybeSingle()
+
+    if (commande) {
+      // Ne jamais écraser un autre état (ex. déjà remboursée manuellement entre-temps).
+      if (commande.statut === 'payee') {
+        await admin.from('commandes').update({ statut: 'litige' }).eq('id', commande.id)
+      }
+      return
+    }
+
+    if (tentative < 4) await new Promise(r => setTimeout(r, 3000))
+  }
 }
 
 // `dispute.status` au moment de charge.dispute.closed vaut 'won' ou 'lost'
