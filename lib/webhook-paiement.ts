@@ -108,10 +108,10 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
 // 2026-08-27 mais préexistant à Direct Charge (même trou côté destination
 // charge, jamais remarqué car les tests précédents utilisaient un compte
 // déjà connu).
-async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; adresse: string | null }> {
+async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; nom: string | null; adresse: string | null }> {
   const paymentMethodId = typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method?.id
   const emailDirect = paymentIntent.receipt_email?.toLowerCase().trim() ?? null
-  if (!paymentMethodId) return { email: emailDirect, adresse: null }
+  if (!paymentMethodId) return { email: emailDirect, nom: null, adresse: null }
 
   try {
     const paymentMethod = await stripe.paymentMethods.retrieve(
@@ -121,11 +121,12 @@ async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, 
     )
     return {
       email: emailDirect ?? paymentMethod.billing_details?.email?.toLowerCase().trim() ?? null,
+      nom: paymentMethod.billing_details?.name ?? null,
       adresse: formaterAdresse(paymentMethod.billing_details?.address),
     }
   } catch (err) {
     console.error('[webhook-paiement] Erreur récupération payment_method pour billing_details:', err instanceof Error ? err.message : err)
-    return { email: emailDirect, adresse: null }
+    return { email: emailDirect, nom: null, adresse: null }
   }
 }
 
@@ -133,14 +134,14 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
   const meta = paymentIntent.metadata
   if (!meta?.beatmaker_id) return
 
-  const { email: acheteurEmail, adresse: acheteurAdresse } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
+  const { email: acheteurEmail, nom: acheteurNom, adresse: acheteurAdresse } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
 
   await finaliserCommandePayee({
     meta,
     tentativeColonne: 'stripe_payment_intent_id',
     tentativeValeur: paymentIntent.id,
     acheteurEmail,
-    acheteurNom: null,
+    acheteurNom,
     acheteurAdresse,
     totalCents: paymentIntent.amount,
     stripePaymentId: paymentIntent.id,
