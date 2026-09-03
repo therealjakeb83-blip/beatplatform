@@ -59,22 +59,29 @@ export async function resoudreOuCreerClient(
 
   const { data: existingClient } = await supabase
     .from('clients')
-    .select('id, adresse')
+    .select('id, adresse, prenom')
     .eq('email', emailNorm)
     .maybeSingle()
 
   if (existingClient) {
+    const backfill: Record<string, string | null> = {}
     if (address && !existingClient.adresse) {
-      const { error } = await supabase
-        .from('clients')
-        .update({
-          adresse: [address.line1, address.line2].filter(Boolean).join(' ') || null,
-          ville: address.city ?? null,
-          code_postal: address.postal_code ?? null,
-          pays: address.country ?? null,
-        })
-        .eq('id', existingClient.id)
-      if (error) console.error('[webhook-paiement] Erreur backfill adresse client:', JSON.stringify(error))
+      backfill.adresse = [address.line1, address.line2].filter(Boolean).join(' ') || null
+      backfill.ville = address.city ?? null
+      backfill.code_postal = address.postal_code ?? null
+      backfill.pays = address.country ?? null
+    }
+    // Prénom vide (client créé avant qu'un paiement express ne remonte de
+    // nom — cf correctif du même chantier) : on le complète dès qu'un vrai
+    // nom est disponible, jamais d'écrasement d'un prénom déjà renseigné.
+    if (nom && !existingClient.prenom) {
+      const parts = nom.trim().split(' ')
+      backfill.prenom = parts[0] || null
+      backfill.nom = parts.slice(1).join(' ') || parts[0] || null
+    }
+    if (Object.keys(backfill).length > 0) {
+      const { error } = await supabase.from('clients').update(backfill).eq('id', existingClient.id)
+      if (error) console.error('[webhook-paiement] Erreur backfill client:', JSON.stringify(error))
     }
     return existingClient.id
   }
