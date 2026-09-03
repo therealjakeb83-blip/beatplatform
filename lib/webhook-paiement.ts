@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { genererContratPdf } from '@/lib/contrat'
+import { genererContratPdfPourVente } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
 import { envoyerFondsEnAttente, confirmationCommande, alerteProblemeLivraison } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
@@ -408,11 +408,14 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     // Contrat PDF par article
     try {
       if (beat && licence) {
-        const pdfBytes = await genererContratPdf({
-          beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
-          beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
-          acheteur: { nom: acheteurNom, email: acheteurEmail },
-          licence: { nom: licence.nom },
+        const pdfBytes = await genererContratPdfPourVente(supabase, {
+          beatId: tLigne.beat_id,
+          licenceId: tLigne.licence_id,
+          beatmakerId: meta.beatmaker_id,
+          acheteurNom,
+          acheteurEmail,
+          acheteurAdresse: ctx.acheteurAdresse,
+          prixPaye: Number(tLigne.prix),
           splits: splitsSnapshot,
           dateVente: new Date(),
         })

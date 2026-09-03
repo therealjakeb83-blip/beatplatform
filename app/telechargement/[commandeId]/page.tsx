@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat } from '@/lib/livraison'
-import { genererContratPdf } from '@/lib/contrat'
+import { genererContratPdfPourVente } from '@/lib/contrat'
 import { notFound } from 'next/navigation'
 import TelechargerBouton from './_components/TelechargerBouton'
 import { NOM_PLATEFORME } from '@/lib/constantes'
@@ -25,7 +25,7 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, beatmaker_id, acheteur_email, acheteur_nom')
+    .select('id, beatmaker_id, acheteur_email, acheteur_nom, acheteur_adresse')
     .eq('id', commandeId)
     .single()
 
@@ -34,7 +34,7 @@ export default async function TelechargerPage({
 
   const { data: lignes, error: lignesError } = await supabase
     .from('commande_lignes')
-    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot, licence_modele')
+    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot, licence_modele, prix_paye')
     .eq('commande_id', commandeId)
 
   if (lignesError) console.error('[telechargement] Erreur query commande_lignes:', JSON.stringify(lignesError))
@@ -67,11 +67,14 @@ export default async function TelechargerPage({
           { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100 }
         ]
 
-        const pdfBytes = await genererContratPdf({
-          beat: { titre: beat.titre, bpm: beat.bpm, cle: beat.cle },
-          beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
-          acheteur: { nom: commande.acheteur_nom, email: commande.acheteur_email },
-          licence: { nom: licence.nom },
+        const pdfBytes = await genererContratPdfPourVente(supabase, {
+          beatId: ligne.beat_id,
+          licenceId: ligne.licence_id,
+          beatmakerId: commande.beatmaker_id,
+          acheteurNom: commande.acheteur_nom,
+          acheteurEmail: commande.acheteur_email,
+          acheteurAdresse: commande.acheteur_adresse,
+          prixPaye: Number(ligne.prix_paye),
           splits: splitsSnapshot,
           dateVente: new Date(),
         })

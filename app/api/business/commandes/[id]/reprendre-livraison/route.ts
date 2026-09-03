@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { stripe } from '@/lib/stripe'
-import { genererContratPdf } from '@/lib/contrat'
+import { genererContratPdfPourVente } from '@/lib/contrat'
 import { uploadPdfContrat } from '@/lib/livraison'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 
@@ -29,7 +29,7 @@ export async function POST(
 
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, created_at, acheteur_nom, acheteur_email, stripe_transfer_group, beatmaker_id, beatmakers(nom_artiste)')
+    .select('id, created_at, acheteur_nom, acheteur_email, acheteur_adresse, stripe_transfer_group, beatmaker_id, beatmakers(nom_artiste)')
     .eq('id', commandeId)
     .eq('beatmaker_id', user.id)
     .single()
@@ -45,26 +45,32 @@ export async function POST(
   // ── Contrats PDF manquants ──────────────────────────────────
   const { data: lignesManquantes } = await admin
     .from('commande_lignes')
-    .select('id, licence_nom, splits_snapshot, beats(titre, bpm, cle)')
+    .select('id, beat_id, licence_id, licence_nom, splits_snapshot, prix_paye, beats(titre)')
     .eq('commande_id', commandeId)
     .is('contrat_pdf_url', null)
 
   for (const ligne of (lignesManquantes ?? []) as unknown as {
     id: string
+    beat_id: string | null
+    licence_id: string | null
     licence_nom: string | null
     splits_snapshot: { nom_artiste: string; pourcentage: number }[] | null
-    beats: { titre: string; bpm: number | null; cle: string | null } | null
+    prix_paye: number
+    beats: { titre: string } | null
   }[]) {
-    if (!ligne.beats || !ligne.licence_nom) {
+    if (!ligne.beat_id || !ligne.licence_id) {
       echecs.push(`Contrat impossible à générer pour la ligne ${ligne.id} (données manquantes)`)
       continue
     }
     try {
-      const pdfBytes = await genererContratPdf({
-        beat: { titre: ligne.beats.titre, bpm: ligne.beats.bpm, cle: ligne.beats.cle },
-        beatmaker: { nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker' },
-        acheteur: { nom: commande.acheteur_nom, email: commande.acheteur_email },
-        licence: { nom: ligne.licence_nom },
+      const pdfBytes = await genererContratPdfPourVente(admin, {
+        beatId: ligne.beat_id,
+        licenceId: ligne.licence_id,
+        beatmakerId: commande.beatmaker_id,
+        acheteurNom: commande.acheteur_nom,
+        acheteurEmail: commande.acheteur_email,
+        acheteurAdresse: commande.acheteur_adresse,
+        prixPaye: Number(ligne.prix_paye),
         splits: ligne.splits_snapshot ?? [{ nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100 }],
         dateVente: new Date(commande.created_at),
       })
@@ -72,7 +78,7 @@ export async function POST(
       await admin.from('commande_lignes').update({ contrat_pdf_url: pdfUrl }).eq('id', ligne.id)
       contratsRegeneres++
     } catch (err) {
-      echecs.push(`Contrat PDF toujours en échec pour "${ligne.beats.titre}" : ${err instanceof Error ? err.message : 'erreur inconnue'}`)
+      echecs.push(`Contrat PDF toujours en échec pour "${ligne.beats?.titre ?? ligne.id}" : ${err instanceof Error ? err.message : 'erreur inconnue'}`)
     }
   }
 

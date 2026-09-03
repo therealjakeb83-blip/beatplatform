@@ -300,7 +300,7 @@ La conclusion ultérieure d'une autre licence portant sur l'Œuvre ne confère a
 En achetant cette Licence et en procédant à la validation de la commande ainsi qu'au paiement éventuellement applicable, le Licencié reconnaît avoir pris connaissance et accepté sans réserve l'ensemble des conditions énoncées dans le présent Contrat.
 Le paiement ou, lorsqu'aucun paiement n'est requis, la validation de la commande, accompagné de l'acceptation électronique des conditions applicables, matérialise l'acceptation de la présente Licence par le Licencié.
 
-Fait à {{lieu_concedant}}, en date du {{date_achat}}.`
+Fait{{lieu_concedant}}, en date du {{date_achat}}.`
 }
 
 // ============================================================
@@ -423,6 +423,6 @@ export function resoudreVariablesLicence(texte: string, d: DonneesLicenceContrat
     .replaceAll('{{performances_publiques}}', d.performancesAutorisees ? 'autorisées' : 'non autorisées')
     .replaceAll('{{credit_concedant}}', d.concedant.nom_artiste)
     .replaceAll('{{email_concedant}}', d.concedant.email_contact_public || '[email non renseigné]')
-    .replaceAll('{{lieu_concedant}}', d.concedant.ville || d.concedant.nom_artiste)
+    .replaceAll('{{lieu_concedant}}', d.concedant.ville ? ` à ${d.concedant.ville}` : '')
     .replaceAll('{{date_achat}}', d.dateAchat)
 }
