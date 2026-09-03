@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 type Licence = {
   id: string
@@ -86,6 +87,12 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
         <p className="text-sm text-gray-400 mt-1">
           Ces licences s&apos;appliquent à tous tes beats par défaut. Tu peux les activer ou désactiver individuellement.
         </p>
+        <Link
+          href="/dashboard/business/licences/textes"
+          className="inline-block mt-3 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+        >
+          Modifier le texte du contrat de licence →
+        </Link>
       </div>
 
       <div className="flex flex-col gap-3">
