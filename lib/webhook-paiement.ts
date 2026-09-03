@@ -19,6 +19,19 @@ import type Stripe from 'stripe'
 // connecté en Direct Charge), utilisé pour retrouver la bonne autorité de
 // remboursement plus tard (Phase 3).
 
+// Formate une adresse Stripe (Checkout Session ou billing_details d'un
+// PaymentMethod) en une seule ligne lisible, pour affichage direct dans un
+// contrat de licence (variable [ADRESSE DU LICENCIÉ]).
+function formaterAdresse(address: Stripe.Address | null | undefined): string | null {
+  if (!address) return null
+  const parts = [
+    [address.line1, address.line2].filter(Boolean).join(' '),
+    [address.postal_code, address.city].filter(Boolean).join(' '),
+    address.country,
+  ].filter(Boolean)
+  return parts.length ? parts.join(', ') : null
+}
+
 export async function resoudreClientParEmail(supabase: ReturnType<typeof createAdminClient>, email: string | null) {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
@@ -69,6 +82,7 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
     tentativeValeur: session.id,
     acheteurEmail: session.customer_details?.email?.toLowerCase().trim() ?? null,
     acheteurNom: session.customer_details?.name ?? null,
+    acheteurAdresse: formaterAdresse(session.customer_details?.address),
     totalCents: session.amount_total ?? 0,
     stripePaymentId: typeof session.payment_intent === 'string'
       ? session.payment_intent
@@ -94,12 +108,10 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
 // 2026-08-27 mais préexistant à Direct Charge (même trou côté destination
 // charge, jamais remarqué car les tests précédents utilisaient un compte
 // déjà connu).
-async function resoudreEmailAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<string | null> {
-  const direct = paymentIntent.receipt_email?.toLowerCase().trim()
-  if (direct) return direct
-
+async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; adresse: string | null }> {
   const paymentMethodId = typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method?.id
-  if (!paymentMethodId) return null
+  const emailDirect = paymentIntent.receipt_email?.toLowerCase().trim() ?? null
+  if (!paymentMethodId) return { email: emailDirect, adresse: null }
 
   try {
     const paymentMethod = await stripe.paymentMethods.retrieve(
@@ -107,10 +119,13 @@ async function resoudreEmailAchatExpress(paymentIntent: Stripe.PaymentIntent, st
       undefined,
       stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
     )
-    return paymentMethod.billing_details?.email?.toLowerCase().trim() ?? null
+    return {
+      email: emailDirect ?? paymentMethod.billing_details?.email?.toLowerCase().trim() ?? null,
+      adresse: formaterAdresse(paymentMethod.billing_details?.address),
+    }
   } catch (err) {
-    console.error('[webhook-paiement] Erreur récupération payment_method pour email:', err instanceof Error ? err.message : err)
-    return null
+    console.error('[webhook-paiement] Erreur récupération payment_method pour billing_details:', err instanceof Error ? err.message : err)
+    return { email: emailDirect, adresse: null }
   }
 }
 
@@ -118,7 +133,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
   const meta = paymentIntent.metadata
   if (!meta?.beatmaker_id) return
 
-  const acheteurEmail = await resoudreEmailAchatExpress(paymentIntent, stripeAccountId)
+  const { email: acheteurEmail, adresse: acheteurAdresse } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
 
   await finaliserCommandePayee({
     meta,
@@ -126,6 +141,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
     tentativeValeur: paymentIntent.id,
     acheteurEmail,
     acheteurNom: null,
+    acheteurAdresse,
     totalCents: paymentIntent.amount,
     stripePaymentId: paymentIntent.id,
     stripeSessionId: null,
@@ -139,6 +155,7 @@ type ContextePaiement = {
   tentativeValeur: string
   acheteurEmail: string | null
   acheteurNom: string | null
+  acheteurAdresse: string | null
   totalCents: number
   stripePaymentId: string | null
   stripeSessionId: string | null
@@ -232,6 +249,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     beatmaker_id: meta.beatmaker_id,
     acheteur_email: acheteurEmail,
     acheteur_nom: acheteurNom,
+    acheteur_adresse: ctx.acheteurAdresse,
     prix_paye: prixPayeTotal,
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,

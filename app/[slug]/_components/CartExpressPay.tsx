@@ -166,6 +166,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
           layout: { maxColumns: 2, maxRows: 1, overflow: 'auto' },
           paymentMethods: methodesVersOptions(besoinRestriction ? methodes : null),
           emailRequired: true,
+          billingAddressRequired: true,
         }}
         onReady={handleReady}
         onLoadError={() => setLoadError(true)}
