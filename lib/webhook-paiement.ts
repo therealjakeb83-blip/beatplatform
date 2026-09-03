@@ -44,28 +44,56 @@ export async function resoudreClientParEmail(supabase: ReturnType<typeof createA
 // Email normalisé en minuscule (comparaison ET stockage) — sinon la même
 // personne peut se retrouver dupliquée en 2 fiches clients selon la casse
 // tapée au checkout (bug découvert en testant Phase 5.9, 2026-07-16).
+// address n'est renseignée que par les flux d'achat de licence (voir
+// commentaire sur clients.adresse dans schema.sql : "demandée au premier
+// achat"). Sur un client déjà existant, on ne remplit que si le champ est
+// encore vide — jamais d'écrasement d'une adresse déjà connue.
 export async function resoudreOuCreerClient(
   supabase: ReturnType<typeof createAdminClient>,
   email: string | null,
   nom: string | null,
+  address?: Stripe.Address | null,
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
 
   const { data: existingClient } = await supabase
     .from('clients')
-    .select('id')
+    .select('id, adresse')
     .eq('email', emailNorm)
     .maybeSingle()
 
-  if (existingClient) return existingClient.id
+  if (existingClient) {
+    if (address && !existingClient.adresse) {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          adresse: [address.line1, address.line2].filter(Boolean).join(' ') || null,
+          ville: address.city ?? null,
+          code_postal: address.postal_code ?? null,
+          pays: address.country ?? null,
+        })
+        .eq('id', existingClient.id)
+      if (error) console.error('[webhook-paiement] Erreur backfill adresse client:', JSON.stringify(error))
+    }
+    return existingClient.id
+  }
 
   const parts = (nom ?? '').trim().split(' ')
   const prenom = parts[0] || null
   const nomFamille = parts.slice(1).join(' ') || parts[0] || emailNorm.split('@')[0]
   const { data: newClient, error: clientError } = await supabase
     .from('clients')
-    .insert({ id: crypto.randomUUID(), email: emailNorm, nom: nomFamille, prenom })
+    .insert({
+      id: crypto.randomUUID(),
+      email: emailNorm,
+      nom: nomFamille,
+      prenom,
+      adresse: address ? ([address.line1, address.line2].filter(Boolean).join(' ') || null) : null,
+      ville: address?.city ?? null,
+      code_postal: address?.postal_code ?? null,
+      pays: address?.country ?? null,
+    })
     .select('id')
     .single()
   if (clientError) console.error('[webhook-paiement] Erreur insert client invité:', JSON.stringify(clientError))
@@ -83,6 +111,7 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
     acheteurEmail: session.customer_details?.email?.toLowerCase().trim() ?? null,
     acheteurNom: session.customer_details?.name ?? null,
     acheteurAdresse: formaterAdresse(session.customer_details?.address),
+    acheteurAdresseRaw: session.customer_details?.address ?? null,
     totalCents: session.amount_total ?? 0,
     stripePaymentId: typeof session.payment_intent === 'string'
       ? session.payment_intent
@@ -108,10 +137,10 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
 // 2026-08-27 mais préexistant à Direct Charge (même trou côté destination
 // charge, jamais remarqué car les tests précédents utilisaient un compte
 // déjà connu).
-async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; nom: string | null; adresse: string | null }> {
+async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; nom: string | null; adresse: string | null; adresseRaw: Stripe.Address | null }> {
   const paymentMethodId = typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method?.id
   const emailDirect = paymentIntent.receipt_email?.toLowerCase().trim() ?? null
-  if (!paymentMethodId) return { email: emailDirect, nom: null, adresse: null }
+  if (!paymentMethodId) return { email: emailDirect, nom: null, adresse: null, adresseRaw: null }
 
   try {
     const paymentMethod = await stripe.paymentMethods.retrieve(
@@ -123,10 +152,11 @@ async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, 
       email: emailDirect ?? paymentMethod.billing_details?.email?.toLowerCase().trim() ?? null,
       nom: paymentMethod.billing_details?.name ?? null,
       adresse: formaterAdresse(paymentMethod.billing_details?.address),
+      adresseRaw: paymentMethod.billing_details?.address ?? null,
     }
   } catch (err) {
     console.error('[webhook-paiement] Erreur récupération payment_method pour billing_details:', err instanceof Error ? err.message : err)
-    return { email: emailDirect, nom: null, adresse: null }
+    return { email: emailDirect, nom: null, adresse: null, adresseRaw: null }
   }
 }
 
@@ -134,7 +164,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
   const meta = paymentIntent.metadata
   if (!meta?.beatmaker_id) return
 
-  const { email: acheteurEmail, nom: acheteurNom, adresse: acheteurAdresse } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
+  const { email: acheteurEmail, nom: acheteurNom, adresse: acheteurAdresse, adresseRaw: acheteurAdresseRaw } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
 
   await finaliserCommandePayee({
     meta,
@@ -143,6 +173,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
     acheteurEmail,
     acheteurNom,
     acheteurAdresse,
+    acheteurAdresseRaw,
     totalCents: paymentIntent.amount,
     stripePaymentId: paymentIntent.id,
     stripeSessionId: null,
@@ -157,6 +188,10 @@ type ContextePaiement = {
   acheteurEmail: string | null
   acheteurNom: string | null
   acheteurAdresse: string | null
+  // Objet Stripe brut (avant formatage) — sert à préremplir les champs
+  // séparés clients.adresse/ville/code_postal/pays, jamais la chaîne déjà
+  // formatée pour l'affichage/le contrat.
+  acheteurAdresseRaw?: Stripe.Address | null
   totalCents: number
   stripePaymentId: string | null
   stripeSessionId: string | null
@@ -209,7 +244,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     return
   }
 
-  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom)
+  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, ctx.acheteurAdresseRaw)
 
   const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
   const licenceIds = [...new Set(tentativeLignes.map(l => l.licence_id as string))]
