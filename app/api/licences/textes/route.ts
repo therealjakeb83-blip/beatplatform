@@ -1,11 +1,11 @@
 import { createClient } from '@/utils/supabase/server'
 import type { TypeLicenceTexte } from '@/lib/licences-textes'
 
-// Types déjà rédigés — 'illimite' et 'exclusive' seront ajoutés dans une
-// étape séparée (voir lib/licences-textes.ts). Refuser explicitement
-// plutôt que de laisser sauvegarder un texte pour une catégorie qui
-// n'existe pas encore côté génération de contrat.
-const TYPES_DISPONIBLES: TypeLicenceTexte[] = ['standard']
+// Types déjà rédigés — 'exclusive' sera ajouté dans une étape séparée
+// (voir lib/licences-textes.ts). Refuser explicitement plutôt que de
+// laisser sauvegarder un texte pour une catégorie qui n'existe pas encore
+// côté génération de contrat.
+const TYPES_DISPONIBLES: TypeLicenceTexte[] = ['standard', 'illimite']
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()

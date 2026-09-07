@@ -4,6 +4,7 @@ import type { createAdminClient } from '@/utils/supabase/admin'
 import {
   modeleVersTypeLicenceTexte,
   texteTemplateStandard,
+  texteTemplateIllimite,
   resoudreVariablesLicence,
   blocRolePlateforme,
   type InfosLegalesConcedant,
@@ -345,7 +346,7 @@ function composerFichiersLivres(licence: ContratLicenceInput['licence']): string
   return fichiers.join(', ') || '1 fichier MP3'
 }
 
-async function genererContratLicenceStandardPdf(input: ContratLicenceInput): Promise<Uint8Array> {
+async function genererContratLicenceRichePdf(input: ContratLicenceInput, typeTexte: 'standard' | 'illimite'): Promise<Uint8Array> {
   const collaborateurs = input.splits
     .filter(s => s.nom_artiste !== input.beatmaker.nom_artiste)
     .map(s => ({ nom: s.nom_artiste }))
@@ -369,7 +370,7 @@ async function genererContratLicenceStandardPdf(input: ContratLicenceInput): Pro
     dateAchat: input.dateVente.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' }),
   }
 
-  const texteBase = input.texteEditable ?? texteTemplateStandard()
+  const texteBase = input.texteEditable ?? (typeTexte === 'illimite' ? texteTemplateIllimite() : texteTemplateStandard())
   const texteResolu = resoudreVariablesLicence(texteBase, donnees)
   const texteFinal = `${texteResolu}\n\n${MARQUEUR_SAUT_DE_PAGE}\n\n${blocRolePlateforme()}`
 
@@ -386,12 +387,13 @@ async function genererContratLicenceStandardPdf(input: ContratLicenceInput): Pro
 }
 
 // ============================================================
-// Point d'entrée public — bascule entre le rendu riche (standard) et le
-// rendu simple existant (illimité/exclusive, textes pas encore rédigés).
+// Point d'entrée public — bascule entre le rendu riche (standard,
+// illimité) et le rendu simple existant (exclusive, texte pas encore
+// rédigé par Jake).
 // ============================================================
 export async function genererContratPdf(input: ContratLicenceInput): Promise<Uint8Array> {
   const typeTexte = modeleVersTypeLicenceTexte(input.licence.modele)
-  if (typeTexte !== 'standard') {
+  if (typeTexte === 'exclusive') {
     return genererContratPdfSimple({
       beat: input.beat,
       beatmaker: { nom_artiste: input.beatmaker.nom_artiste },
@@ -401,7 +403,7 @@ export async function genererContratPdf(input: ContratLicenceInput): Promise<Uin
       dateVente: input.dateVente,
     })
   }
-  return genererContratLicenceStandardPdf(input)
+  return genererContratLicenceRichePdf(input, typeTexte)
 }
 
 // ============================================================

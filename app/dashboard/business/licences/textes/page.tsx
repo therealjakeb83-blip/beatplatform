@@ -1,20 +1,36 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { texteTemplateStandard } from '@/lib/licences-textes'
+import { texteTemplateStandard, texteTemplateIllimite, type TypeLicenceTexte } from '@/lib/licences-textes'
 import LicenceTexteForm from './LicenceTexteForm'
+
+const CATEGORIES: { type: TypeLicenceTexte; titre: string; template: () => string }[] = [
+  { type: 'standard', titre: 'MP3 / WAV / STEMS', template: texteTemplateStandard },
+  { type: 'illimite', titre: 'Illimité', template: texteTemplateIllimite },
+]
 
 export default async function LicenceTextesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const { data: texteExistant } = await supabase
+  const { data: textesExistants } = await supabase
     .from('licences_textes')
-    .select('contenu, version, updated_at')
+    .select('type_licence, contenu, version, updated_at')
     .eq('beatmaker_id', user.id)
-    .eq('type_licence', 'standard')
-    .maybeSingle()
+    .in('type_licence', CATEGORIES.map(c => c.type))
+
+  const categories = CATEGORIES.map(c => {
+    const existant = textesExistants?.find(t => t.type_licence === c.type)
+    return {
+      type: c.type,
+      titre: c.titre,
+      contenuActuel: existant?.contenu ?? null,
+      templateParDefaut: c.template(),
+      version: existant?.version ?? null,
+      updatedLe: existant?.updated_at ?? null,
+    }
+  })
 
   return (
     <main className="min-h-screen bg-gray-950 text-white px-6 py-10">
@@ -25,21 +41,16 @@ export default async function LicenceTextesPage() {
         >
           ← Licences
         </Link>
-        <h1 className="text-2xl font-bold mb-2">Texte de la licence MP3 / WAV / STEMS</h1>
+        <h1 className="text-2xl font-bold mb-2">Texte des contrats de licence</h1>
         <p className="text-gray-400 text-sm mb-8">
-          Ce même texte s&apos;applique à tes 3 premiers niveaux de licence (MP3, WAV, STEMS) — seuls le titre, les
-          fichiers livrés et les limites d&apos;exploitation changent automatiquement selon la licence achetée. Tu
-          peux utiliser le modèle par défaut tel quel ou le modifier librement. Une section &quot;Rôle de la
-          plateforme&quot;, non éditable, est toujours ajoutée à la fin du contrat généré. Ce n&apos;est pas un texte
-          juridique définitif — fais-le relire par un professionnel avant un vrai lancement commercial. Les licences
-          Illimité et Exclusive seront ajoutées séparément.
+          MP3 / WAV / STEMS partagent le même texte — seuls le titre, les fichiers livrés et les limites
+          d&apos;exploitation changent automatiquement selon la licence achetée. Illimité a son propre texte
+          indépendant. Tu peux utiliser le modèle par défaut tel quel ou le modifier librement. Une section
+          &quot;Rôle de la plateforme&quot;, non éditable, est toujours ajoutée à la fin du contrat généré. Ce
+          n&apos;est pas un texte juridique définitif — fais-le relire par un professionnel avant un vrai lancement
+          commercial. La licence Exclusive sera ajoutée séparément.
         </p>
-        <LicenceTexteForm
-          contenuInitial={texteExistant?.contenu ?? texteTemplateStandard()}
-          templateParDefaut={texteTemplateStandard()}
-          version={texteExistant?.version ?? null}
-          updatedLe={texteExistant?.updated_at ?? null}
-        />
+        <LicenceTexteForm categories={categories} />
       </div>
     </main>
   )

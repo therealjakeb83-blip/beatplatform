@@ -304,6 +304,299 @@ Fait{{lieu_concedant}}, en date du {{date_achat}}.`
 }
 
 // ============================================================
+// Modèle par défaut — licence illimitée
+// ============================================================
+// Basé sur Template_licence_ILLIMITEE_SaaS_FINAL.docx (rédigé par Jake).
+// Texte séparé et indépendant du modèle standard — pas un même gabarit
+// avec des blocs conditionnels : les articles qui diffèrent (4.4, le
+// nouvel article 4.6, 9.2, 7.d/7.e) sont réécrits en profondeur, pas de
+// simples variantes ponctuelles (décision explicite de Jake). Tout le
+// contenu qui diffère du standard est du texte fixe — aucune nouvelle
+// variable, aucun nouveau champ en base par rapport au modèle standard.
+export function texteTemplateIllimite(): string {
+  return `CONTRAT DE LICENCE NON-EXCLUSIVE – {{type_licence}}
+
+Le présent contrat est conclu entre :
+
+{{identite_concedant}}, ci-après dénommé « Le Concédant ».
+
+Et :
+
+{{identite_licencie}}, ci-après dénommé « Le Licencié ».
+{{bloc_collaborateurs}}
+1. PRÉAMBULE
+
+La présente Licence régit, avec les Conditions Générales de Vente de la boutique {{boutique}}, les conditions applicables à la concession non exclusive de droits sur l'œuvre de musique instrumentale du Concédant, ci-après dénommée « l'Œuvre », en contrepartie du versement d'un prix forfaitaire par le Licencié.
+
+Les Parties déclarent et garantissent avoir préalablement :
+• pris connaissance et accepté les Conditions Générales de Vente applicables sur {{boutique}} ;
+• pris connaissance et accepté les stipulations spécifiques de la présente Licence.
+
+Le Licencié reconnaît que l'Œuvre et son titre sont protégés par le droit d'auteur.
+Tous les droits qui ne sont pas expressément octroyés au Licencié par la présente Licence sont réservés par le Concédant.
+
+2. OBJET DU CONTRAT
+
+Le présent contrat a pour objet l'octroi d'une licence non-exclusive d'exploitation d'une composition musicale proposée par le Concédant, identifiée sous le nom {{titre_beat}}, en contrepartie du montant effectivement payé par le Licencié lors de la commande, soit {{prix_paye}}, après application éventuelle de toute remise, promotion, réduction, avoir, avantage ou offre commerciale applicable au moment de l'achat.
+
+Ce contrat est délivré uniquement pour l'utilisation de l'Œuvre par le Licencié conformément à l'ensemble des conditions énoncées dans le présent document.
+
+La présente Licence autorise le Licencié à incorporer l'Œuvre dans une seule nouvelle création musicale, ci-après dénommée « Nouvelle Œuvre ».
+
+3. LIVRAISON
+
+Dans le cadre de la présente Licence, le Licencié recevra les fichiers suivants : {{fichiers_livres}}.
+
+Les fichiers seront mis à disposition par courrier électronique envoyé automatiquement après validation de la commande et, le cas échéant, réception par le Concédant de l'intégralité du paiement dû par le Licencié.
+
+La date de validation du paiement ou, dans le cas d'une Licence accordée gratuitement, la date de validation de la commande marque également la date de prise d'effet de la présente Licence.
+
+Le Licencié est autorisé à transmettre les fichiers de l'Œuvre uniquement aux personnes participant directement à la création de la Nouvelle Œuvre, notamment un ingénieur du son, musicien, réalisateur artistique, studio d'enregistrement ou autre prestataire technique.
+Ces personnes ne bénéficient d'aucun droit personnel d'exploitation sur l'Œuvre et ne peuvent utiliser les fichiers dans un autre projet.
+Le Licencié demeure responsable du respect de la présente Licence par toute personne à laquelle il transmet les fichiers.
+
+4. DROITS ACCORDÉS
+
+4.1. Nature de la Licence
+
+La présente Licence est concédée à titre NON-EXCLUSIF, personnel et non-transférable.
+Les droits accordés au Licencié sur l'Œuvre sont d'interprétation stricte. Tous les droits qui ne sont pas expressément mentionnés dans la présente Licence demeurent réservés au Concédant.
+Le caractère non-exclusif de la présente Licence signifie notamment que le Concédant demeure libre de vendre ou concéder des licences portant sur la même Œuvre à d'autres personnes.
+
+4.2. Création de la Nouvelle Œuvre
+
+Le Licencié dispose du droit non-exclusif d'utiliser tout ou partie de l'Œuvre afin de créer une seule Nouvelle Œuvre.
+Dans ce cadre, le Licencié est notamment autorisé à :
+• ajouter des paroles et des prestations vocales ;
+• ajouter ses propres éléments musicaux ;
+• modifier la structure et l'arrangement de l'Œuvre ;
+• modifier sa durée ;
+• modifier son tempo ;
+• modifier sa tonalité ou sa hauteur ;
+• couper, réorganiser ou répéter certaines parties de l'Œuvre dans le seul but de créer la Nouvelle Œuvre.
+Ces modifications ne confèrent au Licencié aucun droit de propriété sur l'Œuvre instrumentale originale.
+
+4.3. Exploitation de la Nouvelle Œuvre
+
+Sous réserve des droits du Concédant sur l'Œuvre instrumentale préexistante, le Licencié dispose du droit exclusif d'exploiter la Nouvelle Œuvre qu'il a créée dans les limites prévues par la présente Licence.
+Cette exclusivité porte uniquement sur la Nouvelle Œuvre propre au Licencié et ne confère aucun droit exclusif sur l'Œuvre instrumentale elle-même.
+Le Concédant demeure notamment libre d'autoriser d'autres licenciés à créer et exploiter leurs propres œuvres à partir de la même Œuvre instrumentale.
+Le Licencié est autorisé à distribuer et exploiter la Nouvelle Œuvre :
+• en tant que single ;
+• dans un EP ;
+• dans un album ;
+• dans une compilation ;
+• sur les plateformes de streaming ;
+• sur les plateformes de téléchargement numérique ;
+• sur supports physiques ;
+• dans le cadre de performances publiques ;
+• dans les limites audiovisuelles prévues par la présente Licence.
+
+4.4. Limites d'exploitation
+
+Dans le cadre de la Licence Illimitée, le Licencié est autorisé à exploiter la Nouvelle Œuvre selon les conditions suivantes :
+• nombre illimité d'écoutes sur les plateformes de streaming ;
+• nombre illimité de vues vidéo monétisées et non-monétisées, sous réserve des limitations relatives au nombre de clips musicaux et aux usages de synchronisation prévues à l'article 4.6 ;
+• diffusion sans limitation quantitative sur les stations de radio ou de télévision ;
+• performances publiques et concerts : {{performances_publiques}}.
+
+La Nouvelle Œuvre peut également être utilisée dans des contenus promotionnels directement destinés à promouvoir l'artiste ou la Nouvelle Œuvre, notamment des extraits publiés sur les réseaux sociaux, sous réserve des dispositions audiovisuelles prévues à l'article 4.6.
+
+4.5. Revenus générés par la Nouvelle Œuvre
+
+Sous réserve du respect des termes de la présente Licence, le Licencié conserve les sommes qui lui sont versées au titre de l'exploitation commerciale et de la distribution de la Nouvelle Œuvre.
+Aucune redevance supplémentaire calculée sur les revenus de streaming, de vente ou de distribution de la Nouvelle Œuvre n'est due au Concédant au titre de la présente Licence.
+Cette stipulation est sans préjudice des droits d'auteur, droits voisins, droits mécaniques ou autres droits susceptibles d'être dus au Concédant conformément aux accords conclus entre les Parties et aux dispositions applicables.
+
+4.6. Clip musical, synchronisation et illustration sonore
+
+a. Clip musical de la Nouvelle Œuvre
+Lorsque la présente Licence est utilisée afin de créer une Nouvelle Œuvre, le Licencié est autorisé à réaliser un seul clip musical officiel associé à cette Nouvelle Œuvre.
+Le nombre de vues, monétisées ou non-monétisées, générées par ce clip musical n'est soumis à aucune limitation quantitative.
+La présente Licence ne couvre aucun clip musical supplémentaire associé à la Nouvelle Œuvre.
+
+b. Cinéma, films et documentaires
+Le Licencié bénéficie d'une seule autorisation de synchronisation de l'Œuvre par Licence achetée pour un seul projet cinématographique ou audiovisuel déterminé, notamment un film, un court-métrage, un long-métrage ou un documentaire.
+L'utilisation de l'Œuvre dans un autre film, court-métrage, long-métrage, documentaire ou projet audiovisuel distinct nécessite l'acquisition d'une nouvelle Licence Illimitée.
+
+c. Publicité
+Le Licencié bénéficie d'une seule autorisation de synchronisation de l'Œuvre par Licence achetée pour un seul contenu publicitaire déterminé.
+Le nombre de diffusions, impressions ou vues de ce même contenu publicitaire n'est soumis à aucune limitation quantitative. En revanche, l'utilisation de l'Œuvre dans un autre contenu publicitaire distinct nécessite l'acquisition d'une nouvelle Licence Illimitée.
+
+d. Vidéos en ligne, podcasts et illustration sonore
+Le Licencié est autorisé à utiliser l'Œuvre instrumentale, sans création obligatoire d'une Nouvelle Œuvre, comme musique de fond ou illustration sonore dans un nombre illimité de vidéos YouTube, podcasts audio et contenus éditoriaux numériques similaires qu'il produit, publie ou exploite pour son propre compte.
+Cette autorisation est limitée à un usage de l'Œuvre en fond sonore ou en illustration sonore. Elle ne permet pas de republier, distribuer, vendre ou mettre à disposition l'Œuvre comme contenu musical autonome, ni de transférer ou sous-licencier ce droit à un tiers.
+Les utilisations relevant du cinéma, des films, des documentaires ou de la publicité demeurent soumises aux limitations spécifiques prévues aux paragraphes b et c du présent article.
+
+5. GARANTIES
+
+5.1. Garanties du Concédant
+
+Le Concédant garantit que :
+a. Il est titulaire ou, lorsqu'un ou plusieurs collaborateurs ont participé à la création de l'Œuvre, co-titulaire des droits patrimoniaux concernés, et dispose dans tous les cas des droits, autorisations, accords ou mandats nécessaires pour accorder la présente Licence au Licencié.
+b. L'Œuvre est originale et ne contient aucun sample, extrait sonore ou élément soumis à des droits de tiers nécessitant une licence supplémentaire.
+c. L'Œuvre ne contrevient à aucun droit de propriété intellectuelle et ne fait l'objet d'aucune réclamation ou litige en cours.
+d. L'Œuvre est fournie « en l'état », sans garantie de compatibilité avec un système de distribution spécifique ni de performance commerciale sur les plateformes de streaming.
+e. En cas de réclamation d'un tiers sur l'Œuvre, le Concédant s'engage à prendre en charge les frais de défense, à condition que le Licencié ait respecté toutes les clauses du présent contrat, et exclusivement si cette réclamation porte sur la composition instrumentale.
+
+5.2. Exclusions de garantie
+
+Le Concédant exclut toute garantie implicite et ne pourra être tenu responsable en cas de :
+a. incompatibilité technique de l'Œuvre avec certains logiciels, systèmes ou plateformes de distribution ;
+b. dommages indirects ou pertes financières résultant de l'exploitation de l'Œuvre par le Licencié ;
+c. réclamations liées à une mauvaise utilisation de l'Œuvre par le Licencié, notamment lorsque les restrictions prévues par le présent contrat ne sont pas respectées.
+
+5.3. Garanties du Licencié
+
+a. Le Licencié garantit que les éléments ajoutés par lui à la Nouvelle Œuvre ainsi que l'exploitation qu'il en fait ne sont pas illicites et ne portent pas atteinte aux droits de propriété intellectuelle, au droit à l'image, au droit à la dignité ou à tout autre droit du Concédant ou de tiers.
+b. Le Licencié reconnaît et accepte que l'Œuvre soit concédée à titre NON-EXCLUSIF et puisse ainsi être utilisée et exploitée commercialement par un ou plusieurs autres licenciés, simultanément ou non.
+c. Le Licencié garantit le Concédant contre toute action, plainte, réclamation, contestation, revendication, litige ou demande d'indemnisation résultant d'une violation de la présente Licence imputable au Licencié ou d'un élément ajouté par celui-ci à la Nouvelle Œuvre.
+Les condamnations, dommages et intérêts, frais de justice et frais raisonnables de défense directement liés à une telle violation pourront être mis à la charge du Licencié dans les conditions prévues par la loi.
+
+6. PROPRIÉTÉ, DROITS D'AUTEUR ET ÉDITION
+
+Sauf accord écrit et signé contraire du Concédant, la répartition de base des droits d'auteur relatifs à la composition de la Nouvelle Œuvre est fixée comme suit :
+
+50 % pour la partie représentée par le Concédant, comprenant collectivement le Concédant, ses éventuels co-compositeurs ou collaborateurs et, le cas échéant, le ou les éditeurs représentant leurs intérêts ;
+50 % pour la partie représentée par le Licencié, comprenant collectivement le Licencié, ses éventuels auteurs, co-auteurs, artistes en featuring ou autres contributeurs à la composition et, le cas échéant, le ou les éditeurs représentant leurs intérêts.
+
+La répartition interne entre les personnes composant chacune de ces deux parties relève de leurs accords respectifs et ne peut en aucun cas avoir pour effet de diminuer la quote-part globale de 50 % revenant à l'autre partie.
+La répartition globale de 50 % / 50 % constitue la répartition contractuelle de référence et ne peut être modifiée au détriment de la part du Concédant sans l'accord préalable, écrit et signé de celui-ci.
+Tout éditeur représentant le Licencié, ses éventuels co-auteurs ou artistes en featuring ne bénéficie d'aucun droit éditorial sur la quote-part revenant au Concédant, sauf accord préalable écrit et signé du Concédant.
+De la même manière, l'existence d'un éditeur représentant le Licencié ne pourra en aucun cas avoir pour effet de désigner cet éditeur comme éditeur du Concédant.
+Lorsque le Concédant ne dispose pas d'un éditeur tiers pour sa propre quote-part éditoriale, celle-ci demeure sous son contrôle. Il pourra notamment être déclaré en qualité d'éditeur à compte d'auteur (EACA) auprès de la SACEM ou sous toute forme équivalente reconnue par une autre société de gestion collective de droits d'auteur.
+Tout dépôt ou toute déclaration de la Nouvelle Œuvre auprès d'une société de perception et de répartition des droits devra faire l'objet d'une négociation directe entre les Parties et d'un accord écrit conformément aux dispositions du présent Contrat.
+
+7. RESTRICTIONS ET INTERDICTIONS
+
+a. Sociétés de gestion collective
+Il est interdit d'enregistrer ou de faire enregistrer l'Œuvre et/ou la Nouvelle Œuvre auprès d'une société de gestion collective ou organisme équivalent, notamment la SACEM, BMI, ASCAP, GEMA, SIAE, PRS for Music, SOCAN, ou toute autre société exerçant une fonction comparable dans quelque territoire que ce soit, sans l'accord préalable écrit et signé du Concédant.
+Toute déclaration autorisée devra impérativement respecter la répartition des droits prévue à l'article 6 ou toute répartition différente expressément acceptée par écrit et signée par le Concédant.
+Toute déclaration effectuée en violation du présent article constitue un manquement contractuel susceptible d'entraîner l'application des mesures prévues à l'article 9.
+
+b. Content ID et systèmes d'identification automatique
+Il est strictement interdit d'enregistrer l'Œuvre et/ou la Nouvelle Œuvre dans un système de reconnaissance automatique ou de Content ID, notamment YouTube Content ID, ou auprès d'un service permettant de revendiquer automatiquement les contenus de tiers utilisant tout ou partie de l'Œuvre.
+Cette interdiction a notamment pour objectif d'éviter qu'un Licencié puisse générer des réclamations automatiques contre le Concédant ou contre d'autres artistes bénéficiant légitimement d'une licence non-exclusive portant sur la même Œuvre.
+Lorsque le distributeur, label, agrégateur ou prestataire utilisé par le Licencié propose automatiquement une telle fonctionnalité, il appartient au Licencié de la désactiver.
+Le Licencié est responsable des démarches réalisées par les prestataires qu'il mandate pour distribuer ou exploiter la Nouvelle Œuvre.
+En cas d'inscription accidentelle dans un système de Content ID, le Licencié devra entreprendre les démarches nécessaires afin de retirer la Nouvelle Œuvre du système dans les plus brefs délais après en avoir eu connaissance ou après notification du Concédant.
+
+c. Revente et redistribution de l'Œuvre
+Le Licencié ne peut :
+• vendre l'Œuvre instrumentale seule ;
+• redistribuer l'Œuvre sous la forme dans laquelle elle lui a été fournie ;
+• mettre les fichiers de l'Œuvre à disposition du public ;
+• revendre la présente Licence ;
+• sous-licencier l'Œuvre à un tiers ;
+• permettre à un tiers d'utiliser l'Œuvre pour créer une œuvre différente de la Nouvelle Œuvre autorisée par la présente Licence.
+La transmission des fichiers aux personnes participant directement à la création technique ou artistique de la Nouvelle Œuvre demeure toutefois autorisée conformément à l'article 3.
+
+d. Utilisation instrumentale
+Sauf dans les cas d'illustration sonore ou de synchronisation expressément autorisés par l'article 4.6, il est interdit d'exploiter commercialement l'Œuvre seule comme contenu musical autonome, notamment en la republiant ou en la distribuant comme instrumentale ou beat.
+
+e. Illustration sonore et synchronisation
+L'utilisation de l'Œuvre seule comme fond sonore, illustration musicale ou élément synchronisé est autorisée exclusivement dans les cas et limites expressément prévus à l'article 4.6.
+Tout usage de synchronisation ou d'illustration sonore non expressément autorisé par l'article 4.6 demeure interdit.
+Les droits accordés au titre de l'article 4.6 demeurent personnels au Licencié et ne peuvent être transférés, revendus ou sous-licenciés à un tiers.
+
+8. DROIT MORAL
+
+a. Droit à la paternité de l'Œuvre
+Le Licencié s'engage à identifier le Concédant comme compositeur et/ou producteur de l'Œuvre au moyen du crédit « Produced by {{credit_concedant}} » ou de toute mention équivalente, dès lors que celle-ci permet d'identifier explicitement le rôle du Concédant et, le cas échéant, de ses éventuels collaborateurs en qualité de compositeur(s), co-compositeur(s), producteur(s) ou co-producteur(s) de l'Œuvre.
+Ce crédit ou toute mention équivalente devra être mentionné, lorsque le support concerné permet techniquement son affichage, sur les plateformes et supports utilisés pour l'exploitation de la Nouvelle Œuvre, notamment les métadonnées des plateformes de streaming, descriptions de vidéos, crédits d'album, supports physiques et autres espaces destinés à l'identification des contributeurs.
+En cas d'oubli, d'erreur ou d'absence de crédit, le Licencié devra régulariser la situation dans le délai qui lui sera communiqué par le Concédant dans la notification du manquement.
+Le non-respect de cette obligation après expiration du délai de régularisation constitue un manquement contractuel susceptible d'entraîner l'application des mesures prévues à l'article 9.
+
+b. Droit de retrait
+Le Concédant reconnaît et accepte que l'exercice de son droit de retrait sur l'Œuvre soit subordonné à l'indemnisation de l'intégralité du préjudice résultant pour le Licencié.
+Dans ce cas :
+• le Licencié pourra prétendre à une indemnisation correspondant aux investissements réalisés pour l'exploitation de l'Œuvre, notamment les coûts de promotion et de distribution ;
+• en cas de désaccord sur l'indemnisation, une expertise judiciaire pourra être sollicitée afin d'évaluer le préjudice ;
+• le retrait ne pourra être effectif qu'après indemnisation, sauf accord amiable entre les Parties.
+
+9. RESPONSABILITÉS, MANQUEMENTS ET SANCTIONS
+
+Le Licencié s'engage à respecter strictement et exclusivement l'ensemble des obligations légales et contractuelles liées au présent Contrat pour toute utilisation de l'Œuvre.
+
+9.1. Manquements susceptibles de régularisation
+
+Lorsqu'un manquement au présent Contrat est susceptible d'être corrigé, notamment en cas :
+• d'absence ou d'erreur concernant le crédit du Concédant ;
+• de déclaration non autorisée ou incorrecte auprès d'une société de gestion collective ;
+• d'inscription non autorisée dans un système de Content ID ;
+• ou de tout autre manquement pouvant raisonnablement être corrigé,
+le Concédant pourra notifier le Licencié par écrit en indiquant la nature du manquement et le délai accordé pour le régulariser.
+Ce délai sera déterminé par le Concédant en fonction de la nature du manquement et des démarches nécessaires à sa correction.
+Si le Licencié régularise intégralement la situation dans le délai indiqué, le Concédant pourra maintenir la Licence en vigueur.
+À défaut de régularisation dans le délai imparti, le Concédant pourra suspendre ou résilier la Licence ainsi que les droits d'exploitation qui en découlent.
+Le Concédant pourra alors entreprendre les démarches nécessaires afin de faire suspendre ou retirer l'exploitation de la Nouvelle Œuvre, notamment au moyen d'une réclamation fondée sur les droits qu'il détient sur l'Œuvre.
+
+9.2. Usages audiovisuels soumis à limitation spécifique
+
+Les limitations relatives au clip musical ainsi qu'aux utilisations de l'Œuvre dans le cinéma, les films, les documentaires et la publicité sont régies spécifiquement par l'article 4.6.
+Il appartient au Licencié de s'assurer lui-même que chaque utilisation de l'Œuvre demeure couverte par la Licence acquise. Toute utilisation supplémentaire excédant le nombre d'usages expressément autorisés par l'article 4.6 nécessite, lorsqu'il y est prévu, l'acquisition d'une nouvelle Licence Illimitée.
+
+9.3. Autres sanctions
+
+En cas de non-respect des termes du présent Contrat, le Licencié s'expose également, lorsque les conditions légales sont réunies, aux sanctions suivantes :
+• révocation de la licence, avec interdiction d'utiliser l'Œuvre ;
+• action en justice pour contrefaçon, conformément aux articles L.335-2 et L.335-3 du Code de la propriété intellectuelle, pouvant entraîner jusqu'à 3 ans d'emprisonnement et jusqu'à 300 000 € d'amende ;
+• obligation de verser des dommages et intérêts au Concédant ;
+• suppression du contenu concerné des plateformes numériques.
+
+10. DROIT APPLICABLE ET RÉSOLUTION DES LITIGES
+
+En cas de litige, les Parties tenteront d'abord de trouver une solution à l'amiable.
+Toute demande de médiation ou d'information devra être adressée à l'adresse électronique suivante : {{email_concedant}}.
+À défaut d'accord, toute action judiciaire sera portée devant le Tribunal judiciaire de Paris et soumise exclusivement à la législation française.
+
+11. TERRITOIRE ET DURÉE
+
+La présente Licence est concédée pour le monde entier pour une durée de 10 ans à compter de sa date de prise d'effet.
+À l'expiration de cette période, le Licencié devra obtenir une nouvelle autorisation ou renouveler sa licence afin de poursuivre l'exploitation de la Nouvelle Œuvre.
+L'expiration de la Licence ne confère aucun droit de propriété supplémentaire au Licencié sur l'Œuvre instrumentale.
+
+12. CONFIDENTIALITÉ
+
+Les termes et conditions de la présente Licence sont confidentiels et ne peuvent être divulgués à des tiers sans l'accord écrit du Concédant, sauf lorsque cette communication est nécessaire :
+• à l'exécution ou à la distribution de la Nouvelle Œuvre ;
+• à un avocat, conseil juridique, comptable, manager ou représentant professionnel du Licencié ;
+• à un label, distributeur ou partenaire professionnel ayant besoin de connaître l'existence ou les conditions de la Licence ;
+• à une société de gestion collective dans le cadre d'une démarche autorisée par le Concédant ;
+• en application d'une obligation légale ou d'une demande d'une autorité compétente.
+Les personnes auxquelles la Licence est communiquée ne bénéficient d'aucun droit supplémentaire sur l'Œuvre.
+
+13. DISPOSITIONS GÉNÉRALES
+
+13.1. Intégralité de l'accord
+La présente Licence, accompagnée des Conditions Générales de Vente expressément applicables, constitue l'accord entre les Parties concernant les droits accordés sur l'Œuvre dans le cadre de la Licence {{type_licence}}.
+Elle remplace tout échange ou accord antérieur portant sur le même objet, sauf accord écrit contraire entre les Parties.
+
+13.2. Modification
+Toute modification substantielle des droits accordés par la présente Licence devra faire l'objet d'un accord écrit entre les Parties.
+Un échange électronique permettant d'identifier clairement l'accord des Parties pourra constituer un écrit à cette fin.
+
+13.3. Nullité partielle
+Si une disposition de la présente Licence devait être déclarée nulle, invalide ou inapplicable, cette situation n'affectera pas la validité des autres dispositions du contrat, qui continueront à produire leurs effets dans toute la mesure permise.
+Les Parties s'efforceront, lorsque cela est nécessaire, de remplacer la disposition concernée par une disposition valable se rapprochant autant que possible de son objectif initial.
+
+13.4. Absence de renonciation
+Le fait pour le Concédant de ne pas faire appliquer immédiatement une disposition de la présente Licence ou de tolérer ponctuellement un manquement ne pourra être interprété comme une renonciation définitive à ses droits.
+
+13.5. Licences accordées antérieurement
+Le Licencié reconnaît que l'Œuvre est proposée sous licence non-exclusive.
+Toute licence non-exclusive valablement accordée demeure indépendante des licences accordées à d'autres utilisateurs.
+La conclusion ultérieure d'une autre licence portant sur l'Œuvre ne confère au Licencié aucun droit sur les œuvres créées par les autres licenciés.
+
+14. ACCEPTATION DU CONTRAT
+
+En achetant cette Licence et en procédant à la validation de la commande ainsi qu'au paiement éventuellement applicable, le Licencié reconnaît avoir pris connaissance et accepté sans réserve l'ensemble des conditions énoncées dans le présent Contrat.
+Le paiement ou, lorsqu'aucun paiement n'est requis, la validation de la commande, accompagné de l'acceptation électronique des conditions applicables, matérialise l'acceptation de la présente Licence par le Licencié.
+
+Fait{{lieu_concedant}}, en date du {{date_achat}}.`
+}
+
+// ============================================================
 // Bloc "RÔLE DE LA PLATEFORME" — jamais stocké dans le contenu éditable,
 // toujours injecté séparément au moment du rendu final (voir
 // resoudreVariablesLicence). Non éditable, non supprimable par le
