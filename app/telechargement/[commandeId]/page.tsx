@@ -34,7 +34,7 @@ export default async function TelechargerPage({
 
   const { data: lignes, error: lignesError } = await supabase
     .from('commande_lignes')
-    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot, licence_modele, prix_paye')
+    .select('id, beat_id, licence_id, contrat_pdf_url, splits_snapshot, licence_modele, prix_paye, licence_streams_limite, licence_ventes_physiques_limite, licence_vues_video_limite, licence_clips_video_limite, licence_radio_tv_limite, licence_lives_performances_autorise')
     .eq('commande_id', commandeId)
 
   if (lignesError) console.error('[telechargement] Erreur query commande_lignes:', JSON.stringify(lignesError))
@@ -77,6 +77,14 @@ export default async function TelechargerPage({
           prixPaye: Number(ligne.prix_paye),
           splits: splitsSnapshot,
           dateVente: new Date(),
+          limitesSnapshot: {
+            streams_limite: ligne.licence_streams_limite,
+            ventes_physiques_limite: ligne.licence_ventes_physiques_limite,
+            vues_video_limite: ligne.licence_vues_video_limite,
+            clips_video_limite: ligne.licence_clips_video_limite,
+            radio_tv_limite: ligne.licence_radio_tv_limite,
+            lives_performances_autorise: ligne.licence_lives_performances_autorise,
+          },
         })
 
         contratUrl = await uploadPdfContrat(ligne.id, pdfBytes)

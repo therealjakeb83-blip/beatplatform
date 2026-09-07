@@ -276,7 +276,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
 
   const [{ data: beatsData }, { data: licencesData }, { data: splitsData }, { data: beatmaker }, { data: cgvData }] = await Promise.all([
     supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
-    supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive').in('id', licenceIds),
+    supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive, streams_limite, ventes_physiques_limite, vues_video_limite, clips_video_limite, radio_tv_limite, lives_performances_autorise').in('id', licenceIds),
     supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
     supabase.from('beatmakers').select('nom_artiste, email, stripe_account_id, tva_active, tva_taux').eq('id', meta.beatmaker_id).single(),
     supabase.from('boutique_pages_legales').select('version').eq('beatmaker_id', meta.beatmaker_id).eq('type_page', 'cgv').maybeSingle(),
@@ -376,6 +376,12 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
       licence_inclut_mp3: licence?.inclut_mp3 ?? null,
       licence_inclut_wav: licence?.inclut_wav ?? null,
       licence_inclut_stems: licence?.inclut_stems ?? null,
+      licence_streams_limite: licence?.streams_limite ?? null,
+      licence_ventes_physiques_limite: licence?.ventes_physiques_limite ?? null,
+      licence_vues_video_limite: licence?.vues_video_limite ?? null,
+      licence_clips_video_limite: licence?.clips_video_limite ?? null,
+      licence_radio_tv_limite: licence?.radio_tv_limite ?? null,
+      licence_lives_performances_autorise: licence?.lives_performances_autorise ?? null,
     }).select('id').single()
 
     if (ligneError || !ligne) {
@@ -440,6 +446,14 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
           prixPaye: Number(tLigne.prix),
           splits: splitsSnapshot,
           dateVente: new Date(),
+          limitesSnapshot: {
+            streams_limite: licence.streams_limite,
+            ventes_physiques_limite: licence.ventes_physiques_limite,
+            vues_video_limite: licence.vues_video_limite,
+            clips_video_limite: licence.clips_video_limite,
+            radio_tv_limite: licence.radio_tv_limite,
+            lives_performances_autorise: licence.lives_performances_autorise,
+          },
         })
         const pdfUrl = await uploadPdfContrat(ligne.id, pdfBytes)
         await supabase.from('commande_lignes').update({ contrat_pdf_url: pdfUrl }).eq('id', ligne.id)

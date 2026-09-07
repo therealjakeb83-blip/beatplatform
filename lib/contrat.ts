@@ -271,6 +271,15 @@ export async function genererContratPdf(input: ContratLicenceInput): Promise<Uin
 // licence (limites en vigueur), le beatmaker (infos légales complètes) et
 // le texte éditable sauvegardé pour sa catégorie de licence.
 // ============================================================
+export interface LimitesLicenceSnapshot {
+  streams_limite: number | null
+  ventes_physiques_limite: number | null
+  vues_video_limite: number | null
+  clips_video_limite: number | null
+  radio_tv_limite: number | null
+  lives_performances_autorise: boolean | null
+}
+
 export async function genererContratPdfPourVente(
   admin: ReturnType<typeof createAdminClient>,
   params: {
@@ -283,6 +292,12 @@ export async function genererContratPdfPourVente(
     prixPaye: number
     splits: SplitInfo[]
     dateVente: Date
+    // Limites de licence telles qu'en vigueur au moment de la vente
+    // (commande_lignes.licence_*_limite) — prioritaires sur les valeurs
+    // *actuelles* de la licence si le beatmaker les a changées depuis.
+    // Absent (génération immédiate à la vente) = valeurs live, identiques
+    // au snapshot puisque rien n'a encore pu changer.
+    limitesSnapshot?: LimitesLicenceSnapshot | null
   }
 ): Promise<Uint8Array> {
   const [{ data: beat }, { data: licence }, { data: beatmaker }] = await Promise.all([
@@ -301,11 +316,13 @@ export async function genererContratPdfPourVente(
     .eq('licence_id', params.licenceId)
     .maybeSingle()
 
+  const licenceAvecSnapshot = params.limitesSnapshot ? { ...licence, ...params.limitesSnapshot } : licence
+
   return genererContratPdf({
     beat,
     beatmaker,
     acheteur: { nom: params.acheteurNom, email: params.acheteurEmail, adresse: params.acheteurAdresse },
-    licence,
+    licence: licenceAvecSnapshot,
     splits: params.splits,
     prixPaye: params.prixPaye,
     texteEditable: texteSauvegarde?.contenu ?? null,

@@ -45,7 +45,7 @@ export async function POST(
   // ── Contrats PDF manquants ──────────────────────────────────
   const { data: lignesManquantes } = await admin
     .from('commande_lignes')
-    .select('id, beat_id, licence_id, licence_nom, splits_snapshot, prix_paye, beats(titre)')
+    .select('id, beat_id, licence_id, licence_nom, splits_snapshot, prix_paye, beats(titre), licence_streams_limite, licence_ventes_physiques_limite, licence_vues_video_limite, licence_clips_video_limite, licence_radio_tv_limite, licence_lives_performances_autorise')
     .eq('commande_id', commandeId)
     .is('contrat_pdf_url', null)
 
@@ -57,6 +57,12 @@ export async function POST(
     splits_snapshot: { nom_artiste: string; pourcentage: number }[] | null
     prix_paye: number
     beats: { titre: string } | null
+    licence_streams_limite: number | null
+    licence_ventes_physiques_limite: number | null
+    licence_vues_video_limite: number | null
+    licence_clips_video_limite: number | null
+    licence_radio_tv_limite: number | null
+    licence_lives_performances_autorise: boolean | null
   }[]) {
     if (!ligne.beat_id || !ligne.licence_id) {
       echecs.push(`Contrat impossible à générer pour la ligne ${ligne.id} (données manquantes)`)
@@ -73,6 +79,14 @@ export async function POST(
         prixPaye: Number(ligne.prix_paye),
         splits: ligne.splits_snapshot ?? [{ nom_artiste: beatmaker?.nom_artiste ?? 'Beatmaker', pourcentage: 100 }],
         dateVente: new Date(commande.created_at),
+        limitesSnapshot: {
+          streams_limite: ligne.licence_streams_limite,
+          ventes_physiques_limite: ligne.licence_ventes_physiques_limite,
+          vues_video_limite: ligne.licence_vues_video_limite,
+          clips_video_limite: ligne.licence_clips_video_limite,
+          radio_tv_limite: ligne.licence_radio_tv_limite,
+          lives_performances_autorise: ligne.licence_lives_performances_autorise,
+        },
       })
       const pdfUrl = await uploadPdfContrat(ligne.id, pdfBytes)
       await admin.from('commande_lignes').update({ contrat_pdf_url: pdfUrl }).eq('id', ligne.id)
