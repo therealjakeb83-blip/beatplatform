@@ -53,13 +53,14 @@ export async function resoudreOuCreerClient(
   email: string | null,
   nom: string | null,
   address?: Stripe.Address | null,
+  telephone?: string | null,
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
 
   const { data: existingClient } = await supabase
     .from('clients')
-    .select('id, adresse, prenom')
+    .select('id, adresse, prenom, telephone')
     .eq('email', emailNorm)
     .maybeSingle()
 
@@ -79,6 +80,9 @@ export async function resoudreOuCreerClient(
       backfill.prenom = parts[0] || null
       backfill.nom = parts.slice(1).join(' ') || parts[0] || null
     }
+    if (telephone && !existingClient.telephone) {
+      backfill.telephone = telephone
+    }
     if (Object.keys(backfill).length > 0) {
       const { error } = await supabase.from('clients').update(backfill).eq('id', existingClient.id)
       if (error) console.error('[webhook-paiement] Erreur backfill client:', JSON.stringify(error))
@@ -96,6 +100,7 @@ export async function resoudreOuCreerClient(
       email: emailNorm,
       nom: nomFamille,
       prenom,
+      telephone: telephone ?? null,
       adresse: address ? ([address.line1, address.line2].filter(Boolean).join(' ') || null) : null,
       ville: address?.city ?? null,
       code_postal: address?.postal_code ?? null,
@@ -119,6 +124,7 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
     acheteurNom: session.customer_details?.name ?? null,
     acheteurAdresse: formaterAdresse(session.customer_details?.address),
     acheteurAdresseRaw: session.customer_details?.address ?? null,
+    acheteurTelephone: session.customer_details?.phone ?? null,
     totalCents: session.amount_total ?? 0,
     stripePaymentId: typeof session.payment_intent === 'string'
       ? session.payment_intent
@@ -144,10 +150,10 @@ export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAc
 // 2026-08-27 mais préexistant à Direct Charge (même trou côté destination
 // charge, jamais remarqué car les tests précédents utilisaient un compte
 // déjà connu).
-async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; nom: string | null; adresse: string | null; adresseRaw: Stripe.Address | null }> {
+async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, stripeAccountId: string | null): Promise<{ email: string | null; nom: string | null; adresse: string | null; adresseRaw: Stripe.Address | null; telephone: string | null }> {
   const paymentMethodId = typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method?.id
   const emailDirect = paymentIntent.receipt_email?.toLowerCase().trim() ?? null
-  if (!paymentMethodId) return { email: emailDirect, nom: null, adresse: null, adresseRaw: null }
+  if (!paymentMethodId) return { email: emailDirect, nom: null, adresse: null, adresseRaw: null, telephone: null }
 
   try {
     const paymentMethod = await stripe.paymentMethods.retrieve(
@@ -160,10 +166,11 @@ async function resoudreBillingAchatExpress(paymentIntent: Stripe.PaymentIntent, 
       nom: paymentMethod.billing_details?.name ?? null,
       adresse: formaterAdresse(paymentMethod.billing_details?.address),
       adresseRaw: paymentMethod.billing_details?.address ?? null,
+      telephone: paymentMethod.billing_details?.phone ?? null,
     }
   } catch (err) {
     console.error('[webhook-paiement] Erreur récupération payment_method pour billing_details:', err instanceof Error ? err.message : err)
-    return { email: emailDirect, nom: null, adresse: null, adresseRaw: null }
+    return { email: emailDirect, nom: null, adresse: null, adresseRaw: null, telephone: null }
   }
 }
 
@@ -171,7 +178,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
   const meta = paymentIntent.metadata
   if (!meta?.beatmaker_id) return
 
-  const { email: acheteurEmail, nom: acheteurNom, adresse: acheteurAdresse, adresseRaw: acheteurAdresseRaw } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
+  const { email: acheteurEmail, nom: acheteurNom, adresse: acheteurAdresse, adresseRaw: acheteurAdresseRaw, telephone: acheteurTelephone } = await resoudreBillingAchatExpress(paymentIntent, stripeAccountId)
 
   await finaliserCommandePayee({
     meta,
@@ -181,6 +188,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
     acheteurNom,
     acheteurAdresse,
     acheteurAdresseRaw,
+    acheteurTelephone,
     totalCents: paymentIntent.amount,
     stripePaymentId: paymentIntent.id,
     stripeSessionId: null,
@@ -199,6 +207,7 @@ type ContextePaiement = {
   // séparés clients.adresse/ville/code_postal/pays, jamais la chaîne déjà
   // formatée pour l'affichage/le contrat.
   acheteurAdresseRaw?: Stripe.Address | null
+  acheteurTelephone?: string | null
   totalCents: number
   stripePaymentId: string | null
   stripeSessionId: string | null
@@ -251,7 +260,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     return
   }
 
-  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, ctx.acheteurAdresseRaw)
+  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, ctx.acheteurAdresseRaw, ctx.acheteurTelephone)
 
   const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
   const licenceIds = [...new Set(tentativeLignes.map(l => l.licence_id as string))]
@@ -293,6 +302,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     acheteur_email: acheteurEmail,
     acheteur_nom: acheteurNom,
     acheteur_adresse: ctx.acheteurAdresse,
+    acheteur_telephone: ctx.acheteurTelephone,
     prix_paye: prixPayeTotal,
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,

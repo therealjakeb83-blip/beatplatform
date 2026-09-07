@@ -167,6 +167,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
           paymentMethods: methodesVersOptions(besoinRestriction ? methodes : null),
           emailRequired: true,
           billingAddressRequired: true,
+          phoneNumberRequired: true,
         }}
         onReady={handleReady}
         onLoadError={() => setLoadError(true)}

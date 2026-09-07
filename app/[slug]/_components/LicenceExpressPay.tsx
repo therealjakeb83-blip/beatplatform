@@ -196,6 +196,7 @@ function ExpressButtons({ slug, beatId, selectedLicence, onStatusChange, onSucce
           paymentMethods: methodesVersOptions(besoinRestriction ? methodes : null),
           emailRequired: true,
           billingAddressRequired: true,
+          phoneNumberRequired: true,
         }}
         onReady={handleReady}
         onLoadError={() => setLoadError(true)}

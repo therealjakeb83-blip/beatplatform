@@ -47,3 +47,14 @@ alter table commandes add column if not exists acheteur_adresse text;
 
 comment on column commandes.acheteur_adresse is
   'Adresse postale de l''acheteur au moment de l''achat (snapshot, formatée en une ligne) — pour les contrats de licence';
+
+-- ============================================================
+-- Étape 4 : téléphone de l'acheteur (repéré par Jake — le champ
+-- clients.telephone existe et est déjà affiché en fiche client, mais
+-- jamais collecté ni rempli automatiquement au checkout)
+-- ============================================================
+
+alter table commandes add column if not exists acheteur_telephone text;
+
+comment on column commandes.acheteur_telephone is
+  'Téléphone de l''acheteur au moment de l''achat (snapshot) — backfill vers clients.telephone si vide';
