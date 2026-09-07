@@ -20,6 +20,12 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
 
   if (!beat) notFound()
 
+  // Beat vendu en licence Exclusive (Phase 6) : le beatmaker s'est
+  // contractuellement interdit toute nouvelle exploitation de l'Œuvre
+  // (article 4.1) — plus de modification possible, seule la suppression
+  // reste autorisée (bouton dans la liste des beats).
+  if (beat.statut === 'vendu') redirect('/dashboard/business/beats')
+
   // Client admin nécessaire ici : RLS (beatmakers_select_own) empêche de lire
   // le nom_artiste d'un AUTRE beatmaker (le collaborateur) via le client
   // authentifié normal — la jointure revenait vide silencieusement, laissant

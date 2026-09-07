@@ -9,6 +9,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
 
   const { id } = await params
+
+  // Beat vendu en licence Exclusive (Phase 6) : plus aucune modification
+  // possible (article 4.1 du contrat — le beatmaker s'interdit toute
+  // nouvelle exploitation de l'Œuvre). Vérifié ici, pas seulement côté
+  // page, pour bloquer aussi un appel direct à cette route.
+  const { data: beatActuel } = await supabase.from('beats').select('statut').eq('id', id).eq('beatmaker_id', user.id).single()
+  if (beatActuel?.statut === 'vendu') {
+    return Response.json({ error: 'Ce beat a été vendu en licence Exclusive et ne peut plus être modifié.' }, { status: 403 })
+  }
+
   const body = await request.json()
   const {
     titre, bpm, cle, statut, date_sortie,
