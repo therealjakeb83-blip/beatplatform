@@ -674,6 +674,7 @@ export default async function FicheClientPage({
               <h2 className="font-bold text-sm mb-3">Identité</h2>
               <form action={sauvegarderIdentite}>
                 <Row label="Prénom"            value={client.prenom ?? '–'} />
+                <Row label="Nom"                value={client.nom ?? '–'} />
                 <EditRow label="Prénom de contact" name="surnom"      value={(client as Record<string, unknown>).surnom as string | null}   placeholder="Surnom ou prénom personnalisé…" />
                 <EditRow label="Nom d'artiste"     name="nom_artiste" value={clientDisplay.nom_artiste}  placeholder="Nom d'artiste…" />
                 <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />

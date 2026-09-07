@@ -373,8 +373,14 @@ async function genererContratLicenceStandardPdf(input: ContratLicenceInput): Pro
   const texteResolu = resoudreVariablesLicence(texteBase, donnees)
   const texteFinal = `${texteResolu}\n\n${MARQUEUR_SAUT_DE_PAGE}\n\n${blocRolePlateforme()}`
 
+  // En-tête du contrat : le nom du beatmaker (le Concédant, vendeur réel),
+  // jamais My Producer — le contrat est conclu entre le beatmaker et
+  // l'acheteur, My Producer n'étant qu'un prestataire technique (voir le
+  // bloc RÔLE DE LA PLATEFORME). Le brander en haut de chaque page
+  // suggérerait visuellement le contraire, à l'exact opposé de l'objectif
+  // du chantier 9 bis (éviter le statut de fournisseur réputé).
   return renderPdfMultiPage(texteFinal, {
-    titre: NOM_PLATEFORME,
+    titre: input.beatmaker.nom_artiste,
     sousTitre: ` — Licence ${input.licence.nom} — ${input.beat.titre}`,
   })
 }
