@@ -276,7 +276,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
 
   const [{ data: beatsData }, { data: licencesData }, { data: splitsData }, { data: beatmaker }, { data: cgvData }] = await Promise.all([
     supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
-    supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems').in('id', licenceIds),
+    supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive').in('id', licenceIds),
     supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
     supabase.from('beatmakers').select('nom_artiste, email, stripe_account_id, tva_active, tva_taux').eq('id', meta.beatmaker_id).single(),
     supabase.from('boutique_pages_legales').select('version').eq('beatmaker_id', meta.beatmaker_id).eq('type_page', 'cgv').maybeSingle(),
@@ -384,6 +384,18 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     }
 
     await supabase.from('tentatives_paiement_lignes').update({ commande_ligne_id: ligne.id }).eq('id', tLigne.id)
+
+    // Licence Exclusive (Phase 6) : le contrat interdit explicitement au
+    // beatmaker de revendre l'Œuvre après cette vente (article 4.1) — le
+    // beat doit donc être retiré de la vente pour que la plateforme
+    // respecte elle-même ce que le contrat promet. Colonne beats.statut
+    // 'vendu' prévue depuis le schéma d'origine, jamais branchée jusqu'ici.
+    // L'historique/les analytics du beat restent intacts (rien ne filtre
+    // sur ce statut côté analytics), seule la boutique publique le masque.
+    if (licence?.est_exclusive) {
+      const { error: retraitError } = await supabase.from('beats').update({ statut: 'vendu' }).eq('id', tLigne.beat_id)
+      if (retraitError) console.error('[webhook-paiement] Erreur retrait beat après vente Exclusive:', JSON.stringify(retraitError))
+    }
 
     // Garde-fou Follow-up free download (5.7) : si ce client avait
     // téléchargé ce beat gratuitement, marquer achete=true — plus rien

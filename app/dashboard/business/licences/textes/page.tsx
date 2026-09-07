@@ -1,12 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { texteTemplateStandard, texteTemplateIllimite, type TypeLicenceTexte } from '@/lib/licences-textes'
+import { texteTemplateStandard, texteTemplateIllimite, texteTemplateExclusive, type TypeLicenceTexte } from '@/lib/licences-textes'
 import LicenceTexteForm from './LicenceTexteForm'
 
 const CATEGORIES: { type: TypeLicenceTexte; titre: string; template: () => string }[] = [
   { type: 'standard', titre: 'MP3 / WAV / STEMS', template: texteTemplateStandard },
   { type: 'illimite', titre: 'Illimité', template: texteTemplateIllimite },
+  { type: 'exclusive', titre: 'Exclusive', template: texteTemplateExclusive },
 ]
 
 export default async function LicenceTextesPage() {
@@ -44,11 +45,11 @@ export default async function LicenceTextesPage() {
         <h1 className="text-2xl font-bold mb-2">Texte des contrats de licence</h1>
         <p className="text-gray-400 text-sm mb-8">
           MP3 / WAV / STEMS partagent le même texte — seuls le titre, les fichiers livrés et les limites
-          d&apos;exploitation changent automatiquement selon la licence achetée. Illimité a son propre texte
-          indépendant. Tu peux utiliser le modèle par défaut tel quel ou le modifier librement. Une section
-          &quot;Rôle de la plateforme&quot;, non éditable, est toujours ajoutée à la fin du contrat généré. Ce
-          n&apos;est pas un texte juridique définitif — fais-le relire par un professionnel avant un vrai lancement
-          commercial. La licence Exclusive sera ajoutée séparément.
+          d&apos;exploitation changent automatiquement selon la licence achetée. Illimité et Exclusive ont chacune
+          leur propre texte indépendant. Tu peux utiliser le modèle par défaut tel quel ou le modifier librement.
+          Une section &quot;Rôle de la plateforme&quot;, non éditable, est toujours ajoutée à la fin du contrat
+          généré. Ce n&apos;est pas un texte juridique définitif — fais-le relire par un professionnel avant un
+          vrai lancement commercial.
         </p>
         <LicenceTexteForm categories={categories} />
       </div>
