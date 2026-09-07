@@ -22,9 +22,11 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
 
   // Beat vendu en licence Exclusive (Phase 6) : le beatmaker s'est
   // contractuellement interdit toute nouvelle exploitation de l'Œuvre
-  // (article 4.1) — plus de modification possible, seule la suppression
-  // reste autorisée (bouton dans la liste des beats).
-  if (beat.statut === 'vendu') redirect('/dashboard/business/beats')
+  // (article 4.1) — la fiche reste consultable mais plus aucun champ
+  // n'est modifiable (seule la suppression reste possible, depuis la
+  // liste des beats). Le vrai blocage est côté API
+  // (/api/beats/[id]/modifier) ; ce flag ne sert qu'à l'affichage.
+  const lectureSeule = beat.statut === 'vendu'
 
   // Client admin nécessaire ici : RLS (beatmakers_select_own) empêche de lire
   // le nom_artiste d'un AUTRE beatmaker (le collaborateur) via le client
@@ -89,6 +91,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
       exclusifSurDemande={exclusifBeatLicence?.sur_demande ?? false}
       exclusifPrixOverride={exclusifBeatLicence?.prix_override ? String(exclusifBeatLicence.prix_override) : ''}
       categories={categories}
+      lectureSeule={lectureSeule}
     />
   )
 }

@@ -229,9 +229,10 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
                   <td className="px-3 py-3 text-center">
                     <button
                       onClick={e => toggleMisEnAvant(e, b)}
+                      disabled={b.statut === 'vendu' && !b.mis_en_avant}
                       aria-label={b.mis_en_avant ? 'Retirer de la sélection' : 'Mettre en avant sur la boutique'}
-                      title={b.mis_en_avant ? 'Retirer de la sélection' : 'Mettre en avant sur la boutique'}
-                      className={`text-lg transition-colors ${b.mis_en_avant ? 'text-yellow-400' : 'text-gray-700 hover:text-gray-500'}`}
+                      title={b.statut === 'vendu' && !b.mis_en_avant ? 'Beat vendu en Exclusive — ne peut plus être mis en avant' : (b.mis_en_avant ? 'Retirer de la sélection' : 'Mettre en avant sur la boutique')}
+                      className={`text-lg transition-colors ${b.mis_en_avant ? 'text-yellow-400' : 'text-gray-700 hover:text-gray-500'} disabled:opacity-30 disabled:cursor-not-allowed`}
                     >
                       {b.mis_en_avant ? '★' : '☆'}
                     </button>

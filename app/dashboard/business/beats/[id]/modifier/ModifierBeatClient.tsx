@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, LicenceInfo, CategoriesOptions } from '../../_components/BeatForm'
 
-export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, exclusifPrixOverride, categories }: {
+export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, exclusifPrixOverride, categories, lectureSeule = false }: {
   beat: Record<string, unknown>
   splits: Array<{
     id: string
@@ -19,6 +19,7 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
   exclusifSurDemande: boolean
   exclusifPrixOverride: string
   categories: CategoriesOptions
+  lectureSeule?: boolean
 }) {
   const router = useRouter()
 
@@ -102,6 +103,7 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
         submitLabel="Mettre à jour"
         onSubmit={handleSubmit}
         onDelete={handleDelete}
+        lectureSeule={lectureSeule}
       />
     </div>
   )

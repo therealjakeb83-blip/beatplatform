@@ -359,6 +359,7 @@ export default function BeatForm({
   submitLabel,
   onSubmit,
   onDelete,
+  lectureSeule = false,
 }: {
   beatId: string
   initialValues: BeatFormValues
@@ -368,6 +369,7 @@ export default function BeatForm({
   submitLabel: string
   onSubmit: (values: BeatFormValues, urls: Record<string, string>) => Promise<void>
   onDelete?: () => Promise<void>
+  lectureSeule?: boolean
 }) {
   const [titre, setTitre] = useState(initialValues.titre)
   const [bpm, setBpm] = useState(initialValues.bpm)
@@ -476,6 +478,14 @@ export default function BeatForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+
+      {lectureSeule && (
+        <p className="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3">
+          Ce beat a été vendu en licence Exclusive — plus aucun champ n&apos;est modifiable. Seule la suppression reste possible ci-dessous.
+        </p>
+      )}
+
+      <fieldset disabled={lectureSeule} className="contents">
 
       {/* Infos générales */}
       <section className="flex flex-col gap-4">
@@ -678,16 +688,20 @@ export default function BeatForm({
 
       {erreur && <p className="text-red-400 text-sm">{erreur}</p>}
 
-      <div className="flex gap-4 pt-4">
-        <button type="submit" disabled={uploading}
-          className="flex-1 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50">
-          {uploading ? 'En cours...' : submitLabel}
-        </button>
-        <Link href="/dashboard/business/beats"
-          className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold transition-colors">
-          Annuler
-        </Link>
-      </div>
+      </fieldset>
+
+      {!lectureSeule && (
+        <div className="flex gap-4 pt-4">
+          <button type="submit" disabled={uploading}
+            className="flex-1 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors disabled:opacity-50">
+            {uploading ? 'En cours...' : submitLabel}
+          </button>
+          <Link href="/dashboard/business/beats"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold transition-colors">
+            Annuler
+          </Link>
+        </div>
+      )}
 
       {onDelete && (
         <div className="border-t border-gray-800 pt-6">
