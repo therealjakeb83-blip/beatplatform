@@ -61,6 +61,7 @@ type CommandeDetail = {
   acheteur_email: string | null
   acheteur_nom: string | null
   acheteur_adresse: string | null
+  acheteur_telephone: string | null
   notes: Note[] | null
   client_id: string | null
   stripe_transfer_group: string | null
@@ -158,7 +159,7 @@ export default async function CommandeDetailPage({
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, statut_livraison, facture_pdf_url,
       source_marketing, type_commande, plateforme_source,
-      acheteur_email, acheteur_nom, acheteur_adresse, notes, client_id, stripe_transfer_group, tva_taux,
+      acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone, notes, client_id, stripe_transfer_group, tva_taux,
       clients (id, prenom, nom, email, pays),
       commande_lignes (
         id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
@@ -392,6 +393,16 @@ export default async function CommandeDetailPage({
               <div>
                 <p className="text-[10px] text-gray-600 mb-0.5">Adresse</p>
                 <p className="text-sm text-gray-300">{c.acheteur_adresse ?? '—'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-600 mb-0.5">Téléphone</p>
+                {c.acheteur_telephone ? (
+                  <a href={`tel:${c.acheteur_telephone}`} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                    {c.acheteur_telephone}
+                  </a>
+                ) : (
+                  <p className="text-sm text-gray-500">—</p>
+                )}
               </div>
               <div>
                 <p className="text-[10px] text-gray-600 mb-0.5">Paiement via</p>
