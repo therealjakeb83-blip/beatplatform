@@ -14,6 +14,28 @@ type Licence = {
   inclut_stems: boolean
   est_exclusive: boolean
   streams_limite: number | null
+  ventes_physiques_limite: number | null
+  vues_video_limite: number | null
+  clips_video_limite: number | null
+  radio_tv_limite: number | null
+  lives_performances_autorise: boolean
+}
+
+type FormState = {
+  nom: string
+  prix: string
+  streams_limite: string
+  ventes_physiques_limite: string
+  vues_video_limite: string
+  clips_video_limite: string
+  radio_tv_limite: string
+  lives_performances_autorise: boolean
+}
+
+const FORM_VIDE: FormState = {
+  nom: '', prix: '',
+  streams_limite: '', ventes_physiques_limite: '', vues_video_limite: '', clips_video_limite: '', radio_tv_limite: '',
+  lives_performances_autorise: false,
 }
 
 const MODELE_BADGES: Record<string, string[]> = {
@@ -24,10 +46,18 @@ const MODELE_BADGES: Record<string, string[]> = {
   exclusive: ['MP3', 'WAV', 'Stems', 'Exclusive'],
 }
 
+// Les limites numériques (streams/ventes physiques/vues vidéo/clips/radio-tv)
+// ne concernent que la licence standard — Illimité et Exclusive sont "sans
+// limite" par principe dans leur texte (voir lib/licences-textes.ts), seules
+// les performances publiques restent un réglage pour les 5 licences.
+function aDesLimitesNumeriques(modele: string): boolean {
+  return modele === 'mp3' || modele === 'wav' || modele === 'stems'
+}
+
 export default function LicencesClient({ licences: initial }: { licences: Licence[] }) {
   const [licences, setLicences] = useState(initial)
   const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState({ nom: '', prix: '', streams_limite: '' })
+  const [form, setForm] = useState<FormState>(FORM_VIDE)
   const [saving, setSaving] = useState(false)
   const [erreur, setErreur] = useState('')
 
@@ -45,7 +75,15 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
     const newActif = !licence.actif
     setLicences(l => l.map(x => x.id === licence.id ? { ...x, actif: newActif } : x))
     try {
-      await patch(licence.id, { nom: licence.nom, prix: licence.prix, actif: newActif, streams_limite: licence.streams_limite })
+      await patch(licence.id, {
+        nom: licence.nom, prix: licence.prix, actif: newActif,
+        streams_limite: licence.streams_limite,
+        ventes_physiques_limite: licence.ventes_physiques_limite,
+        vues_video_limite: licence.vues_video_limite,
+        clips_video_limite: licence.clips_video_limite,
+        radio_tv_limite: licence.radio_tv_limite,
+        lives_performances_autorise: licence.lives_performances_autorise,
+      })
     } catch {
       setLicences(l => l.map(x => x.id === licence.id ? { ...x, actif: licence.actif } : x))
     }
@@ -57,6 +95,11 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
       nom: licence.nom,
       prix: String(licence.prix),
       streams_limite: licence.streams_limite != null ? String(licence.streams_limite) : '',
+      ventes_physiques_limite: licence.ventes_physiques_limite != null ? String(licence.ventes_physiques_limite) : '',
+      vues_video_limite: licence.vues_video_limite != null ? String(licence.vues_video_limite) : '',
+      clips_video_limite: licence.clips_video_limite != null ? String(licence.clips_video_limite) : '',
+      radio_tv_limite: licence.radio_tv_limite != null ? String(licence.radio_tv_limite) : '',
+      lives_performances_autorise: licence.lives_performances_autorise,
     })
     setErreur('')
   }
@@ -65,12 +108,27 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
     setSaving(true)
     setErreur('')
     try {
-      await patch(licence.id, { nom: form.nom, prix: form.prix, actif: licence.actif, streams_limite: form.streams_limite || null })
+      await patch(licence.id, {
+        nom: form.nom,
+        prix: form.prix,
+        actif: licence.actif,
+        streams_limite: form.streams_limite || null,
+        ventes_physiques_limite: form.ventes_physiques_limite || null,
+        vues_video_limite: form.vues_video_limite || null,
+        clips_video_limite: form.clips_video_limite || null,
+        radio_tv_limite: form.radio_tv_limite || null,
+        lives_performances_autorise: form.lives_performances_autorise,
+      })
       setLicences(l => l.map(x => x.id === licence.id ? {
         ...x,
         nom: form.nom,
         prix: parseFloat(form.prix),
         streams_limite: form.streams_limite ? parseInt(form.streams_limite) : null,
+        ventes_physiques_limite: form.ventes_physiques_limite ? parseInt(form.ventes_physiques_limite) : null,
+        vues_video_limite: form.vues_video_limite ? parseInt(form.vues_video_limite) : null,
+        clips_video_limite: form.clips_video_limite ? parseInt(form.clips_video_limite) : null,
+        radio_tv_limite: form.radio_tv_limite ? parseInt(form.radio_tv_limite) : null,
+        lives_performances_autorise: form.lives_performances_autorise,
       } : x))
       setEditId(null)
     } catch (err) {
@@ -81,18 +139,12 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
   }
 
   return (
-    <div className="px-8 py-8 max-w-2xl">
+    <div className="px-8 py-8 max-w-3xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Licences</h1>
         <p className="text-sm text-gray-400 mt-1">
           Ces licences s&apos;appliquent à tous tes beats par défaut. Tu peux les activer ou désactiver individuellement.
         </p>
-        <Link
-          href="/dashboard/business/licences/textes"
-          className="inline-block mt-3 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-        >
-          Modifier le texte du contrat de licence →
-        </Link>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -122,11 +174,18 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
                 )}
               </div>
 
+              <Link
+                href={`/dashboard/business/licences/${licence.id}/texte`}
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors flex-shrink-0"
+              >
+                Éditer cette licence
+              </Link>
+
               <button
                 onClick={() => editId === licence.id ? setEditId(null) : openEdit(licence)}
                 className="text-sm text-gray-400 hover:text-white transition-colors flex-shrink-0"
               >
-                {editId === licence.id ? 'Fermer' : 'Modifier'}
+                {editId === licence.id ? 'Fermer' : 'Caractéristiques'}
               </button>
             </div>
 
@@ -153,18 +212,82 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Limite de streams <span className="text-gray-600">(laisser vide = illimité)</span>
-                  </label>
+
+                {aDesLimitesNumeriques(licence.modele) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        Streams max <span className="text-gray-600">(vide = illimité)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={form.streams_limite}
+                        onChange={e => setForm(f => ({ ...f, streams_limite: e.target.value }))}
+                        placeholder="ex : 100000"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        Ventes physiques max <span className="text-gray-600">(vide = illimité)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={form.ventes_physiques_limite}
+                        onChange={e => setForm(f => ({ ...f, ventes_physiques_limite: e.target.value }))}
+                        placeholder="ex : 2000"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        Vues vidéo non-monétisées max <span className="text-gray-600">(vide = illimité)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={form.vues_video_limite}
+                        onChange={e => setForm(f => ({ ...f, vues_video_limite: e.target.value }))}
+                        placeholder="ex : 200000"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        Clips vidéo monétisés max <span className="text-gray-600">(vide = illimité)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={form.clips_video_limite}
+                        onChange={e => setForm(f => ({ ...f, clips_video_limite: e.target.value }))}
+                        placeholder="ex : 1"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        Stations radio/TV max <span className="text-gray-600">(vide = illimité)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={form.radio_tv_limite}
+                        onChange={e => setForm(f => ({ ...f, radio_tv_limite: e.target.value }))}
+                        placeholder="ex : 1"
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <label className="flex items-center gap-2 cursor-pointer w-fit">
                   <input
-                    type="number"
-                    value={form.streams_limite}
-                    onChange={e => setForm(f => ({ ...f, streams_limite: e.target.value }))}
-                    placeholder="ex : 100000"
-                    className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                    type="checkbox"
+                    checked={form.lives_performances_autorise}
+                    onChange={e => setForm(f => ({ ...f, lives_performances_autorise: e.target.checked }))}
+                    className="w-4 h-4 rounded bg-gray-800 border-gray-700 text-indigo-600 focus:ring-indigo-500"
                   />
-                </div>
+                  <span className="text-sm text-gray-300">Performances publiques / lives autorisés</span>
+                </label>
+
                 {erreur && <p className="text-red-400 text-sm">{erreur}</p>}
                 <div className="flex gap-3">
                   <button

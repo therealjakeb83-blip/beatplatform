@@ -295,12 +295,10 @@ export async function genererContratPdfPourVente(
     throw new Error(`Données manquantes pour générer le contrat (beat=${!!beat}, licence=${!!licence}, beatmaker=${!!beatmaker})`)
   }
 
-  const typeTexte = modeleVersTypeLicenceTexte(licence.modele)
   const { data: texteSauvegarde } = await admin
     .from('licences_textes')
     .select('contenu')
-    .eq('beatmaker_id', params.beatmakerId)
-    .eq('type_licence', typeTexte)
+    .eq('licence_id', params.licenceId)
     .maybeSingle()
 
   return genererContratPdf({

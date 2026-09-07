@@ -2,13 +2,48 @@ import { NOM_PLATEFORME } from './constantes'
 
 export type TypeLicenceTexte = 'standard' | 'illimite' | 'exclusive'
 
-// 'standard' couvre MP3/WAV/STEMS (même modèle contractuel, seules les
-// variables de fichiers/limites diffèrent) — voir licences.modele.
-// 'illimite' et 'exclusive' seront ajoutés dans une étape séparée.
+// 'standard' couvre MP3/WAV/STEMS — même modèle par défaut, mais chaque
+// licence a désormais son propre texte éditable individuellement
+// (licences_textes.licence_id) : seul le modèle proposé au départ est
+// partagé, pas le texte une fois personnalisé — voir licences.modele.
 export function modeleVersTypeLicenceTexte(modele: string): TypeLicenceTexte {
   if (modele === 'illimite') return 'illimite'
   if (modele === 'exclusive') return 'exclusive'
   return 'standard'
+}
+
+// Glossaire affiché à côté du champ d'édition — pour que le beatmaker sache
+// quelles variables il peut laisser dans le texte (résolues automatiquement
+// à chaque vente, jamais à modifier à la main).
+export type VariableLicence = { token: string; description: string }
+
+const VARIABLES_COMMUNES: VariableLicence[] = [
+  { token: '{{identite_concedant}}', description: 'Identité complète du beatmaker (nom, SIRET, adresse...), composée automatiquement' },
+  { token: '{{identite_licencie}}', description: "Nom et adresse de l'acheteur" },
+  { token: '{{bloc_collaborateurs}}', description: "Paragraphe listant les collaborateurs du beat (vide s'il n'y en a pas)" },
+  { token: '{{boutique}}', description: 'Slug de la boutique' },
+  { token: '{{titre_beat}}', description: 'Titre du beat vendu' },
+  { token: '{{prix_paye}}', description: "Montant réellement payé par l'acheteur, remises incluses" },
+  { token: '{{fichiers_livres}}', description: 'Liste des fichiers inclus dans cette licence (MP3, WAV, stems...)' },
+  { token: '{{performances_publiques}}', description: '"autorisées" ou "non autorisées", selon le réglage de la licence' },
+  { token: '{{credit_concedant}}', description: 'Nom artistique à créditer ("Produced by...")' },
+  { token: '{{email_concedant}}', description: 'Email de contact du beatmaker pour les litiges' },
+  { token: '{{lieu_concedant}}', description: 'Ville du beatmaker (clause "Fait à...")' },
+  { token: '{{date_achat}}', description: "Date de l'achat" },
+  { token: '{{type_licence}}', description: 'Nom de cette licence (ex: "MP3", "Illimité"...)' },
+]
+
+const VARIABLES_STANDARD: VariableLicence[] = [
+  ...VARIABLES_COMMUNES,
+  { token: '{{limite_streams}}', description: 'Limite de streams de cette licence (réglée dans les caractéristiques de la licence)' },
+  { token: '{{limite_ventes_physiques}}', description: 'Limite de ventes physiques de cette licence' },
+  { token: '{{limite_vues_video}}', description: 'Limite de vues vidéo non-monétisées de cette licence' },
+  { token: '{{limite_clips_video}}', description: 'Limite de clips vidéo monétisés de cette licence' },
+  { token: '{{limite_radio_tv}}', description: 'Limite de diffusion radio/TV de cette licence' },
+]
+
+export function variablesDisponibles(typeTexte: TypeLicenceTexte): VariableLicence[] {
+  return typeTexte === 'standard' ? VARIABLES_STANDARD : VARIABLES_COMMUNES
 }
 
 // ============================================================
