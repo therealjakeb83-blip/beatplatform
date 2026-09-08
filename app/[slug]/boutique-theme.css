@@ -1357,6 +1357,10 @@ a.shop-instrument-card:focus-visible { box-shadow: var(--shadow-style-hover); }
    le halo par rapport au sujet de la photo. */
 .shop-media-card--ambiance { flex: 0 0 400px; aspect-ratio: 2.5 / 1; height: auto; }
 .shop-media-card--ambiance img { filter: grayscale(1) contrast(1.06); }
+/* Photo source "agressif" : fines bandes parasites en haut et en bas —
+   photo et halo (deux calques superposés indépendants) sont zoomés
+   ensemble depuis le centre pour rester alignés. */
+.shop-media-card--ambiance .amb-layer--agressif { transform: scale(1.08); transform-origin: center; }
 .shop-media-card--ambiance .amb-glow {
   position: absolute; inset: 0; pointer-events: none;
   background: var(--ac);

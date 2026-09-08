@@ -114,13 +114,18 @@ export default function CategorieBrowseSection({
             return (
               <Link key={carte.nom} href={href(carte.nom)} className="shop-media-card shop-media-card--ambiance">
                 {carte.imageUrl ? (
-                  <img src={carte.imageUrl} alt={carte.nom} draggable={false} />
+                  <img
+                    src={carte.imageUrl}
+                    alt={carte.nom}
+                    draggable={false}
+                    className={slug ? `amb-layer amb-layer--${slug}` : undefined}
+                  />
                 ) : (
                   <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
                 )}
                 {slug && (
                   <span
-                    className="amb-glow"
+                    className={`amb-glow amb-layer amb-layer--${slug}`}
                     style={{
                       WebkitMaskImage: `url(/img/ambiances/masks/${slug}.png)`,
                       maskImage: `url(/img/ambiances/masks/${slug}.png)`,
