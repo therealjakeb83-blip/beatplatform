@@ -1282,18 +1282,12 @@ a.shop-artist-card:focus-visible .shop-artist-card-photo { border-color: var(--a
   border-radius: var(--r-card);
   overflow: hidden;
   background: #12162A;
-  border: 1px solid var(--line);
   user-select: none;
   display: flex;
   align-items: flex-end;
-  transition: border-color .18s;
 }
 
-@media (hover: hover) {
-  .shop-media-card:hover { border-color: var(--ac); }
-}
 .shop-media-card:focus { outline: none; }
-.shop-media-card:focus-visible { border-color: var(--ac); }
 .shop-media-card img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   pointer-events: none;
