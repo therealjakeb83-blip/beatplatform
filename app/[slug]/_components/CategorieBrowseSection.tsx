@@ -114,12 +114,7 @@ export default function CategorieBrowseSection({
             return (
               <Link key={carte.nom} href={href(carte.nom)} className="shop-media-card shop-media-card--ambiance">
                 {carte.imageUrl ? (
-                  <img
-                    src={carte.imageUrl}
-                    alt={carte.nom}
-                    draggable={false}
-                    className={slug ? `amb-photo--${slug}` : undefined}
-                  />
+                  <img src={carte.imageUrl} alt={carte.nom} draggable={false} />
                 ) : (
                   <div className="shop-beat-fallback">{initiales(carte.nom)}</div>
                 )}
