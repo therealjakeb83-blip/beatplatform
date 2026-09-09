@@ -13,8 +13,8 @@ const ACTOR_LABEL: Record<string, { label: string; cls: string }> = {
 const ENTITY_LABEL: Record<string, string> = {
   commande:       'Commande',
   boutique:       'Boutique',
-  page_legale:    'Page légale',
-  licence_texte:  'Licence',
+  page_legale:    'Légal',
+  licence_texte:  'Licences',
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -273,7 +273,7 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
                     <th className="text-left px-4 py-3">Date</th>
                     <th className="text-left px-4 py-3">Décidé par</th>
                     <th className="text-left px-4 py-3">Quoi</th>
-                    <th className="text-left px-4 py-3">Motif</th>
+                    <th className="text-left px-4 py-3">Catégorie</th>
                     <th className="text-right px-4 py-3">Détail</th>
                   </tr>
                 </thead>
@@ -289,8 +289,10 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
                           </span>
                         </td>
                         <td className="px-4 py-3 text-white max-w-[320px] truncate">{resumeDecision(log, licenceNoms)}</td>
-                        <td className="px-4 py-3 text-xs text-gray-300 max-w-[220px] truncate" title={log.motif ?? undefined}>
-                          {log.motif ?? <span className="text-gray-700">—</span>}
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-400 border border-gray-700">
+                            {ENTITY_LABEL[log.entity_type] ?? log.entity_type}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
