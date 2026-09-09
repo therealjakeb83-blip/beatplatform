@@ -180,12 +180,14 @@ function DetailModal({ log, permettreComparaison, onClose }: { log: DecisionLogR
             </p>
           )}
 
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Motif</p>
-            <p className="text-sm text-gray-200 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words">
-              {log.motif ?? <span className="text-gray-600">Aucun motif renseigné</span>}
-            </p>
-          </div>
+          {log.motif && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Motif</p>
+              <p className="text-sm text-gray-200 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words">
+                {log.motif}
+              </p>
+            </div>
+          )}
 
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Concerne</p>
