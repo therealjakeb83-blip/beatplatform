@@ -152,6 +152,8 @@ export default function FacturationClient({
     envoyerFormat('reinitialiser_format')
   }
 
+  const [valeurGeneree, setValeurGeneree] = useState<number | null>(null)
+
   async function sauvegarderOffset() {
     setChargementOffset(true)
     setErreurOffset('')
@@ -163,12 +165,16 @@ export default function FacturationClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'definir_offset', offsetMode: modeSaisi, offsetManuel: manuel }),
       })
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        const data = await res.json().catch(() => null)
         setErreurOffset(data?.erreur || 'Impossible d’enregistrer ce réglage.')
         return
       }
       setOffsetSauvegardeOk(true)
+      // Le mode aléatoire est désormais tiré immédiatement au clic (pas à
+      // la 1ère facture) — l'API renvoie la valeur tirée pour l'afficher
+      // tout de suite, sans attendre le prochain rendu serveur.
+      if (typeof data?.valeur === 'number') setValeurGeneree(data.valeur)
       router.refresh()
     } catch {
       setErreurOffset('Erreur réseau, réessaie.')
@@ -179,23 +185,28 @@ export default function FacturationClient({
 
   const formatValide = formatFacturationValide(formatSaisi)
   const exempleDate = new Date()
-  // Reflète le vrai point de départ configuré juste au-dessus, pas un
-  // placeholder générique — sinon l'aperçu contredit le réglage qu'on vient
-  // de faire et perd toute utilité pédagogique (retour de Jake).
-  const numEstIllustratif = !serieDemarree && modeSaisi === 'aleatoire'
-  // Décomposition exacte "point de départ + compteur émis" — null si le
-  // point de départ réel n'est pas encore connu (mode aléatoire, pas
-  // encore tiré), auquel cas on reste sur le libellé générique.
+  // Un point de départ est "connu" quand la série a démarré (compteur réel
+  // en base), ou en mode manuel (toujours déterministe, même avant
+  // sauvegarde), ou en mode aléatoire déjà tiré et pas encore changé de
+  // sélection depuis (offsetManuel enregistré correspond au mode courant).
+  // Sinon (aléatoire jamais encore tiré), rien à montrer de précis — le
+  // prochain tirage n'est pas prévisible avant qu'il ait eu lieu.
+  const offsetDejaCommis = !serieDemarree && modeSaisi === 'aleatoire' && offsetMode === 'aleatoire' && offsetManuel != null
+    ? offsetManuel
+    : null
   const detailNum = serieDemarree
     ? { offset: offset ?? 0, compteurEmis: (dernierNumero ?? 0) - (offset ?? 0) + 1 }
     : modeSaisi === 'manuel'
       ? { offset: parseInt(manuelSaisi, 10) || 1, compteurEmis: 0 }
-      : null
+      : offsetDejaCommis != null
+        ? { offset: offsetDejaCommis, compteurEmis: 0 }
+        : null
+  const numEstIllustratif = !serieDemarree && detailNum === null
   const exempleNum = serieDemarree
     ? (dernierNumero ?? 0) + 1
-    : modeSaisi === 'manuel'
-      ? (parseInt(manuelSaisi, 10) || 1)
-      : 5790 // aléatoire, pas encore tiré — illustratif seulement (voir numEstIllustratif)
+    : detailNum
+      ? detailNum.offset
+      : 5790 // aléatoire, jamais encore tiré — illustratif seulement (voir numEstIllustratif)
   const valeursApercu = {
     slug: slug || 'ta-boutique',
     num: String(exempleNum),
@@ -268,13 +279,19 @@ export default function FacturationClient({
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" checked={modeSaisi === 'aleatoire'} onChange={() => setModeSaisi('aleatoire')} className="accent-indigo-600" />
-                <span className="text-sm text-gray-300">Aléatoire <span className="text-gray-600 text-xs">(recommandé)</span></span>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="radio" checked={modeSaisi === 'aleatoire'} onChange={() => setModeSaisi('aleatoire')} className="accent-indigo-600 mt-0.5" />
+                <span>
+                  <span className="text-sm text-gray-300 block">Aléatoire <span className="text-gray-600 text-xs">(recommandé)</span></span>
+                  <span className="text-gray-600 text-xs">Un nouveau nombre est tiré chaque année — le point de départ change à chaque 1er janvier.</span>
+                </span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" checked={modeSaisi === 'manuel'} onChange={() => setModeSaisi('manuel')} className="accent-indigo-600" />
-                <span className="text-sm text-gray-300">Je choisis mon point de départ</span>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="radio" checked={modeSaisi === 'manuel'} onChange={() => setModeSaisi('manuel')} className="accent-indigo-600 mt-0.5" />
+                <span>
+                  <span className="text-sm text-gray-300 block">Je choisis mon point de départ</span>
+                  <span className="text-gray-600 text-xs">Le même nombre est réutilisé chaque année, sans que tu aies à le reconfigurer — modifiable à tout moment tant qu&apos;aucune facture n&apos;a encore été émise dans l&apos;année en cours.</span>
+                </span>
               </label>
               {modeSaisi === 'manuel' && (
                 <input
@@ -292,7 +309,18 @@ export default function FacturationClient({
               >
                 {chargementOffset ? 'Enregistrement...' : 'Enregistrer'}
               </button>
-              {offsetSauvegardeOk && <p className="text-green-400 text-sm">Réglage enregistré — appliqué à ta 1ère facture de {anneeCourante}.</p>}
+              {offsetSauvegardeOk && (
+                <p className="text-green-400 text-sm">
+                  {modeSaisi === 'aleatoire' && valeurGeneree != null
+                    ? `Point de départ tiré au hasard : ${valeurGeneree} — sera utilisé à ta prochaine facture de ${anneeCourante}. Réenregistre pour en tirer un autre.`
+                    : `Réglage enregistré — appliqué à ta prochaine facture de ${anneeCourante}.`}
+                </p>
+              )}
+              {!offsetSauvegardeOk && offsetDejaCommis != null && (
+                <p className="text-gray-500 text-xs">
+                  Déjà fixé pour {anneeCourante} : <span className="font-mono text-gray-300">{offsetDejaCommis}</span> (tiré au hasard) — sera utilisé à ta prochaine facture, sauf si tu réenregistres.
+                </p>
+              )}
               {erreurOffset && <p className="text-red-400 text-sm">{erreurOffset}</p>}
             </div>
           )}

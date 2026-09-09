@@ -89,15 +89,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ erreur: 'Le point de départ de cette année est déjà fixé — une facture a déjà été émise. Modifiable à nouveau au 1er janvier prochain.' }, { status: 400 })
     }
 
+    // "Aléatoire" est désormais tiré immédiatement au clic (pas à la 1ère
+    // facture) et stocké dans le même champ que le mode manuel — la
+    // fonction Postgres n'a donc plus besoin de distinguer les deux cas,
+    // elle utilise simplement la valeur déjà présente (voir
+    // supabase/phase8_offset_immediat.sql). facturation_offset_mode reste
+    // uniquement informatif (affichage "tiré au hasard" vs "choisi par toi").
+    const valeur = mode === 'manuel' ? (body.offsetManuel as number) : (1000 + Math.floor(Math.random() * 8000))
+
     const { error } = await supabase
       .from('beatmakers')
       .update({
         facturation_offset_mode: mode,
-        facturation_offset_manuel: mode === 'manuel' ? body.offsetManuel : null,
+        facturation_offset_manuel: valeur,
       })
       .eq('id', user.id)
     if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, valeur })
   }
 
   return NextResponse.json({ erreur: 'Action invalide' }, { status: 400 })
