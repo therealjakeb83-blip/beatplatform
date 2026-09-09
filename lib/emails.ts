@@ -755,9 +755,27 @@ export async function confirmationAbonnement({
 }) {
   const [{ branding, titre, intro }, { data: abo }] = await Promise.all([
     chargerBrandingEtTemplate(beatmakerId, 'confirmation_abonnement'),
-    createAdminClient().from('abonnements_boutique').select('prix, devise, periode').eq('id', abonnementId).maybeSingle(),
+    createAdminClient().from('abonnements_boutique').select('prix, devise, periode, client_id').eq('id', abonnementId).maybeSingle(),
   ])
   if (!branding) return
+
+  // Facture de la commande de création d'abonnement — générée par
+  // traiterPaiementAbonnement (app/api/stripe/webhook/route.ts), qui
+  // s'exécute avant ce point (invoice.payment_succeeded arrive avant
+  // checkout.session.completed pour une nouvelle souscription). Pas de
+  // commandeId direct disponible ici : recherche par client+beatmaker,
+  // la plus récente commande de création d'abonnement.
+  const { data: commandeAbo } = abo?.client_id
+    ? await createAdminClient()
+        .from('commandes')
+        .select('facture_pdf_url, numero_facture')
+        .eq('beatmaker_id', beatmakerId)
+        .eq('client_id', abo.client_id)
+        .eq('type_commande', 'CREATION_ABONNEMENT')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
 
   const corpsHtml = abo
     ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
@@ -765,7 +783,13 @@ export async function confirmationAbonnement({
           <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Abonnement ${echapper(abo.periode)}</td>
           <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${(Number(abo.prix) / 100).toFixed(2)}€</td>
         </tr>
-      </table>`
+      </table>
+      ${commandeAbo?.facture_pdf_url ? `
+        <p style="margin:12px 0 0;font-size:13px;">
+          <a href="${commandeAbo.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
+            Télécharger ta facture${commandeAbo.numero_facture ? ` (n° ${echapper(commandeAbo.numero_facture)})` : ''}
+          </a>
+        </p>` : ''}`
     : ''
 
   await envoyerEmailUnique({
