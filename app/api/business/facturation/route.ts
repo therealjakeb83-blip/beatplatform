@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
 import { MANDAT_FACTURATION_VERSION_ACTUELLE, formatFacturationValide } from '@/lib/facturation'
-import { getZonedParts, fuseauSur } from '@/lib/fuseau-horaire'
 import { NextResponse } from 'next/server'
 
 // Une seule route POST (pas de DELETE — cf. règle Vercel DELETE body), action
@@ -13,13 +12,16 @@ import { NextResponse } from 'next/server'
 // reste réservé aux décisions qui engagent un tiers (remboursement, CGV,
 // texte de licence...), pas aux réglages internes déjà auto-datés ailleurs.
 //
-// Distinction volontaire entre les deux réglages de numérotation : le
-// FORMAT (ordre des variables) reste modifiable en tout temps — l'avertissement
-// sur la cohérence visuelle de l'historique est affiché et confirmé côté
-// client (FacturationClient.tsx) avant l'appel. L'OFFSET, lui, est
-// entièrement verrouillé côté serveur dès que la série de l'année en cours
-// a démarré — aucune confirmation ne peut passer outre, contrairement au
-// format (voir memory/project_phase8_numerotation_facture.md).
+// L'OFFSET (point de départ) est modifiable à tout moment, y compris en
+// cours d'année — sans risque, puisque la valeur réellement utilisée pour
+// une série déjà démarrée (beatmakers.facturation_offset) est une colonne
+// distincte de celle qu'on modifie ici (facturation_offset_manuel), jamais
+// relue une fois l'année en cours. Ce réglage représente donc toujours "ce
+// qui sera utilisé à la prochaine transition d'année", jamais la série en
+// cours elle-même — pas besoin de verrou artificiel (voir
+// memory/project_phase8_numerotation_facture.md). Le FORMAT, lui, reste
+// aussi modifiable en tout temps, avec un avertissement de confirmation
+// côté client si des factures existent déjà cette année.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -73,20 +75,6 @@ export async function POST(request: Request) {
     }
     if (mode === 'manuel' && (!Number.isInteger(body.offsetManuel) || (body.offsetManuel as number) < 1)) {
       return NextResponse.json({ erreur: "Le point de départ doit être un nombre entier d'au moins 1." }, { status: 400 })
-    }
-
-    // Verrouillé dès que la série de l'année en cours a démarré (au moins
-    // une facture déjà émise) — jamais de modification a posteriori, quelle
-    // que soit la demande, pour ne jamais casser une continuité déjà entamée.
-    const { data: beatmaker } = await supabase
-      .from('beatmakers')
-      .select('facturation_annee_courante, fuseau_horaire')
-      .eq('id', user.id)
-      .single()
-
-    const anneeCourante = getZonedParts(new Date(), fuseauSur(beatmaker?.fuseau_horaire)).year
-    if (beatmaker?.facturation_annee_courante === anneeCourante) {
-      return NextResponse.json({ erreur: 'Le point de départ de cette année est déjà fixé — une facture a déjà été émise. Modifiable à nouveau au 1er janvier prochain.' }, { status: 400 })
     }
 
     // "Aléatoire" est désormais tiré immédiatement au clic (pas à la 1ère

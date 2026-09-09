@@ -185,6 +185,11 @@ export default function FacturationClient({
 
   const formatValide = formatFacturationValide(formatSaisi)
   const exempleDate = new Date()
+  // Année à laquelle s'applique le réglage éditable : l'année en cours si
+  // sa série n'a pas encore démarré, sinon l'année suivante (le réglage ne
+  // peut plus jamais rattraper une série déjà en cours — voir la colonne
+  // facturation_offset, séparée et jamais relue une fois l'année démarrée).
+  const anneeCible = serieDemarree ? anneeCourante + 1 : anneeCourante
   // Un point de départ est "connu" quand la série a démarré (compteur réel
   // en base), ou en mode manuel (toujours déterministe, même avant
   // sauvegarde), ou en mode aléatoire déjà tiré et pas encore changé de
@@ -266,64 +271,67 @@ export default function FacturationClient({
 
         {/* Point de départ (offset) */}
         <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-1">Point de départ {anneeCourante}</h2>
+          <h2 className="text-lg font-bold mb-1">Point de départ</h2>
           <p className="text-gray-400 text-sm mb-4">
             Ta série de factures démarre chaque année à un nombre de départ plutôt qu&apos;à 1 — le compteur avance ensuite normalement de 1 en 1 à partir de là (continuité garantie par le système, jamais recalculée). Ça évite qu&apos;une seule facture révèle ton nombre total de ventes depuis le début de l&apos;année.
           </p>
 
-          {serieDemarree ? (
-            <div className="bg-gray-800/40 border border-gray-800 rounded-lg p-4">
+          {serieDemarree && (
+            <div className="bg-gray-800/40 border border-gray-800 rounded-lg p-4 mb-4">
               <p className="text-sm text-gray-300">
-                Verrouillé pour {anneeCourante} — ta première facture de l&apos;année a démarré à <span className="font-mono text-white">{offset}</span> ({offsetMode === 'manuel' ? 'choisi par toi' : 'tiré au hasard'}). Modifiable à nouveau au 1er janvier {anneeCourante + 1}.
+                Cette année ({anneeCourante}) : déjà fixé à <span className="font-mono text-white">{offset}</span> ({offsetMode === 'manuel' ? 'choisi par toi' : 'tiré au hasard'}), depuis ta première facture — ne peut plus changer.
               </p>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="radio" checked={modeSaisi === 'aleatoire'} onChange={() => setModeSaisi('aleatoire')} className="accent-indigo-600 mt-0.5" />
-                <span>
-                  <span className="text-sm text-gray-300 block">Aléatoire <span className="text-gray-600 text-xs">(recommandé)</span></span>
-                  <span className="text-gray-600 text-xs">Un nouveau nombre est tiré chaque année — le point de départ change à chaque 1er janvier.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="radio" checked={modeSaisi === 'manuel'} onChange={() => setModeSaisi('manuel')} className="accent-indigo-600 mt-0.5" />
-                <span>
-                  <span className="text-sm text-gray-300 block">Je choisis mon point de départ</span>
-                  <span className="text-gray-600 text-xs">Le même nombre est réutilisé chaque année, sans que tu aies à le reconfigurer — modifiable à tout moment tant qu&apos;aucune facture n&apos;a encore été émise dans l&apos;année en cours.</span>
-                </span>
-              </label>
-              {modeSaisi === 'manuel' && (
-                <input
-                  type="number"
-                  min={1}
-                  value={manuelSaisi}
-                  onChange={e => setManuelSaisi(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-white w-40"
-                />
-              )}
-              <button
-                onClick={sauvegarderOffset}
-                disabled={chargementOffset}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium disabled:opacity-50 transition-colors w-fit"
-              >
-                {chargementOffset ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-              {offsetSauvegardeOk && (
-                <p className="text-green-400 text-sm">
-                  {modeSaisi === 'aleatoire' && valeurGeneree != null
-                    ? `Point de départ tiré au hasard : ${valeurGeneree} — sera utilisé à ta prochaine facture de ${anneeCourante}. Réenregistre pour en tirer un autre.`
-                    : `Réglage enregistré — appliqué à ta prochaine facture de ${anneeCourante}.`}
-                </p>
-              )}
-              {!offsetSauvegardeOk && offsetDejaCommis != null && (
-                <p className="text-gray-500 text-xs">
-                  Déjà fixé pour {anneeCourante} : <span className="font-mono text-gray-300">{offsetDejaCommis}</span> (tiré au hasard) — sera utilisé à ta prochaine facture, sauf si tu réenregistres.
-                </p>
-              )}
-              {erreurOffset && <p className="text-red-400 text-sm">{erreurOffset}</p>}
-            </div>
           )}
+
+          <p className="text-xs font-medium text-gray-400 mb-2">
+            Pour {anneeCible} {serieDemarree && <span className="text-gray-600">— modifiable dès maintenant, prend effet au 1er janvier {anneeCible}, jamais besoin d&apos;attendre le jour même</span>}
+          </p>
+          <div className="flex flex-col gap-3">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" checked={modeSaisi === 'aleatoire'} onChange={() => setModeSaisi('aleatoire')} className="accent-indigo-600 mt-0.5" />
+              <span>
+                <span className="text-sm text-gray-300 block">Aléatoire <span className="text-gray-600 text-xs">(recommandé)</span></span>
+                <span className="text-gray-600 text-xs">Un nouveau nombre est tiré chaque année — le point de départ change à chaque 1er janvier.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" checked={modeSaisi === 'manuel'} onChange={() => setModeSaisi('manuel')} className="accent-indigo-600 mt-0.5" />
+              <span>
+                <span className="text-sm text-gray-300 block">Je choisis mon point de départ</span>
+                <span className="text-gray-600 text-xs">Le même nombre est réutilisé chaque année, sans que tu aies à le reconfigurer — modifiable à tout moment.</span>
+              </span>
+            </label>
+            {modeSaisi === 'manuel' && (
+              <input
+                type="number"
+                min={1}
+                value={manuelSaisi}
+                onChange={e => setManuelSaisi(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-white w-40"
+              />
+            )}
+            <button
+              onClick={sauvegarderOffset}
+              disabled={chargementOffset}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium disabled:opacity-50 transition-colors w-fit"
+            >
+              {chargementOffset ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+            {offsetSauvegardeOk && (
+              <p className="text-green-400 text-sm">
+                {modeSaisi === 'aleatoire' && valeurGeneree != null
+                  ? `Point de départ tiré au hasard : ${valeurGeneree} — sera utilisé à ta prochaine facture de ${anneeCible}. Réenregistre pour en tirer un autre.`
+                  : `Réglage enregistré — appliqué à ta prochaine facture de ${anneeCible}.`}
+              </p>
+            )}
+            {!offsetSauvegardeOk && offsetDejaCommis != null && (
+              <p className="text-gray-500 text-xs">
+                Déjà fixé pour {anneeCible} : <span className="font-mono text-gray-300">{offsetDejaCommis}</span> (tiré au hasard) — sera utilisé à ta prochaine facture, sauf si tu réenregistres.
+              </p>
+            )}
+            {erreurOffset && <p className="text-red-400 text-sm">{erreurOffset}</p>}
+          </div>
         </section>
 
         {/* Numérotation */}
