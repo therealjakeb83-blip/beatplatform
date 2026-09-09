@@ -6,12 +6,16 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 
+type LigneRow = {
+  beats: { titre: string; image_url: string | null } | null
+  licences: { nom: string } | null
+}
+
 type CmdRow = {
   id: string
   created_at: string
   prix_paye: number
-  beats: { titre: string; image_url: string | null } | null
-  licences: { nom: string } | null
+  commande_lignes: LigneRow[]
 }
 
 type FavoriRow = {
@@ -76,27 +80,33 @@ export default async function MonCompteBoutiquePage({
     abo = data
   }
 
-  // Achats sur cette boutique — preview 4 max
+  // Achats de licences sur cette boutique — preview 4 max. Uniquement les
+  // commandes de licence (celles avec des commande_lignes) — les commandes
+  // d'abonnement (création/renouvellement) relèvent de "Mes factures", pas
+  // "Mes achats" (retour de Jake : mélanger les deux prêtait à confusion).
+  // Jointure corrigée le 2026-09-09 : l'ancienne sélection directe
+  // commandes→beats/licences date d'avant la Phase 2c (panier multi-articles,
+  // commandes→header+commande_lignes) et ne retournait plus jamais rien.
   let commandes: CmdRow[] = []
   let totalCommandes = 0
   if (clientId) {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, beats(titre, image_url), licences(nom)')
+      .select('id, created_at, prix_paye, commande_lignes(beats(titre, image_url), licences(nom))')
       .eq('beatmaker_id', beatmaker.id)
       .or(`client_id.eq.${clientId},acheteur_email.eq.${emailIdentifie}`)
       .order('created_at', { ascending: false })
-    const all = (data as unknown as CmdRow[]) ?? []
+    const all = ((data as unknown as CmdRow[]) ?? []).filter(c => (c.commande_lignes ?? []).length > 0)
     totalCommandes = all.length
     commandes = all.slice(0, 4)
   } else {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, beats(titre, image_url), licences(nom)')
+      .select('id, created_at, prix_paye, commande_lignes(beats(titre, image_url), licences(nom))')
       .eq('beatmaker_id', beatmaker.id)
       .eq('acheteur_email', emailIdentifie)
       .order('created_at', { ascending: false })
-    const all = (data as unknown as CmdRow[]) ?? []
+    const all = ((data as unknown as CmdRow[]) ?? []).filter(c => (c.commande_lignes ?? []).length > 0)
     totalCommandes = all.length
     commandes = all.slice(0, 4)
   }
@@ -263,8 +273,8 @@ export default async function MonCompteBoutiquePage({
           ) : (
             <div className="space-y-3">
               {commandes.map(cmd => {
-                const beat = cmd.beats
-                const licence = cmd.licences
+                const beat = cmd.commande_lignes[0]?.beats
+                const licence = cmd.commande_lignes[0]?.licences
                 return (
                   <div key={cmd.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
                     {beat?.image_url ? (
@@ -291,6 +301,17 @@ export default async function MonCompteBoutiquePage({
               })}
             </div>
           )}
+        </section>
+
+        {/* Factures — distinct de "Mes achats" : licences + abonnements
+            confondus, juste le document, pas les fichiers audio. */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Mes factures</h2>
+            <Link href={`/${slug}/mon-compte/factures`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
+              Voir tout →
+            </Link>
+          </div>
         </section>
 
         {/* Préférences newsletter */}

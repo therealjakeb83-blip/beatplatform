@@ -13,17 +13,13 @@ type CmdRow = {
   id: string
   created_at: string
   prix_paye: number
-  type_commande: string | null
   facture_pdf_url: string | null
-  numero_facture: string | null
   commande_lignes: LigneRow[]
 }
 
-const LABEL_TYPE_COMMANDE: Record<string, string> = {
-  CREATION_ABONNEMENT: 'Abonnement — souscription',
-  RENOUVELLEMENT: 'Abonnement — renouvellement',
-}
-
+// Uniquement les achats de licence (beats) — les commandes d'abonnement
+// vivent dans "Mes factures" (/mon-compte/factures), pour ne pas mélanger
+// deux natures différentes de commande (retour de Jake, 2026-09-09).
 export default async function AchatsBoutiquePage({
   params,
 }: {
@@ -60,19 +56,19 @@ export default async function AchatsBoutiquePage({
   if (clientId) {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, type_commande, facture_pdf_url, numero_facture, commande_lignes(beats(titre, image_url), licences(nom))')
+      .select('id, created_at, prix_paye, facture_pdf_url, commande_lignes(beats(titre, image_url), licences(nom))')
       .eq('beatmaker_id', beatmaker.id)
       .or(`client_id.eq.${clientId},acheteur_email.eq.${emailIdentifie}`)
       .order('created_at', { ascending: false })
-    commandes = (data as unknown as CmdRow[]) ?? []
+    commandes = ((data as unknown as CmdRow[]) ?? []).filter(c => (c.commande_lignes ?? []).length > 0)
   } else {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, type_commande, facture_pdf_url, numero_facture, commande_lignes(beats(titre, image_url), licences(nom))')
+      .select('id, created_at, prix_paye, facture_pdf_url, commande_lignes(beats(titre, image_url), licences(nom))')
       .eq('beatmaker_id', beatmaker.id)
       .eq('acheteur_email', emailIdentifie)
       .order('created_at', { ascending: false })
-    commandes = (data as unknown as CmdRow[]) ?? []
+    commandes = ((data as unknown as CmdRow[]) ?? []).filter(c => (c.commande_lignes ?? []).length > 0)
   }
 
   return (
@@ -97,17 +93,12 @@ export default async function AchatsBoutiquePage({
           <div className="space-y-3">
             {commandes.map(cmd => {
               const lignes = cmd.commande_lignes ?? []
-              const estAbonnement = lignes.length === 0
               const beat = lignes[0]?.beats
               const licence = lignes[0]?.licences
               const autres = lignes.length - 1
               return (
                 <div key={cmd.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
-                  {estAbonnement ? (
-                    <div className="w-12 h-12 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-600 text-xs font-bold">
-                      ↻
-                    </div>
-                  ) : beat?.image_url ? (
+                  {beat?.image_url ? (
                     <img src={beat.image_url} alt={beat.titre} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-600 text-xs font-bold">
@@ -116,22 +107,20 @@ export default async function AchatsBoutiquePage({
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-medium text-sm truncate">
-                      {estAbonnement ? (LABEL_TYPE_COMMANDE[cmd.type_commande ?? ''] ?? 'Abonnement') : (beat?.titre ?? 'Beat')}
+                      {beat?.titre ?? 'Beat'}
                       {autres > 0 && <span className="text-gray-500"> +{autres} autre{autres > 1 ? 's' : ''}</span>}
                     </p>
                     <p className="text-gray-500 text-xs">
-                      {estAbonnement ? Number(cmd.prix_paye).toFixed(2) + '€' : `${licence?.nom ?? '—'} · ${Number(cmd.prix_paye).toFixed(2)}€`} · {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
+                      {licence?.nom ?? '—'} · {Number(cmd.prix_paye).toFixed(2)}€ · {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {!estAbonnement && (
-                      <Link
-                        href={`/telechargement/${cmd.id}`}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"
-                      >
-                        ⬇ Télécharger
-                      </Link>
-                    )}
+                    <Link
+                      href={`/telechargement/${cmd.id}`}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"
+                    >
+                      ⬇ Télécharger
+                    </Link>
                     {cmd.facture_pdf_url && (
                       <a
                         href={cmd.facture_pdf_url}
