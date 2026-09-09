@@ -35,7 +35,7 @@ export const FORMAT_FACTURATION_PAR_DEFAUT = '{SLUG}-{NUM}{MM}{AA}'
 
 export const VARIABLES_FACTURATION: { variable: string; description: string }[] = [
   { variable: '{SLUG}', description: 'Identifiant de ta boutique' },
-  { variable: '{NUM}', description: 'Compteur séquentiel — doit obligatoirement figurer une seule fois, jamais dupliqué ni omis' },
+  { variable: '{NUM}', description: 'Point de départ + compteur — doit obligatoirement figurer une seule fois, jamais dupliqué ni omis' },
   { variable: '{JJ}', description: "Jour d'émission (01-31)" },
   { variable: '{MM}', description: "Mois d'émission (01-12)" },
   { variable: '{AA}', description: "Année d'émission (2 chiffres)" },

@@ -13,7 +13,7 @@ import {
 
 const LABEL_VARIABLE: Record<string, string> = {
   '{SLUG}': 'Identifiant de ta boutique',
-  '{NUM}': 'Compteur séquentiel (inclut déjà le point de départ de cette année)',
+  '{NUM}': 'Point de départ + compteur de cette année',
   '{JJ}': "Jour d'émission",
   '{MM}': "Mois d'émission",
   '{AA}': "Année d'émission",
