@@ -66,6 +66,17 @@ export async function uploadPdfContrat(commandeId: string, pdfBytes: Uint8Array)
   return `${PUBLIC_URL}/${key}`
 }
 
+export async function uploadPdfFacture(commandeId: string, pdfBytes: Uint8Array): Promise<string> {
+  const key = `commandes/${commandeId}/facture.pdf`
+  await r2.send(new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    Body: Buffer.from(pdfBytes),
+    ContentType: 'application/pdf',
+  }))
+  return `${PUBLIC_URL}/${key}`
+}
+
 export async function genererUrlSigneePdf(pdfUrl: string, filename = 'contrat.pdf'): Promise<string> {
   const key = pdfUrl.replace(PUBLIC_URL + '/', '')
   return getSignedUrl(

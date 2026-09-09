@@ -55,6 +55,7 @@ type CommandeDetail = {
   fichiers_livres: boolean | null
   statut_livraison: 'en_cours' | 'livree' | 'probleme'
   facture_pdf_url: string | null
+  numero_facture: string | null
   source_marketing: string | null
   type_commande: string | null
   plateforme_source: string | null
@@ -157,7 +158,7 @@ export default async function CommandeDetailPage({
     .select(`
       id, created_at, prix_paye, statut,
       methode_paiement, code_promo, reduction_montant,
-      fichiers_livres, statut_livraison, facture_pdf_url,
+      fichiers_livres, statut_livraison, facture_pdf_url, numero_facture,
       source_marketing, type_commande, plateforme_source,
       acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone, notes, client_id, stripe_transfer_group, tva_taux,
       clients (id, prenom, nom, email, pays),
@@ -644,7 +645,9 @@ export default async function CommandeDetailPage({
             {c.facture_pdf_url && (
               <div className="flex items-center justify-between gap-4 bg-gray-800/40 rounded-lg px-4 py-2.5">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[10px] font-medium text-gray-400 w-36 shrink-0">Facture PDF</span>
+                  <span className="text-[10px] font-medium text-gray-400 w-36 shrink-0">
+                    Facture {c.numero_facture ? `n° ${c.numero_facture}` : 'PDF'}
+                  </span>
                   <span className="text-xs font-mono text-gray-600 truncate">{c.facture_pdf_url}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

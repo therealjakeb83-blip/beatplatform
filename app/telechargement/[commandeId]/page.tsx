@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat } from '@/lib/livraison'
+import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat, uploadPdfFacture } from '@/lib/livraison'
 import { genererContratPdfPourVente } from '@/lib/contrat'
+import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { notFound } from 'next/navigation'
 import TelechargerBouton from './_components/TelechargerBouton'
 import { NOM_PLATEFORME } from '@/lib/constantes'
@@ -25,7 +26,7 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, beatmaker_id, acheteur_email, acheteur_nom, acheteur_adresse')
+    .select('id, beatmaker_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url')
     .eq('id', commandeId)
     .single()
 
@@ -111,6 +112,23 @@ export default async function TelechargerPage({
     })
   }
 
+  // Facture PDF (Phase 8) — jamais de nouveau numéro attribué ici, la
+  // régénération réutilise uniquement commande.numero_facture déjà figé au
+  // moment de la vente (voir lib/webhook-paiement.ts). Aucune facture si le
+  // beatmaker n'avait pas encore accepté le mandat de facturation à ce
+  // moment-là (numero_facture reste null, rien à afficher).
+  let factureUrl = commande.facture_pdf_url
+  if (!factureUrl && commande.numero_facture) {
+    try {
+      const pdfBytes = await genererFacturePdfPourCommande(supabase, commandeId)
+      factureUrl = await uploadPdfFacture(commandeId, pdfBytes)
+      await supabase.from('commandes').update({ facture_pdf_url: factureUrl }).eq('id', commandeId)
+    } catch (err) {
+      console.error('[telechargement] Erreur régénération facture PDF:', err)
+    }
+  }
+  const factureSigneeUrl = factureUrl ? await genererUrlSigneePdf(factureUrl, `Facture ${commande.numero_facture}.pdf`).catch(() => null) : null
+
   const titrePage = lignesDispo.length > 1
     ? `${lignesDispo.length} beats`
     : `${lignesDispo[0]?.titre} — ${lignesDispo[0]?.licenceNom}`
@@ -163,6 +181,13 @@ export default async function TelechargerPage({
             )}
           </div>
         ))}
+
+        {factureSigneeUrl && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
+            <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Facture</h2>
+            <TelechargerBouton label={`Facture ${commande.numero_facture}`} url={factureSigneeUrl} icon="pdf" commandeId={commandeId} ligneId="facture" />
+          </div>
+        )}
 
         <p className="text-center text-gray-700 text-xs mt-6">
           Propulsé par {NOM_PLATEFORME} · Les paiements sont sécurisés

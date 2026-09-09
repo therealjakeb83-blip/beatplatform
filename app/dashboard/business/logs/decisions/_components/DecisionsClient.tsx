@@ -23,6 +23,9 @@ const ACTION_LABEL: Record<string, string> = {
   reactivation:        'Réactivation',
   publication:         'Publication',
   modification_texte:  'Modification du texte',
+  acceptation_mandat_facturation:       'Mandat de facturation',
+  modification_numerotation_facture:    'Numérotation des factures',
+  reinitialisation_numerotation_facture:'Numérotation des factures',
 }
 
 const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
@@ -55,6 +58,12 @@ function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>
     const nom = licenceNoms[log.entity_id]
     return nom ? `Modification de la licence "${nom}"` : "Modification du texte d'une licence"
   }
+  if (log.action === 'acceptation_mandat_facturation') return 'Acceptation du mandat de facturation'
+  if (log.action === 'modification_numerotation_facture') {
+    const format = typeof details.format === 'string' ? details.format : null
+    return format ? `Numérotation des factures personnalisée (${format})` : 'Numérotation des factures personnalisée'
+  }
+  if (log.action === 'reinitialisation_numerotation_facture') return 'Numérotation des factures — retour au modèle par défaut'
   return ACTION_LABEL[log.action] ?? log.action
 }
 

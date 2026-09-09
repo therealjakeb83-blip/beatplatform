@@ -686,12 +686,17 @@ export async function confirmationCommande({
   commandeId: string
   clientId?: string | null
 }) {
-  const [{ branding, titre, intro }, { data: lignes }] = await Promise.all([
+  const [{ branding, titre, intro }, { data: lignes }, { data: commande }] = await Promise.all([
     chargerBrandingEtTemplate(beatmakerId, 'confirmation_commande'),
     createAdminClient()
       .from('commande_lignes')
       .select('prix_paye, beats(titre), licences(nom)')
       .eq('commande_id', commandeId),
+    createAdminClient()
+      .from('commandes')
+      .select('numero_facture, facture_pdf_url')
+      .eq('id', commandeId)
+      .maybeSingle(),
   ])
   if (!branding) return
 
@@ -709,7 +714,13 @@ export async function confirmationCommande({
               ${Number(l.prix_paye).toFixed(2)}€
             </td>
           </tr>`).join('')}
-      </table>`
+      </table>
+      ${commande?.facture_pdf_url ? `
+        <p style="margin:12px 0 0;font-size:13px;">
+          <a href="${commande.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
+            Télécharger ta facture${commande.numero_facture ? ` (n° ${echapper(commande.numero_facture)})` : ''}
+          </a>
+        </p>` : ''}`
     : ''
 
   await envoyerEmailUnique({

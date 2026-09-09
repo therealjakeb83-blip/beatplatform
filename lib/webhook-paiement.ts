@@ -1,12 +1,15 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdfPourVente } from '@/lib/contrat'
-import { uploadPdfContrat } from '@/lib/livraison'
+import { genererFacturePdfPourCommande } from '@/lib/facture'
+import { genererNumeroFacture } from '@/lib/facturation'
+import { uploadPdfContrat, uploadPdfFacture } from '@/lib/livraison'
 import { envoyerFondsEnAttente, confirmationCommande, alerteProblemeLivraison } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 import type Stripe from 'stripe'
 
 // Traitement des paiements de vente (panier classique + achat express) —
@@ -278,7 +281,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
     supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive, streams_limite, ventes_physiques_limite, vues_video_limite, clips_video_limite, radio_tv_limite, lives_performances_autorise').in('id', licenceIds),
     supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
-    supabase.from('beatmakers').select('nom_artiste, email, stripe_account_id, tva_active, tva_taux').eq('id', meta.beatmaker_id).single(),
+    supabase.from('beatmakers').select('nom_artiste, email, slug, stripe_account_id, tva_active, tva_taux, mandat_facturation_version, facturation_format, fuseau_horaire').eq('id', meta.beatmaker_id).single(),
     supabase.from('boutique_pages_legales').select('version').eq('beatmaker_id', meta.beatmaker_id).eq('type_page', 'cgv').maybeSingle(),
   ])
 
@@ -339,6 +342,31 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   }
 
   console.log('[webhook-paiement] Commande créée:', commande.id, '—', tentativeLignes.length, 'article(s)')
+
+  // Facturation (Phase 8, chantier 9 bis) — numéro attribué une seule fois
+  // ici, jamais recalculé ensuite (voir lib/facturation.ts pour l'atomicité
+  // et le raisonnement complet sur le format). Aucune facture générée tant
+  // que le beatmaker n'a pas explicitement accepté le mandat de facturation
+  // (pas de préselection silencieuse, même principe que les pages légales).
+  let numeroFactureAttribue = false
+  if (beatmaker?.mandat_facturation_version) {
+    try {
+      const numeroFacture = await genererNumeroFacture(supabase, {
+        beatmakerId: meta.beatmaker_id,
+        slug: beatmaker.slug,
+        format: beatmaker.facturation_format ?? null,
+        dateVente: new Date(),
+        fuseauHoraire: fuseauSur(beatmaker.fuseau_horaire),
+      })
+      await supabase.from('commandes').update({
+        numero_facture: numeroFacture,
+        mandat_facturation_version: beatmaker.mandat_facturation_version,
+      }).eq('id', commande.id)
+      numeroFactureAttribue = true
+    } catch (err) {
+      console.error('[webhook-paiement] Erreur attribution numéro de facture:', err)
+    }
+  }
 
   // 2. Une commande_ligne par article : splits, transferts, contrat PDF
   let contratsOk = 0
@@ -462,6 +490,20 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
       }
     } catch (err) {
       console.error('[webhook-paiement] Erreur génération PDF pour la ligne', ligne.id, ':', err)
+    }
+  }
+
+  // Facture PDF (Phase 8) — générée une fois toutes les commande_lignes en
+  // base (genererFacturePdfPourCommande les relit depuis la base). Jamais
+  // bloquant pour le reste du webhook si ça échoue.
+  if (numeroFactureAttribue) {
+    try {
+      const pdfBytes = await genererFacturePdfPourCommande(supabase, commande.id)
+      const pdfUrl = await uploadPdfFacture(commande.id, pdfBytes)
+      await supabase.from('commandes').update({ facture_pdf_url: pdfUrl }).eq('id', commande.id)
+      console.log('[webhook-paiement] Facture PDF générée pour la commande', commande.id, ':', pdfUrl)
+    } catch (err) {
+      console.error('[webhook-paiement] Erreur génération facture PDF:', err)
     }
   }
 
