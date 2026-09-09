@@ -17,6 +17,12 @@ export async function PATCH(request: Request) {
     if (!Number.isFinite(taux) || taux < 0 || taux > 100) {
       return NextResponse.json({ erreur: 'Le taux de TVA doit être un nombre entre 0 et 100.' }, { status: 400 })
     }
+    // Le numéro de TVA est une mention obligatoire dès qu'une facture
+    // applique de la TVA — impossible d'activer la TVA sans le renseigner,
+    // pour ne jamais générer de factures incomplètes.
+    if (!tva_numero || !String(tva_numero).trim()) {
+      return NextResponse.json({ erreur: 'Renseigne ton numéro de TVA intracommunautaire avant d\'activer la TVA — il est obligatoire sur tes factures.' }, { status: 400 })
+    }
   }
 
   const { error } = await supabase

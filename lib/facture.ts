@@ -24,6 +24,9 @@ export interface FactureInput {
   acheteur: { nom: string | null; email: string | null; adresse: string | null }
   lignes: LigneFacture[]
   mandatFacturationVersion: number
+  // Numéro de TVA du vendeur au moment de cette vente (snapshot, jamais la
+  // valeur live du beatmaker) — null si TVA non applicable à cette vente.
+  tvaNumero: string | null
 }
 
 const PAGE_W = 595
@@ -88,6 +91,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
     identite,
     input.vendeur.numero_entreprise ? `SIRET : ${input.vendeur.numero_entreprise}` : null,
     adresse,
+    input.tvaNumero ? `N° TVA : ${input.tvaNumero}` : null,
   ].filter(Boolean) as string[]
   for (const l of lignesVendeur) {
     ligneTexte(l, { size: 9 })
@@ -204,7 +208,7 @@ export async function genererFacturePdfPourCommande(
 ): Promise<Uint8Array> {
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, beatmaker_id, numero_facture, mandat_facturation_version, tva_taux, acheteur_nom, acheteur_email, acheteur_adresse, created_at')
+    .select('id, beatmaker_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, acheteur_nom, acheteur_email, acheteur_adresse, created_at')
     .eq('id', commandeId)
     .single()
 
@@ -233,5 +237,6 @@ export async function genererFacturePdfPourCommande(
     acheteur: { nom: commande.acheteur_nom, email: commande.acheteur_email, adresse: commande.acheteur_adresse },
     lignes: lignesFacture,
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
+    tvaNumero: commande.tva_numero ?? null,
   })
 }

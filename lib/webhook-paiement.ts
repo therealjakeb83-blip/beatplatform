@@ -281,7 +281,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
     supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive, streams_limite, ventes_physiques_limite, vues_video_limite, clips_video_limite, radio_tv_limite, lives_performances_autorise').in('id', licenceIds),
     supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
-    supabase.from('beatmakers').select('nom_artiste, email, slug, stripe_account_id, tva_active, tva_taux, mandat_facturation_version, facturation_format, fuseau_horaire').eq('id', meta.beatmaker_id).single(),
+    supabase.from('beatmakers').select('nom_artiste, email, slug, stripe_account_id, tva_active, tva_taux, tva_numero, mandat_facturation_version, facturation_format, fuseau_horaire').eq('id', meta.beatmaker_id).single(),
     supabase.from('boutique_pages_legales').select('version').eq('beatmaker_id', meta.beatmaker_id).eq('type_page', 'cgv').maybeSingle(),
   ])
 
@@ -320,6 +320,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     // réellement en vigueur pour ce beatmaker à l'instant de la vente,
     // jamais recalculés depuis leur état *actuel* plus tard.
     tva_taux: beatmaker?.tva_active && beatmaker?.tva_taux ? beatmaker.tva_taux : 0,
+    tva_numero: beatmaker?.tva_active && beatmaker?.tva_taux ? (beatmaker.tva_numero ?? null) : null,
     cgv_version: cgvData?.version ?? null,
     mandat_fulfillment_version: MANDAT_FULFILLMENT_VERSION_ACTUELLE,
     code_promo: promoCode,
