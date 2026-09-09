@@ -34,16 +34,16 @@ const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
 function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>): string {
   const details = (log.details ?? {}) as Record<string, unknown>
 
-  if (log.action === 'remboursement') return "Tu as remboursé cette commande."
-  if (log.action === 'suspension') return log.actor_type === 'admin' ? "My Producer a suspendu ta boutique." : "Tu as suspendu cette boutique."
-  if (log.action === 'reactivation') return log.actor_type === 'admin' ? "My Producer a réactivé ta boutique." : "Tu as réactivé cette boutique."
+  if (log.action === 'remboursement') return `Remboursement de la commande #${log.entity_id.slice(0, 8).toUpperCase()}`
+  if (log.action === 'suspension') return "Suspension de la boutique"
+  if (log.action === 'reactivation') return "Réactivation de la boutique"
   if (log.action === 'publication' && log.entity_type === 'page_legale') {
     const typePage = typeof details.type_page === 'string' ? details.type_page : ''
-    return `Tu as publié une nouvelle version de "${LABEL_PAGE_LEGALE[typePage] ?? typePage}".`
+    return `Publication d'une nouvelle version de "${LABEL_PAGE_LEGALE[typePage] ?? typePage}"`
   }
   if (log.action === 'modification_texte' && log.entity_type === 'licence_texte') {
     const nom = licenceNoms[log.entity_id]
-    return nom ? `Modification de la licence "${nom}".` : "Tu as modifié le texte d'une licence."
+    return nom ? `Modification de la licence "${nom}"` : "Modification du texte d'une licence"
   }
   return ACTION_LABEL[log.action] ?? log.action
 }
