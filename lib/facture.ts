@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib'
+import sharp from 'sharp'
 import type { createAdminClient } from '@/utils/supabase/admin'
 import { NOM_PLATEFORME } from './constantes'
 import type { InfosLegalesConcedant } from './licences-textes'
@@ -27,12 +28,16 @@ export interface FactureInput {
   // Numéro de TVA du vendeur au moment de cette vente (snapshot, jamais la
   // valeur live du beatmaker) — null si TVA non applicable à cette vente.
   tvaNumero: string | null
+  // Logo du beatmaker (live, pas snapshoté — purement décoratif, contrairement
+  // aux mentions légales/montants qui doivent rester figés dans le temps).
+  logoUrl: string | null
 }
 
 const PAGE_W = 595
 const PAGE_H = 842
 const MARGIN_X = 55
 const MARGIN_TOP = 70
+const MARGIN_BOTTOM = 55
 
 function formaterEuros(montant: number): string {
   return `${montant.toFixed(2).replace('.', ',')} €`
@@ -72,6 +77,29 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
       size: opts.size ?? 9.5,
       color: rgb(...(opts.color ?? [0.2, 0.2, 0.2])),
     })
+  }
+
+  // Logo du beatmaker, coin supérieur droit — jamais bloquant : toute
+  // erreur (réseau, format inattendu) est avalée, une facture ne doit
+  // jamais échouer à se générer pour un élément purement décoratif.
+  if (input.logoUrl) {
+    try {
+      const reponse = await fetch(input.logoUrl)
+      if (reponse.ok) {
+        const webpBuffer = Buffer.from(await reponse.arrayBuffer())
+        // pdf-lib ne sait embarquer que du JPG/PNG, jamais du WEBP (format
+        // de stockage des logos, voir app/api/profil/logo/route.ts).
+        const pngBuffer = await sharp(webpBuffer).png().toBuffer()
+        const image = await doc.embedPng(pngBuffer)
+        const tailleMax = 50
+        const ratio = Math.min(tailleMax / image.width, tailleMax / image.height, 1)
+        const w = image.width * ratio
+        const h = image.height * ratio
+        page.drawImage(image, { x: PAGE_W - MARGIN_X - w, y: PAGE_H - MARGIN_TOP - h + 20, width: w, height: h })
+      }
+    } catch (err) {
+      console.error('[facture] Erreur intégration logo (ignorée, facture générée sans):', err)
+    }
   }
 
   // En-tête — le nom du beatmaker (vendeur réel), jamais My Producer, même
@@ -166,31 +194,21 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
     y -= 16
   }
 
-  if (totalTVA === 0) {
-    y -= 8
-    page.drawText('TVA non applicable, article 293 B du Code général des impôts.', { x: MARGIN_X, y, font: fontRegular, size: 8, color: rgb(0.5, 0.5, 0.5) })
-    y -= 14
-  }
+  // Pied de page fixe, en bas de la 1ère page — pas à la suite du contenu.
+  // Réservé à la mention du mandataire (courte, non éditable) et aux textes
+  // légaux courts (ex. TVA non applicable) plutôt qu'un long paragraphe
+  // dans le corps de la facture — la clarification "qui est partie à la
+  // vente" est déjà portée par le contrat de licence (RÔLE DE LA
+  // PLATEFORME, lib/licences-textes.ts), pas une mention obligatoire ici.
+  let yFooter = MARGIN_BOTTOM
+  page.drawText(
+    nettoyerTexte(`Facture établie par ${NOM_PLATEFORME} au nom et pour le compte de ${input.vendeur.nom_artiste}.`),
+    { x: MARGIN_X, y: yFooter, font: fontRegular, size: 7.5, color: rgb(0.55, 0.55, 0.55) }
+  )
 
-  // Mention mandataire technique — non éditable, même esprit que le bloc
-  // RÔLE DE LA PLATEFORME des licences (lib/licences-textes.ts) mais
-  // reformulé pour une facture plutôt qu'un contrat de licence.
-  y -= 20
-  const mentionMandat = `Facture émise par ${input.vendeur.nom_artiste}, seul vendeur et émetteur légal de la présente vente. ${NOM_PLATEFORME} intervient exclusivement en qualité de mandataire technique pour la génération de ce document et l'attribution de son numéro, conformément au mandat de facturation (version ${input.mandatFacturationVersion}) accepté par le vendeur. ${NOM_PLATEFORME} n'est pas partie à la vente et n'émet aucune facture en son propre nom.`
-  const motsMandat = mentionMandat.split(' ')
-  let ligneCourante = ''
-  for (const mot of motsMandat) {
-    const essai = ligneCourante ? `${ligneCourante} ${mot}` : mot
-    if (fontRegular.widthOfTextAtSize(essai, 7.5) > maxWidth && ligneCourante) {
-      page.drawText(nettoyerTexte(ligneCourante), { x: MARGIN_X, y, font: fontRegular, size: 7.5, color: rgb(0.55, 0.55, 0.55) })
-      y -= 11
-      ligneCourante = mot
-    } else {
-      ligneCourante = essai
-    }
-  }
-  if (ligneCourante) {
-    page.drawText(nettoyerTexte(ligneCourante), { x: MARGIN_X, y, font: fontRegular, size: 7.5, color: rgb(0.55, 0.55, 0.55) })
+  if (totalTVA === 0) {
+    yFooter += 12
+    page.drawText('TVA non applicable, article 293 B du Code général des impôts.', { x: MARGIN_X, y: yFooter, font: fontRegular, size: 8, color: rgb(0.5, 0.5, 0.5) })
   }
 
   return doc.save()
@@ -217,7 +235,7 @@ export async function genererFacturePdfPourCommande(
   }
 
   const [{ data: beatmaker }, { data: lignes }] = await Promise.all([
-    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public').eq('id', commande.beatmaker_id).single(),
+    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public, logo_url').eq('id', commande.beatmaker_id).single(),
     admin.from('commande_lignes').select('prix_paye, beats(titre), licences(nom)').eq('commande_id', commandeId),
   ])
 
@@ -238,5 +256,6 @@ export async function genererFacturePdfPourCommande(
     lignes: lignesFacture,
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
     tvaNumero: commande.tva_numero ?? null,
+    logoUrl: beatmaker.logo_url ?? null,
   })
 }
