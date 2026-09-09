@@ -27,11 +27,24 @@ export async function PATCH(request: Request) {
 
   const { data: existant } = await supabase
     .from('licences_textes')
-    .select('version')
+    .select('contenu, version')
     .eq('licence_id', licence_id)
     .maybeSingle()
 
   const nouvelleVersion = (existant?.version ?? 0) + 1
+
+  // Archive la version remplacée avant de l'écraser — même principe que
+  // boutique_pages_legales_historique (Phase 4) : un texte de licence est
+  // un document juridique, son ancienne version ne doit jamais être perdue.
+  if (existant) {
+    const { error: historiqueError } = await supabase.from('licences_textes_historique').insert({
+      licence_id,
+      beatmaker_id: user.id,
+      contenu: existant.contenu,
+      version: existant.version,
+    })
+    if (historiqueError) console.error('[licences/textes] Erreur archivage historique:', JSON.stringify(historiqueError))
+  }
 
   const { error } = await supabase
     .from('licences_textes')
@@ -53,6 +66,7 @@ export async function PATCH(request: Request) {
     entityId: licence_id,
     action: 'modification_texte',
     referenceVersion: String(nouvelleVersion),
+    details: { version_precedente: existant?.version ?? null },
   })
 
   return Response.json({ success: true })

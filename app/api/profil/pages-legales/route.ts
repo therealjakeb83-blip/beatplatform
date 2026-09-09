@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
     entityId: page.id,
     action: 'publication',
     referenceVersion: String(nouvelleVersion),
-    details: { type_page },
+    details: { type_page, version_precedente: existante?.version ?? null },
   })
 
   return Response.json({ success: true })

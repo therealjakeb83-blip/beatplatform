@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { DecisionLogRow } from '../page'
+import { TYPES_PAGES_LEGALES } from '@/lib/pages-legales'
 
 const ACTOR_LABEL: Record<string, { label: string; cls: string }> = {
   beatmaker: { label: 'Toi', cls: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20' },
@@ -22,6 +23,26 @@ const ACTION_LABEL: Record<string, string> = {
   reactivation:        'Réactivation',
   publication:         'Publication',
   modification_texte:  'Modification du texte',
+}
+
+const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
+  TYPES_PAGES_LEGALES.map(p => [p.type, p.titre]),
+)
+
+// Phrase en langage naturel — c'est ce qu'un beatmaker lit en premier,
+// pas un couple action/entité technique.
+function resumeDecision(log: DecisionLogRow): string {
+  const details = (log.details ?? {}) as Record<string, unknown>
+
+  if (log.action === 'remboursement') return "Tu as remboursé cette commande."
+  if (log.action === 'suspension') return log.actor_type === 'admin' ? "My Producer a suspendu ta boutique." : "Tu as suspendu cette boutique."
+  if (log.action === 'reactivation') return log.actor_type === 'admin' ? "My Producer a réactivé ta boutique." : "Tu as réactivé cette boutique."
+  if (log.action === 'publication' && log.entity_type === 'page_legale') {
+    const typePage = typeof details.type_page === 'string' ? details.type_page : ''
+    return `Tu as publié une nouvelle version de "${LABEL_PAGE_LEGALE[typePage] ?? typePage}".`
+  }
+  if (log.action === 'modification_texte' && log.entity_type === 'licence_texte') return "Tu as modifié le texte de cette licence."
+  return ACTION_LABEL[log.action] ?? log.action
 }
 
 function fmtDateHeure(iso: string) {
@@ -63,8 +84,73 @@ function LienEntite({ log }: { log: DecisionLogRow }) {
   return <span className="text-xs text-gray-600">—</span>
 }
 
-function DetailModal({ log, onClose }: { log: DecisionLogRow; onClose: () => void }) {
+// La comparaison ancien/nouveau texte n'a de sens que pour les décisions
+// qui touchent un document (page légale, licence) — jamais commande/boutique.
+const COMPARABLES = ['page_legale', 'licence_texte']
+
+function Comparaison({ log }: { log: DecisionLogRow }) {
+  const [etat, setEtat] = useState<'idle' | 'chargement' | 'ok' | 'erreur'>('idle')
+  const [textes, setTextes] = useState<{ ancien: string | null; nouveau: string | null } | null>(null)
+
+  async function charger() {
+    setEtat('chargement')
+    try {
+      const details = (log.details ?? {}) as Record<string, unknown>
+      const params = new URLSearchParams({
+        entity_type: log.entity_type,
+        entity_id: log.entity_id,
+      })
+      if (log.reference_version) params.set('reference_version', log.reference_version)
+      const versionPrecedente = details.version_precedente
+      if (typeof versionPrecedente === 'number') params.set('version_precedente', String(versionPrecedente))
+      if (typeof details.type_page === 'string') params.set('type_page', details.type_page)
+
+      const res = await fetch(`/api/business/logs/decisions/comparaison?${params.toString()}`)
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setTextes(data)
+      setEtat('ok')
+    } catch {
+      setEtat('erreur')
+    }
+  }
+
+  if (etat === 'idle') {
+    return (
+      <button
+        onClick={charger}
+        className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+      >
+        Voir ce qui a changé
+      </button>
+    )
+  }
+
+  if (etat === 'chargement') return <p className="text-xs text-gray-500">Chargement…</p>
+  if (etat === 'erreur') return <p className="text-xs text-red-400">Impossible de charger la comparaison.</p>
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Ancien texte</p>
+        <div className="text-xs text-gray-300 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+          {textes?.ancien ?? <span className="text-gray-600">Aucune version précédente — c&apos;était la première publication.</span>}
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Nouveau texte</p>
+        <div className="text-xs text-gray-300 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+          {textes?.nouveau ?? <span className="text-gray-600">Introuvable (peut-être republié depuis).</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetailModal({ log, permettreComparaison, onClose }: { log: DecisionLogRow; permettreComparaison: boolean; onClose: () => void }) {
   const acteur = ACTOR_LABEL[log.actor_type]
+  const details = (log.details ?? {}) as Record<string, unknown>
+  const versionPrecedente = typeof details.version_precedente === 'number' ? details.version_precedente : null
 
   return (
     <div
@@ -80,40 +166,19 @@ function DetailModal({ log, onClose }: { log: DecisionLogRow; onClose: () => voi
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acteur?.cls ?? 'bg-gray-700 text-gray-300'}`}>
               {acteur?.label ?? log.actor_type}
             </span>
-            <span className="text-sm text-white font-semibold">{ACTION_LABEL[log.action] ?? log.action}</span>
+            <span className="text-xs text-gray-500">{fmtDateHeure(log.created_at)}</span>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
         </div>
 
         <div className="px-5 py-4 space-y-4 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Date</p>
-              <p className="text-sm text-gray-300">{fmtDateHeure(log.created_at)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Action brute</p>
-              <p className="text-sm text-gray-300 font-mono">{log.action}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Concerne</p>
-              <p className="text-sm text-gray-300">{ENTITY_LABEL[log.entity_type] ?? log.entity_type}</p>
-            </div>
-            {log.reference_version && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Version</p>
-                <p className="text-sm text-gray-300">v{log.reference_version}</p>
-              </div>
-            )}
-          </div>
+          <p className="text-base text-white font-medium">{resumeDecision(log)}</p>
 
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Élément concerné</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 font-mono">{log.entity_id}</span>
-              <LienEntite log={log} />
-            </div>
-          </div>
+          {log.reference_version && (
+            <p className="text-xs text-gray-500">
+              Version {versionPrecedente != null ? `${versionPrecedente} → ` : ''}{log.reference_version}
+            </p>
+          )}
 
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Motif</p>
@@ -122,19 +187,20 @@ function DetailModal({ log, onClose }: { log: DecisionLogRow; onClose: () => voi
             </p>
           </div>
 
-          {log.details && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Concerne</p>
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              {ENTITY_LABEL[log.entity_type] ?? log.entity_type}
+              <LienEntite log={log} />
+            </div>
+          </div>
+
+          {permettreComparaison && COMPARABLES.includes(log.entity_type) && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Détails</p>
-              <pre className="text-xs text-gray-300 bg-gray-950 border border-gray-800 rounded-lg p-3 whitespace-pre-wrap break-words overflow-x-auto">
-                {JSON.stringify(log.details, null, 2)}
-              </pre>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Ce qui a changé</p>
+              <Comparaison log={log} />
             </div>
           )}
-
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Identifiant du journal</p>
-            <p className="text-xs text-gray-600 font-mono">{log.id}</p>
-          </div>
         </div>
       </div>
     </div>
@@ -147,9 +213,10 @@ type Props = {
   page: number
   totalPages: number
   filtreEntite: string
+  permettreComparaison?: boolean
 }
 
-export default function DecisionsClient({ logs, total, page, totalPages, filtreEntite }: Props) {
+export default function DecisionsClient({ logs, total, page, totalPages, filtreEntite, permettreComparaison = true }: Props) {
   const [detail, setDetail] = useState<DecisionLogRow | null>(null)
 
   return (
@@ -159,7 +226,7 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
         <div>
           <h1 className="text-xl font-bold text-white">Décisions commerciales/juridiques</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {total} décision{total !== 1 ? 's' : ''} enregistrée{total !== 1 ? 's' : ''} sur ta boutique — historique permanent, jamais modifiable.
+            {total} décision{total !== 1 ? 's' : ''} enregistrée{total !== 1 ? 's' : ''} — historique permanent, jamais modifiable.
           </p>
         </div>
 
@@ -189,8 +256,7 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
                   <tr className="border-b border-gray-800 text-xs text-gray-500 font-medium">
                     <th className="text-left px-4 py-3">Date</th>
                     <th className="text-left px-4 py-3">Décidé par</th>
-                    <th className="text-left px-4 py-3">Action</th>
-                    <th className="text-left px-4 py-3">Concerne</th>
+                    <th className="text-left px-4 py-3">Quoi</th>
                     <th className="text-left px-4 py-3">Motif</th>
                     <th className="text-right px-4 py-3">Détail</th>
                   </tr>
@@ -206,17 +272,8 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
                             {acteur?.label ?? log.actor_type}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-white">
-                          {ACTION_LABEL[log.action] ?? log.action}
-                          {log.reference_version && (
-                            <span className="text-[10px] text-gray-600 ml-1.5">v{log.reference_version}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-gray-400" onClick={e => e.stopPropagation()}>
-                          {ENTITY_LABEL[log.entity_type] ?? log.entity_type}
-                          <span className="ml-2"><LienEntite log={log} /></span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-300 max-w-[280px] truncate" title={log.motif ?? undefined}>
+                        <td className="px-4 py-3 text-white max-w-[320px] truncate">{resumeDecision(log)}</td>
+                        <td className="px-4 py-3 text-xs text-gray-300 max-w-[220px] truncate" title={log.motif ?? undefined}>
                           {log.motif ?? <span className="text-gray-700">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -259,7 +316,7 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
         )}
       </div>
 
-      {detail && <DetailModal log={detail} onClose={() => setDetail(null)} />}
+      {detail && <DetailModal log={detail} permettreComparaison={permettreComparaison} onClose={() => setDetail(null)} />}
     </div>
   )
 }

@@ -55,6 +55,7 @@ export default async function AdminBoutiqueDecisionsPage({
         page={page}
         totalPages={totalPages}
         filtreEntite={entity_type ?? ''}
+        permettreComparaison={false}
       />
     </div>
   )
