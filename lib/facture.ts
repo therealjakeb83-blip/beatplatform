@@ -120,24 +120,35 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   ligneTexte(`Date d'émission : ${input.dateEmission.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}`, { size: 9 })
   y -= 28
 
-  // Tableau des lignes
+  // Une facture en franchise de TVA (non assujetti) ne doit comporter ni
+  // taux ni montant de TVA — pas juste "0,00 €" ou "—", carrément aucune
+  // colonne/ligne de TVA. Deux mises en page distinctes selon le cas,
+  // jamais un tableau HT/TVA/TTC avec des zéros pour un non-assujetti.
+  const assujettiTva = input.lignes.some(l => l.tauxTva > 0)
+
   const colDesignationX = MARGIN_X
   const colHTX = MARGIN_X + maxWidth - 190
   const colTvaX = MARGIN_X + maxWidth - 110
   const colTTCX = MARGIN_X + maxWidth - 60
+  const colPrixX = MARGIN_X + maxWidth - 60
 
   page.drawLine({ start: { x: MARGIN_X, y }, end: { x: MARGIN_X + maxWidth, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) })
   y -= 14
   page.drawText('Produits', { x: colDesignationX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
-  page.drawText('HT', { x: colHTX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
-  page.drawText('TVA', { x: colTvaX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
-  page.drawText('TTC', { x: colTTCX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
+  if (assujettiTva) {
+    page.drawText('HT', { x: colHTX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
+    page.drawText('TVA', { x: colTvaX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
+    page.drawText('TTC', { x: colTTCX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
+  } else {
+    page.drawText('Prix', { x: colPrixX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
+  }
   y -= 8
   page.drawLine({ start: { x: MARGIN_X, y }, end: { x: MARGIN_X + maxWidth, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) })
   y -= 16
 
   let totalHT = 0
   let totalTVA = 0
+  let totalPrix = 0
   for (const ligne of input.lignes) {
     // TVA absorbée (Phase 9) : prixTTC est le prix réellement payé, jamais
     // recalculé à la hausse — le HT est extrait du TTC, jamais l'inverse.
@@ -145,11 +156,16 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
     const montantTVA = ligne.prixTTC - ht
     totalHT += ht
     totalTVA += montantTVA
+    totalPrix += ligne.prixTTC
 
     page.drawText(nettoyerTexte(ligne.designation), { x: colDesignationX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
-    page.drawText(formaterEuros(ht), { x: colHTX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
-    page.drawText(ligne.tauxTva > 0 ? `${ligne.tauxTva}%` : '—', { x: colTvaX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
-    page.drawText(formaterEuros(ligne.prixTTC), { x: colTTCX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+    if (assujettiTva) {
+      page.drawText(formaterEuros(ht), { x: colHTX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+      page.drawText(ligne.tauxTva > 0 ? `${ligne.tauxTva}%` : '—', { x: colTvaX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+      page.drawText(formaterEuros(ligne.prixTTC), { x: colTTCX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+    } else {
+      page.drawText(formaterEuros(ligne.prixTTC), { x: colPrixX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+    }
     y -= 18
   }
 
@@ -158,13 +174,15 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   y -= 18
 
   const totalTTC = totalHT + totalTVA
-  const totaux: [string, string][] = [
-    ['Total HT', formaterEuros(totalHT)],
-    ['Total TVA', formaterEuros(totalTVA)],
-    ['Total TTC', formaterEuros(totalTTC)],
-  ]
+  const totaux: [string, string][] = assujettiTva
+    ? [
+        ['Total HT', formaterEuros(totalHT)],
+        ['Total TVA', formaterEuros(totalTVA)],
+        ['Total TTC', formaterEuros(totalTTC)],
+      ]
+    : [['Total', formaterEuros(totalPrix)]]
   for (const [label, montant] of totaux) {
-    const estDernier = label === 'Total TTC'
+    const estDernier = label === 'Total TTC' || label === 'Total'
     page.drawText(label, { x: colTvaX, y, font: estDernier ? fontBold : fontRegular, size: 9.5, color: rgb(0.1, 0.1, 0.1) })
     page.drawText(montant, { x: colTTCX, y, font: estDernier ? fontBold : fontRegular, size: 9.5, color: rgb(0.1, 0.1, 0.1) })
     y -= 16
@@ -180,7 +198,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
 
   y -= 26
 
-  if (totalTVA === 0) {
+  if (!assujettiTva) {
     const texteTva = 'TVA non applicable, article 293 B du Code général des impôts.'
     page.drawText(texteTva, { x: centrer(texteTva, 8, fontRegular), y, font: fontRegular, size: 8, color: rgb(0.5, 0.5, 0.5) })
     y -= 12
