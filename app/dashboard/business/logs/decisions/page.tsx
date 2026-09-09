@@ -48,6 +48,11 @@ export default async function LogsDecisionsPage({
 
   const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE))
 
+  // Pour afficher "Modification de la licence X" plutôt que "cette licence"
+  // — le journal ne stocke que l'id, le nom vit dans licences.
+  const { data: licences } = await supabase.from('licences').select('id, nom').eq('beatmaker_id', user.id)
+  const licenceNoms = Object.fromEntries((licences ?? []).map(l => [l.id, l.nom]))
+
   return (
     <DecisionsClient
       logs={(data ?? []) as DecisionLogRow[]}
@@ -55,6 +60,7 @@ export default async function LogsDecisionsPage({
       page={page}
       totalPages={totalPages}
       filtreEntite={entity_type ?? ''}
+      licenceNoms={licenceNoms}
     />
   )
 }

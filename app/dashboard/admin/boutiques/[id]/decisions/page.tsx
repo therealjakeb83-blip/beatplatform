@@ -42,6 +42,9 @@ export default async function AdminBoutiqueDecisionsPage({
 
   const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE))
 
+  const { data: licences } = await admin.from('licences').select('id, nom').eq('beatmaker_id', id)
+  const licenceNoms = Object.fromEntries((licences ?? []).map(l => [l.id, l.nom]))
+
   return (
     <div>
       <div className="max-w-screen-xl mx-auto px-6 pt-6">
@@ -56,6 +59,7 @@ export default async function AdminBoutiqueDecisionsPage({
         totalPages={totalPages}
         filtreEntite={entity_type ?? ''}
         permettreComparaison={false}
+        licenceNoms={licenceNoms}
       />
     </div>
   )

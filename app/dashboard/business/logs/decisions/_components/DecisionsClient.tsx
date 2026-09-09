@@ -31,7 +31,7 @@ const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
 
 // Phrase en langage naturel — c'est ce qu'un beatmaker lit en premier,
 // pas un couple action/entité technique.
-function resumeDecision(log: DecisionLogRow): string {
+function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>): string {
   const details = (log.details ?? {}) as Record<string, unknown>
 
   if (log.action === 'remboursement') return "Tu as remboursé cette commande."
@@ -41,7 +41,10 @@ function resumeDecision(log: DecisionLogRow): string {
     const typePage = typeof details.type_page === 'string' ? details.type_page : ''
     return `Tu as publié une nouvelle version de "${LABEL_PAGE_LEGALE[typePage] ?? typePage}".`
   }
-  if (log.action === 'modification_texte' && log.entity_type === 'licence_texte') return "Tu as modifié le texte de cette licence."
+  if (log.action === 'modification_texte' && log.entity_type === 'licence_texte') {
+    const nom = licenceNoms[log.entity_id]
+    return nom ? `Modification de la licence "${nom}".` : "Tu as modifié le texte d'une licence."
+  }
   return ACTION_LABEL[log.action] ?? log.action
 }
 
@@ -147,7 +150,7 @@ function Comparaison({ log }: { log: DecisionLogRow }) {
   )
 }
 
-function DetailModal({ log, permettreComparaison, onClose }: { log: DecisionLogRow; permettreComparaison: boolean; onClose: () => void }) {
+function DetailModal({ log, permettreComparaison, licenceNoms, onClose }: { log: DecisionLogRow; permettreComparaison: boolean; licenceNoms: Record<string, string>; onClose: () => void }) {
   const acteur = ACTOR_LABEL[log.actor_type]
   const details = (log.details ?? {}) as Record<string, unknown>
   const versionPrecedente = typeof details.version_precedente === 'number' ? details.version_precedente : null
@@ -172,7 +175,7 @@ function DetailModal({ log, permettreComparaison, onClose }: { log: DecisionLogR
         </div>
 
         <div className="px-5 py-4 space-y-4 overflow-y-auto">
-          <p className="text-base text-white font-medium">{resumeDecision(log)}</p>
+          <p className="text-base text-white font-medium">{resumeDecision(log, licenceNoms)}</p>
 
           {log.reference_version && (
             <p className="text-xs text-gray-500">
@@ -216,9 +219,10 @@ type Props = {
   totalPages: number
   filtreEntite: string
   permettreComparaison?: boolean
+  licenceNoms?: Record<string, string>
 }
 
-export default function DecisionsClient({ logs, total, page, totalPages, filtreEntite, permettreComparaison = true }: Props) {
+export default function DecisionsClient({ logs, total, page, totalPages, filtreEntite, permettreComparaison = true, licenceNoms = {} }: Props) {
   const [detail, setDetail] = useState<DecisionLogRow | null>(null)
 
   return (
@@ -274,7 +278,7 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
                             {acteur?.label ?? log.actor_type}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-white max-w-[320px] truncate">{resumeDecision(log)}</td>
+                        <td className="px-4 py-3 text-white max-w-[320px] truncate">{resumeDecision(log, licenceNoms)}</td>
                         <td className="px-4 py-3 text-xs text-gray-300 max-w-[220px] truncate" title={log.motif ?? undefined}>
                           {log.motif ?? <span className="text-gray-700">—</span>}
                         </td>
@@ -318,7 +322,7 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
         )}
       </div>
 
-      {detail && <DetailModal log={detail} permettreComparaison={permettreComparaison} onClose={() => setDetail(null)} />}
+      {detail && <DetailModal log={detail} permettreComparaison={permettreComparaison} licenceNoms={licenceNoms} onClose={() => setDetail(null)} />}
     </div>
   )
 }
