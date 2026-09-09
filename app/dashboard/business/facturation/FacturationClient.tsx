@@ -19,12 +19,20 @@ const LABEL_VARIABLE: Record<string, string> = {
   '{AA}': "Année d'émission",
 }
 
-function detailFormat(format: string, valeurs: { slug: string; num: string; jj: string; mm: string; aa: string }) {
+function detailFormat(
+  format: string,
+  valeurs: { slug: string; num: string; jj: string; mm: string; aa: string },
+  detailNum: { offset: number; compteurEmis: number } | null,
+) {
   const resolues: Record<string, string> = {
     '{SLUG}': valeurs.slug, '{NUM}': valeurs.num, '{JJ}': valeurs.jj, '{MM}': valeurs.mm, '{AA}': valeurs.aa,
   }
+  const labelNum = detailNum
+    ? `Point de départ ${detailNum.offset} + compteur de cette année ${detailNum.compteurEmis}`
+    : LABEL_VARIABLE['{NUM}']
+  const labels: Record<string, string> = { ...LABEL_VARIABLE, '{NUM}': labelNum }
   const trouvees = format.match(/\{SLUG\}|\{NUM\}|\{JJ\}|\{MM\}|\{AA\}/g) ?? []
-  return trouvees.map(v => ({ variable: v, valeur: resolues[v], label: LABEL_VARIABLE[v] }))
+  return trouvees.map(v => ({ variable: v, valeur: resolues[v], label: labels[v] }))
 }
 
 const AVERTISSEMENT_FORMAT = "Tu as déjà émis au moins une facture cette année. Changer de format maintenant fera cohabiter deux formats différents dans ton historique de factures de l'année — assure-toi que c'est justifiable en cas de contrôle. Confirmer le changement ?"
@@ -157,6 +165,14 @@ export default function FacturationClient({
   // placeholder générique — sinon l'aperçu contredit le réglage qu'on vient
   // de faire et perd toute utilité pédagogique (retour de Jake).
   const numEstIllustratif = !serieDemarree && modeSaisi === 'aleatoire'
+  // Décomposition exacte "point de départ + compteur émis" — null si le
+  // point de départ réel n'est pas encore connu (mode aléatoire, pas
+  // encore tiré), auquel cas on reste sur le libellé générique.
+  const detailNum = serieDemarree
+    ? { offset: offset ?? 0, compteurEmis: (dernierNumero ?? 0) - (offset ?? 0) + 1 }
+    : modeSaisi === 'manuel'
+      ? { offset: parseInt(manuelSaisi, 10) || 1, compteurEmis: 0 }
+      : null
   const exempleNum = serieDemarree
     ? (dernierNumero ?? 0) + 1
     : modeSaisi === 'manuel'
@@ -173,7 +189,7 @@ export default function FacturationClient({
     slug: valeursApercu.slug, num: exempleNum,
     jour: exempleDate.getDate(), mois: exempleDate.getMonth() + 1, annee: exempleDate.getFullYear(),
   }) : null
-  const detail = formatValide ? detailFormat(formatSaisi, valeursApercu) : []
+  const detail = formatValide ? detailFormat(formatSaisi, valeursApercu, detailNum) : []
 
   return (
     <main className="min-h-screen bg-gray-950 text-white px-4 py-10">
