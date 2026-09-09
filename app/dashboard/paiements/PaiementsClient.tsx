@@ -17,9 +17,6 @@ type RapportDeblocage = {
 
 export default function PaiementsClient({
   stripeAccountId,
-  tvaActive,
-  tvaTaux,
-  tvaNumero,
   fondsEnAttenteCount,
   fondsEnAttenteTotal,
   mandatFulfillmentActif,
@@ -29,9 +26,6 @@ export default function PaiementsClient({
   statementDescriptor,
 }: {
   stripeAccountId: string | null
-  tvaActive: boolean
-  tvaTaux: number
-  tvaNumero: string
   fondsEnAttenteCount: number
   fondsEnAttenteTotal: number
   mandatFulfillmentActif: boolean
@@ -169,13 +163,6 @@ export default function PaiementsClient({
     }
   }
 
-  const [tvaActif, setTvaActif] = useState(tvaActive)
-  const [taux, setTaux] = useState(String(tvaTaux || 20))
-  const [numero, setNumero] = useState(tvaNumero || '')
-  const [sauvegardeOk, setSauvegardeOk] = useState(false)
-  const [erreurTva, setErreurTva] = useState('')
-  const [chargementTva, setChargementTva] = useState(false)
-
   async function connecterStripe() {
     setChargementConnect(true)
     const res = await fetch('/api/stripe/connect/creer', { method: 'POST' })
@@ -184,24 +171,6 @@ export default function PaiementsClient({
     else setChargementConnect(false)
   }
 
-  async function sauvegarderTva() {
-    setChargementTva(true)
-    setSauvegardeOk(false)
-    setErreurTva('')
-    const res = await fetch('/api/stripe/tva', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tva_active: tvaActif, tva_taux: Number(taux), tva_numero: numero }),
-    })
-    setChargementTva(false)
-    if (!res.ok) {
-      const data = await res.json().catch(() => null)
-      setErreurTva(data?.erreur || 'Impossible de sauvegarder la TVA.')
-      return
-    }
-    setSauvegardeOk(true)
-    router.refresh()
-  }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white px-4 py-10">
@@ -422,66 +391,6 @@ export default function PaiementsClient({
           </section>
         )}
 
-        {/* TVA */}
-        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-lg font-bold mb-1">TVA</h2>
-          <p className="text-gray-400 text-sm mb-4">
-            Active uniquement si tu es assujetti à la TVA. Elle sera ajoutée au prix affiché.
-          </p>
-
-          <div className="flex items-center gap-3 mb-4">
-            <button
-              onClick={() => setTvaActif(!tvaActif)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${tvaActif ? 'bg-indigo-600' : 'bg-gray-700'}`}
-            >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${tvaActif ? 'left-7' : 'left-1'}`} />
-            </button>
-            <span className="text-sm text-gray-300">
-              {tvaActif ? 'TVA activée' : 'TVA désactivée'}
-            </span>
-          </div>
-
-          {tvaActif && (
-            <div className="flex flex-col gap-3 mb-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Taux de TVA (%)</label>
-                <input
-                  type="number"
-                  value={taux}
-                  onChange={e => setTaux(e.target.value)}
-                  min="0"
-                  max="100"
-                  className="w-32 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Numéro de TVA intracommunautaire</label>
-                <input
-                  type="text"
-                  value={numero}
-                  onChange={e => setNumero(e.target.value)}
-                  placeholder="FR12345678901"
-                  className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={sauvegarderTva}
-            disabled={chargementTva}
-            className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold disabled:opacity-50 transition-colors"
-          >
-            {chargementTva ? 'Sauvegarde...' : 'Sauvegarder'}
-          </button>
-
-          {sauvegardeOk && (
-            <p className="text-green-400 text-sm mt-2">Sauvegardé.</p>
-          )}
-          {erreurTva && (
-            <p className="text-red-400 text-sm mt-2">{erreurTva}</p>
-          )}
-        </section>
       </div>
     </main>
   )

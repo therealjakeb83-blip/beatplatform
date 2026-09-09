@@ -10,7 +10,7 @@ export default async function FacturationPage() {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('slug, mandat_facturation_version, mandat_facturation_accepte_at, facturation_format, facturation_offset, facturation_annee_courante, facturation_compteur, facturation_offset_mode, facturation_offset_manuel, fuseau_horaire')
+    .select('slug, mandat_facturation_version, mandat_facturation_accepte_at, facturation_format, facturation_offset, facturation_annee_courante, facturation_compteur, facturation_offset_mode, facturation_offset_manuel, fuseau_horaire, tva_active, tva_taux, tva_numero')
     .eq('id', user.id)
     .single()
 
@@ -33,6 +33,9 @@ export default async function FacturationPage() {
       serieDemarree={serieDemarree}
       offsetMode={(beatmaker?.facturation_offset_mode as 'aleatoire' | 'manuel') ?? 'aleatoire'}
       offsetManuel={beatmaker?.facturation_offset_manuel ?? null}
+      tvaActive={beatmaker?.tva_active ?? false}
+      tvaTaux={beatmaker?.tva_taux ?? 20}
+      tvaNumero={beatmaker?.tva_numero ?? ''}
     />
   )
 }

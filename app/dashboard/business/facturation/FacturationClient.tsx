@@ -48,6 +48,9 @@ export default function FacturationClient({
   serieDemarree,
   offsetMode,
   offsetManuel,
+  tvaActive,
+  tvaTaux,
+  tvaNumero,
 }: {
   slug: string
   mandatVersion: number | null
@@ -59,6 +62,9 @@ export default function FacturationClient({
   serieDemarree: boolean
   offsetMode: 'aleatoire' | 'manuel'
   offsetManuel: number | null
+  tvaActive: boolean
+  tvaTaux: number
+  tvaNumero: string
 }) {
   const router = useRouter()
   const mandatActif = !!mandatAccepteLe
@@ -93,6 +99,39 @@ export default function FacturationClient({
     setFormatSaisi(formatPersonnalise ?? FORMAT_FACTURATION_PAR_DEFAUT)
     setModeSaisi(offsetMode)
     setManuelSaisi(offsetManuel ? String(offsetManuel) : '1')
+  }
+
+  // TVA — déplacé depuis /dashboard/paiements (2026-09-09), pour regrouper
+  // tout ce qui touche à la facturation au même endroit.
+  const [tvaActif, setTvaActif] = useState(tvaActive)
+  const [tauxSaisi, setTauxSaisi] = useState(String(tvaTaux || 20))
+  const [numeroSaisi, setNumeroSaisi] = useState(tvaNumero || '')
+  const [chargementTva, setChargementTva] = useState(false)
+  const [erreurTva, setErreurTva] = useState('')
+  const [tvaSauvegardeOk, setTvaSauvegardeOk] = useState(false)
+
+  async function sauvegarderTva() {
+    setChargementTva(true)
+    setErreurTva('')
+    setTvaSauvegardeOk(false)
+    try {
+      const res = await fetch('/api/stripe/tva', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tva_active: tvaActif, tva_taux: Number(tauxSaisi), tva_numero: numeroSaisi }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setErreurTva(data?.erreur || 'Impossible de sauvegarder la TVA.')
+        return
+      }
+      setTvaSauvegardeOk(true)
+      router.refresh()
+    } catch {
+      setErreurTva('Erreur réseau, réessaie.')
+    } finally {
+      setChargementTva(false)
+    }
   }
 
   async function accepterMandat() {
@@ -267,6 +306,64 @@ export default function FacturationClient({
               Tant que ce mandat n&apos;est pas accepté, aucune facture n&apos;est générée pour tes ventes.
             </p>
           )}
+        </section>
+
+        {/* TVA */}
+        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-lg font-bold mb-1">TVA</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Active uniquement si tu es assujetti à la TVA. Elle reste toujours absorbée dans le prix que tu affiches (jamais ajoutée par-dessus) — seule la répartition HT/TVA sur tes factures change.
+          </p>
+
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => setTvaActif(!tvaActif)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${tvaActif ? 'bg-indigo-600' : 'bg-gray-700'}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${tvaActif ? 'left-7' : 'left-1'}`} />
+            </button>
+            <span className="text-sm text-gray-300">
+              {tvaActif ? 'TVA activée' : 'TVA désactivée'}
+            </span>
+          </div>
+
+          {tvaActif && (
+            <div className="flex flex-col gap-3 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Taux de TVA (%)</label>
+                <input
+                  type="number"
+                  value={tauxSaisi}
+                  onChange={e => setTauxSaisi(e.target.value)}
+                  min="0"
+                  max="100"
+                  className="w-32 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Numéro de TVA intracommunautaire</label>
+                <input
+                  type="text"
+                  value={numeroSaisi}
+                  onChange={e => setNumeroSaisi(e.target.value)}
+                  placeholder="FR12345678901"
+                  className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-gray-600 text-xs mt-1">Obligatoire pour activer la TVA — affiché sur tes factures.</p>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={sauvegarderTva}
+            disabled={chargementTva}
+            className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold disabled:opacity-50 transition-colors"
+          >
+            {chargementTva ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+
+          {tvaSauvegardeOk && <p className="text-green-400 text-sm mt-2">Sauvegardé.</p>}
+          {erreurTva && <p className="text-red-400 text-sm mt-2">{erreurTva}</p>}
         </section>
 
         {/* Point de départ (offset) */}
