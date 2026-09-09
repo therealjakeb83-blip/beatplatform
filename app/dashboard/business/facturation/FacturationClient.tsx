@@ -77,6 +77,24 @@ export default function FacturationClient({
   const [erreurOffset, setErreurOffset] = useState('')
   const [offsetSauvegardeOk, setOffsetSauvegardeOk] = useState(false)
 
+  // router.refresh() ne démonte jamais ce composant client — sans ça, l'état
+  // local resterait bloqué sur la dernière saisie de l'utilisateur après un
+  // enregistrement, donnant l'impression trompeuse que rien n'a été vraiment
+  // sauvegardé (bug réel remonté par Jake). Resynchronisation pendant le
+  // rendu (pattern React recommandé, pas un useEffect) dès que le serveur
+  // renvoie des props différentes des dernières connues.
+  const [propsPrecedentes, setPropsPrecedentes] = useState({ formatPersonnalise, offsetMode, offsetManuel })
+  if (
+    propsPrecedentes.formatPersonnalise !== formatPersonnalise ||
+    propsPrecedentes.offsetMode !== offsetMode ||
+    propsPrecedentes.offsetManuel !== offsetManuel
+  ) {
+    setPropsPrecedentes({ formatPersonnalise, offsetMode, offsetManuel })
+    setFormatSaisi(formatPersonnalise ?? FORMAT_FACTURATION_PAR_DEFAUT)
+    setModeSaisi(offsetMode)
+    setManuelSaisi(offsetManuel ? String(offsetManuel) : '1')
+  }
+
   async function accepterMandat() {
     setChargementMandat(true)
     setErreurMandat('')
