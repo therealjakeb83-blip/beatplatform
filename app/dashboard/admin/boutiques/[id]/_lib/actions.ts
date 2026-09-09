@@ -1,6 +1,7 @@
 'use server'
 
 import { estAdmin, estRoleAdmin } from '@/lib/admin'
+import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { suspendreBoutique, reactiverBoutique, type RapportSuspension } from '@/lib/admin-boutiques'
 
@@ -22,14 +23,16 @@ export async function suspendreAction(beatmakerId: string, raison: string): Prom
   const { data: cible } = await admin.from('beatmakers').select('role').eq('id', beatmakerId).single()
   if (estRoleAdmin(cible?.role)) return { erreur: 'Impossible de suspendre le compte admin — tu te bloquerais toi-même hors de cet outil.' }
 
-  const rapport = await suspendreBoutique(beatmakerId, raison.trim())
+  const { data: { user } } = await (await createClient()).auth.getUser()
+  const rapport = await suspendreBoutique(beatmakerId, raison.trim(), user!.id)
   return { rapport }
 }
 
 export async function reactiverAction(beatmakerId: string): Promise<{ rapport?: RapportSuspension; erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
 
-  const rapport = await reactiverBoutique(beatmakerId)
+  const { data: { user } } = await (await createClient()).auth.getUser()
+  const rapport = await reactiverBoutique(beatmakerId, user!.id)
   return { rapport }
 }
 

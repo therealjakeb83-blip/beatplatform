@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { stripe } from '@/lib/stripe'
+import { journaliserDecision } from '@/lib/decisions-log'
 
 // Suspendre/Réactiver une boutique (15c) — voir mémoire session 2026-07-24 :
 // une boutique suspendue ne doit plus faire payer personne. La cascade pause
@@ -16,7 +17,7 @@ export type RapportSuspension = {
   artistes: { total: number; reussis: number; ignores: number; echecs: { id: string; email: string | null; erreur: string }[] }
 }
 
-export async function suspendreBoutique(beatmakerId: string, raison: string): Promise<RapportSuspension> {
+export async function suspendreBoutique(beatmakerId: string, raison: string, adminId: string): Promise<RapportSuspension> {
   const admin = createAdminClient()
 
   const { data: beatmaker } = await admin
@@ -98,10 +99,20 @@ export async function suspendreBoutique(beatmakerId: string, raison: string): Pr
     }
   }
 
+  await journaliserDecision({
+    beatmakerId,
+    actorType: 'admin',
+    actorId: adminId,
+    entityType: 'boutique',
+    entityId: beatmakerId,
+    action: 'suspension',
+    motif: raison,
+  })
+
   return { plateforme: rapportPlateforme, artistes: rapportArtistes }
 }
 
-export async function reactiverBoutique(beatmakerId: string): Promise<RapportSuspension> {
+export async function reactiverBoutique(beatmakerId: string, adminId: string): Promise<RapportSuspension> {
   const admin = createAdminClient()
 
   const { data: beatmaker } = await admin
@@ -179,6 +190,15 @@ export async function reactiverBoutique(beatmakerId: string): Promise<RapportSus
       rapportArtistes.echecs.push({ id: abo.id, email: abo.acheteur_email, erreur: err instanceof Error ? err.message : String(err) })
     }
   }
+
+  await journaliserDecision({
+    beatmakerId,
+    actorType: 'admin',
+    actorId: adminId,
+    entityType: 'boutique',
+    entityId: beatmakerId,
+    action: 'reactivation',
+  })
 
   return { plateforme: rapportPlateforme, artistes: rapportArtistes }
 }

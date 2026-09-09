@@ -13,6 +13,7 @@ const MARKETING_ROUTES = [`${BASE}/marketing`]
 const MAILING_ROUTES   = [`${BASE}/mailing`]
 const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/reductions-lot`, `${BASE}/licences`, `${BASE}/collabs`, `${BASE}/categories`, `${BASE}/litiges`]
 const ANALYTICS_ROUTE  = `${BASE}/analytics`
+const LOGS_ROUTES      = [`${BASE}/logs`]
 
 export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
   const pathname = usePathname()
@@ -22,12 +23,14 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
   const isMailing   = MAILING_ROUTES.some(r => pathname.startsWith(r))
   const isCommerce  = COMMERCE_ROUTES.some(r => pathname.startsWith(r))
   const isAnalytics = pathname.startsWith(ANALYTICS_ROUTE)
+  const isLogs      = LOGS_ROUTES.some(r => pathname.startsWith(r))
 
   const [crmOpen,       setCrmOpen]       = useState(isCrm)
   const [marketingOpen, setMarketingOpen] = useState(isMarketing)
   const [mailingOpen,   setMailingOpen]   = useState(isMailing)
   const [commerceOpen,  setCommerceOpen]  = useState(isCommerce)
   const [analyticsOpen, setAnalyticsOpen] = useState(isAnalytics)
+  const [logsOpen,      setLogsOpen]      = useState(isLogs)
 
   function navItem(href: string, label: string, active: boolean) {
     return (
@@ -165,7 +168,6 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
             {subItem(`${BASE}/marketing/campagnes`, 'Campagnes', pathname.startsWith(`${BASE}/marketing/campagnes`))}
             {subItem(`${BASE}/marketing/templates`, 'Templates', pathname.startsWith(`${BASE}/marketing/templates`))}
             {subItem(`${BASE}/marketing/automatisations`, 'Automatisations', pathname.startsWith(`${BASE}/marketing/automatisations`))}
-            {subItem(`${BASE}/marketing/logs`, 'Logs emails', pathname.startsWith(`${BASE}/marketing/logs`))}
           </>
         )}
 
@@ -232,6 +234,24 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
             {subItem(`${BASE}/analytics?tab=revenus`,     'Revenus',        isAnalytics && tabActif === 'revenus')}
             {subItem(`${BASE}/analytics?tab=preferences`, 'Préférences',    isAnalytics && tabActif === 'preferences')}
             {subItem(`${BASE}/analytics?tab=codes-promo`, 'Codes promo',    isAnalytics && tabActif === 'codes-promo')}
+          </>
+        )}
+
+        <div className="my-3 border-t border-gray-800" />
+
+        {/* Logs */}
+        {sectionHeader(
+          `${BASE}/logs/decisions`,
+          'Logs',
+          isLogs,
+          logsOpen,
+          () => setLogsOpen(o => !o),
+          () => setLogsOpen(true),
+        )}
+        {logsOpen && (
+          <>
+            {subItem(`${BASE}/logs/decisions`, 'Décisions commerciales/juridiques', pathname.startsWith(`${BASE}/logs/decisions`))}
+            {subItem(`${BASE}/logs/emails`,    'Emails',                            pathname.startsWith(`${BASE}/logs/emails`))}
           </>
         )}
       </nav>

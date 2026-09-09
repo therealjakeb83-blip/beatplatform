@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { journaliserDecision } from '@/lib/decisions-log'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -30,16 +31,29 @@ export async function PATCH(request: Request) {
     .eq('licence_id', licence_id)
     .maybeSingle()
 
+  const nouvelleVersion = (existant?.version ?? 0) + 1
+
   const { error } = await supabase
     .from('licences_textes')
     .upsert({
       licence_id,
       beatmaker_id: user.id,
       contenu,
-      version: (existant?.version ?? 0) + 1,
+      version: nouvelleVersion,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'licence_id' })
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  await journaliserDecision({
+    beatmakerId: user.id,
+    actorType: 'beatmaker',
+    actorId: user.id,
+    entityType: 'licence_texte',
+    entityId: licence_id,
+    action: 'modification_texte',
+    referenceVersion: String(nouvelleVersion),
+  })
+
   return Response.json({ success: true })
 }

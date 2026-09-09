@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { TYPES_PAGES_LEGALES, type TypePageLegale } from '@/lib/pages-legales'
+import { journaliserDecision } from '@/lib/decisions-log'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -16,7 +17,7 @@ export async function PATCH(request: Request) {
 
   const { data: existante } = await supabase
     .from('boutique_pages_legales')
-    .select('contenu, version, adopte_le')
+    .select('id, contenu, version, adopte_le')
     .eq('beatmaker_id', user.id)
     .eq('type_page', type_page as TypePageLegale)
     .maybeSingle()
@@ -37,17 +38,33 @@ export async function PATCH(request: Request) {
     if (historiqueError) console.error('[pages-legales] Erreur archivage historique:', JSON.stringify(historiqueError))
   }
 
-  const { error } = await supabase
+  const nouvelleVersion = (existante?.version ?? 0) + 1
+
+  const { data: page, error } = await supabase
     .from('boutique_pages_legales')
     .upsert({
       beatmaker_id: user.id,
       type_page,
       contenu,
-      version: (existante?.version ?? 0) + 1,
+      version: nouvelleVersion,
       adopte_le: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'beatmaker_id,type_page' })
+    .select('id')
+    .single()
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  await journaliserDecision({
+    beatmakerId: user.id,
+    actorType: 'beatmaker',
+    actorId: user.id,
+    entityType: 'page_legale',
+    entityId: page.id,
+    action: 'publication',
+    referenceVersion: String(nouvelleVersion),
+    details: { type_page },
+  })
+
   return Response.json({ success: true })
 }

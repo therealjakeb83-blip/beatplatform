@@ -111,7 +111,12 @@ export default function BoutiqueDetailClient({
           <h1 className="text-xl font-bold text-white mt-1">{beatmaker.nom_artiste}</h1>
           <p className="text-sm text-gray-500">{beatmaker.slug} — {beatmaker.email}</p>
         </div>
-        <StatutBadge statut={statut} />
+        <div className="flex items-center gap-3">
+          <Link href={`/dashboard/admin/boutiques/${beatmaker.id}/decisions`} className="text-xs text-gray-400 hover:text-white underline">
+            Journal des décisions →
+          </Link>
+          <StatutBadge statut={statut} />
+        </div>
       </div>
 
       {erreur && <p className="text-sm text-red-400">{erreur}</p>}

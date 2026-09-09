@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { stripe } from '@/lib/stripe'
+import { journaliserDecision } from '@/lib/decisions-log'
 
 // Remboursement réel (Phase 3, refonte 9 bis) — scopé aux ventes solo Direct
 // Charge uniquement (stripe_account_id renseigné). Deux autres cas existent
@@ -72,6 +73,16 @@ export async function POST(
     .eq('beatmaker_id', user.id)
 
   if (error) return NextResponse.json({ error: 'Remboursement Stripe effectué mais erreur de mise à jour du statut — vérifier manuellement' }, { status: 500 })
+
+  await journaliserDecision({
+    beatmakerId: user.id,
+    actorType: 'beatmaker',
+    actorId: user.id,
+    entityType: 'commande',
+    entityId: commandeId,
+    action: 'remboursement',
+    details: { montant: commande.prix_paye },
+  })
 
   return NextResponse.json({ ok: true })
 }
