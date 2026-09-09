@@ -25,6 +25,9 @@ ALTER TABLE licences_textes_historique ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "licences_textes_historique_beatmaker_own" ON licences_textes_historique
   FOR SELECT USING (beatmaker_id = auth.uid());
 
+CREATE POLICY "licences_textes_historique_beatmaker_insert" ON licences_textes_historique
+  FOR INSERT WITH CHECK (beatmaker_id = auth.uid());
+
 GRANT SELECT, INSERT ON licences_textes_historique TO authenticated;
 GRANT SELECT, INSERT ON licences_textes_historique TO service_role;
 
