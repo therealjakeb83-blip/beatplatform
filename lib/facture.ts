@@ -1,5 +1,4 @@
 import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib'
-import sharp from 'sharp'
 import type { createAdminClient } from '@/utils/supabase/admin'
 import { NOM_PLATEFORME } from './constantes'
 import type { InfosLegalesConcedant } from './licences-textes'
@@ -28,9 +27,10 @@ export interface FactureInput {
   // Numéro de TVA du vendeur au moment de cette vente (snapshot, jamais la
   // valeur live du beatmaker) — null si TVA non applicable à cette vente.
   tvaNumero: string | null
-  // Logo du beatmaker (live, pas snapshoté — purement décoratif, contrairement
-  // aux mentions légales/montants qui doivent rester figés dans le temps).
-  logoUrl: string | null
+  // Logo retiré pour la V1 (2026-09-09) — le rendu blanc-sur-blanc de
+  // certains logos pensés pour un fond sombre les rend invisibles sur une
+  // facture à fond blanc, sans solution simple à ce stade. Prévu pour la V2
+  // (fond contrastant derrière le logo). Voir memory/project_phase8_numerotation_facture.md.
 }
 
 const PAGE_W = 595
@@ -76,29 +76,6 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
       size: opts.size ?? 9.5,
       color: rgb(...(opts.color ?? [0.2, 0.2, 0.2])),
     })
-  }
-
-  // Logo du beatmaker, coin supérieur droit — jamais bloquant : toute
-  // erreur (réseau, format inattendu) est avalée, une facture ne doit
-  // jamais échouer à se générer pour un élément purement décoratif.
-  if (input.logoUrl) {
-    try {
-      const reponse = await fetch(input.logoUrl)
-      if (reponse.ok) {
-        const webpBuffer = Buffer.from(await reponse.arrayBuffer())
-        // pdf-lib ne sait embarquer que du JPG/PNG, jamais du WEBP (format
-        // de stockage des logos, voir app/api/profil/logo/route.ts).
-        const pngBuffer = await sharp(webpBuffer).png().toBuffer()
-        const image = await doc.embedPng(pngBuffer)
-        const tailleMax = 50
-        const ratio = Math.min(tailleMax / image.width, tailleMax / image.height, 1)
-        const w = image.width * ratio
-        const h = image.height * ratio
-        page.drawImage(image, { x: PAGE_W - MARGIN_X - w, y: PAGE_H - MARGIN_TOP - h + 20, width: w, height: h })
-      }
-    } catch (err) {
-      console.error('[facture] Erreur intégration logo (ignorée, facture générée sans):', err)
-    }
   }
 
   // En-tête — le nom du beatmaker (vendeur réel), jamais My Producer, même
@@ -151,7 +128,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
 
   page.drawLine({ start: { x: MARGIN_X, y }, end: { x: MARGIN_X + maxWidth, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) })
   y -= 14
-  page.drawText('Désignation', { x: colDesignationX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
+  page.drawText('Produits', { x: colDesignationX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
   page.drawText('HT', { x: colHTX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
   page.drawText('TVA', { x: colTvaX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
   page.drawText('TTC', { x: colTTCX, y, font: fontBold, size: 8.5, color: rgb(0.45, 0.45, 0.45) })
@@ -236,7 +213,7 @@ export async function genererFacturePdfPourCommande(
   }
 
   const [{ data: beatmaker }, { data: lignes }] = await Promise.all([
-    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public, logo_url').eq('id', commande.beatmaker_id).single(),
+    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public').eq('id', commande.beatmaker_id).single(),
     admin.from('commande_lignes').select('prix_paye, beats(titre), licences(nom)').eq('commande_id', commandeId),
   ])
 
@@ -257,6 +234,5 @@ export async function genererFacturePdfPourCommande(
     lignes: lignesFacture,
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
     tvaNumero: commande.tva_numero ?? null,
-    logoUrl: beatmaker.logo_url ?? null,
   })
 }
