@@ -41,10 +41,24 @@ Profil de chaque beatmaker inscrit sur la plateforme My Producer.
 | `telephone` | text | ✅ Avant vente | Numéro de téléphone |
 | `numero_entreprise` | text | ⬜ Optionnel | SIRET (France) ou équivalent selon le pays |
 | `tva_active` | boolean | ⬜ Optionnel | TVA activée ou non (responsabilité du beatmaker) |
-| `tva_numero` | text | ⬜ Optionnel | Numéro de TVA intracommunautaire |
+| `tva_numero` | text | ⚠️ Requis si `tva_active=true` | Numéro de TVA intracommunautaire — bloqué à l'activation depuis Phase 8 (`/api/stripe/tva`), affiché sur les factures |
 | `tva_taux` | numeric | ⬜ Optionnel | Taux saisi par le beatmaker (ex: 20 pour 20%) |
 
 > **Note légale :** Le taux de TVA est saisi manuellement par le beatmaker. My Producer n'est pas responsable du taux appliqué ni des obligations fiscales du beatmaker.
+
+#### Facturation (Phase 8, chantier 9 bis — regroupées dans `/dashboard/business/facturation`)
+| Champ | Type | Description |
+|---|---|---|
+| `mandat_facturation_version` | integer | Version du mandat de facturation accepté — `null` = jamais accepté, aucune facture générée |
+| `mandat_facturation_accepte_at` | timestamptz | Date d'acceptation |
+| `facturation_format` | text | Format personnalisé du numéro de facture (`{SLUG}{NUM}{JJ}{MM}{AA}`) — `null` = défaut `{SLUG}-{NUM}{MM}{AA}` |
+| `facturation_offset_mode` | text | `aleatoire` (défaut, nouveau tirage chaque année) ou `manuel` (point de départ choisi, reconduit chaque année) |
+| `facturation_offset_manuel` | integer | Point de départ — choisi par le beatmaker (mode manuel) ou tiré au clic (mode aléatoire, consommé et remis à `null` après usage) |
+| `facturation_offset` | integer | Point de départ réellement utilisé pour l'année en cours (figé dès la 1ère facture) |
+| `facturation_annee_courante` | integer | Année de la série de numérotation en cours |
+| `facturation_compteur` | integer | Dernier numéro attribué dans la série de l'année en cours |
+
+> Deux champs légaux existent en base mais **n'ont encore aucune interface d'édition** (utilisés par les contrats de licence, `lib/licences-textes.ts`) : `forme_juridique`, `siege_social_adresse`. Prévu au regroupement complet des infos de facturation, repoussé à la refonte UX.
 
 #### Paiements
 | Champ | Type | Obligatoire | Description |
@@ -246,7 +260,10 @@ Historique de tous les achats de licences sur la plateforme. Une ligne = un acha
 |---|---|---|
 | `fichiers_livres` | boolean | Fichiers audio envoyés au client |
 | `contrat_pdf_url` | text | Lien vers le contrat de licence généré automatiquement |
-| `facture_pdf_url` | text | Lien vers la facture générée automatiquement |
+| `facture_pdf_url` | text | Lien vers la facture générée automatiquement (Phase 8, chantier 9 bis — `lib/facture.ts`) |
+| `numero_facture` | text | Numéro de facture figé au moment de l'émission, jamais recalculé (`lib/facturation.ts`) |
+| `mandat_facturation_version` | integer | Version du mandat de facturation en vigueur chez le beatmaker au moment de la vente (snapshot) |
+| `tva_numero` | text | Numéro de TVA du beatmaker au moment de cette vente (snapshot, jamais la valeur live) — `null` si TVA non applicable |
 
 #### Import externe
 | Champ | Type | Description |
