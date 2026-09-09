@@ -29,6 +29,16 @@ const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
   TYPES_PAGES_LEGALES.map(p => [p.type, p.titre]),
 )
 
+// "Modification ___" — le journal n'enregistre une ligne qu'à la
+// publication, donc pas besoin de le préciser dans la phrase.
+const RESUME_PAGE_LEGALE: Record<string, string> = {
+  cgv:               'des CGV',
+  mentions_legales:  'des mentions légales',
+  confidentialite:   'de la politique de confidentialité',
+  contact:           'de la page contact',
+  plan_de_site:      'du plan de site',
+}
+
 // Phrase en langage naturel — c'est ce qu'un beatmaker lit en premier,
 // pas un couple action/entité technique.
 function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>): string {
@@ -39,7 +49,7 @@ function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>
   if (log.action === 'reactivation') return "Réactivation de la boutique"
   if (log.action === 'publication' && log.entity_type === 'page_legale') {
     const typePage = typeof details.type_page === 'string' ? details.type_page : ''
-    return `Publication d'une nouvelle version de "${LABEL_PAGE_LEGALE[typePage] ?? typePage}"`
+    return `Modification ${RESUME_PAGE_LEGALE[typePage] ?? `de "${LABEL_PAGE_LEGALE[typePage] ?? typePage}"`}`
   }
   if (log.action === 'modification_texte' && log.entity_type === 'licence_texte') {
     const nom = licenceNoms[log.entity_id]
