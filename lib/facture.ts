@@ -37,7 +37,6 @@ const PAGE_W = 595
 const PAGE_H = 842
 const MARGIN_X = 55
 const MARGIN_TOP = 70
-const MARGIN_BOTTOM = 55
 
 function formaterEuros(montant: number): string {
   return `${montant.toFixed(2).replace('.', ',')} €`
@@ -194,22 +193,24 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
     y -= 16
   }
 
-  // Pied de page fixe, en bas de la 1ère page — pas à la suite du contenu.
-  // Réservé à la mention du mandataire (courte, non éditable) et aux textes
-  // légaux courts (ex. TVA non applicable) plutôt qu'un long paragraphe
-  // dans le corps de la facture — la clarification "qui est partie à la
-  // vente" est déjà portée par le contrat de licence (RÔLE DE LA
-  // PLATEFORME, lib/licences-textes.ts), pas une mention obligatoire ici.
-  let yFooter = MARGIN_BOTTOM
-  page.drawText(
-    nettoyerTexte(`Facture établie par ${NOM_PLATEFORME} au nom et pour le compte de ${input.vendeur.nom_artiste}.`),
-    { x: MARGIN_X, y: yFooter, font: fontRegular, size: 7.5, color: rgb(0.55, 0.55, 0.55) }
-  )
+  // Juste sous le total, centrées — pas en pied de page fixe (retour de
+  // Jake, voir capture annotée) : le texte légal (TVA non applicable, s'il
+  // y a lieu) puis la mention courte du mandataire, dans cet ordre.
+  const centrer = (texte: string, taille: number, font: PDFFont) => {
+    const largeur = font.widthOfTextAtSize(texte, taille)
+    return MARGIN_X + (maxWidth - largeur) / 2
+  }
+
+  y -= 26
 
   if (totalTVA === 0) {
-    yFooter += 12
-    page.drawText('TVA non applicable, article 293 B du Code général des impôts.', { x: MARGIN_X, y: yFooter, font: fontRegular, size: 8, color: rgb(0.5, 0.5, 0.5) })
+    const texteTva = 'TVA non applicable, article 293 B du Code général des impôts.'
+    page.drawText(texteTva, { x: centrer(texteTva, 8, fontRegular), y, font: fontRegular, size: 8, color: rgb(0.5, 0.5, 0.5) })
+    y -= 12
   }
+
+  const texteMandat = nettoyerTexte(`Facture établie par ${NOM_PLATEFORME} au nom et pour le compte de ${input.vendeur.nom_artiste}.`)
+  page.drawText(texteMandat, { x: centrer(texteMandat, 7.5, fontRegular), y, font: fontRegular, size: 7.5, color: rgb(0.55, 0.55, 0.55) })
 
   return doc.save()
 }
