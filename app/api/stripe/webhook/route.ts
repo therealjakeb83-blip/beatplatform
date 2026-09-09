@@ -3,6 +3,10 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
 import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiement, traiterPaiementExpress } from '@/lib/webhook-paiement'
+import { genererNumeroFacture } from '@/lib/facturation'
+import { genererFacturePdfPourCommande } from '@/lib/facture'
+import { uploadPdfFacture } from '@/lib/livraison'
+import { fuseauSur } from '@/lib/fuseau-horaire'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -667,7 +671,7 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     return
   }
 
-  const { error } = await supabase.from('commandes').insert({
+  const { data: commandeAbo, error } = await supabase.from('commandes').insert({
     client_id: abo.client_id,
     beatmaker_id: abo.beatmaker_id,
     prix_paye: prixPaye,
@@ -684,11 +688,44 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     // actuel du beatmaker, qui a pu changer depuis pour d'autres abonnés.
     tva_taux: abo.tva_taux,
     source_marketing: abo.source_marketing ?? 'direct',
-  })
+  }).select('id').single()
 
-  if (error) {
+  if (error || !commandeAbo) {
     console.error('[webhook] Erreur insert commande abo:', JSON.stringify(error))
     return
+  }
+
+  // Facturation (Phase 8) — même règle que pour une vente de licence :
+  // aucune facture générée tant que le mandat de facturation n'a pas été
+  // accepté. Gap réel trouvé le 2026-09-09 : les commandes d'abonnement
+  // passaient par ce chemin séparé, jamais par finaliserCommandePayee, donc
+  // ne recevaient jamais de numero_facture/facture_pdf_url.
+  const { data: beatmakerFacturation } = await supabase
+    .from('beatmakers')
+    .select('slug, mandat_facturation_version, facturation_format, fuseau_horaire')
+    .eq('id', abo.beatmaker_id)
+    .single()
+
+  if (beatmakerFacturation?.mandat_facturation_version) {
+    try {
+      const numeroFacture = await genererNumeroFacture(supabase, {
+        beatmakerId: abo.beatmaker_id,
+        slug: beatmakerFacturation.slug,
+        format: beatmakerFacturation.facturation_format ?? null,
+        dateVente: new Date(),
+        fuseauHoraire: fuseauSur(beatmakerFacturation.fuseau_horaire),
+      })
+      await supabase.from('commandes').update({
+        numero_facture: numeroFacture,
+        mandat_facturation_version: beatmakerFacturation.mandat_facturation_version,
+      }).eq('id', commandeAbo.id)
+
+      const pdfBytes = await genererFacturePdfPourCommande(supabase, commandeAbo.id)
+      const pdfUrl = await uploadPdfFacture(commandeAbo.id, pdfBytes)
+      await supabase.from('commandes').update({ facture_pdf_url: pdfUrl }).eq('id', commandeAbo.id)
+    } catch (err) {
+      console.error('[webhook] Erreur génération facture pour commande abo:', err)
+    }
   }
 
   // Incrémenter mensualites_payees (total facturé) et mois_consecutifs (compteur

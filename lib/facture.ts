@@ -222,7 +222,7 @@ export async function genererFacturePdfPourCommande(
 ): Promise<Uint8Array> {
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, beatmaker_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, acheteur_nom, acheteur_email, acheteur_adresse, created_at')
+    .select('id, beatmaker_id, client_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, acheteur_nom, acheteur_email, acheteur_adresse, created_at, prix_paye, type_commande')
     .eq('id', commandeId)
     .single()
 
@@ -237,18 +237,53 @@ export async function genererFacturePdfPourCommande(
 
   if (!beatmaker) throw new Error(`Beatmaker introuvable pour la commande: ${commandeId}`)
 
+  // Les commandes d'abonnement (voir traiterPaiementAbonnement) n'enregistrent
+  // jamais acheteur_nom/email/adresse directement, seulement client_id —
+  // repli sur la fiche client dans ce cas, pour ne jamais laisser le bloc
+  // "Client" vide sur la facture.
+  let acheteurNom = commande.acheteur_nom
+  let acheteurEmail = commande.acheteur_email
+  let acheteurAdresse = commande.acheteur_adresse
+  if (!acheteurNom && !acheteurEmail && commande.client_id) {
+    const { data: client } = await admin
+      .from('clients')
+      .select('prenom, nom, email, adresse, ville, code_postal, pays')
+      .eq('id', commande.client_id)
+      .maybeSingle()
+    if (client) {
+      acheteurNom = [client.prenom, client.nom].filter(Boolean).join(' ') || null
+      acheteurEmail = client.email
+      const codePostalVille = [client.code_postal, client.ville].filter(Boolean).join(' ')
+      acheteurAdresse = [client.adresse, codePostalVille, client.pays].filter(Boolean).join(', ') || null
+    }
+  }
+
   type LigneRow = { prix_paye: number; beats: { titre: string } | null; licences: { nom: string } | null }
-  const lignesFacture: LigneFacture[] = ((lignes ?? []) as unknown as LigneRow[]).map(l => ({
-    designation: `${l.beats?.titre ?? 'Beat'} — Licence ${l.licences?.nom ?? ''}`,
-    prixTTC: Number(l.prix_paye),
-    tauxTva: Number(commande.tva_taux ?? 0),
-  }))
+  // Une commande d'abonnement (création/renouvellement, voir
+  // traiterPaiementAbonnement dans app/api/stripe/webhook/route.ts) n'a
+  // jamais de commande_lignes — le prix est directement sur la commande.
+  // Repli sur une ligne unique dans ce cas, plutôt qu'une facture vide.
+  const LABEL_TYPE_COMMANDE: Record<string, string> = {
+    CREATION_ABONNEMENT: 'Abonnement — souscription',
+    RENOUVELLEMENT: 'Abonnement — renouvellement',
+  }
+  const lignesFacture: LigneFacture[] = lignes && lignes.length > 0
+    ? (lignes as unknown as LigneRow[]).map(l => ({
+        designation: `${l.beats?.titre ?? 'Beat'} — Licence ${l.licences?.nom ?? ''}`,
+        prixTTC: Number(l.prix_paye),
+        tauxTva: Number(commande.tva_taux ?? 0),
+      }))
+    : [{
+        designation: LABEL_TYPE_COMMANDE[commande.type_commande ?? ''] ?? 'Abonnement',
+        prixTTC: Number(commande.prix_paye),
+        tauxTva: Number(commande.tva_taux ?? 0),
+      }]
 
   return genererFacturePdf({
     numeroFacture: commande.numero_facture,
     dateEmission: new Date(commande.created_at),
     vendeur: beatmaker,
-    acheteur: { nom: commande.acheteur_nom, email: commande.acheteur_email, adresse: commande.acheteur_adresse },
+    acheteur: { nom: acheteurNom, email: acheteurEmail, adresse: acheteurAdresse },
     lignes: lignesFacture,
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
     tvaNumero: commande.tva_numero ?? null,
