@@ -19,10 +19,6 @@ const LABEL_VARIABLE: Record<string, string> = {
   '{AA}': "Année d'émission",
 }
 
-// Détaille, dans l'ordre où elles apparaissent dans le format choisi,
-// chaque variable et sa valeur résolue — pour que le beatmaker comprenne
-// concrètement ce que représente chaque partie du numéro, pas juste le
-// résultat final collé.
 function detailFormat(format: string, valeurs: { slug: string; num: string; jj: string; mm: string; aa: string }) {
   const resolues: Record<string, string> = {
     '{SLUG}': valeurs.slug, '{NUM}': valeurs.num, '{JJ}': valeurs.jj, '{MM}': valeurs.mm, '{AA}': valeurs.aa,
@@ -30,6 +26,8 @@ function detailFormat(format: string, valeurs: { slug: string; num: string; jj: 
   const trouvees = format.match(/\{SLUG\}|\{NUM\}|\{JJ\}|\{MM\}|\{AA\}/g) ?? []
   return trouvees.map(v => ({ variable: v, valeur: resolues[v], label: LABEL_VARIABLE[v] }))
 }
+
+const AVERTISSEMENT_FORMAT = "Tu as déjà émis au moins une facture cette année. Changer de format maintenant fera cohabiter deux formats différents dans ton historique de factures de l'année — assure-toi que c'est justifiable en cas de contrôle. Confirmer le changement ?"
 
 export default function FacturationClient({
   slug,
@@ -39,14 +37,20 @@ export default function FacturationClient({
   offset,
   anneeCourante,
   dernierNumero,
+  serieDemarree,
+  offsetMode,
+  offsetManuel,
 }: {
   slug: string
   mandatVersion: number | null
   mandatAccepteLe: string | null
   formatPersonnalise: string | null
   offset: number | null
-  anneeCourante: number | null
+  anneeCourante: number
   dernierNumero: number | null
+  serieDemarree: boolean
+  offsetMode: 'aleatoire' | 'manuel'
+  offsetManuel: number | null
 }) {
   const router = useRouter()
   const mandatActif = !!mandatAccepteLe
@@ -58,6 +62,12 @@ export default function FacturationClient({
   const [chargementFormat, setChargementFormat] = useState(false)
   const [erreurFormat, setErreurFormat] = useState('')
   const [sauvegardeOk, setSauvegardeOk] = useState(false)
+
+  const [modeSaisi, setModeSaisi] = useState<'aleatoire' | 'manuel'>(offsetMode)
+  const [manuelSaisi, setManuelSaisi] = useState(offsetManuel ? String(offsetManuel) : '1')
+  const [chargementOffset, setChargementOffset] = useState(false)
+  const [erreurOffset, setErreurOffset] = useState('')
+  const [offsetSauvegardeOk, setOffsetSauvegardeOk] = useState(false)
 
   async function accepterMandat() {
     setChargementMandat(true)
@@ -81,7 +91,7 @@ export default function FacturationClient({
     }
   }
 
-  async function sauvegarderFormat() {
+  async function envoyerFormat(action: 'definir_format' | 'reinitialiser_format', format?: string) {
     setChargementFormat(true)
     setErreurFormat('')
     setSauvegardeOk(false)
@@ -89,7 +99,7 @@ export default function FacturationClient({
       const res = await fetch('/api/business/facturation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'definir_format', format: formatSaisi }),
+        body: JSON.stringify({ action, format }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
@@ -105,26 +115,53 @@ export default function FacturationClient({
     }
   }
 
-  async function reinitialiserFormat() {
-    setChargementFormat(true)
-    setErreurFormat('')
-    setSauvegardeOk(false)
+  function sauvegarderFormat() {
+    if (serieDemarree && !window.confirm(AVERTISSEMENT_FORMAT)) return
+    envoyerFormat('definir_format', formatSaisi)
+  }
+
+  function reinitialiserFormat() {
+    if (serieDemarree && !window.confirm(AVERTISSEMENT_FORMAT)) return
+    setFormatSaisi(FORMAT_FACTURATION_PAR_DEFAUT)
+    envoyerFormat('reinitialiser_format')
+  }
+
+  async function sauvegarderOffset() {
+    setChargementOffset(true)
+    setErreurOffset('')
+    setOffsetSauvegardeOk(false)
     try {
-      await fetch('/api/business/facturation', {
+      const manuel = modeSaisi === 'manuel' ? parseInt(manuelSaisi, 10) : undefined
+      const res = await fetch('/api/business/facturation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reinitialiser_format' }),
+        body: JSON.stringify({ action: 'definir_offset', offsetMode: modeSaisi, offsetManuel: manuel }),
       })
-      setFormatSaisi(FORMAT_FACTURATION_PAR_DEFAUT)
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setErreurOffset(data?.erreur || 'Impossible d’enregistrer ce réglage.')
+        return
+      }
+      setOffsetSauvegardeOk(true)
       router.refresh()
+    } catch {
+      setErreurOffset('Erreur réseau, réessaie.')
     } finally {
-      setChargementFormat(false)
+      setChargementOffset(false)
     }
   }
 
   const formatValide = formatFacturationValide(formatSaisi)
   const exempleDate = new Date()
-  const exempleNum = dernierNumero != null ? dernierNumero + 1 : 5790
+  // Reflète le vrai point de départ configuré juste au-dessus, pas un
+  // placeholder générique — sinon l'aperçu contredit le réglage qu'on vient
+  // de faire et perd toute utilité pédagogique (retour de Jake).
+  const numEstIllustratif = !serieDemarree && modeSaisi === 'aleatoire'
+  const exempleNum = serieDemarree
+    ? (dernierNumero ?? 0) + 1
+    : modeSaisi === 'manuel'
+      ? (parseInt(manuelSaisi, 10) || 1)
+      : 5790 // aléatoire, pas encore tiré — illustratif seulement (voir numEstIllustratif)
   const valeursApercu = {
     slug: slug || 'ta-boutique',
     num: String(exempleNum),
@@ -182,26 +219,57 @@ export default function FacturationClient({
           )}
         </section>
 
+        {/* Point de départ (offset) */}
+        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-lg font-bold mb-1">Point de départ {anneeCourante}</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Ta série de factures démarre chaque année à un nombre de départ plutôt qu&apos;à 1 — le compteur avance ensuite normalement de 1 en 1 à partir de là (continuité garantie par le système, jamais recalculée). Ça évite qu&apos;une seule facture révèle ton nombre total de ventes depuis le début de l&apos;année.
+          </p>
+
+          {serieDemarree ? (
+            <div className="bg-gray-800/40 border border-gray-800 rounded-lg p-4">
+              <p className="text-sm text-gray-300">
+                Verrouillé pour {anneeCourante} — ta première facture de l&apos;année a démarré à <span className="font-mono text-white">{offset}</span> ({offsetMode === 'manuel' ? 'choisi par toi' : 'tiré au hasard'}). Modifiable à nouveau au 1er janvier {anneeCourante + 1}.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={modeSaisi === 'aleatoire'} onChange={() => setModeSaisi('aleatoire')} className="accent-indigo-600" />
+                <span className="text-sm text-gray-300">Aléatoire <span className="text-gray-600 text-xs">(recommandé)</span></span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={modeSaisi === 'manuel'} onChange={() => setModeSaisi('manuel')} className="accent-indigo-600" />
+                <span className="text-sm text-gray-300">Je choisis mon point de départ</span>
+              </label>
+              {modeSaisi === 'manuel' && (
+                <input
+                  type="number"
+                  min={1}
+                  value={manuelSaisi}
+                  onChange={e => setManuelSaisi(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-mono text-white w-40"
+                />
+              )}
+              <button
+                onClick={sauvegarderOffset}
+                disabled={chargementOffset}
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium disabled:opacity-50 transition-colors w-fit"
+              >
+                {chargementOffset ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+              {offsetSauvegardeOk && <p className="text-green-400 text-sm">Réglage enregistré — appliqué à ta 1ère facture de {anneeCourante}.</p>}
+              {erreurOffset && <p className="text-red-400 text-sm">{erreurOffset}</p>}
+            </div>
+          )}
+        </section>
+
         {/* Numérotation */}
         <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
           <h2 className="text-lg font-bold mb-1">Numérotation des factures</h2>
           <p className="text-gray-400 text-sm mb-4">
             Format par défaut : ordre naturel, conforme aux exemples que l&apos;administration fiscale autorise explicitement. Tu peux le personnaliser si tu préfères un autre ordre.
           </p>
-
-          {/* Explication du point de départ (offset) */}
-          <div className="bg-gray-800/40 border border-gray-800 rounded-lg p-4 mb-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Point de départ de ta série {anneeCourante ?? new Date().getFullYear()}</p>
-            {offset != null ? (
-              <p className="text-sm text-gray-300">
-                Ta première facture de l&apos;année a démarré à <span className="font-mono text-white">{offset}</span> plutôt qu&apos;à 1 — un nombre tiré une seule fois, au hasard, pour qu&apos;on ne puisse pas deviner ton nombre total de ventes depuis une seule facture. Ensuite, chaque nouvelle facture avance simplement de 1 en 1 ({offset} → {offset + 1} → {offset + 2}...) — c&apos;est ce qui rend la numérotation continue et conforme, comme l&apos;exige la loi. Un nouveau point de départ sera tiré au 1er janvier prochain.
-              </p>
-            ) : (
-              <p className="text-sm text-gray-500">
-                Pas encore de facture émise cette année — un point de départ sera tiré au hasard automatiquement à ta toute première facture, puis chaque facture suivante avancera de 1 en 1 à partir de là.
-              </p>
-            )}
-          </div>
 
           <div className="flex flex-col gap-3 mb-4">
             <label className="text-xs font-medium text-gray-400">Variables disponibles</label>
@@ -228,6 +296,7 @@ export default function FacturationClient({
             <div className="mb-4">
               <p className="text-sm text-gray-300 mb-2">
                 Aperçu : <span className="font-mono text-white">{apercu}</span>
+                {numEstIllustratif && <span className="text-gray-600 text-xs ml-2">(nombre d&apos;exemple — le vrai point de départ sera tiré au hasard à ta 1ère facture)</span>}
               </p>
               <div className="flex flex-col gap-1">
                 {detail.map((d, i) => (
@@ -240,6 +309,12 @@ export default function FacturationClient({
           ) : (
             <p className="text-sm text-red-400 mb-3">
               Format invalide — {'{NUM}'} doit apparaître exactement une fois, aucune autre variable dupliquée.
+            </p>
+          )}
+
+          {serieDemarree && (
+            <p className="text-amber-400 text-xs mb-3">
+              Tu as déjà émis des factures cette année — un changement de format ici te sera redemandé en confirmation.
             </p>
           )}
 
