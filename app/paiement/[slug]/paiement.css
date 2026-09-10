@@ -148,7 +148,7 @@
   padding: 15px 16px; background: transparent; border: none; cursor: pointer; text-align: left;
   font-size: 14px; font-weight: 600; color: #0A0A0C;
 }
-.pmt-carte-head-label { flex: 1; }
+.pmt-carte-head-label { flex: 1; text-align: center; }
 .pmt-carte-chevron { width: 16px; height: 16px; color: rgba(10, 10, 12, .4); transition: transform .22s; flex: 0 0 auto; }
 .pmt-carte-chevron.is-open { transform: rotate(180deg); }
 .pmt-carte-content { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .35s ease, opacity .25s; }
