@@ -135,7 +135,7 @@
 .pmt-select { appearance: none; cursor: pointer; }
 .pmt-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .pmt-grid-cp { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
-.pmt-field-help { font-size: 11px; color: rgba(10, 10, 12, .6); margin-top: -8px; }
+.pmt-field-help { font-size: 11px; color: rgba(10, 10, 12, .6); margin: 6px 0 0; }
 
 /* Toggle pro */
 .pmt-toggle-row { display: flex; align-items: center; gap: 11px; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
