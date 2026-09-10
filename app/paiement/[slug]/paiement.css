@@ -159,8 +159,27 @@
 }
 .pmt-carte-chevron.is-open { transform: rotate(180deg); }
 .pmt-carte-content { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .35s ease, opacity .25s; }
-.pmt-carte-content.is-open { max-height: 1400px; opacity: 1; }
+.pmt-carte-content.is-open { max-height: 1800px; opacity: 1; }
 .pmt-carte-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Second niveau : les coordonnées ne s'affichent qu'après les champs carte. */
+.pmt-facturation { border-top: 1px solid rgba(10, 10, 12, .08); }
+.pmt-facturation-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0 8px; background: transparent; border: none; cursor: pointer;
+  color: #0A0A0C; font: inherit; font-size: 13px; font-weight: 700; text-align: left;
+}
+.pmt-facturation-chevron {
+  width: 16px; height: 16px; color: rgba(10, 10, 12, .45);
+  transition: transform .22s; flex: 0 0 auto;
+}
+.pmt-facturation-chevron.is-open { transform: rotate(180deg); }
+.pmt-facturation-content {
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height .35s ease, opacity .22s;
+}
+.pmt-facturation-content.is-open { max-height: 1100px; opacity: 1; }
+.pmt-facturation-inner { padding-top: 8px; display: flex; flex-direction: column; gap: 14px; }
 
 /* Confiance / pied de page */
 .pmt-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: rgba(10, 10, 12, .6); }

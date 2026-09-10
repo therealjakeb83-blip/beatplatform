@@ -174,6 +174,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
   const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false })
   const [carteOpen, setCarteOpen] = useState(false)
+  const [facturationOpen, setFacturationOpen] = useState(false)
   // Purement visuel pour l'instant (décision Jake, 2026-09-10) — jamais
   // envoyé au serveur, pas d'inscription newsletter réelle tant que ce n'est
   // pas explicitement demandé.
@@ -348,6 +349,14 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   }
 
   const cardOk = cardComplete.number && cardComplete.expiry && cardComplete.cvc
+  const facturationOk = /^\S+@\S+\.\S+$/.test(champs.email)
+    && Boolean(champs.prenom.trim())
+    && Boolean(champs.nom.trim())
+    && Boolean(champs.telephone.trim())
+    && Boolean(champs.adresse.trim())
+    && Boolean(champs.codePostal.trim())
+    && Boolean(champs.ville.trim())
+    && (!pro || (Boolean(champs.raisonSociale.trim()) && /^[A-Za-z]{2}[A-Za-z0-9]{2,13}$/.test(champs.numeroTva.trim())))
 
   return (
     <div className="pmt-page">
@@ -463,46 +472,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             </button>
             <div className={`pmt-carte-content${carteOpen ? ' is-open' : ''}`}>
               <div className="pmt-carte-inner">
-                <div className="pmt-connexion-row">
-                  <span>Déjà client ?</span>
-                  <Link href={`/artiste/connexion?redirect=/paiement/${slug}`} className="pmt-connexion-link">Connexion</Link>
-                </div>
-
-                <div>
-                  <input
-                    className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}
-                    type="email"
-                    placeholder="E-mail"
-                    value={champs.email}
-                    onChange={e => majChamp('email', e.target.value)}
-                  />
-                  {erreursChamps.email && <p className="pmt-field-error">{erreursChamps.email}</p>}
-                  <p className="pmt-field-help">Les licences PDF et les fichiers y seront envoyés.</p>
-                </div>
-
-                <div className="pmt-grid-2">
-                  <div>
-                    <input className={`pmt-field${erreursChamps.prenom ? ' has-error' : ''}`} placeholder="Prénom" value={champs.prenom} onChange={e => majChamp('prenom', e.target.value)} />
-                  </div>
-                  <div>
-                    <input className={`pmt-field${erreursChamps.nom ? ' has-error' : ''}`} placeholder="Nom" value={champs.nom} onChange={e => majChamp('nom', e.target.value)} />
-                  </div>
-                </div>
-
-                <input className={`pmt-field${erreursChamps.telephone ? ' has-error' : ''}`} type="tel" placeholder="Téléphone" value={champs.telephone} onChange={e => majChamp('telephone', e.target.value)} />
-                <input className={`pmt-field${erreursChamps.adresse ? ' has-error' : ''}`} placeholder="Adresse" value={champs.adresse} onChange={e => majChamp('adresse', e.target.value)} />
-
-                <div className="pmt-grid-cp">
-                  <input className={`pmt-field${erreursChamps.codePostal ? ' has-error' : ''}`} placeholder="Code postal" value={champs.codePostal} onChange={e => majChamp('codePostal', e.target.value)} />
-                  <input className={`pmt-field${erreursChamps.ville ? ' has-error' : ''}`} placeholder="Ville" value={champs.ville} onChange={e => majChamp('ville', e.target.value)} />
-                </div>
-
-                <select className="pmt-select" value={champs.pays} onChange={e => majChamp('pays', e.target.value)}>
-                  {pays.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
-                </select>
-
-                <div className="pmt-hr" style={{ margin: '6px 0' }} />
-
                 <div className={`pmt-card-box${erreurGlobale ? '' : ''}`}>
                   <CardNumberElement
                     className="StripeElement"
@@ -523,32 +492,80 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                   </div>
                 </div>
 
-                <div className="pmt-hr" style={{ margin: '6px 0' }} />
+                <div className="pmt-facturation">
+                  <button
+                    type="button"
+                    className="pmt-facturation-head"
+                    onClick={() => setFacturationOpen(o => !o)}
+                    aria-expanded={facturationOpen}
+                    aria-controls="pmt-facturation-content"
+                  >
+                    <span>Informations de facturation</span>
+                    <span className={`pmt-facturation-chevron${facturationOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
+                  </button>
+                  <div id="pmt-facturation-content" className={`pmt-facturation-content${facturationOpen ? ' is-open' : ''}`}>
+                    <div className="pmt-facturation-inner">
+                      <div className="pmt-connexion-row">
+                        <span>Déjà client ?</span>
+                        <Link href={`/artiste/connexion?redirect=/paiement/${slug}`} className="pmt-connexion-link">Connexion</Link>
+                      </div>
 
-                <button className="pmt-toggle-row" onClick={() => setPro(p => !p)} aria-pressed={pro}>
-                  <span className={`pmt-toggle-track${pro ? ' is-on' : ''}`}><span className="pmt-toggle-thumb" /></span>
-                  <span className="pmt-toggle-label">J&apos;achète en tant que professionnel</span>
-                </button>
-                <div className={`pmt-pro-fields${pro ? ' is-open' : ''}`}>
-                  <input
-                    className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
-                    placeholder="Raison sociale"
-                    value={champs.raisonSociale}
-                    onChange={e => majChamp('raisonSociale', e.target.value)}
-                  />
-                  <input
-                    className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
-                    placeholder="N° de TVA intracommunautaire"
-                    value={champs.numeroTva}
-                    onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
-                  />
-                  {erreursChamps.numeroTva && <p className="pmt-field-error">{erreursChamps.numeroTva}</p>}
-                  <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
+                      <div>
+                        <input
+                          className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}
+                          type="email"
+                          placeholder="E-mail"
+                          value={champs.email}
+                          onChange={e => majChamp('email', e.target.value)}
+                        />
+                        {erreursChamps.email && <p className="pmt-field-error">{erreursChamps.email}</p>}
+                        <p className="pmt-field-help">Les licences PDF et les fichiers y seront envoyés.</p>
+                      </div>
+
+                      <div className="pmt-grid-2">
+                        <input className={`pmt-field${erreursChamps.prenom ? ' has-error' : ''}`} placeholder="Prénom" value={champs.prenom} onChange={e => majChamp('prenom', e.target.value)} />
+                        <input className={`pmt-field${erreursChamps.nom ? ' has-error' : ''}`} placeholder="Nom" value={champs.nom} onChange={e => majChamp('nom', e.target.value)} />
+                      </div>
+
+                      <input className={`pmt-field${erreursChamps.telephone ? ' has-error' : ''}`} type="tel" placeholder="Téléphone" value={champs.telephone} onChange={e => majChamp('telephone', e.target.value)} />
+                      <input className={`pmt-field${erreursChamps.adresse ? ' has-error' : ''}`} placeholder="Adresse" value={champs.adresse} onChange={e => majChamp('adresse', e.target.value)} />
+
+                      <div className="pmt-grid-cp">
+                        <input className={`pmt-field${erreursChamps.codePostal ? ' has-error' : ''}`} placeholder="Code postal" value={champs.codePostal} onChange={e => majChamp('codePostal', e.target.value)} />
+                        <input className={`pmt-field${erreursChamps.ville ? ' has-error' : ''}`} placeholder="Ville" value={champs.ville} onChange={e => majChamp('ville', e.target.value)} />
+                      </div>
+
+                      <select className="pmt-select" value={champs.pays} onChange={e => majChamp('pays', e.target.value)}>
+                        {pays.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                      </select>
+
+                      <button type="button" className="pmt-toggle-row" onClick={() => setPro(p => !p)} aria-pressed={pro}>
+                        <span className={`pmt-toggle-track${pro ? ' is-on' : ''}`}><span className="pmt-toggle-thumb" /></span>
+                        <span className="pmt-toggle-label">J&apos;achète en tant que professionnel</span>
+                      </button>
+                      <div className={`pmt-pro-fields${pro ? ' is-open' : ''}`}>
+                        <input
+                          className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
+                          placeholder="Raison sociale"
+                          value={champs.raisonSociale}
+                          onChange={e => majChamp('raisonSociale', e.target.value)}
+                        />
+                        <input
+                          className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
+                          placeholder="N° de TVA intracommunautaire"
+                          value={champs.numeroTva}
+                          onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
+                        />
+                        {erreursChamps.numeroTva && <p className="pmt-field-error">{erreursChamps.numeroTva}</p>}
+                        <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {erreurGlobale && <p className="pmt-error-global">{erreurGlobale}</p>}
 
-                <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk}>
+                <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk}>
                   {submitting ? 'Traitement…' : `Payer ${formatPrix(totalApresCode)}`}
                 </button>
                 <p className="pmt-legal">
