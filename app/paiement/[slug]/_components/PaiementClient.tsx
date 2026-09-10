@@ -20,6 +20,7 @@ import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { CartProvider, useCart } from '@/app/[slug]/_components/CartContext'
 import { computeItemsPricing, computeTotal, formatPrix, type ReductionLotRule } from '@/app/[slug]/_lib/reductions-lot'
 import { listePays } from '@/lib/pays-iso'
+import { detailTva } from '@/lib/prix-affiche'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -31,6 +32,8 @@ type Props = {
   logoInverser: boolean
   nomArtiste: string
   reglesLot: ReductionLotRule[]
+  tvaActive: boolean
+  tvaTaux: number | null
 }
 
 const CHEVRON_LEFT = (
@@ -52,7 +55,7 @@ export default function PaiementClient(props: Props) {
   )
 }
 
-function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Props) {
+function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux }: Props) {
   const { items } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
@@ -100,7 +103,7 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: P
       stripe={stripeClient}
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
-      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} />
+      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} />
     </Elements>
   )
 }
@@ -133,7 +136,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Props) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
@@ -161,6 +164,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Pr
         ? total * (1 - codeApplique.valeur / 100)
         : Math.max(0, total - codeApplique.valeur))
     : total
+  const tva = detailTva(totalApresCode, { tvaActive, tvaTaux })
 
   // Montant réellement facturé (TVA/remises/code promo/lot déjà appliqués
   // côté serveur) — jamais une approximation locale, sinon la fenêtre Apple/
@@ -353,7 +357,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Pr
                 ))}
               </div>
               <span className="pmt-recap-label">{items.length} beat{items.length > 1 ? 's' : ''}</span>
-              <span className="pmt-recap-total">{formatPrix(totalApresCode)}</span>
+              <span className="pmt-recap-total-col">
+                <span className="pmt-recap-total">{formatPrix(totalApresCode)}</span>
+                {tva && <span className="pmt-recap-tva">dont {tva.taux} % TVA</span>}
+              </span>
               <span className={`pmt-recap-chevron${recapOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
             </button>
             <div className={`pmt-recap-content${recapOpen ? ' is-open' : ''}`}>
@@ -373,7 +380,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Pr
                 ))}
                 <div className="pmt-hr" />
                 <div className="pmt-row pmt-row-sub"><span>Sous-total</span><span>{formatPrix(total)}</span></div>
-                <div className="pmt-row pmt-row-total"><span>Total</span><span>{formatPrix(totalApresCode)}</span></div>
+                {tva && <div className="pmt-row pmt-row-sub"><span>TVA ({tva.taux} %)</span><span>{formatPrix(tva.montant)}</span></div>}
+                <div className="pmt-row pmt-row-total"><span>{tva ? 'Total TTC' : 'Total'}</span><span>{formatPrix(totalApresCode)}</span></div>
               </div>
             </div>
           </div>
