@@ -605,10 +605,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   )
 }
 
-// Boutons express — même mécanisme de détection que LicenceExpressPay/
-// CartExpressPay (jamais Apple ET Google Pay ensemble, priorité à Apple ;
-// remount forcé le temps rare où les deux sont dispo sur le même appareil,
-// sinon Stripe montrerait les deux). PayPal exclu (incompatible Direct
+// Boutons express — Apple Pay uniquement sur iOS, Google Pay sur les autres
+// appareils compatibles, et jamais les deux ensemble. Un remount applique
+// toujours ce filtrage après la détection Stripe. PayPal exclu (incompatible Direct
 // Charge, voir memory project_phase2_direct_charge_implementation) ; Link
 // ajouté ici (hors spec de la popup/panier), toujours affiché s'il est
 // disponible, en plus du wallet.
@@ -618,8 +617,23 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 // les autres composants express.
 type ExpressMethodPage = 'apple_pay' | 'google_pay' | 'link'
 
-function selectMethodesPage(a: { applePayAvailable: boolean; googlePayAvailable: boolean; linkAvailable: boolean }): ExpressMethodPage[] {
-  const wallet: ExpressMethodPage | null = a.applePayAvailable ? 'apple_pay' : a.googlePayAvailable ? 'google_pay' : null
+function appareilEstIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+
+  // Sur iPadOS, Safari peut exposer un user-agent de Mac. Le tactile permet
+  // de le distinguer d'un vrai Mac, sur lequel Google Pay doit rester
+  // prioritaire conformément à la règle produit.
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function selectMethodesPage(
+  a: { applePayAvailable: boolean; googlePayAvailable: boolean; linkAvailable: boolean },
+  estIOS: boolean,
+): ExpressMethodPage[] {
+  const wallet: ExpressMethodPage | null = estIOS
+    ? (a.applePayAvailable ? 'apple_pay' : null)
+    : (a.googlePayAvailable ? 'google_pay' : null)
   return [wallet, a.linkAvailable ? 'link' : null].filter((m): m is ExpressMethodPage => m !== null)
 }
 
@@ -629,7 +643,7 @@ function methodesVersOptionsPage(methodes: ExpressMethodPage[] | null) {
     // ne pas le déclarer dans `availablePaymentMethods` lorsque le wallet
     // n'est pas encore configuré, et certains navigateurs ne le proposent
     // qu'avec `always`. Le conteneur reste invisible pendant cette détection,
-    // puis le remount ci-dessous conserve la priorité Apple Pay > Google Pay.
+    // puis le remount ci-dessous applique la règle iOS/Google Pay.
     return { applePay: 'auto' as const, googlePay: 'always' as const, paypal: 'never' as const, link: 'auto' as const, amazonPay: 'never' as const, klarna: 'never' as const }
   }
   return {
@@ -656,7 +670,6 @@ function ExpressButtons({
   const stripe = useStripe()
   const elements = useElements()
   const [methodes, setMethodes] = useState<ExpressMethodPage[] | null>(null)
-  const [besoinRestriction, setBesoinRestriction] = useState(false)
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -677,13 +690,8 @@ function ExpressButtons({
         applePayAvailable: !!dispo?.applePay,
         googlePayAvailable: !!dispo?.googlePay,
         linkAvailable: !!dispo?.link,
-      })
+      }, appareilEstIOS())
       setMethodes(calcule)
-      if (!!dispo?.applePay && !!dispo?.googlePay) {
-        setBesoinRestriction(true)
-      } else {
-        setPret(true)
-      }
     } else {
       setPret(true)
     }
@@ -695,11 +703,11 @@ function ExpressButtons({
   return (
     <div style={{ opacity: affichable ? 1 : 0, pointerEvents: affichable ? 'auto' : 'none' }}>
       <ExpressCheckoutElement
-        key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
+        key={methodes ? methodes.join(',') : 'detection'}
         options={{
           buttonHeight: 50,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesVersOptionsPage(besoinRestriction ? methodes : null),
+          paymentMethods: methodesVersOptionsPage(methodes),
           emailRequired: true,
           billingAddressRequired: true,
           phoneNumberRequired: true,
