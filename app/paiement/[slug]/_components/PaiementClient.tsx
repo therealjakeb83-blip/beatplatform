@@ -143,6 +143,7 @@ function PaiementForm({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
   const [champs, setChamps] = useState<Champs>(CHAMPS_VIDES)
   const [erreursChamps, setErreursChamps] = useState<Partial<Record<keyof Champs, string>>>({})
 
+  const [codePromoOpen, setCodePromoOpen] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplique, setCodeApplique] = useState<{ code: string; type_valeur: 'pourcentage' | 'montant'; valeur: number } | null>(null)
   const [erreurCode, setErreurCode] = useState<string | null>(null)
@@ -376,11 +377,12 @@ function PaiementForm({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
               <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
               <button className="pmt-promo-remove" onClick={() => setCodeApplique(null)}>Supprimer</button>
             </div>
-          ) : (
+          ) : codePromoOpen ? (
             <div className="pmt-promo-row">
               <input
                 className="pmt-field"
                 type="text"
+                autoFocus
                 value={codeInput}
                 onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
                 onKeyDown={e => e.key === 'Enter' && validerCode()}
@@ -390,6 +392,8 @@ function PaiementForm({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
                 {chargementCode ? '...' : 'OK'}
               </button>
             </div>
+          ) : (
+            <button className="pmt-promo-toggle" onClick={() => setCodePromoOpen(true)}>Code promo ?</button>
           )}
           {erreurCode && <p className="pmt-field-error">{erreurCode}</p>}
 
@@ -501,10 +505,41 @@ function PaiementForm({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
   )
 }
 
-// Boutons express (Apple Pay/Google Pay/Link) — PayPal exclu (incompatible
-// Direct Charge, voir memory project_phase2_direct_charge_implementation).
-// Link est un moyen Stripe natif, pas un tiers, activé ici contrairement à
-// LicenceExpressPay/CartExpressPay (hors spec de cette page-là).
+// Boutons express — même mécanisme de détection que LicenceExpressPay/
+// CartExpressPay (jamais Apple ET Google Pay ensemble, priorité à Apple ;
+// remount forcé le temps rare où les deux sont dispo sur le même appareil,
+// sinon Stripe montrerait les deux). PayPal exclu (incompatible Direct
+// Charge, voir memory project_phase2_direct_charge_implementation) ; Link
+// ajouté ici (hors spec de la popup/panier), toujours affiché s'il est
+// disponible, en plus du wallet.
+// `layout.overflow:'never'` n'est valide qu'avec `maxRows:0` — sinon Stripe
+// refuse silencieusement d'initialiser l'Element (aucun bouton ne s'affiche,
+// y compris quand Apple Pay est bien détectable), piège déjà rencontré sur
+// les autres composants express.
+type ExpressMethodPage = 'apple_pay' | 'google_pay' | 'link'
+
+function selectMethodesPage(a: { applePayAvailable: boolean; googlePayAvailable: boolean; linkAvailable: boolean }): ExpressMethodPage[] {
+  const wallet: ExpressMethodPage | null = a.applePayAvailable ? 'apple_pay' : a.googlePayAvailable ? 'google_pay' : null
+  return [wallet, a.linkAvailable ? 'link' : null].filter((m): m is ExpressMethodPage => m !== null)
+}
+
+function methodesVersOptionsPage(methodes: ExpressMethodPage[] | null) {
+  if (methodes === null) {
+    return { applePay: 'auto' as const, googlePay: 'auto' as const, paypal: 'never' as const, link: 'auto' as const, amazonPay: 'never' as const, klarna: 'never' as const }
+  }
+  return {
+    applePay: methodes.includes('apple_pay') ? 'always' as const : 'never' as const,
+    googlePay: methodes.includes('google_pay') ? 'always' as const : 'never' as const,
+    paypal: 'never' as const,
+    // 'link' n'accepte pas 'always' côté Stripe (contrairement à applePay/
+    // googlePay/paypal) — 'auto' suffit, sa présence dans `methodes` prouve
+    // déjà sa disponibilité réelle.
+    link: methodes.includes('link') ? 'auto' as const : 'never' as const,
+    amazonPay: 'never' as const,
+    klarna: 'never' as const,
+  }
+}
+
 function ExpressButtons({
   slug, items, codePromo, onSucces,
 }: {
@@ -515,32 +550,57 @@ function ExpressButtons({
 }) {
   const stripe = useStripe()
   const elements = useElements()
+  const [methodes, setMethodes] = useState<ExpressMethodPage[] | null>(null)
+  const [besoinRestriction, setBesoinRestriction] = useState(false)
   const [pret, setPret] = useState(false)
-  const [visible, setVisible] = useState(false)
+  const [expiree, setExpiree] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (pret) return
+    const t = setTimeout(() => setExpiree(true), 8000)
+    return () => clearTimeout(t)
+  }, [pret])
+
+  const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
+
   const handleReady = (event: StripeExpressCheckoutElementReadyEvent) => {
-    setPret(true)
-    setVisible(!!(event.availablePaymentMethods && Object.values(event.availablePaymentMethods).some(Boolean)))
+    const dispo = event.availablePaymentMethods
+    if (methodes === null) {
+      const calcule = selectMethodesPage({
+        applePayAvailable: !!dispo?.applePay,
+        googlePayAvailable: !!dispo?.googlePay,
+        linkAvailable: !!dispo?.link,
+      })
+      setMethodes(calcule)
+      if (!!dispo?.applePay && !!dispo?.googlePay) {
+        setBesoinRestriction(true)
+      } else {
+        setPret(true)
+      }
+    } else {
+      setPret(true)
+    }
   }
 
-  if (!pret) {
-    // Rendu invisible pendant la détection, jamais démonté (Stripe a besoin
-    // de l'Element monté pour déclencher onReady).
-  }
+  const rienADetecter = loadError || (expiree && !pret) || (methodes !== null && methodes.length === 0)
+  if (rienADetecter) return null
 
   return (
-    <div style={{ display: visible ? 'block' : 'none' }}>
+    <div style={{ opacity: affichable ? 1 : 0, pointerEvents: affichable ? 'auto' : 'none' }}>
       <ExpressCheckoutElement
+        key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
         options={{
           buttonHeight: 50,
-          layout: { maxColumns: 1, maxRows: 3, overflow: 'never' },
-          paymentMethods: { applePay: 'auto', googlePay: 'auto', paypal: 'never', link: 'auto', amazonPay: 'never', klarna: 'never' },
+          layout: { maxColumns: 1, maxRows: 0, overflow: 'never' },
+          paymentMethods: methodesVersOptionsPage(besoinRestriction ? methodes : null),
           emailRequired: true,
           billingAddressRequired: true,
           phoneNumberRequired: true,
         }}
         onReady={handleReady}
+        onLoadError={() => setLoadError(true)}
         onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
           if (!stripe || !elements) return
           try {

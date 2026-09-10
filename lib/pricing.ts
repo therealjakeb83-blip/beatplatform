@@ -2,8 +2,8 @@ import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Calcul de prix serveur pour un achat de beat — jamais confiance dans le
-// front. Partagé entre /api/stripe/checkout (panier classique) et
-// /api/stripe/express-checkout (Apple Pay/Google Pay/PayPal, achat unitaire).
+// front. Utilisé par /api/stripe/express-checkout (page de paiement custom,
+// panier comme achat unitaire) et /api/stripe/prix-panier (prévisualisation).
 
 export type ItemPanier = { beat_id: string; licence_id: string }
 

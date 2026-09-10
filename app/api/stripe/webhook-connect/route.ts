@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { traiterPaiement, traiterPaiementExpress, marquerLitige, resoudreLitige } from '@/lib/webhook-paiement'
+import { traiterPaiementExpress, marquerLitige, resoudreLitige } from '@/lib/webhook-paiement'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -66,14 +66,10 @@ export async function POST(request: Request) {
       throw new Error('Event reçu sans compte connecté associé — vérifier la config du endpoint côté Dashboard Stripe')
     }
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session
-      if (session.mode === 'payment') {
-        await traiterPaiement(session, stripeAccountId)
-      }
-      // mode 'subscription' : jamais attendu ici, les abonnements restent
-      // sur l'ancien modèle (transfer_data), pas sur le compte connecté.
-    }
+    // checkout.session.completed en mode 'payment' n'arrive plus jamais ici
+    // depuis le passage à la page de paiement custom (Phase 9) — plus aucune
+    // Checkout Session créée pour un achat de beat, seul le PaymentIntent
+    // (payment_intent.succeeded ci-dessous) reste utilisé.
 
     // Même garde que le webhook plateforme : scopé metadata.type==='achat_express'
     // pour ne jamais retraiter un PaymentIntent interne d'une Checkout Session

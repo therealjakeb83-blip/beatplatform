@@ -2,7 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
-import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiement, traiterPaiementExpress } from '@/lib/webhook-paiement'
+import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiementExpress } from '@/lib/webhook-paiement'
 import { genererNumeroFacture } from '@/lib/facturation'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { uploadPdfFacture } from '@/lib/livraison'
@@ -45,6 +45,10 @@ export async function POST(request: Request) {
   )
 
   try {
+    // mode 'payment' (achat de beat) n'arrive plus jamais ici depuis le
+    // passage à la page de paiement custom (Phase 9, PaymentIntent via
+    // /api/stripe/express-checkout) — seules les souscriptions créent encore
+    // une Checkout Session côté plateforme.
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
       if (session.mode === 'subscription') {
@@ -53,11 +57,6 @@ export async function POST(request: Request) {
         } else {
           await traiterAbonnementCree(session)
         }
-      } else {
-        // null = destination charge (PaymentIntent sur le compte plateforme)
-        // — ce webhook ne reçoit que des events platform-level, jamais
-        // d'events venant d'un compte connecté (voir webhook-connect/route.ts).
-        await traiterPaiement(session, null)
       }
     }
 

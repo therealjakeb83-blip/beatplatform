@@ -129,28 +129,6 @@ export async function resoudreOuCreerClient(
   return newClient?.id ?? null
 }
 
-export async function traiterPaiement(session: Stripe.Checkout.Session, stripeAccountId: string | null) {
-  const meta = session.metadata
-  if (!meta?.beatmaker_id) return
-
-  await finaliserCommandePayee({
-    meta,
-    tentativeColonne: 'stripe_session_id',
-    tentativeValeur: session.id,
-    acheteurEmail: session.customer_details?.email?.toLowerCase().trim() ?? null,
-    acheteurNom: session.customer_details?.name ?? null,
-    acheteurAdresse: formaterAdresse(session.customer_details?.address),
-    acheteurAdresseRaw: session.customer_details?.address ?? null,
-    acheteurTelephone: session.customer_details?.phone ?? null,
-    totalCents: session.amount_total ?? 0,
-    stripePaymentId: typeof session.payment_intent === 'string'
-      ? session.payment_intent
-      : (session.payment_intent?.id ?? null),
-    stripeSessionId: session.id,
-    stripeAccountId,
-  })
-}
-
 // Paiement express (Apple Pay/Google Pay/PayPal) depuis la popup licence —
 // même pipeline de création de commande que le panier classique, juste
 // déclenché par un PaymentIntent au lieu d'une Checkout Session (voir
