@@ -625,7 +625,12 @@ function selectMethodesPage(a: { applePayAvailable: boolean; googlePayAvailable:
 
 function methodesVersOptionsPage(methodes: ExpressMethodPage[] | null) {
   if (methodes === null) {
-    return { applePay: 'auto' as const, googlePay: 'auto' as const, paypal: 'never' as const, link: 'auto' as const, amazonPay: 'never' as const, klarna: 'never' as const }
+    // Google Pay doit être demandé explicitement : avec `auto`, Stripe peut
+    // ne pas le déclarer dans `availablePaymentMethods` lorsque le wallet
+    // n'est pas encore configuré, et certains navigateurs ne le proposent
+    // qu'avec `always`. Le conteneur reste invisible pendant cette détection,
+    // puis le remount ci-dessous conserve la priorité Apple Pay > Google Pay.
+    return { applePay: 'auto' as const, googlePay: 'always' as const, paypal: 'never' as const, link: 'auto' as const, amazonPay: 'never' as const, klarna: 'never' as const }
   }
   return {
     applePay: methodes.includes('apple_pay') ? 'always' as const : 'never' as const,
