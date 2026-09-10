@@ -21,8 +21,26 @@ export async function POST(request: Request) {
     code_promo?: string
     email_acheteur?: string
     source_marketing?: string
+    // Page de paiement custom (Phase 9) — coordonnées saisies dans notre
+    // propre formulaire, prioritaires sur les billing_details Stripe (qui
+    // restent le seul repli pour un paiement express sans formulaire rempli,
+    // ex. Apple/Google Pay depuis la popup licence).
+    prenom?: string
+    nom?: string
+    telephone?: string
+    adresse?: string
+    code_postal?: string
+    ville?: string
+    pays?: string
+    type_client?: 'particulier' | 'professionnel'
+    raison_sociale?: string
+    numero_tva?: string
   }
-  const { slug, code_promo, email_acheteur, source_marketing } = body
+  const {
+    slug, code_promo, email_acheteur, source_marketing,
+    prenom, nom, telephone, adresse, code_postal, ville, pays,
+    type_client, raison_sociale, numero_tva,
+  } = body
 
   const items: ItemPanier[] = body.items?.length
     ? body.items
@@ -125,6 +143,16 @@ export async function POST(request: Request) {
     source_marketing: source_marketing ?? 'direct',
     stripe_payment_intent_id: paymentIntent.id,
     statut: 'creee',
+    prenom: prenom ?? null,
+    nom: nom ?? null,
+    telephone: telephone ?? null,
+    adresse: adresse ?? null,
+    code_postal: code_postal ?? null,
+    ville: ville ?? null,
+    pays: pays ?? null,
+    type_client: type_client ?? null,
+    raison_sociale: raison_sociale ?? null,
+    numero_tva: numero_tva ?? null,
   }).select('id').single()
 
   if (tentativeError) {

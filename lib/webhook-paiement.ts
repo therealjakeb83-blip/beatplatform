@@ -57,9 +57,22 @@ export async function resoudreOuCreerClient(
   nom: string | null,
   address?: Stripe.Address | null,
   telephone?: string | null,
+  // Page de paiement custom (Phase 9) — déclaration explicite du client à
+  // CET achat, pas une donnée passivement remontée par Stripe : on écrase
+  // toujours plutôt que de backfiller-si-vide (contrairement à
+  // adresse/prénom ci-dessous), un client peut légitimement redevenir
+  // particulier après un achat pro ou inversement.
+  optionsFacturation?: { typeClient?: 'particulier' | 'professionnel' | null; raisonSociale?: string | null; numeroTva?: string | null },
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
+
+  const facturation: Record<string, string | null> = {}
+  if (optionsFacturation?.typeClient) facturation.type_client = optionsFacturation.typeClient
+  if (optionsFacturation?.typeClient) {
+    facturation.raison_sociale = optionsFacturation.typeClient === 'professionnel' ? (optionsFacturation.raisonSociale ?? null) : null
+    facturation.numero_tva = optionsFacturation.typeClient === 'professionnel' ? (optionsFacturation.numeroTva ?? null) : null
+  }
 
   const { data: existingClient } = await supabase
     .from('clients')
@@ -68,7 +81,7 @@ export async function resoudreOuCreerClient(
     .maybeSingle()
 
   if (existingClient) {
-    const backfill: Record<string, string | null> = {}
+    const backfill: Record<string, string | null> = { ...facturation }
     if (address && !existingClient.adresse) {
       backfill.adresse = [address.line1, address.line2].filter(Boolean).join(' ') || null
       backfill.ville = address.city ?? null
@@ -108,6 +121,7 @@ export async function resoudreOuCreerClient(
       ville: address?.city ?? null,
       code_postal: address?.postal_code ?? null,
       pays: address?.country ?? null,
+      ...facturation,
     })
     .select('id')
     .single()
@@ -228,8 +242,6 @@ type ContextePaiement = {
 // traiterPaiement()/traiterPaiementExpress() pour l'adaptation en amont.
 export async function finaliserCommandePayee(ctx: ContextePaiement) {
   const { meta } = ctx
-  const acheteurEmail = ctx.acheteurEmail
-  const acheteurNom = ctx.acheteurNom
   const prixPayeTotal = ctx.totalCents / 100
   const stripePaymentId = ctx.stripePaymentId
   const hasSplits = meta.has_splits === 'true'
@@ -244,7 +256,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   // écrites en DB au moment du checkout/de la création du PaymentIntent.
   const { data: tentative } = await supabase
     .from('tentatives_paiement')
-    .select('id')
+    .select('id, prenom, nom, telephone, adresse, code_postal, ville, pays, type_client, raison_sociale, numero_tva')
     .eq(ctx.tentativeColonne, ctx.tentativeValeur)
     .maybeSingle()
 
@@ -263,7 +275,31 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     return
   }
 
-  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, ctx.acheteurAdresseRaw, ctx.acheteurTelephone)
+  // Page de paiement custom (Phase 9) : le formulaire capture prénom/nom/
+  // adresse/type client directement, plus fiable et complet que les
+  // billing_details renvoyés par Stripe (utilisés en repli pour un paiement
+  // express sans ce formulaire, ex. popup licence). Priorité à la tentative
+  // dès qu'elle porte une valeur.
+  const nomComplet = tentative.prenom || tentative.nom
+    ? [tentative.prenom, tentative.nom].filter(Boolean).join(' ')
+    : null
+  const acheteurEmail = ctx.acheteurEmail
+  const acheteurNom = nomComplet ?? ctx.acheteurNom
+  const acheteurTelephone = tentative.telephone ?? ctx.acheteurTelephone ?? null
+  const acheteurAdresseRaw: Stripe.Address | null = tentative.adresse
+    ? {
+        line1: tentative.adresse, line2: null,
+        city: tentative.ville ?? null, postal_code: tentative.code_postal ?? null,
+        country: tentative.pays ?? null, state: null,
+      }
+    : (ctx.acheteurAdresseRaw ?? null)
+  const acheteurAdresse = tentative.adresse ? formaterAdresse(acheteurAdresseRaw) : ctx.acheteurAdresse
+
+  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone, {
+    typeClient: tentative.type_client as 'particulier' | 'professionnel' | null,
+    raisonSociale: tentative.raison_sociale,
+    numeroTva: tentative.numero_tva,
+  })
 
   const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
   const licenceIds = [...new Set(tentativeLignes.map(l => l.licence_id as string))]
@@ -304,8 +340,8 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     beatmaker_id: meta.beatmaker_id,
     acheteur_email: acheteurEmail,
     acheteur_nom: acheteurNom,
-    acheteur_adresse: ctx.acheteurAdresse,
-    acheteur_telephone: ctx.acheteurTelephone,
+    acheteur_adresse: acheteurAdresse,
+    acheteur_telephone: acheteurTelephone,
     prix_paye: prixPayeTotal,
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,
@@ -471,7 +507,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
           beatmakerId: meta.beatmaker_id,
           acheteurNom,
           acheteurEmail,
-          acheteurAdresse: ctx.acheteurAdresse,
+          acheteurAdresse,
           prixPaye: Number(tLigne.prix),
           splits: splitsSnapshot,
           dateVente: new Date(),

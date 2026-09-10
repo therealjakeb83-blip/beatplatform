@@ -34,15 +34,13 @@ export default function CartDrawer({
   tvaActive?: boolean
   tvaTaux?: number | null
 }) {
-  const { items, isOpen, close, removeItem, clear } = useCart()
+  const { items, isOpen, close, removeItem } = useCart()
 
   const [codeInput, setCodeInput] = useState('')
   const [codeApplique, setCodeApplique] = useState<{ code: string; type_valeur: 'pourcentage' | 'montant'; valeur: number } | null>(null)
   const [erreurCode, setErreurCode] = useState<string | null>(null)
   const [chargementCode, setChargementCode] = useState(false)
   const [emailAcheteur, setEmailAcheteur] = useState('')
-  const [chargement, setChargement] = useState(false)
-  const [erreur, setErreur] = useState<string | null>(null)
   const [, setExpressStatus] = useState<ExpressStatus>('loading')
   const [expressRedirection, setExpressRedirection] = useState(false)
 
@@ -83,34 +81,13 @@ export default function CartDrawer({
     }
   }
 
-  async function passerCommande() {
-    setChargement(true)
-    setErreur(null)
-    const source_marketing = sessionStorage.getItem('source_marketing') ?? 'direct'
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug,
-          items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
-          code_promo: codeApplique?.code,
-          email_acheteur: emailAcheteur || undefined,
-          source_marketing,
-        }),
-      })
-      const data = await res.json()
-      if (data.url) {
-        clear()
-        window.location.href = data.url
-      } else {
-        setErreur(data.erreur ?? 'Erreur lors du paiement')
-        setChargement(false)
-      }
-    } catch {
-      setErreur('Erreur réseau')
-      setChargement(false)
-    }
+  // Page de paiement custom (Phase 9) — remplace la redirection vers la
+  // Checkout Session Stripe hébergée. Le panier reste en localStorage (même
+  // clé, voir CartContext) : rien à transmettre, la nouvelle page le relit
+  // elle-même.
+  function passerCommande() {
+    close()
+    window.location.href = `/paiement/${slug}`
   }
 
   // Apple Pay/Google Pay (pas de redirection externe) : le webhook crée la
@@ -283,8 +260,6 @@ export default function CartDrawer({
                   ) : null
                 })()}
 
-                {erreur && <p className="shop-cart-error">{erreur}</p>}
-
                 <CartExpressPay
                   slug={slug}
                   items={items}
@@ -294,10 +269,9 @@ export default function CartDrawer({
 
                 <button
                   onClick={passerCommande}
-                  disabled={chargement}
                   className="shop-cart-checkout"
                 >
-                  {chargement ? '...' : 'Passer commande'}
+                  Passer commande
                 </button>
                 <p className="shop-cart-note">Licences PDF envoyées par email · téléchargement immédiat</p>
               </>

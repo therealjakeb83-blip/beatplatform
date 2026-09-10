@@ -29,9 +29,13 @@ function slugFromPathname(pathname: string): string {
   return pathname.split('/').filter(Boolean)[0] ?? ''
 }
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+// `slug` : à passer explicitement depuis une page hors de l'arborescence
+// `app/[slug]/**` (ex. app/paiement/[slug]) — sinon `slugFromPathname` lirait
+// le mauvais premier segment d'URL et pointerait vers une autre clé
+// localStorage que celle où le panier de cette boutique a été rempli.
+export function CartProvider({ children, slug: slugProp }: { children: React.ReactNode; slug?: string }) {
   const pathname = usePathname()
-  const slug = slugFromPathname(pathname)
+  const slug = slugProp ?? slugFromPathname(pathname)
   const storageKey = `panier_${slug}`
 
   const [items, setItems] = useState<CartItem[]>([])
