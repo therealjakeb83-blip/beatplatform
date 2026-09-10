@@ -51,7 +51,10 @@
 }
 .pmt-recap-head {
   width: 100%;
-  padding: 14px 16px;
+  /* Horizontal à 0 : .pmt-body a déjà 16px de padding, ne pas en ajouter un
+     2e ici sinon le récap se décale par rapport au reste (champs, boutons
+     express, CTA) qui n'ont que celui du corps de page. */
+  padding: 14px 0;
   display: flex; align-items: center; gap: 12px;
   background: transparent; border: none; cursor: pointer; text-align: left;
 }
@@ -82,7 +85,7 @@
   transition: max-height .3s ease, opacity .22s;
 }
 .pmt-recap-content.is-open { max-height: 420px; opacity: 1; }
-.pmt-recap-inner { padding: 2px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+.pmt-recap-inner { padding: 2px 0 16px; display: flex; flex-direction: column; gap: 14px; }
 .pmt-hr { height: 1px; background: rgba(10, 10, 12, .08); border: none; margin: 0; }
 .pmt-recap-item { display: flex; align-items: center; gap: 10px; }
 .pmt-recap-item-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: rgba(10, 10, 12, .06); flex: 0 0 auto; }
