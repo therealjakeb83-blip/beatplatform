@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import {
   Elements,
@@ -606,8 +606,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 }
 
 // Boutons express — Apple Pay uniquement sur iOS, Google Pay sur les autres
-// appareils compatibles, et jamais les deux ensemble. Un remount applique
-// toujours ce filtrage après la détection Stripe. PayPal exclu (incompatible Direct
+// appareils compatibles, et jamais les deux ensemble. La cible est fixée
+// avant le montage de Stripe : `always` doit rester actif pour que Google Pay
+// puisse apparaître même sans carte détectée par le navigateur. PayPal exclu (incompatible Direct
 // Charge, voir memory project_phase2_direct_charge_implementation) ; Link
 // ajouté ici (hors spec de la popup/panier), toujours affiché s'il est
 // disponible, en plus du wallet.
@@ -615,8 +616,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 // refuse silencieusement d'initialiser l'Element (aucun bouton ne s'affiche,
 // y compris quand Apple Pay est bien détectable), piège déjà rencontré sur
 // les autres composants express.
-type ExpressMethodPage = 'apple_pay' | 'google_pay' | 'link'
-
 function appareilEstIOS(): boolean {
   if (typeof navigator === 'undefined') return false
 
@@ -627,33 +626,17 @@ function appareilEstIOS(): boolean {
     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-function selectMethodesPage(
-  a: { applePayAvailable: boolean; googlePayAvailable: boolean; linkAvailable: boolean },
-  estIOS: boolean,
-): ExpressMethodPage[] {
-  const wallet: ExpressMethodPage | null = estIOS
-    ? (a.applePayAvailable ? 'apple_pay' : null)
-    : (a.googlePayAvailable ? 'google_pay' : null)
-  return [wallet, a.linkAvailable ? 'link' : null].filter((m): m is ExpressMethodPage => m !== null)
-}
+const abonnementHydratation = () => () => {}
+const navigateurHydrate = () => true
+const renduServeur = () => false
 
-function methodesVersOptionsPage(methodes: ExpressMethodPage[] | null) {
-  if (methodes === null) {
-    // Google Pay doit être demandé explicitement : avec `auto`, Stripe peut
-    // ne pas le déclarer dans `availablePaymentMethods` lorsque le wallet
-    // n'est pas encore configuré, et certains navigateurs ne le proposent
-    // qu'avec `always`. Le conteneur reste invisible pendant cette détection,
-    // puis le remount ci-dessous applique la règle iOS/Google Pay.
-    return { applePay: 'auto' as const, googlePay: 'always' as const, paypal: 'never' as const, link: 'auto' as const, amazonPay: 'never' as const, klarna: 'never' as const }
-  }
+function methodesPourAppareil(estIOS: boolean) {
   return {
-    applePay: methodes.includes('apple_pay') ? 'always' as const : 'never' as const,
-    googlePay: methodes.includes('google_pay') ? 'always' as const : 'never' as const,
+    applePay: estIOS ? 'always' as const : 'never' as const,
+    googlePay: estIOS ? 'never' as const : 'always' as const,
     paypal: 'never' as const,
-    // 'link' n'accepte pas 'always' côté Stripe (contrairement à applePay/
-    // googlePay/paypal) — 'auto' suffit, sa présence dans `methodes` prouve
-    // déjà sa disponibilité réelle.
-    link: methodes.includes('link') ? 'auto' as const : 'never' as const,
+    // `link` n'accepte pas `always` côté Stripe.
+    link: 'auto' as const,
     amazonPay: 'never' as const,
     klarna: 'never' as const,
   }
@@ -669,7 +652,9 @@ function ExpressButtons({
 }) {
   const stripe = useStripe()
   const elements = useElements()
-  const [methodes, setMethodes] = useState<ExpressMethodPage[] | null>(null)
+  const estHydrate = useSyncExternalStore(abonnementHydratation, navigateurHydrate, renduServeur)
+  const estIOS = estHydrate ? appareilEstIOS() : null
+  const [methodesDisponibles, setMethodesDisponibles] = useState(false)
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -681,33 +666,23 @@ function ExpressButtons({
     return () => clearTimeout(t)
   }, [pret])
 
-  const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
+  const affichable = pret && !expiree && !loadError && methodesDisponibles
 
   const handleReady = (event: StripeExpressCheckoutElementReadyEvent) => {
-    const dispo = event.availablePaymentMethods
-    if (methodes === null) {
-      const calcule = selectMethodesPage({
-        applePayAvailable: !!dispo?.applePay,
-        googlePayAvailable: !!dispo?.googlePay,
-        linkAvailable: !!dispo?.link,
-      }, appareilEstIOS())
-      setMethodes(calcule)
-    } else {
-      setPret(true)
-    }
+    setMethodesDisponibles(Boolean(event.availablePaymentMethods))
+    setPret(true)
   }
 
-  const rienADetecter = loadError || (expiree && !pret) || (methodes !== null && methodes.length === 0)
-  if (rienADetecter) return null
+  const rienADetecter = loadError || (expiree && !pret) || (pret && !methodesDisponibles)
+  if (estIOS === null || rienADetecter) return null
 
   return (
     <div style={{ opacity: affichable ? 1 : 0, pointerEvents: affichable ? 'auto' : 'none' }}>
       <ExpressCheckoutElement
-        key={methodes ? methodes.join(',') : 'detection'}
         options={{
           buttonHeight: 50,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesVersOptionsPage(methodes),
+          paymentMethods: methodesPourAppareil(estIOS),
           emailRequired: true,
           billingAddressRequired: true,
           phoneNumberRequired: true,
