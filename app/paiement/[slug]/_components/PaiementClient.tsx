@@ -52,7 +52,7 @@ const CHECK_ICON = (
   </svg>
 )
 const CARD_ICON = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+  <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
     <rect x="2.5" y="5.5" width="19" height="13" rx="2.2" />
     <path strokeLinecap="round" d="M2.5 9.5h19" />
   </svg>
@@ -457,7 +457,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Payer par carte */}
           <div className="pmt-carte-accordion">
             <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen}>
-              {CARD_ICON}
+              <span className="pmt-carte-head-icon">{CARD_ICON}</span>
               <span className="pmt-carte-head-label">Payer par carte</span>
               <span className={`pmt-carte-chevron${carteOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
             </button>
