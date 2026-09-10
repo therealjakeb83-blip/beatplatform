@@ -144,25 +144,20 @@
 /* Payer par carte (accordéon) */
 .pmt-carte-accordion { border: 1px solid rgba(10, 10, 12, .14); border-radius: 16px; overflow: hidden; }
 .pmt-carte-head {
-  position: relative;
-  width: 100%; display: flex; align-items: center;
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px;
   padding: 15px 16px; background: transparent; border: none; cursor: pointer;
   font-size: 14px; font-weight: 600; color: #0A0A0C;
 }
-/* Icône et chevron positionnés aux extrémités, indépendamment du texte —
-   le texte reste centré sur toute la largeur du bouton, pas juste dans
-   l'espace restant entre les deux (icône et chevron n'ont pas la même
-   largeur, un centrage flex classique décalerait le texte). */
+/* Icône + texte + chevron centrés ensemble comme un seul groupe collé,
+   pas répartis aux extrémités du bouton. */
 .pmt-carte-head-icon {
-  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
-  color: rgba(10, 10, 12, .75); display: flex;
+  color: rgba(10, 10, 12, .75); display: flex; flex: 0 0 auto;
 }
-.pmt-carte-head-label { width: 100%; text-align: center; }
+.pmt-carte-head-label { flex: 0 0 auto; }
 .pmt-carte-chevron {
-  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-  width: 16px; height: 16px; color: rgba(10, 10, 12, .4); transition: transform .22s;
+  width: 16px; height: 16px; color: rgba(10, 10, 12, .4); transition: transform .22s; flex: 0 0 auto;
 }
-.pmt-carte-chevron.is-open { transform: translateY(-50%) rotate(180deg); }
+.pmt-carte-chevron.is-open { transform: rotate(180deg); }
 .pmt-carte-content { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .35s ease, opacity .25s; }
 .pmt-carte-content.is-open { max-height: 1400px; opacity: 1; }
 .pmt-carte-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
