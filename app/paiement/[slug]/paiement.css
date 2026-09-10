@@ -110,7 +110,7 @@
 }
 .pmt-promo-remove { background: none; border: none; text-decoration: underline; font-size: 12px; color: inherit; cursor: pointer; }
 .pmt-promo-toggle {
-  align-self: flex-end;
+  align-self: flex-start;
   background: none; border: none; padding: 0; cursor: pointer;
   font-size: 12px; text-decoration: underline; color: rgba(10, 10, 12, .5);
 }
@@ -122,13 +122,48 @@
   color: rgba(10, 10, 12, .4);
 }
 
-/* Séparateur */
-.pmt-sep { display: flex; align-items: center; gap: 12px; }
-.pmt-sep-line { flex: 1; height: 1px; background: rgba(10, 10, 12, .1); }
-.pmt-sep-text { font-size: 11px; color: rgba(10, 10, 12, .4); }
+/* Newsletter (purement visuel) */
+.pmt-newsletter {
+  display: flex; align-items: flex-start; gap: 11px;
+  border: 1px solid rgba(10, 10, 12, .1);
+  background: rgba(10, 10, 12, .03);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.pmt-newsletter-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+.pmt-newsletter-box {
+  width: 20px; height: 20px; border-radius: 6px; flex: 0 0 auto; margin-top: 1px;
+  border: 1.5px solid rgba(10, 10, 12, .25); background: #FFFFFF;
+  display: flex; align-items: center; justify-content: center; color: #FFFFFF;
+  transition: background .15s, border-color .15s;
+}
+.pmt-newsletter-box.is-checked { background: #0A0A0C; border-color: #0A0A0C; }
+.pmt-newsletter-label { font-size: 12.5px; font-weight: 600; color: #0A0A0C; line-height: 1.4; }
 
-/* Formulaire */
-.pmt-form { display: flex; flex-direction: column; gap: 14px; }
+/* Payer par carte (accordéon) */
+.pmt-carte-accordion { border: 1px solid rgba(10, 10, 12, .14); border-radius: 16px; overflow: hidden; }
+.pmt-carte-head {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 15px 16px; background: transparent; border: none; cursor: pointer; text-align: left;
+  font-size: 14px; font-weight: 600; color: #0A0A0C;
+}
+.pmt-carte-head-label { flex: 1; }
+.pmt-carte-chevron { width: 16px; height: 16px; color: rgba(10, 10, 12, .4); transition: transform .22s; flex: 0 0 auto; }
+.pmt-carte-chevron.is-open { transform: rotate(180deg); }
+.pmt-carte-content { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .35s ease, opacity .25s; }
+.pmt-carte-content.is-open { max-height: 1400px; opacity: 1; }
+.pmt-carte-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Confiance / pied de page */
+.pmt-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: rgba(10, 10, 12, .6); }
+.pmt-footer {
+  border-top: 1px solid rgba(10, 10, 12, .08);
+  padding: 16px; text-align: center; font-size: 11.5px; color: rgba(10, 10, 12, .6);
+}
+.pmt-footer a { color: #0A0A0C; font-weight: 600; text-decoration: underline; }
+
+/* Formulaire (contenu de .pmt-carte-inner) */
 .pmt-field, .pmt-select {
   width: 100%; height: 48px;
   border: 1px solid rgba(10, 10, 12, .14);

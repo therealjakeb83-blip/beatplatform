@@ -46,6 +46,23 @@ const CHEVRON_DOWN = (
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
   </svg>
 )
+const CHECK_ICON = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 12.5l5 5L20 6" />
+  </svg>
+)
+const CARD_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+    <rect x="2.5" y="5.5" width="19" height="13" rx="2.2" />
+    <path strokeLinecap="round" d="M2.5 9.5h19" />
+  </svg>
+)
+const LOCK_ICON = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+    <path strokeLinecap="round" d="M7.5 10.5V7.5a4.5 4.5 0 019 0v3" />
+  </svg>
+)
 
 export default function PaiementClient(props: Props) {
   return (
@@ -156,6 +173,11 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const [submitting, setSubmitting] = useState(false)
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
   const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false })
+  const [carteOpen, setCarteOpen] = useState(false)
+  // Purement visuel pour l'instant (décision Jake, 2026-09-10) — jamais
+  // envoyé au serveur, pas d'inscription newsletter réelle tant que ce n'est
+  // pas explicitement demandé.
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false)
 
   const pricedItems = computeItemsPricing(items, reglesLot)
   const total = computeTotal(items, reglesLot)
@@ -378,6 +400,32 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                     <div className="pmt-recap-item-price">{item.isFree ? 'Gratuit' : formatPrix(item.prix)}</div>
                   </div>
                 ))}
+
+                {codeApplique ? (
+                  <div className="pmt-promo-applied">
+                    <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
+                    <button className="pmt-promo-remove" onClick={() => setCodeApplique(null)}>Supprimer</button>
+                  </div>
+                ) : codePromoOpen ? (
+                  <div className="pmt-promo-row">
+                    <input
+                      className="pmt-field"
+                      type="text"
+                      autoFocus
+                      value={codeInput}
+                      onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
+                      onKeyDown={e => e.key === 'Enter' && validerCode()}
+                      placeholder="Code promo"
+                    />
+                    <button className="pmt-promo-apply" onClick={validerCode} disabled={!codeInput.trim() || chargementCode}>
+                      {chargementCode ? '...' : 'OK'}
+                    </button>
+                  </div>
+                ) : (
+                  <button className="pmt-promo-toggle" onClick={() => setCodePromoOpen(true)}>Code promo ?</button>
+                )}
+                {erreurCode && <p className="pmt-field-error">{erreurCode}</p>}
+
                 <div className="pmt-hr" />
                 <div className="pmt-row pmt-row-sub"><span>Sous-total</span><span>{formatPrix(total)}</span></div>
                 {tva && <div className="pmt-row pmt-row-sub"><span>TVA ({tva.taux} %)</span><span>{formatPrix(tva.montant)}</span></div>}
@@ -386,136 +434,136 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             </div>
           </div>
 
-          {codeApplique ? (
-            <div className="pmt-promo-applied">
-              <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
-              <button className="pmt-promo-remove" onClick={() => setCodeApplique(null)}>Supprimer</button>
-            </div>
-          ) : codePromoOpen ? (
-            <div className="pmt-promo-row">
-              <input
-                className="pmt-field"
-                type="text"
-                autoFocus
-                value={codeInput}
-                onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
-                onKeyDown={e => e.key === 'Enter' && validerCode()}
-                placeholder="Code promo"
-              />
-              <button className="pmt-promo-apply" onClick={validerCode} disabled={!codeInput.trim() || chargementCode}>
-                {chargementCode ? '...' : 'OK'}
-              </button>
-            </div>
-          ) : (
-            <button className="pmt-promo-toggle" onClick={() => setCodePromoOpen(true)}>Code promo ?</button>
-          )}
-          {erreurCode && <p className="pmt-field-error">{erreurCode}</p>}
+          {/* Newsletter — purement visuel pour l'instant, pas d'inscription réelle */}
+          <label className="pmt-newsletter">
+            <input
+              type="checkbox"
+              checked={newsletterOptIn}
+              onChange={e => setNewsletterOptIn(e.target.checked)}
+              className="pmt-newsletter-input"
+            />
+            <span className={`pmt-newsletter-box${newsletterOptIn ? ' is-checked' : ''}`}>
+              {newsletterOptIn && CHECK_ICON}
+            </span>
+            <span className="pmt-newsletter-label">Je veux recevoir les nouveaux beats et les offres par e-mail</span>
+          </label>
 
-          {/* Paiement express */}
+          {/* Moyens de paiement */}
           <div className="pmt-express">
-            <span className="pmt-express-title">Paiement express</span>
+            <span className="pmt-express-title">Moyens de paiement</span>
             <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} onSucces={apresSucces} />
           </div>
 
-          <div className="pmt-sep">
-            <span className="pmt-sep-line" /><span className="pmt-sep-text">ou</span><span className="pmt-sep-line" />
-          </div>
-
-          {/* Formulaire */}
-          <div className="pmt-form">
-            <div className="pmt-connexion-row">
-              <span>Déjà client ?</span>
-              <Link href={`/artiste/connexion?redirect=/paiement/${slug}`} className="pmt-connexion-link">Connexion</Link>
-            </div>
-
-            <div>
-              <input
-                className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}
-                type="email"
-                placeholder="E-mail"
-                value={champs.email}
-                onChange={e => majChamp('email', e.target.value)}
-              />
-              {erreursChamps.email && <p className="pmt-field-error">{erreursChamps.email}</p>}
-              <p className="pmt-field-help">Les licences PDF et les fichiers y seront envoyés.</p>
-            </div>
-
-            <div className="pmt-grid-2">
-              <div>
-                <input className={`pmt-field${erreursChamps.prenom ? ' has-error' : ''}`} placeholder="Prénom" value={champs.prenom} onChange={e => majChamp('prenom', e.target.value)} />
-              </div>
-              <div>
-                <input className={`pmt-field${erreursChamps.nom ? ' has-error' : ''}`} placeholder="Nom" value={champs.nom} onChange={e => majChamp('nom', e.target.value)} />
-              </div>
-            </div>
-
-            <input className={`pmt-field${erreursChamps.telephone ? ' has-error' : ''}`} type="tel" placeholder="Téléphone" value={champs.telephone} onChange={e => majChamp('telephone', e.target.value)} />
-            <input className={`pmt-field${erreursChamps.adresse ? ' has-error' : ''}`} placeholder="Adresse" value={champs.adresse} onChange={e => majChamp('adresse', e.target.value)} />
-
-            <div className="pmt-grid-cp">
-              <input className={`pmt-field${erreursChamps.codePostal ? ' has-error' : ''}`} placeholder="Code postal" value={champs.codePostal} onChange={e => majChamp('codePostal', e.target.value)} />
-              <input className={`pmt-field${erreursChamps.ville ? ' has-error' : ''}`} placeholder="Ville" value={champs.ville} onChange={e => majChamp('ville', e.target.value)} />
-            </div>
-
-            <select className="pmt-select" value={champs.pays} onChange={e => majChamp('pays', e.target.value)}>
-              {pays.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
-            </select>
-
-            <div className="pmt-hr" style={{ margin: '6px 0' }} />
-
-            <div className={`pmt-card-box${erreurGlobale ? '' : ''}`}>
-              <CardNumberElement
-                className="StripeElement"
-                options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte' }}
-                onChange={(e: StripeCardNumberElementChangeEvent) => setCardComplete(c => ({ ...c, number: e.complete }))}
-              />
-              <div className="pmt-card-brands">
-                <span className="pmt-card-brand pmt-card-brand--visa" />
-                <span className="pmt-card-brand pmt-card-brand--mc" />
-              </div>
-            </div>
-            <div className="pmt-card-split">
-              <div className="pmt-card-box">
-                <CardExpiryElement className="StripeElement" options={{ style: cardElementStyle }} onChange={e => setCardComplete(c => ({ ...c, expiry: e.complete }))} />
-              </div>
-              <div className="pmt-card-box">
-                <CardCvcElement className="StripeElement" options={{ style: cardElementStyle }} onChange={e => setCardComplete(c => ({ ...c, cvc: e.complete }))} />
-              </div>
-            </div>
-
-            <div className="pmt-hr" style={{ margin: '6px 0' }} />
-
-            <button className="pmt-toggle-row" onClick={() => setPro(p => !p)} aria-pressed={pro}>
-              <span className={`pmt-toggle-track${pro ? ' is-on' : ''}`}><span className="pmt-toggle-thumb" /></span>
-              <span className="pmt-toggle-label">J&apos;achète en tant que professionnel</span>
+          {/* Payer par carte */}
+          <div className="pmt-carte-accordion">
+            <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen}>
+              {CARD_ICON}
+              <span className="pmt-carte-head-label">Payer par carte</span>
+              <span className={`pmt-carte-chevron${carteOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
             </button>
-            <div className={`pmt-pro-fields${pro ? ' is-open' : ''}`}>
-              <input
-                className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
-                placeholder="Raison sociale"
-                value={champs.raisonSociale}
-                onChange={e => majChamp('raisonSociale', e.target.value)}
-              />
-              <input
-                className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
-                placeholder="N° de TVA intracommunautaire"
-                value={champs.numeroTva}
-                onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
-              />
-              {erreursChamps.numeroTva && <p className="pmt-field-error">{erreursChamps.numeroTva}</p>}
-              <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
+            <div className={`pmt-carte-content${carteOpen ? ' is-open' : ''}`}>
+              <div className="pmt-carte-inner">
+                <div className="pmt-connexion-row">
+                  <span>Déjà client ?</span>
+                  <Link href={`/artiste/connexion?redirect=/paiement/${slug}`} className="pmt-connexion-link">Connexion</Link>
+                </div>
+
+                <div>
+                  <input
+                    className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}
+                    type="email"
+                    placeholder="E-mail"
+                    value={champs.email}
+                    onChange={e => majChamp('email', e.target.value)}
+                  />
+                  {erreursChamps.email && <p className="pmt-field-error">{erreursChamps.email}</p>}
+                  <p className="pmt-field-help">Les licences PDF et les fichiers y seront envoyés.</p>
+                </div>
+
+                <div className="pmt-grid-2">
+                  <div>
+                    <input className={`pmt-field${erreursChamps.prenom ? ' has-error' : ''}`} placeholder="Prénom" value={champs.prenom} onChange={e => majChamp('prenom', e.target.value)} />
+                  </div>
+                  <div>
+                    <input className={`pmt-field${erreursChamps.nom ? ' has-error' : ''}`} placeholder="Nom" value={champs.nom} onChange={e => majChamp('nom', e.target.value)} />
+                  </div>
+                </div>
+
+                <input className={`pmt-field${erreursChamps.telephone ? ' has-error' : ''}`} type="tel" placeholder="Téléphone" value={champs.telephone} onChange={e => majChamp('telephone', e.target.value)} />
+                <input className={`pmt-field${erreursChamps.adresse ? ' has-error' : ''}`} placeholder="Adresse" value={champs.adresse} onChange={e => majChamp('adresse', e.target.value)} />
+
+                <div className="pmt-grid-cp">
+                  <input className={`pmt-field${erreursChamps.codePostal ? ' has-error' : ''}`} placeholder="Code postal" value={champs.codePostal} onChange={e => majChamp('codePostal', e.target.value)} />
+                  <input className={`pmt-field${erreursChamps.ville ? ' has-error' : ''}`} placeholder="Ville" value={champs.ville} onChange={e => majChamp('ville', e.target.value)} />
+                </div>
+
+                <select className="pmt-select" value={champs.pays} onChange={e => majChamp('pays', e.target.value)}>
+                  {pays.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                </select>
+
+                <div className="pmt-hr" style={{ margin: '6px 0' }} />
+
+                <div className={`pmt-card-box${erreurGlobale ? '' : ''}`}>
+                  <CardNumberElement
+                    className="StripeElement"
+                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte' }}
+                    onChange={(e: StripeCardNumberElementChangeEvent) => setCardComplete(c => ({ ...c, number: e.complete }))}
+                  />
+                  <div className="pmt-card-brands">
+                    <span className="pmt-card-brand pmt-card-brand--visa" />
+                    <span className="pmt-card-brand pmt-card-brand--mc" />
+                  </div>
+                </div>
+                <div className="pmt-card-split">
+                  <div className="pmt-card-box">
+                    <CardExpiryElement className="StripeElement" options={{ style: cardElementStyle }} onChange={e => setCardComplete(c => ({ ...c, expiry: e.complete }))} />
+                  </div>
+                  <div className="pmt-card-box">
+                    <CardCvcElement className="StripeElement" options={{ style: cardElementStyle }} onChange={e => setCardComplete(c => ({ ...c, cvc: e.complete }))} />
+                  </div>
+                </div>
+
+                <div className="pmt-hr" style={{ margin: '6px 0' }} />
+
+                <button className="pmt-toggle-row" onClick={() => setPro(p => !p)} aria-pressed={pro}>
+                  <span className={`pmt-toggle-track${pro ? ' is-on' : ''}`}><span className="pmt-toggle-thumb" /></span>
+                  <span className="pmt-toggle-label">J&apos;achète en tant que professionnel</span>
+                </button>
+                <div className={`pmt-pro-fields${pro ? ' is-open' : ''}`}>
+                  <input
+                    className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
+                    placeholder="Raison sociale"
+                    value={champs.raisonSociale}
+                    onChange={e => majChamp('raisonSociale', e.target.value)}
+                  />
+                  <input
+                    className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
+                    placeholder="N° de TVA intracommunautaire"
+                    value={champs.numeroTva}
+                    onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
+                  />
+                  {erreursChamps.numeroTva && <p className="pmt-field-error">{erreursChamps.numeroTva}</p>}
+                  <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
+                </div>
+
+                {erreurGlobale && <p className="pmt-error-global">{erreurGlobale}</p>}
+
+                <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk}>
+                  {submitting ? 'Traitement…' : `Payer ${formatPrix(totalApresCode)}`}
+                </button>
+                <p className="pmt-legal">
+                  En payant, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
+                </p>
+              </div>
             </div>
           </div>
 
-          {erreurGlobale && <p className="pmt-error-global">{erreurGlobale}</p>}
-
-          <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk}>
-            {submitting ? 'Traitement…' : `Payer ${formatPrix(totalApresCode)}`}
-          </button>
-          <p className="pmt-legal">
-            En payant, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
-          </p>
+          <div className="pmt-trust">{LOCK_ICON}<span>Paiement sécurisé par Stripe</span></div>
         </div>
+
+        <footer className="pmt-footer">
+          Besoin d&apos;aide ? <Link href={`/${slug}/contact`}>Me contacter</Link>
+        </footer>
       </div>
     </div>
   )
@@ -609,7 +657,7 @@ function ExpressButtons({
         key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
         options={{
           buttonHeight: 50,
-          layout: { maxColumns: 1, maxRows: 0, overflow: 'never' },
+          layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
           paymentMethods: methodesVersOptionsPage(besoinRestriction ? methodes : null),
           emailRequired: true,
           billingAddressRequired: true,
