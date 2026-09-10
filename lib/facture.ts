@@ -1,7 +1,27 @@
 import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib'
+import sharp from 'sharp'
 import type { createAdminClient } from '@/utils/supabase/admin'
 import { NOM_PLATEFORME } from './constantes'
 import type { InfosLegalesConcedant } from './licences-textes'
+
+// Récupère le logo du beatmaker et le prépare pour un embed pdf-lib (PNG,
+// inversé pixel par pixel si logo_inverser_fond_clair — un simple filtre CSS
+// ne s'applique pas à un PDF). N'échoue jamais bruyamment : une facture sans
+// logo reste une facture valide, jamais bloquée par un souci d'image.
+async function chargerLogoPourFacture(logoUrl: string | null, inverser: boolean): Promise<Uint8Array | null> {
+  if (!logoUrl) return null
+  try {
+    const res = await fetch(logoUrl)
+    if (!res.ok) return null
+    const buffer = Buffer.from(await res.arrayBuffer())
+    let image = sharp(buffer)
+    if (inverser) image = image.negate({ alpha: false })
+    return await image.png().toBuffer()
+  } catch (err) {
+    console.error('[facture] Erreur chargement logo:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
 
 // Facture PDF distincte du contrat de licence (lib/contrat.ts) — Phase 8 du
 // chantier 9 bis. Voir memory/project_grillme_9bis_synthese.md (section
@@ -27,10 +47,12 @@ export interface FactureInput {
   // Numéro de TVA du vendeur au moment de cette vente (snapshot, jamais la
   // valeur live du beatmaker) — null si TVA non applicable à cette vente.
   tvaNumero: string | null
-  // Logo retiré pour la V1 (2026-09-09) — le rendu blanc-sur-blanc de
-  // certains logos pensés pour un fond sombre les rend invisibles sur une
-  // facture à fond blanc, sans solution simple à ce stade. Prévu pour la V2
-  // (fond contrastant derrière le logo). Voir memory/project_phase8_numerotation_facture.md.
+  // Réactivé (2026-09-10) — logo retiré pour la V1 (2026-09-09) à cause du
+  // rendu blanc-sur-blanc de certains logos pensés pour un fond sombre.
+  // logo_inverser_fond_clair (réglage beatmaker) permet maintenant de
+  // l'inverser pixel par pixel avant embed (voir chargerLogoPourFacture) —
+  // déjà PNG, déjà inversé si besoin, prêt à être embarqué tel quel.
+  logoPng: Uint8Array | null
 }
 
 const PAGE_W = 595
@@ -76,6 +98,21 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
       size: opts.size ?? 9.5,
       color: rgb(...(opts.color ?? [0.2, 0.2, 0.2])),
     })
+  }
+
+  // Logo en haut à droite, si le beatmaker en a un (et l'a préparé/inversé
+  // en amont, voir chargerLogoPourFacture) — jamais bloquant si l'embed rate.
+  if (input.logoPng) {
+    try {
+      const logoImage = await doc.embedPng(input.logoPng)
+      const tailleMax = 40
+      const echelle = Math.min(tailleMax / logoImage.width, tailleMax / logoImage.height)
+      const w = logoImage.width * echelle
+      const h = logoImage.height * echelle
+      page.drawImage(logoImage, { x: PAGE_W - MARGIN_X - w, y: PAGE_H - 55 - h, width: w, height: h })
+    } catch (err) {
+      console.error('[facture] Erreur embed logo:', err instanceof Error ? err.message : err)
+    }
   }
 
   // En-tête — le nom du beatmaker (vendeur réel), jamais My Producer, même
@@ -231,7 +268,7 @@ export async function genererFacturePdfPourCommande(
   }
 
   const [{ data: beatmaker }, { data: lignes }] = await Promise.all([
-    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public').eq('id', commande.beatmaker_id).single(),
+    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public, logo_url, logo_inverser_fond_clair').eq('id', commande.beatmaker_id).single(),
     admin.from('commande_lignes').select('prix_paye, beats(titre), licences(nom)').eq('commande_id', commandeId),
   ])
 
@@ -279,6 +316,8 @@ export async function genererFacturePdfPourCommande(
         tauxTva: Number(commande.tva_taux ?? 0),
       }]
 
+  const logoPng = await chargerLogoPourFacture(beatmaker.logo_url, beatmaker.logo_inverser_fond_clair)
+
   return genererFacturePdf({
     numeroFacture: commande.numero_facture,
     dateEmission: new Date(commande.created_at),
@@ -287,5 +326,6 @@ export async function genererFacturePdfPourCommande(
     lignes: lignesFacture,
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
     tvaNumero: commande.tva_numero ?? null,
+    logoPng,
   })
 }

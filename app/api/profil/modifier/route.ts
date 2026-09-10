@@ -16,9 +16,9 @@ export async function PATCH(request: Request) {
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
 
   const body = await request.json()
-  const { slug: rawSlug, nom_artiste, tagline, logo_url, instagram_url, youtube_url, tiktok_url, fuseau_horaire } = body
+  const { slug: rawSlug, nom_artiste, tagline, logo_url, logo_inverser_fond_clair, instagram_url, youtube_url, tiktok_url, fuseau_horaire } = body
 
-  const updates: Record<string, string | null> = {}
+  const updates: Record<string, string | boolean | null> = {}
 
   if (rawSlug !== undefined) {
     const slug = sanitizeSlug(rawSlug)
@@ -39,6 +39,7 @@ export async function PATCH(request: Request) {
   if (nom_artiste !== undefined) updates.nom_artiste = nom_artiste || null
   if (tagline !== undefined) updates.tagline = tagline || null
   if (logo_url !== undefined) updates.logo_url = logo_url || null
+  if (logo_inverser_fond_clair !== undefined) updates.logo_inverser_fond_clair = !!logo_inverser_fond_clair
   if (instagram_url !== undefined) updates.instagram_url = instagram_url || null
   if (youtube_url !== undefined) updates.youtube_url = youtube_url || null
   if (tiktok_url !== undefined) updates.tiktok_url = tiktok_url || null

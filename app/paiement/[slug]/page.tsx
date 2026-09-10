@@ -26,7 +26,7 @@ export default async function PaiementPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, logo_url, statut, role, abonnement_exempte')
+    .select('id, nom_artiste, logo_url, logo_inverser_fond_clair, statut, role, abonnement_exempte')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -62,6 +62,7 @@ export default async function PaiementPage({
       <PaiementClient
         slug={slug}
         logoUrl={beatmaker.logo_url}
+        logoInverser={beatmaker.logo_inverser_fond_clair}
         nomArtiste={beatmaker.nom_artiste}
         reglesLot={reglesLot}
       />

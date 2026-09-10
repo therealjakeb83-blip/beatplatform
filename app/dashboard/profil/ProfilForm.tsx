@@ -9,6 +9,7 @@ type Profil = {
   nom_artiste: string
   tagline: string | null
   logo_url: string | null
+  logo_inverser_fond_clair: boolean
   instagram_url: string | null
   youtube_url: string | null
   tiktok_url: string | null
@@ -21,6 +22,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
   const [nomArtiste, setNomArtiste] = useState(profil.nom_artiste)
   const [tagline, setTagline] = useState(profil.tagline ?? '')
   const [logoUrl, setLogoUrl] = useState(profil.logo_url ?? '')
+  const [logoInverser, setLogoInverser] = useState(profil.logo_inverser_fond_clair)
   const [instagram, setInstagram] = useState(profil.instagram_url ?? '')
   const [youtube, setYoutube] = useState(profil.youtube_url ?? '')
   const [tiktok, setTiktok] = useState(profil.tiktok_url ?? '')
@@ -90,6 +92,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
         nom_artiste: nomArtiste,
         tagline,
         logo_url: logoUrl,
+        logo_inverser_fond_clair: logoInverser,
         instagram_url: instagram,
         youtube_url: youtube,
         tiktok_url: tiktok,
@@ -145,6 +148,34 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
         </div>
         {erreurLogo && <p className="text-red-400 text-xs mt-2">{erreurLogo}</p>}
+
+        {logoUrl && (
+          <div className="mt-4 p-4 rounded-lg bg-gray-800/50 border border-gray-700">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={logoInverser}
+                onChange={e => setLogoInverser(e.target.checked)}
+                className="w-4 h-4 rounded accent-indigo-500"
+              />
+              <span className="text-sm text-gray-200">Inverser mon logo sur fond clair</span>
+            </label>
+            <p className="text-gray-500 text-xs mt-1 ml-7">
+              Pour un logo blanc pensé pour ta boutique — évite qu&apos;il devienne invisible sur la page de paiement et sur tes factures PDF (toujours à fond blanc).
+            </p>
+            <div className="mt-3 ml-7 flex items-center gap-2">
+              <span className="text-xs text-gray-500">Aperçu sur fond blanc :</span>
+              <div className="w-16 h-16 rounded-lg bg-white flex items-center justify-center overflow-hidden">
+                <img
+                  src={logoUrl}
+                  alt="Aperçu du logo sur fond blanc"
+                  className="w-12 h-12 object-contain"
+                  style={logoInverser ? { filter: 'invert(1)' } : undefined}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Nom d'artiste */}

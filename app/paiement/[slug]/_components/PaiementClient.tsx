@@ -28,6 +28,7 @@ type ContextePaiement = { mode: 'direct' | 'held'; stripe_account_id: string | n
 type Props = {
   slug: string
   logoUrl: string | null
+  logoInverser: boolean
   nomArtiste: string
   reglesLot: ReductionLotRule[]
 }
@@ -51,7 +52,7 @@ export default function PaiementClient(props: Props) {
   )
 }
 
-function PaiementInner({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
+function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Props) {
   const { items } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
@@ -99,7 +100,7 @@ function PaiementInner({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
       stripe={stripeClient}
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
-      <PaiementForm slug={slug} logoUrl={logoUrl} nomArtiste={nomArtiste} reglesLot={reglesLot} />
+      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} />
     </Elements>
   )
 }
@@ -132,7 +133,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
@@ -328,7 +329,12 @@ function PaiementForm({ slug, logoUrl, nomArtiste, reglesLot }: Props) {
         <header className="pmt-header">
           <Link href={`/${slug}`} className="pmt-back" aria-label="Retour au panier">{CHEVRON_LEFT}</Link>
           {logoUrl ? (
-            <img src={logoUrl} alt={nomArtiste} className="pmt-logo" />
+            <img
+              src={logoUrl}
+              alt={nomArtiste}
+              className="pmt-logo"
+              style={logoInverser ? { filter: 'invert(1)' } : undefined}
+            />
           ) : (
             <span style={{ margin: '0 auto', fontWeight: 700, fontSize: 15 }}>{nomArtiste}</span>
           )}
