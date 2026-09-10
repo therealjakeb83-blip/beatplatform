@@ -71,7 +71,11 @@ export async function POST(request: Request) {
       })
     }
     if (!promo.emails_autorises.includes(email as string)) {
-      return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
+      return NextResponse.json({
+        valide: false,
+        erreur: 'Adresse email non autorisée pour ce code',
+        a_restriction_email: true,
+      })
     }
   }
   if (email && promo.emails_exclus?.includes(email as string)) {

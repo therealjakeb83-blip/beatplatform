@@ -169,6 +169,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const [codeApplique, setCodeApplique] = useState<{ code: string; type_valeur: 'pourcentage' | 'montant'; valeur: number } | null>(null)
   const [erreurCode, setErreurCode] = useState<string | null>(null)
   const [chargementCode, setChargementCode] = useState(false)
+  const [codeNecessiteEmail, setCodeNecessiteEmail] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
@@ -228,8 +229,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       const data = await res.json()
       if (data.valide) {
         setCodeApplique({ code, type_valeur: data.type_valeur, valeur: data.valeur })
+        setCodeNecessiteEmail(Boolean(data.a_restriction_email))
         setCodeInput('')
       } else {
+        if (data.a_restriction_email) setCodeNecessiteEmail(true)
         setErreurCode(data.erreur ?? 'Code invalide')
       }
     } catch {
@@ -413,7 +416,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 {codeApplique ? (
                   <div className="pmt-promo-applied">
                     <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
-                    <button className="pmt-promo-remove" onClick={() => setCodeApplique(null)}>Supprimer</button>
+                    <button className="pmt-promo-remove" onClick={() => { setCodeApplique(null); setCodeNecessiteEmail(false) }}>Supprimer</button>
                   </div>
                 ) : codePromoOpen ? (
                   <div className="pmt-promo-row">
@@ -422,7 +425,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                       type="text"
                       autoFocus
                       value={codeInput}
-                      onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
+                      onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null); setCodeNecessiteEmail(false) }}
                       onKeyDown={e => e.key === 'Enter' && validerCode()}
                       placeholder="Code promo"
                     />
@@ -432,6 +435,22 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                   </div>
                 ) : (
                   <button className="pmt-promo-toggle" onClick={() => setCodePromoOpen(true)}>Code promo ?</button>
+                )}
+                {codeNecessiteEmail && (
+                  <div className="pmt-promo-email">
+                    <input
+                      className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      autoFocus={!codeApplique}
+                      placeholder="Adresse e-mail associée au code"
+                      aria-label="Adresse e-mail associée au code promo"
+                      value={champs.email}
+                      onChange={e => { majChamp('email', e.target.value); setErreurCode(null) }}
+                      onKeyDown={e => e.key === 'Enter' && !codeApplique && validerCode()}
+                    />
+                  </div>
                 )}
                 {erreurCode && <p className="pmt-field-error">{erreurCode}</p>}
 
