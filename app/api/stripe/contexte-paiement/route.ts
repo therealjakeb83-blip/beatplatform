@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 // Évite un aller-retour Stripe à chaque checkout sur une même instance
 // serveur. La vérification reste idempotente entre instances/serverless.
 const domainesAssures = new Set<string>()
+const configurationsGooglePayAssurees = new Set<string>()
 
 function hostnamePaiement(request: Request): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -44,6 +45,44 @@ async function assurerDomainePaiement(hostname: string, stripeAccountId?: string
   }
 
   if (domaine.google_pay.status === 'active') domainesAssures.add(cacheKey)
+}
+
+async function assurerGooglePay(stripeAccountId?: string): Promise<void> {
+  const cacheKey = stripeAccountId ?? 'plateforme'
+  if (configurationsGooglePayAssurees.has(cacheKey)) return
+
+  const options = stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+  const configurations = await stripe.paymentMethodConfigurations.list({ limit: 100 }, options)
+
+  // En Direct Charge, Stripe utilise la configuration enfant associée à
+  // l'application Connect de la plateforme. Sans compte connecté (panier
+  // avec splits), c'est la configuration directe par défaut de la plateforme.
+  const configuration = stripeAccountId
+    ? configurations.data.find(item => (
+        item.active && item.is_default && Boolean(item.application) && Boolean(item.parent)
+      ))
+    : configurations.data.find(item => (
+        item.active && item.is_default && !item.application && !item.parent
+      ))
+
+  if (!configuration) {
+    throw new Error('Configuration de moyens de paiement Stripe introuvable')
+  }
+
+  const googlePayActif = configuration.google_pay?.available
+    && configuration.google_pay.display_preference.value === 'on'
+
+  const configurationFinale = googlePayActif
+    ? configuration
+    : await stripe.paymentMethodConfigurations.update(
+        configuration.id,
+        { google_pay: { display_preference: { preference: 'on' } } },
+        options,
+      )
+
+  if (configurationFinale.google_pay?.display_preference.value === 'on') {
+    configurationsGooglePayAssurees.add(cacheKey)
+  }
 }
 
 // Résout le contexte Stripe.js à utiliser côté client avant de monter
@@ -87,13 +126,14 @@ export async function POST(request: Request) {
   // Cette route est appelée avant le montage de Stripe Elements, ce qui
   // rattrape aussi les comptes connectés créés avant cette règle.
   const stripeAccountId = hasSplits ? undefined : (beatmaker.stripe_account_id ?? undefined)
-  try {
-    await assurerDomainePaiement(hostnamePaiement(request), stripeAccountId)
-  } catch (error) {
-    // Ne jamais rendre le checkout entier indisponible si Stripe refuse la
-    // gestion du domaine : la carte classique doit rester utilisable.
-    console.error('[contexte-paiement] Domaine wallets non assuré:', error)
-  }
+  // Ne jamais rendre le checkout entier indisponible si Stripe refuse une
+  // opération de configuration : la carte classique doit rester utilisable.
+  await Promise.all([
+    assurerDomainePaiement(hostnamePaiement(request), stripeAccountId)
+      .catch(error => console.error('[contexte-paiement] Domaine wallets non assuré:', error)),
+    assurerGooglePay(stripeAccountId)
+      .catch(error => console.error('[contexte-paiement] Google Pay non assuré:', error)),
+  ])
 
   if (hasSplits) {
     return NextResponse.json({ mode: 'held', stripe_account_id: null })
