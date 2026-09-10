@@ -415,27 +415,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Pr
 
           {/* Formulaire */}
           <div className="pmt-form">
-            <button className="pmt-toggle-row" onClick={() => setPro(p => !p)} aria-pressed={pro}>
-              <span className={`pmt-toggle-track${pro ? ' is-on' : ''}`}><span className="pmt-toggle-thumb" /></span>
-              <span className="pmt-toggle-label">J&apos;achète en tant que professionnel</span>
-            </button>
-            <div className={`pmt-pro-fields${pro ? ' is-open' : ''}`}>
-              <input
-                className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
-                placeholder="Raison sociale"
-                value={champs.raisonSociale}
-                onChange={e => majChamp('raisonSociale', e.target.value)}
-              />
-              <input
-                className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
-                placeholder="N° de TVA intracommunautaire"
-                value={champs.numeroTva}
-                onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
-              />
-              {erreursChamps.numeroTva && <p className="pmt-field-error">{erreursChamps.numeroTva}</p>}
-              <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
-            </div>
-
             <div className="pmt-connexion-row">
               <span>Déjà client ?</span>
               <Link href={`/artiste/connexion?redirect=/paiement/${slug}`} className="pmt-connexion-link">Connexion</Link>
@@ -494,6 +473,29 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot }: Pr
               <div className="pmt-card-box">
                 <CardCvcElement className="StripeElement" options={{ style: cardElementStyle }} onChange={e => setCardComplete(c => ({ ...c, cvc: e.complete }))} />
               </div>
+            </div>
+
+            <div className="pmt-hr" style={{ margin: '6px 0' }} />
+
+            <button className="pmt-toggle-row" onClick={() => setPro(p => !p)} aria-pressed={pro}>
+              <span className={`pmt-toggle-track${pro ? ' is-on' : ''}`}><span className="pmt-toggle-thumb" /></span>
+              <span className="pmt-toggle-label">J&apos;achète en tant que professionnel</span>
+            </button>
+            <div className={`pmt-pro-fields${pro ? ' is-open' : ''}`}>
+              <input
+                className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
+                placeholder="Raison sociale"
+                value={champs.raisonSociale}
+                onChange={e => majChamp('raisonSociale', e.target.value)}
+              />
+              <input
+                className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
+                placeholder="N° de TVA intracommunautaire"
+                value={champs.numeroTva}
+                onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
+              />
+              {erreursChamps.numeroTva && <p className="pmt-field-error">{erreursChamps.numeroTva}</p>}
+              <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
             </div>
           </div>
 
