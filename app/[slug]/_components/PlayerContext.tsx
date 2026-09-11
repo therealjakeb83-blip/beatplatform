@@ -44,6 +44,11 @@ type PlayerContextType = {
   // play/pause ne referme pas les contrôles, seul un re-tap sur la cover le fait).
   mobileControlsBeatId: string | null
   setMobileControlsBeatId: (id: string | null) => void
+  // Sélecteur de licence — toujours pour `currentBeat`, ouvrable depuis
+  // n'importe quel composant (player, carte beat...) sans dupliquer l'état.
+  licenceModalOpen: boolean
+  openLicenceModal: () => void
+  closeLicenceModal: () => void
   play: (beat: BeatMin, queue: BeatMin[]) => void
   togglePlay: () => void
   next: () => void
@@ -74,6 +79,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [isShuffled, setIsShuffled] = useState(false)
   const [loopOne, setLoopOne] = useState(false)
   const [mobileControlsBeatId, setMobileControlsBeatId] = useState<string | null>(null)
+  const [licenceModalOpen, setLicenceModalOpen] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
@@ -336,10 +342,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setLoopOne(prev => !prev)
   }, [])
 
+  const openLicenceModal = useCallback(() => setLicenceModalOpen(true), [])
+  const closeLicenceModal = useCallback(() => setLicenceModalOpen(false), [])
+
   return (
     <PlayerContext.Provider value={{
       currentBeat, isPlaying, queue, progress, duration, isShuffled, loopOne,
       mobileControlsBeatId, setMobileControlsBeatId,
+      licenceModalOpen, openLicenceModal, closeLicenceModal,
       play, togglePlay, next, prev, seek, toggleShuffle, toggleLoop,
     }}>
       {children}

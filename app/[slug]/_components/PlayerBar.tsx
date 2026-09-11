@@ -74,10 +74,10 @@ export default function PlayerBar({
 }) {
   const {
     currentBeat, isPlaying, progress, duration, isShuffled, loopOne,
+    licenceModalOpen, openLicenceModal, closeLicenceModal,
     togglePlay, next, prev, seek, toggleShuffle, toggleLoop,
   } = usePlayer()
   const [expanded, setExpanded] = useState(false)
-  const [licenceModalOpen, setLicenceModalOpen] = useState(false)
 
   if (!currentBeat) return null
 
@@ -96,7 +96,7 @@ export default function PlayerBar({
     : null
 
   function ajouterAuPanier() {
-    setLicenceModalOpen(true)
+    openLicenceModal()
   }
 
   return (
@@ -244,7 +244,7 @@ export default function PlayerBar({
 
       <LicenceSelectorModal
         open={licenceModalOpen}
-        onClose={() => setLicenceModalOpen(false)}
+        onClose={closeLicenceModal}
         beat={currentBeat}
         slug={slug}
         estAbonne={estAbonne}

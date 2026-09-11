@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from './PlayerContext'
-import { useCart } from './CartContext'
 
 export type LicencePublic = {
   id: string
@@ -42,8 +41,7 @@ export default function BeatCard({
   queue: BeatMin[]
   estAbonne?: boolean
 }) {
-  const { play, currentBeat, isPlaying, mobileControlsBeatId, setMobileControlsBeatId } = usePlayer()
-  const { addItem, open } = useCart()
+  const { play, currentBeat, isPlaying, mobileControlsBeatId, setMobileControlsBeatId, openLicenceModal } = usePlayer()
 
   const isActive = currentBeat?.id === beat.id
   const enLecture = isActive && isPlaying
@@ -72,19 +70,14 @@ export default function BeatCard({
     if (hasAudio && !enLecture) play(beat, queue)
   }
 
+  // Ouvre le sélecteur de licence (toujours pour le beat courant — ce bouton
+  // n'est visible qu'une fois ce beat actif, voir controlesMobileOuverts)
+  // plutôt que d'ajouter directement la licence la moins chère au panier :
+  // le client doit pouvoir choisir MP3/WAV/STEMS avant l'ajout.
   function handleMobileCart(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (!moinsChere) return
-    addItem({
-      beatId: beat.id,
-      licenceId: moinsChere.id,
-      titre: beat.titre,
-      imageUrl: beat.image_url,
-      licenceNom: moinsChere.nom,
-      prix: moinsChere.prix,
-    })
-    open()
+    openLicenceModal()
   }
 
   const tag = beat.styles?.[0] ?? beat.type_beat?.[0] ?? null
