@@ -81,6 +81,13 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   const estHydrate = useSyncExternalStore(abonnementHydratation, navigateurHydrate, renduServeur)
   const estIOS = estHydrate ? appareilEstIOS() : null
   const [methodesDisponibles, setMethodesDisponibles] = useState(false)
+  // Vrai uniquement une fois que /api/stripe/prix-panier a confirmé le
+  // montant réel (TVA/remises/réduction par lot) et que elements.update()
+  // a été appelé avec — tant que ce n'est pas le cas, le bouton express
+  // reste masqué plutôt que de risquer d'afficher/autoriser le montant de
+  // détection par défaut (bug réel : Link a pu s'ouvrir sur 10 € au lieu du
+  // vrai total si le client cliquait avant la fin de cet appel réseau).
+  const [montantSynchronise, setMontantSynchronise] = useState(false)
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
@@ -97,6 +104,10 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   useEffect(() => {
     if (!elements || items.length === 0) return
     let annule = false
+    // Le panier a changé : redevient non-fiable tant que le nouveau total
+    // n'est pas reconfirmé (jamais garder la confiance acquise sur l'ancien
+    // montant pendant qu'un nouveau chargement est en cours).
+    setMontantSynchronise(false)
     fetch('/api/stripe/prix-panier', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -104,7 +115,11 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
     })
       .then(r => r.json())
       .then((data: { totalCents?: number }) => {
-        if (!annule && typeof data.totalCents === 'number') elements.update({ amount: data.totalCents })
+        if (annule) return
+        if (typeof data.totalCents === 'number') {
+          elements.update({ amount: data.totalCents })
+          setMontantSynchronise(true)
+        }
       })
       .catch(() => {})
     return () => { annule = true }
@@ -118,7 +133,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   }, [pret])
 
   const decide = pret || expiree || loadError
-  const affichable = pret && !expiree && !loadError && methodesDisponibles
+  const affichable = pret && !expiree && !loadError && methodesDisponibles && montantSynchronise
   const status: ExpressStatus = !decide ? 'loading' : (affichable ? 'visible' : 'hidden')
 
   useEffect(() => {

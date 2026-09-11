@@ -194,9 +194,16 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   // Montant réellement facturé (TVA/remises/code promo/lot déjà appliqués
   // côté serveur) — jamais une approximation locale, sinon la fenêtre Apple/
   // Google Pay ou le débit carte peuvent différer de ce qui est affiché.
+  // `montantSynchronise` gate le bouton express (voir ExpressButtons) : sans
+  // ça, il pouvait devenir cliquable dès la détection Stripe terminée, avant
+  // même que cet appel réseau n'ait mis à jour le montant — la fenêtre de
+  // paiement s'ouvrait alors sur le montant de détection par défaut (10 €)
+  // au lieu du vrai total (bug réel constaté par Jake).
+  const [montantSynchronise, setMontantSynchronise] = useState(false)
   useEffect(() => {
     if (!elements || items.length === 0) return
     let annule = false
+    setMontantSynchronise(false)
     fetch('/api/stripe/prix-panier', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -209,7 +216,11 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
     })
       .then(r => r.json())
       .then((data: { totalCents?: number }) => {
-        if (!annule && typeof data.totalCents === 'number') elements.update({ amount: data.totalCents })
+        if (annule) return
+        if (typeof data.totalCents === 'number') {
+          elements.update({ amount: data.totalCents })
+          setMontantSynchronise(true)
+        }
       })
       .catch(() => {})
     return () => { annule = true }
@@ -480,7 +491,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Moyens de paiement */}
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
-            <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} onSucces={apresSucces} />
+            <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} onSucces={apresSucces} montantSynchronise={montantSynchronise} />
           </div>
 
           {/* Payer par carte */}
@@ -617,12 +628,17 @@ const navigateurHydrate = () => true
 const renduServeur = () => false
 
 function ExpressButtons({
-  slug, items, codePromo, onSucces,
+  slug, items, codePromo, onSucces, montantSynchronise,
 }: {
   slug: string
   items: { beatId: string; licenceId: string }[]
   codePromo: string | undefined
   onSucces: (paymentIntentId: string) => void
+  // Vrai une fois que le montant réel (TVA/remises/code promo) a été
+  // confirmé par le parent et appliqué à cette instance Elements — tant que
+  // ce n'est pas le cas, le bouton reste masqué (voir le commentaire sur
+  // l'effet de synchronisation dans PaiementForm).
+  montantSynchronise: boolean
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -640,7 +656,7 @@ function ExpressButtons({
     return () => clearTimeout(t)
   }, [pret])
 
-  const affichable = pret && !expiree && !loadError && methodesDisponibles
+  const affichable = pret && !expiree && !loadError && methodesDisponibles && montantSynchronise
 
   const handleReady = (event: StripeExpressCheckoutElementReadyEvent) => {
     setMethodesDisponibles(Boolean(event.availablePaymentMethods))
