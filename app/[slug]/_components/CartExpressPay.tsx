@@ -156,8 +156,10 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
           paymentMethods: methodesExpressPourAppareil(estIOS),
           emailRequired: true,
+          // Adresse obligatoire (contrat de licence — voir lib/contrat.ts),
+          // téléphone facultatif (jamais utilisé dans le contrat, juste
+          // confort CRM) — le retirer accélère Link/Apple/Google Pay.
           billingAddressRequired: true,
-          phoneNumberRequired: true,
         }}
         onReady={handleReady}
         onLoadError={() => setLoadError(true)}

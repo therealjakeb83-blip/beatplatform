@@ -266,7 +266,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
     if (!/^\S+@\S+\.\S+$/.test(champs.email)) erreurs.email = 'Email invalide'
     if (!champs.prenom.trim()) erreurs.prenom = 'Requis'
     if (!champs.nom.trim()) erreurs.nom = 'Requis'
-    if (!champs.telephone.trim()) erreurs.telephone = 'Requis'
     if (!champs.adresse.trim()) erreurs.adresse = 'Requis'
     if (!champs.codePostal.trim()) erreurs.codePostal = 'Requis'
     if (!champs.ville.trim()) erreurs.ville = 'Requis'
@@ -340,7 +339,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           billing_details: {
             name: `${champs.prenom} ${champs.nom}`.trim(),
             email: champs.email,
-            phone: champs.telephone,
+            phone: champs.telephone.trim() || undefined,
             address: {
               line1: champs.adresse,
               postal_code: champs.codePostal,
@@ -367,7 +366,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const facturationOk = /^\S+@\S+\.\S+$/.test(champs.email)
     && Boolean(champs.prenom.trim())
     && Boolean(champs.nom.trim())
-    && Boolean(champs.telephone.trim())
     && Boolean(champs.adresse.trim())
     && Boolean(champs.codePostal.trim())
     && Boolean(champs.ville.trim())
@@ -558,7 +556,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                         <input className={`pmt-field${erreursChamps.nom ? ' has-error' : ''}`} placeholder="Nom" value={champs.nom} onChange={e => majChamp('nom', e.target.value)} />
                       </div>
 
-                      <input className={`pmt-field${erreursChamps.telephone ? ' has-error' : ''}`} type="tel" placeholder="Téléphone" value={champs.telephone} onChange={e => majChamp('telephone', e.target.value)} />
+                      <input className={`pmt-field${erreursChamps.telephone ? ' has-error' : ''}`} type="tel" placeholder="Téléphone (optionnel)" value={champs.telephone} onChange={e => majChamp('telephone', e.target.value)} />
                       <input className={`pmt-field${erreursChamps.adresse ? ' has-error' : ''}`} placeholder="Adresse" value={champs.adresse} onChange={e => majChamp('adresse', e.target.value)} />
 
                       <div className="pmt-grid-cp">
@@ -674,8 +672,10 @@ function ExpressButtons({
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
           paymentMethods: methodesExpressPourAppareil(estIOS),
           emailRequired: true,
+          // Adresse obligatoire (contrat de licence — voir lib/contrat.ts),
+          // téléphone facultatif (jamais utilisé dans le contrat, juste
+          // confort CRM) — le retirer accélère Link/Apple/Google Pay.
           billingAddressRequired: true,
-          phoneNumberRequired: true,
         }}
         onReady={handleReady}
         onLoadError={() => setLoadError(true)}
