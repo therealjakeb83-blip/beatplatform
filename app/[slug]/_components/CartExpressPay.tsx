@@ -1,19 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Elements, ExpressCheckoutElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutElementClickEvent, StripeExpressCheckoutElementConfirmEvent, StripeExpressCheckoutElementOptions } from '@stripe/stripe-js'
+import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutElementClickEvent, StripeExpressCheckoutElementConfirmEvent } from '@stripe/stripe-js'
 import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
-import { selectExpressPaymentMethods, type ExpressMethod } from '../_lib/express-payments'
+import { appareilEstIOS, methodesExpressPourAppareil } from '../_lib/express-payments'
 import { useCart, type CartItem } from './CartContext'
 
-// Version panier (multi-articles) de LicenceExpressPay.tsx — duplique
-// volontairement la même logique de détection/priorité Apple Pay > Google
-// Pay + PayPal (voir ce fichier pour le détail des choix), adaptée pour
-// payer tout le panier en un seul PaymentIntent au lieu d'un beat unique.
+// Paiement express du panier — Apple Pay sur iOS, Google Pay ailleurs, jamais
+// les deux ensemble, Link en plus sur la même ligne (voir _lib/express-payments
+// pour la règle complète et pourquoi elle se base sur l'appareil plutôt que
+// sur la disponibilité brute annoncée par Stripe).
 
 const MONTANT_DETECTION_CENTS = 1000
 const DELAI_DETECTION_MS = 8000
+
+const abonnementHydratation = () => () => {}
+const navigateurHydrate = () => true
+const renduServeur = () => false
 
 export type ExpressStatus = 'loading' | 'visible' | 'hidden'
 
@@ -70,26 +74,13 @@ export default function CartExpressPay(props: Props) {
   )
 }
 
-function methodesVersOptions(methodes: ExpressMethod[] | null): StripeExpressCheckoutElementOptions['paymentMethods'] {
-  if (methodes === null) {
-    return { applePay: 'auto', googlePay: 'auto', paypal: 'auto', link: 'never', amazonPay: 'never', klarna: 'never' }
-  }
-  return {
-    applePay: methodes.includes('apple_pay') ? 'always' : 'never',
-    googlePay: methodes.includes('google_pay') ? 'always' : 'never',
-    paypal: methodes.includes('paypal') ? 'auto' : 'never',
-    link: 'never',
-    amazonPay: 'never',
-    klarna: 'never',
-  }
-}
-
 function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const { clear } = useCart()
-  const [methodes, setMethodes] = useState<ExpressMethod[] | null>(null)
-  const [besoinRestriction, setBesoinRestriction] = useState(false)
+  const estHydrate = useSyncExternalStore(abonnementHydratation, navigateurHydrate, renduServeur)
+  const estIOS = estHydrate ? appareilEstIOS() : null
+  const [methodesDisponibles, setMethodesDisponibles] = useState(false)
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
@@ -127,7 +118,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   }, [pret])
 
   const decide = pret || expiree || loadError
-  const affichable = pret && !expiree && !loadError && (methodes?.length ?? 0) > 0
+  const affichable = pret && !expiree && !loadError && methodesDisponibles
   const status: ExpressStatus = !decide ? 'loading' : (affichable ? 'visible' : 'hidden')
 
   useEffect(() => {
@@ -135,36 +126,20 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
   }, [status, onStatusChange])
 
   const handleReady = useCallback((event: StripeExpressCheckoutElementReadyEvent) => {
-    const dispo = event.availablePaymentMethods
-    if (methodes === null) {
-      const calcule = selectExpressPaymentMethods({
-        applePayAvailable: !!dispo?.applePay,
-        googlePayAvailable: !!dispo?.googlePay,
-        paypalAvailable: !!dispo?.paypal,
-      })
-      setMethodes(calcule)
-      const casRareDeuxWallets = !!dispo?.applePay && !!dispo?.googlePay
-      if (casRareDeuxWallets) {
-        setBesoinRestriction(true)
-      } else {
-        setPret(true)
-      }
-    } else {
-      setPret(true)
-    }
-  }, [methodes])
+    setMethodesDisponibles(Boolean(event.availablePaymentMethods))
+    setPret(true)
+  }, [])
 
-  const rienADetecter = loadError || (expiree && !pret) || (methodes !== null && methodes.length === 0)
-  if (rienADetecter) return null
+  const rienADetecter = loadError || (expiree && !pret) || (pret && !methodesDisponibles)
+  if (estIOS === null || rienADetecter) return null
 
   return (
     <div className="shop-cart-express" style={{ opacity: affichable ? 1 : 0, pointerEvents: affichable ? 'auto' : 'none' }}>
       <ExpressCheckoutElement
-        key={besoinRestriction && methodes ? methodes.join(',') : 'detection'}
         options={{
           buttonHeight: 46,
-          layout: { maxColumns: 2, maxRows: 1, overflow: 'auto' },
-          paymentMethods: methodesVersOptions(besoinRestriction ? methodes : null),
+          layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
+          paymentMethods: methodesExpressPourAppareil(estIOS),
           emailRequired: true,
           billingAddressRequired: true,
           phoneNumberRequired: true,

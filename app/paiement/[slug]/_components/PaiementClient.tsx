@@ -21,6 +21,7 @@ import { CartProvider, useCart } from '@/app/[slug]/_components/CartContext'
 import { computeItemsPricing, computeTotal, formatPrix, type ReductionLotRule } from '@/app/[slug]/_lib/reductions-lot'
 import { listePays } from '@/lib/pays-iso'
 import { detailTva } from '@/lib/prix-affiche'
+import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -605,42 +606,15 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   )
 }
 
-// Boutons express — Apple Pay uniquement sur iOS, Google Pay sur les autres
-// appareils compatibles, et jamais les deux ensemble. La cible est fixée
-// avant le montage de Stripe : `always` doit rester actif pour que Google Pay
-// puisse apparaître même sans carte détectée par le navigateur. PayPal exclu (incompatible Direct
-// Charge, voir memory project_phase2_direct_charge_implementation) ; Link
-// ajouté ici (hors spec de la popup/panier), toujours affiché s'il est
-// disponible, en plus du wallet.
+// Boutons express — logique de détection/priorité partagée avec CartExpressPay
+// (voir app/[slug]/_lib/express-payments.ts pour la règle complète).
 // `layout.overflow:'never'` n'est valide qu'avec `maxRows:0` — sinon Stripe
 // refuse silencieusement d'initialiser l'Element (aucun bouton ne s'affiche,
 // y compris quand Apple Pay est bien détectable), piège déjà rencontré sur
 // les autres composants express.
-function appareilEstIOS(): boolean {
-  if (typeof navigator === 'undefined') return false
-
-  // Sur iPadOS, Safari peut exposer un user-agent de Mac. Le tactile permet
-  // de le distinguer d'un vrai Mac, sur lequel Google Pay doit rester
-  // prioritaire conformément à la règle produit.
-  return /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-}
-
 const abonnementHydratation = () => () => {}
 const navigateurHydrate = () => true
 const renduServeur = () => false
-
-function methodesPourAppareil(estIOS: boolean) {
-  return {
-    applePay: estIOS ? 'always' as const : 'never' as const,
-    googlePay: estIOS ? 'never' as const : 'always' as const,
-    paypal: 'never' as const,
-    // `link` n'accepte pas `always` côté Stripe.
-    link: 'auto' as const,
-    amazonPay: 'never' as const,
-    klarna: 'never' as const,
-  }
-}
 
 function ExpressButtons({
   slug, items, codePromo, onSucces,
@@ -682,7 +656,7 @@ function ExpressButtons({
         options={{
           buttonHeight: 50,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesPourAppareil(estIOS),
+          paymentMethods: methodesExpressPourAppareil(estIOS),
           emailRequired: true,
           billingAddressRequired: true,
           phoneNumberRequired: true,

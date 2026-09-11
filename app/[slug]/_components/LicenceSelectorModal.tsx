@@ -7,7 +7,6 @@ import type { BeatMin, LicenceMin } from './PlayerContext'
 import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
-import LicenceExpressPay, { type ExpressStatus } from './LicenceExpressPay'
 import { detailTva } from '@/lib/prix-affiche'
 
 const BULLET_ICON = (
@@ -61,8 +60,6 @@ export default function LicenceSelectorModal({
   const { isPlaying, togglePlay } = usePlayer()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [portalTarget, setPortalTarget] = useState<Element | null>(null)
-  const [expressStatus, setExpressStatus] = useState<ExpressStatus>('loading')
-  const [expressRedirection, setExpressRedirection] = useState(false)
 
   // Porté à l'intérieur de .shop-root (pas document.body) : --ac/--text/--lc-*
   // etc. sont des custom properties scopées à .shop-root, invisibles hors de
@@ -72,11 +69,7 @@ export default function LicenceSelectorModal({
   }, [])
 
   useEffect(() => {
-    if (open) {
-      setSelectedId(null)
-      setExpressStatus('loading')
-      setExpressRedirection(false)
-    }
+    if (open) setSelectedId(null)
   }, [open, beat?.id])
 
   useEffect(() => {
@@ -121,29 +114,6 @@ export default function LicenceSelectorModal({
     })
     openCart()
     onClose()
-  }
-
-  // Apple Pay/Google Pay (pas de redirection externe) : le webhook crée la
-  // commande de façon asynchrone, on interroge jusqu'à ce qu'elle existe
-  // puis on va directement à la page de téléchargement (pas de détour par
-  // la bannière boutique). PayPal (redirection externe) est géré séparément
-  // au retour, dans SuccessBanner.tsx via ?express_pi=.
-  async function apresSuccesExpress({ paymentIntentId }: { paymentIntentId: string }) {
-    setExpressRedirection(true)
-    for (let tentative = 0; tentative < 10; tentative++) {
-      const res = await fetch(`/api/telechargement/lookup?payment_intent=${paymentIntentId}`)
-      if (res.ok) {
-        const data = await res.json() as { commande_id?: string }
-        if (data.commande_id) {
-          window.location.href = `/telechargement/${data.commande_id}`
-          return
-        }
-      }
-      await new Promise(r => setTimeout(r, 1000))
-    }
-    // Le webhook a pu prendre plus de temps que prévu — le client reçoit de
-    // toute façon l'email de confirmation, on ne bloque pas indéfiniment.
-    window.location.href = `/${slug}`
   }
 
   return createPortal(
@@ -230,9 +200,7 @@ export default function LicenceSelectorModal({
         </div>
 
         <div className="shop-lc-foot">
-          {expressRedirection ? (
-            <div className="shop-lc-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>
-          ) : selected?.sur_demande ? (
+          {selected?.sur_demande ? (
             <div className="shop-lc-sur-demande">
               <p className="shop-lc-sur-demande-text">
                 Cette licence n&apos;a pas de prix fixe — contacte le beatmaker pour obtenir une offre.
@@ -242,37 +210,26 @@ export default function LicenceSelectorModal({
               </Link>
             </div>
           ) : (
-            <>
-              {open && (
-                <LicenceExpressPay
-                  slug={slug}
-                  beatId={beat.id}
-                  selectedLicence={selectedPourPaiement}
-                  onStatusChange={setExpressStatus}
-                  onSuccess={apresSuccesExpress}
-                />
-              )}
-              <div className="shop-lc-totalRow">
-                <div className="shop-lc-total">
-                  <span className="shop-lc-total-label">Total</span>
-                  <span className="shop-lc-total-value">{selectedPourPaiement ? formatPrix(selectedPourPaiement.prix) : '—'}</span>
-                  {selectedPourPaiement && (() => {
-                    const tva = detailTva(selectedPourPaiement.prix, { tvaActive, tvaTaux })
-                    return tva ? (
-                      <span className="shop-lc-total-tva">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</span>
-                    ) : null
-                  })()}
-                </div>
-                <button
-                  className={`shop-lc-submit${expressStatus === 'visible' ? ' shop-lc-submit--secondary' : ''}`}
-                  type="button"
-                  disabled={!selected}
-                  onClick={confirmer}
-                >
-                  Ajouter au panier
-                </button>
+            <div className="shop-lc-totalRow">
+              <div className="shop-lc-total">
+                <span className="shop-lc-total-label">Total</span>
+                <span className="shop-lc-total-value">{selectedPourPaiement ? formatPrix(selectedPourPaiement.prix) : '—'}</span>
+                {selectedPourPaiement && (() => {
+                  const tva = detailTva(selectedPourPaiement.prix, { tvaActive, tvaTaux })
+                  return tva ? (
+                    <span className="shop-lc-total-tva">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</span>
+                  ) : null
+                })()}
               </div>
-            </>
+              <button
+                className="shop-lc-submit"
+                type="button"
+                disabled={!selected}
+                onClick={confirmer}
+              >
+                Ajouter au panier
+              </button>
+            </div>
           )}
         </div>
       </div>
