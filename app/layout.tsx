@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NOM_PLATEFORME } from "@/lib/constantes";
 import "./globals.css";
@@ -16,13 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: `${NOM_PLATEFORME} — La plateforme des beatmakers`,
   description: "Crée ta boutique de beats, vends tes licences, gère tes collabs et tes abonnés.",
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
