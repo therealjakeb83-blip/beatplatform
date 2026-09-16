@@ -291,7 +291,8 @@
    ============================================================== */
 @media (min-width: 1024px) {
   .pmt-col {
-    max-width: 1440px;
+    max-width: none;
+    width: 100%;
     display: block;
   }
   .pmt-header {
