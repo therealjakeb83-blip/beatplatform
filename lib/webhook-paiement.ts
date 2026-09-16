@@ -62,7 +62,12 @@ export async function resoudreOuCreerClient(
   // toujours plutôt que de backfiller-si-vide (contrairement à
   // adresse/prénom ci-dessous), un client peut légitimement redevenir
   // particulier après un achat pro ou inversement.
-  optionsFacturation?: { typeClient?: 'particulier' | 'professionnel' | null; raisonSociale?: string | null; numeroTva?: string | null },
+  optionsFacturation?: {
+    typeClient?: 'particulier' | 'professionnel' | null
+    raisonSociale?: string | null
+    numeroTva?: string | null
+    newsletterOptIn?: boolean
+  },
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
@@ -81,7 +86,12 @@ export async function resoudreOuCreerClient(
     .maybeSingle()
 
   if (existingClient) {
-    const backfill: Record<string, string | null> = { ...facturation }
+    const backfill: Record<string, string | boolean | null> = { ...facturation }
+    // Cette checkbox est un opt-in uniquement : une absence de coche ne doit
+    // jamais désinscrire un client qui avait déjà donné son consentement.
+    if (optionsFacturation?.newsletterOptIn === true) {
+      backfill.newsletter_consent = true
+    }
     if (address && !existingClient.adresse) {
       backfill.adresse = [address.line1, address.line2].filter(Boolean).join(' ') || null
       backfill.ville = address.city ?? null
@@ -121,6 +131,7 @@ export async function resoudreOuCreerClient(
       ville: address?.city ?? null,
       code_postal: address?.postal_code ?? null,
       pays: address?.country ?? null,
+      newsletter_consent: optionsFacturation?.newsletterOptIn === true,
       ...facturation,
     })
     .select('id')
@@ -272,11 +283,13 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
       }
     : (ctx.acheteurAdresseRaw ?? null)
   const acheteurAdresse = tentative.adresse ? formaterAdresse(acheteurAdresseRaw) : ctx.acheteurAdresse
+  const newsletterOptIn = meta.newsletter_opt_in === 'true'
 
   const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone, {
     typeClient: tentative.type_client as 'particulier' | 'professionnel' | null,
     raisonSociale: tentative.raison_sociale,
     numeroTva: tentative.numero_tva,
+    newsletterOptIn,
   })
 
   const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
@@ -621,7 +634,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   if (clientId) {
     const { data: existingLead } = await supabase
       .from('leads')
-      .select('id')
+      .select('id, newsletter_inscrit')
       .eq('client_id', clientId)
       .eq('beatmaker_id', meta.beatmaker_id)
       .maybeSingle()
@@ -631,9 +644,15 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
         client_id:          clientId,
         beatmaker_id:       meta.beatmaker_id,
         source:             'visite',
-        newsletter_inscrit: false,
+        newsletter_inscrit: newsletterOptIn,
       })
       if (leadError) console.error('[webhook-paiement] Erreur insert lead:', JSON.stringify(leadError))
+    } else if (newsletterOptIn && !existingLead.newsletter_inscrit) {
+      const { error: leadError } = await supabase
+        .from('leads')
+        .update({ newsletter_inscrit: true })
+        .eq('id', existingLead.id)
+      if (leadError) console.error('[webhook-paiement] Erreur opt-in newsletter lead:', JSON.stringify(leadError))
     }
   }
 }

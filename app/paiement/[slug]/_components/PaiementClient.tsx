@@ -182,9 +182,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
   const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false })
   const [carteOpen, setCarteOpen] = useState(false)
-  // Purement visuel pour l'instant (décision Jake, 2026-09-10) — jamais
-  // envoyé au serveur, pas d'inscription newsletter réelle tant que ce n'est
-  // pas explicitement demandé.
   const [newsletterOptIn, setNewsletterOptIn] = useState(false)
 
   const pricedItems = computeItemsPricing(items, reglesLot)
@@ -301,6 +298,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
         type_client: pro ? 'professionnel' : 'particulier',
         raison_sociale: pro ? champs.raisonSociale : undefined,
         numero_tva: pro ? champs.numeroTva : undefined,
+        newsletter_opt_in: newsletterOptIn,
         source_marketing: typeof window !== 'undefined' ? (sessionStorage.getItem('source_marketing') ?? 'direct') : 'direct',
       }),
     })
@@ -518,7 +516,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             <p>Tes fichiers et licences PDF sont envoyés par e-mail juste après le paiement.</p>
           </div>
 
-          {/* Newsletter — purement visuel pour l'instant, pas d'inscription réelle */}
+          {/* Opt-in positif : ne jamais interpréter l'absence de coche comme une désinscription. */}
           <label className="pmt-newsletter">
             <input
               type="checkbox"
@@ -535,7 +533,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Moyens de paiement */}
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
-            <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} onSucces={apresSucces} montantSynchronise={montantSynchronise} />
+            <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} newsletterOptIn={newsletterOptIn} onSucces={apresSucces} montantSynchronise={montantSynchronise} />
           </div>
 
           {/* Séparateur — desktop uniquement, remplace visuellement le bouton
@@ -669,11 +667,12 @@ const navigateurHydrate = () => true
 const renduServeur = () => false
 
 function ExpressButtons({
-  slug, items, codePromo, onSucces, montantSynchronise,
+  slug, items, codePromo, newsletterOptIn, onSucces, montantSynchronise,
 }: {
   slug: string
   items: { beatId: string; licenceId: string }[]
   codePromo: string | undefined
+  newsletterOptIn: boolean
   onSucces: (paymentIntentId: string) => void
   // Vrai une fois que le montant réel (TVA/remises/code promo) a été
   // confirmé par le parent et appliqué à cette instance Elements — tant que
@@ -732,6 +731,7 @@ function ExpressButtons({
                 items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
                 slug,
                 code_promo: codePromo,
+                newsletter_opt_in: newsletterOptIn,
               }),
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }

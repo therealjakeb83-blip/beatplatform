@@ -35,11 +35,12 @@ export async function POST(request: Request) {
     type_client?: 'particulier' | 'professionnel'
     raison_sociale?: string
     numero_tva?: string
+    newsletter_opt_in?: boolean
   }
   const {
     slug, code_promo, email_acheteur, source_marketing,
     prenom, nom, telephone, adresse, code_postal, ville, pays,
-    type_client, raison_sociale, numero_tva,
+    type_client, raison_sociale, numero_tva, newsletter_opt_in,
   } = body
 
   const items: ItemPanier[] = body.items?.length
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
       beatmaker_id: String(beatmaker.id),
       slug,
       source_marketing: source_marketing ?? 'direct',
+      newsletter_opt_in: newsletter_opt_in === true ? 'true' : 'false',
       ...(codePromoValide ? { code_promo: codePromoValide } : {}),
     },
   }
