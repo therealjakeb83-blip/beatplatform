@@ -396,11 +396,11 @@
     content: ''; flex: 1; height: 1px; background: rgba(10, 10, 12, .1);
   }
 
-  /* Accordéon carte : plus de cadre ni de bouton, contenu toujours affiché */
-  .pmt-carte-accordion { border: none; border-radius: 0; }
+  /* Accordéon carte : même contour qu'en mobile (hérité, pas de reset ici),
+     juste toujours déplié — pas de bouton "Payer par carte" à afficher. */
   .pmt-carte-head { display: none; }
   .pmt-carte-content, .pmt-carte-content:not(.is-open) {
     max-height: none; opacity: 1; overflow: visible;
   }
-  .pmt-carte-inner { padding: 0; gap: 14px; }
+  .pmt-carte-inner { padding: 24px; gap: 14px; }
 }
