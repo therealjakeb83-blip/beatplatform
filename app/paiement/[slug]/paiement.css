@@ -57,9 +57,16 @@
      2e ici sinon le récap se décale par rapport au reste (champs, boutons
      express, CTA) qui n'ont que celui du corps de page. */
   padding: 14px 0;
-  display: flex; align-items: center; gap: 12px;
   background: transparent; border: none; cursor: pointer; text-align: left;
 }
+/* Fermé = résumé bref (thumbs/N beats/prix/chevron) ; ouvert = simple
+   libellé "Récapitulatif" — jamais les deux affichés ensemble (mobile après
+   clic, desktop toujours via l'override plus bas). */
+.pmt-recap-closed-row, .pmt-recap-open-row { display: none; width: 100%; align-items: center; }
+.pmt-recap-closed-row.is-shown { display: flex; gap: 12px; }
+.pmt-recap-open-row.is-shown { display: flex; justify-content: space-between; }
+.pmt-recap-open-title { font-size: 14px; font-weight: 700; color: #0A0A0C; }
+.pmt-recap-open-count { font-size: 12px; color: rgba(10, 10, 12, .55); }
 .pmt-recap-thumbs { display: flex; flex: 0 0 auto; }
 .pmt-recap-thumb {
   width: 36px; height: 36px; border-radius: 8px; object-fit: cover;
@@ -360,11 +367,12 @@
   }
 
   /* Récap toujours ouvert, sans bordure de carte (le fond gris fait office
-     de délimitation visuelle) */
+     de délimitation visuelle) — variante "résumé bref" jamais affichée en
+     desktop, seul le libellé "Récapitulatif" apparaît (bloc plus aéré). */
   .pmt-recap { border-radius: 0; overflow: visible; }
   .pmt-recap-head { cursor: default; padding: 0 0 14px; }
-  .pmt-recap-chevron { display: none; }
-  .pmt-recap-label { font-size: 14px; font-weight: 700; }
+  .pmt-recap-closed-row { display: none !important; }
+  .pmt-recap-open-row { display: flex !important; justify-content: space-between; }
   .pmt-recap-content, .pmt-recap-content:not(.is-open) {
     max-height: none; opacity: 1; overflow: visible;
   }

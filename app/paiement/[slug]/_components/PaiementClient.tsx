@@ -411,19 +411,28 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Récapitulatif */}
           <div className="pmt-recap">
             <button className="pmt-recap-head" onClick={() => setRecapOpen(o => !o)} aria-expanded={recapOpen}>
-              <div className="pmt-recap-thumbs">
-                {pricedItems.slice(0, 2).map(item => (
-                  item.imageUrl
-                    ? <img key={`${item.beatId}:${item.licenceId}`} src={item.imageUrl} alt="" className="pmt-recap-thumb" />
-                    : <div key={`${item.beatId}:${item.licenceId}`} className="pmt-recap-thumb" />
-                ))}
-              </div>
-              <span className="pmt-recap-label">{items.length} beat{items.length > 1 ? 's' : ''}</span>
-              <span className="pmt-recap-total-col">
-                <span className="pmt-recap-total">{formatPrix(totalApresCode)}</span>
-                {tva && <span className="pmt-recap-tva">dont {tva.taux} % TVA</span>}
+              {/* Fermé (mobile uniquement) : résumé bref — remplacé par le
+                  libellé "Récapitulatif" une fois ouvert (mobile après clic,
+                  desktop toujours — voir CSS). */}
+              <span className={`pmt-recap-closed-row${recapOpen ? '' : ' is-shown'}`}>
+                <div className="pmt-recap-thumbs">
+                  {pricedItems.slice(0, 2).map(item => (
+                    item.imageUrl
+                      ? <img key={`${item.beatId}:${item.licenceId}`} src={item.imageUrl} alt="" className="pmt-recap-thumb" />
+                      : <div key={`${item.beatId}:${item.licenceId}`} className="pmt-recap-thumb" />
+                  ))}
+                </div>
+                <span className="pmt-recap-label">{items.length} beat{items.length > 1 ? 's' : ''}</span>
+                <span className="pmt-recap-total-col">
+                  <span className="pmt-recap-total">{formatPrix(totalApresCode)}</span>
+                  {tva && <span className="pmt-recap-tva">dont {tva.taux} % TVA</span>}
+                </span>
+                <span className={`pmt-recap-chevron${recapOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
               </span>
-              <span className={`pmt-recap-chevron${recapOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
+              <span className={`pmt-recap-open-row${recapOpen ? ' is-shown' : ''}`}>
+                <span className="pmt-recap-open-title">Récapitulatif</span>
+                <span className="pmt-recap-open-count">{items.length} beat{items.length > 1 ? 's' : ''}</span>
+              </span>
             </button>
             <div className={`pmt-recap-content${recapOpen ? ' is-open' : ''}`}>
               <div className="pmt-recap-inner">
