@@ -64,6 +64,12 @@ const LOCK_ICON = (
     <path strokeLinecap="round" d="M7.5 10.5V7.5a4.5 4.5 0 019 0v3" />
   </svg>
 )
+const SHIELD_ICON = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+  </svg>
+)
 
 export default function PaiementClient(props: Props) {
   return (
@@ -375,7 +381,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
     <div className="pmt-page">
       <div className="pmt-col">
         <header className="pmt-header">
-          <Link href={`/${slug}`} className="pmt-back" aria-label="Retour au panier">{CHEVRON_LEFT}</Link>
+          <Link href={`/${slug}`} className="pmt-back" aria-label="Retour au panier">
+            {CHEVRON_LEFT}
+            <span className="pmt-back-label">Retour au panier</span>
+          </Link>
           {logoUrl ? (
             <img
               src={logoUrl}
@@ -387,9 +396,15 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             <span style={{ margin: '0 auto', fontWeight: 700, fontSize: 15 }}>{nomArtiste}</span>
           )}
           <div className="pmt-header-spacer" />
+          <div className="pmt-header-trust">{LOCK_ICON}<span>Paiement sécurisé par Stripe</span></div>
         </header>
 
         <div className="pmt-body">
+          {/* Colonne récap — desktop uniquement : wrapper `display:contents` en
+              mobile pour ne rien changer à la position/comportement de
+              `.pmt-recap` en dessous du breakpoint (reste le tout premier
+              enfant visuel, comme avant l'ajout de la version desktop). */}
+          <div className="pmt-aside-desktop">
           {/* Récapitulatif */}
           <div className="pmt-recap">
             <button className="pmt-recap-head" onClick={() => setRecapOpen(o => !o)} aria-expanded={recapOpen}>
@@ -472,6 +487,24 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             </div>
           </div>
 
+          {/* Badges de confiance — doublon desktop uniquement (celui du bas de
+              page reste inchangé en mobile, masqué ici en dessous de 1024px) */}
+          <div className="pmt-trust-desktop">
+            <div className="pmt-trust-desktop-item">{LOCK_ICON}<span>Paiement sécurisé par Stripe</span></div>
+            <div className="pmt-trust-desktop-item">{SHIELD_ICON}<span>Livraison immédiate des fichiers et licences</span></div>
+          </div>
+          </div>
+
+          {/* Colonne formulaire — desktop uniquement : wrapper `display:contents`
+              en mobile, où titre/séparateur restent masqués et
+              newsletter/express/accordéon carte gardent leur position/
+              comportement actuels. */}
+          <div className="pmt-form-desktop">
+          <div className="pmt-desktop-title">
+            <h1>Finaliser ma commande</h1>
+            <p>Tes fichiers et licences PDF sont envoyés par e-mail juste après le paiement.</p>
+          </div>
+
           {/* Newsletter — purement visuel pour l'instant, pas d'inscription réelle */}
           <label className="pmt-newsletter">
             <input
@@ -492,6 +525,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} onSucces={apresSucces} montantSynchronise={montantSynchronise} />
           </div>
 
+          {/* Séparateur — desktop uniquement, remplace visuellement le bouton
+              "Payer par carte" (masqué au-dessus du breakpoint) */}
+          <div className="pmt-carte-separator"><span>ou payer par carte</span></div>
+
           {/* Payer par carte */}
           <div className="pmt-carte-accordion">
             <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen}>
@@ -501,6 +538,14 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             </button>
             <div className={`pmt-carte-content${carteOpen ? ' is-open' : ''}`}>
               <div className="pmt-carte-inner">
+                {/* En-tête "Carte bancaire" — desktop uniquement */}
+                <div className="pmt-cb-heading">
+                  <span className="pmt-express-title">Carte bancaire</span>
+                  <div className="pmt-card-brands pmt-card-brands-desktop">
+                    <span className="pmt-card-brand pmt-card-brand--visa" />
+                    <span className="pmt-card-brand pmt-card-brand--mc" />
+                  </div>
+                </div>
                 <div className={`pmt-card-box${erreurGlobale ? '' : ''}`}>
                   <CardNumberElement
                     className="StripeElement"
@@ -602,6 +647,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 </p>
               </div>
             </div>
+          </div>
           </div>
 
           <div className="pmt-trust">{LOCK_ICON}<span>Paiement sécurisé par Stripe</span></div>

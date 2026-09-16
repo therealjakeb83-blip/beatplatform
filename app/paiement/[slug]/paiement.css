@@ -43,6 +43,8 @@
 .pmt-back:hover { color: #0A0A0C; }
 .pmt-logo { height: 46px; width: auto; margin: 0 auto; }
 .pmt-header-spacer { width: 24px; }
+.pmt-back-label { display: none; }
+.pmt-header-trust { display: none; }
 
 /* Récapitulatif */
 .pmt-recap {
@@ -267,3 +269,152 @@
 .pmt-legal { text-align: center; font-size: 11px; color: rgba(10, 10, 12, .6); line-height: 1.5; margin: 0; }
 .pmt-legal a { color: inherit; text-decoration: underline; }
 .pmt-error-global { font-size: 12.5px; color: #D92D20; text-align: center; margin: 0; }
+
+/* Éléments desktop-only, invisibles et sans effet sur le flux en mobile */
+.pmt-desktop-title, .pmt-carte-separator, .pmt-trust-desktop, .pmt-cb-heading {
+  display: none;
+}
+/* Wrappers neutres en mobile (`display:contents` — n'affectent ni la position
+   ni le comportement des éléments existants en dessous du breakpoint),
+   deviennent les 2 colonnes de la grille desktop — voir bloc @media plus bas.
+   Exactement 2 éléments de grille (un par colonne) pour que chaque colonne
+   garde sa propre hauteur naturelle, sans les effets de bord d'un partage de
+   ligne CSS Grid entre plusieurs éléments empilés (testé : un item qui span
+   plusieurs lignes avec d'autres items plus courts sur la même piste fait
+   gonfler la 1re ligne à sa hauteur totale, créant un grand vide visuel). */
+.pmt-aside-desktop, .pmt-form-desktop { display: contents; }
+
+/* ==============================================================
+   Desktop (>=1024px) — panneau 2 colonnes : formulaire à gauche,
+   récapitulatif sticky à droite sur fond gris. Le rendu mobile
+   au-dessus (<1024px) reste strictement inchangé.
+   ============================================================== */
+@media (min-width: 1024px) {
+  .pmt-col {
+    max-width: 1440px;
+    display: block;
+  }
+  .pmt-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 22px 48px;
+  }
+  .pmt-back { width: auto; gap: 6px; color: rgba(10, 10, 12, .7); }
+  .pmt-back-label { display: inline; font-size: 13px; font-weight: 600; }
+  .pmt-header-spacer { display: none; }
+  .pmt-header-trust {
+    display: flex; align-items: center; gap: 6px; justify-self: end;
+    font-size: 12px; color: rgba(10, 10, 12, .6);
+  }
+
+  .pmt-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 0;
+    gap: 0;
+    align-items: start;
+  }
+
+  /* Colonne gauche : un seul élément de grille regroupant tout le
+     formulaire (titre, newsletter, express, séparateur, accordéon carte). */
+  .pmt-form-desktop {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    grid-column: 1;
+    grid-row: 1;
+    max-width: 460px;
+    /* Aligné côté "seam" entre les 2 colonnes (60px de marge fixe avant
+       l'aside) plutôt que collé au bord de page — l'espace restant part à
+       gauche, comme dans la maquette. */
+    margin: 0 60px 0 auto;
+    padding: 44px 0 64px;
+  }
+  /* Le bloc mobile est masqué : le doublon desktop vit dans la colonne récap */
+  .pmt-body > .pmt-trust { display: none; }
+
+  .pmt-desktop-title { display: block; }
+  .pmt-desktop-title h1 {
+    margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.56px; color: #0A0A0C;
+  }
+  .pmt-desktop-title p {
+    margin: 6px 0 0; font-size: 13px; color: rgba(10, 10, 12, .55); line-height: 1.5;
+  }
+
+  /* Colonne droite : un seul élément de grille (récap + confiance), sticky,
+     fond gris pleine hauteur */
+  .pmt-aside-desktop {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    background: #F1F1F3;
+    padding: 44px 40px 64px 60px;
+  }
+  .pmt-aside-desktop > .pmt-recap {
+    max-width: 460px;
+    position: sticky;
+    top: 24px;
+  }
+  .pmt-trust-desktop { max-width: 460px; }
+
+  /* Récap toujours ouvert, sans bordure de carte (le fond gris fait office
+     de délimitation visuelle) */
+  .pmt-recap { border-radius: 0; overflow: visible; }
+  .pmt-recap-head { cursor: default; padding: 0 0 14px; }
+  .pmt-recap-chevron { display: none; }
+  .pmt-recap-label { font-size: 14px; font-weight: 700; }
+  .pmt-recap-content, .pmt-recap-content:not(.is-open) {
+    max-height: none; opacity: 1; overflow: visible;
+  }
+  .pmt-row-total span { font-size: 17px; }
+
+  .pmt-trust-desktop {
+    display: flex; flex-direction: column; gap: 8px;
+    padding-top: 20px; border-top: 1px solid rgba(10, 10, 12, .08);
+  }
+  .pmt-trust-desktop-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: rgba(10, 10, 12, .6);
+  }
+
+  /* Séparateur "ou payer par carte" — remplace le bouton "Payer par carte" */
+  .pmt-carte-separator {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 11.5px; font-weight: 600; color: rgba(10, 10, 12, .45);
+  }
+  .pmt-carte-separator::before, .pmt-carte-separator::after {
+    content: ''; flex: 1; height: 1px; background: rgba(10, 10, 12, .1);
+  }
+
+  /* Accordéon carte : plus de cadre ni de bouton, contenu toujours affiché */
+  .pmt-carte-accordion { border: none; border-radius: 0; }
+  .pmt-carte-head { display: none; }
+  .pmt-carte-content, .pmt-carte-content:not(.is-open) {
+    max-height: none; opacity: 1; overflow: visible;
+  }
+  .pmt-carte-inner { padding: 0; gap: 14px; }
+
+  /* Sous-accordéon "Informations de facturation" : toujours ouvert, chevron
+     masqué, mais on garde le libellé + le lien "Déjà client ?" tels quels */
+  .pmt-facturation { border-top: none; }
+  .pmt-facturation-head { cursor: default; padding: 0; }
+  .pmt-facturation-chevron { display: none; }
+  .pmt-facturation-content, .pmt-facturation-content:not(.is-open) {
+    max-height: none; opacity: 1; overflow: visible;
+  }
+  .pmt-facturation-inner { padding-top: 0; }
+
+  /* En-tête "Carte bancaire" au-dessus des champs (remplace les puces
+     visa/mastercard dans le champ, affichées ici à côté du libellé) */
+  .pmt-cb-heading {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pmt-card-box .pmt-card-brands { display: none; }
+  .pmt-cb-heading .pmt-card-brands-desktop {
+    display: flex; position: static; transform: none;
+  }
+}
