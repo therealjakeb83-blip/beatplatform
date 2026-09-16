@@ -404,6 +404,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
               `.pmt-recap` en dessous du breakpoint (reste le tout premier
               enfant visuel, comme avant l'ajout de la version desktop). */}
           <div className="pmt-aside-desktop">
+          {/* Récap + confiance doivent rester solidaires en un seul bloc sticky
+              (sinon le bloc confiance, non collant, glisse par-dessus le récap
+              figé au scroll — bug réel constaté par Jake). */}
+          <div className="pmt-aside-sticky">
           {/* Récapitulatif */}
           <div className="pmt-recap">
             <button className="pmt-recap-head" onClick={() => setRecapOpen(o => !o)} aria-expanded={recapOpen}>
@@ -491,6 +495,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           <div className="pmt-trust-desktop">
             <div className="pmt-trust-desktop-item">{LOCK_ICON}<span>Paiement sécurisé par Stripe</span></div>
             <div className="pmt-trust-desktop-item">{SHIELD_ICON}<span>Livraison immédiate des fichiers et licences</span></div>
+          </div>
           </div>
           </div>
 

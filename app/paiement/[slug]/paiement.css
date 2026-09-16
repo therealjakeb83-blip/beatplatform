@@ -273,7 +273,7 @@
    ligne CSS Grid entre plusieurs éléments empilés (testé : un item qui span
    plusieurs lignes avec d'autres items plus courts sur la même piste fait
    gonfler la 1re ligne à sa hauteur totale, créant un grand vide visuel). */
-.pmt-aside-desktop, .pmt-form-desktop { display: contents; }
+.pmt-aside-desktop, .pmt-form-desktop, .pmt-aside-sticky { display: contents; }
 
 /* ==============================================================
    Desktop (>=1024px) — panneau 2 colonnes : formulaire à gauche,
@@ -341,21 +341,23 @@
   /* Colonne droite : un seul élément de grille (récap + confiance), sticky,
      fond gris pleine hauteur */
   .pmt-aside-desktop {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    display: block;
     grid-column: 2;
     grid-row: 1;
     align-self: stretch;
     background: #F1F1F3;
     padding: 44px 40px 64px 60px;
   }
-  .pmt-aside-desktop > .pmt-recap {
+  /* Récap + confiance collants ensemble comme un seul bloc — sinon le bloc
+     confiance (non sticky) glisse par-dessus le récap figé pendant le scroll. */
+  .pmt-aside-sticky {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     max-width: 460px;
     position: sticky;
     top: 24px;
   }
-  .pmt-trust-desktop { max-width: 460px; }
 
   /* Récap toujours ouvert, sans bordure de carte (le fond gris fait office
      de délimitation visuelle) */
