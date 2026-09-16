@@ -165,24 +165,15 @@
 .pmt-carte-content.is-open { max-height: 1800px; opacity: 1; }
 .pmt-carte-inner { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
 
-/* Second niveau : les coordonnées ne s'affichent qu'après les champs carte. */
-.pmt-facturation { border-top: 1px solid rgba(10, 10, 12, .08); }
-.pmt-facturation-head {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 0 8px; background: transparent; border: none; cursor: pointer;
-  color: #0A0A0C; font: inherit; font-size: 13px; font-weight: 700; text-align: left;
+/* En-tête "Informations bancaires" — sépare visuellement la facturation des
+   champs carte, tout reste au même niveau (plus de sous-accordéon, décision
+   Jake 2026-09-16 : un seul clic sur "Payer par carte" affiche tout). */
+.pmt-cb-heading {
+  display: flex; align-items: center; gap: 10px; padding: 2px 0;
+  font-size: 13px; font-weight: 600; color: #0A0A0C;
 }
-.pmt-facturation-chevron {
-  width: 16px; height: 16px; color: rgba(10, 10, 12, .45);
-  transition: transform .22s; flex: 0 0 auto;
-}
-.pmt-facturation-chevron.is-open { transform: rotate(180deg); }
-.pmt-facturation-content {
-  max-height: 0; opacity: 0; overflow: hidden;
-  transition: max-height .35s ease, opacity .22s;
-}
-.pmt-facturation-content.is-open { max-height: 1100px; opacity: 1; }
-.pmt-facturation-inner { padding-top: 8px; display: flex; flex-direction: column; gap: 14px; }
+.pmt-cb-heading-icon { display: flex; flex: 0 0 auto; color: rgba(10, 10, 12, .55); }
+.pmt-cb-heading-icon svg { width: 18px; height: 18px; }
 
 /* Confiance / pied de page */
 .pmt-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: rgba(10, 10, 12, .6); }
@@ -271,7 +262,7 @@
 .pmt-error-global { font-size: 12.5px; color: #D92D20; text-align: center; margin: 0; }
 
 /* Éléments desktop-only, invisibles et sans effet sur le flux en mobile */
-.pmt-desktop-title, .pmt-carte-separator, .pmt-trust-desktop, .pmt-cb-heading {
+.pmt-desktop-title, .pmt-carte-separator, .pmt-trust-desktop {
   display: none;
 }
 /* Wrappers neutres en mobile (`display:contents` — n'affectent ni la position
@@ -402,24 +393,4 @@
     max-height: none; opacity: 1; overflow: visible;
   }
   .pmt-carte-inner { padding: 0; gap: 14px; }
-
-  /* Sous-accordéon "Informations de facturation" : toujours ouvert, chevron
-     masqué, mais on garde le libellé + le lien "Déjà client ?" tels quels */
-  .pmt-facturation { border-top: none; }
-  .pmt-facturation-head { cursor: default; padding: 0; }
-  .pmt-facturation-chevron { display: none; }
-  .pmt-facturation-content, .pmt-facturation-content:not(.is-open) {
-    max-height: none; opacity: 1; overflow: visible;
-  }
-  .pmt-facturation-inner { padding-top: 0; }
-
-  /* En-tête "Carte bancaire" au-dessus des champs (remplace les puces
-     visa/mastercard dans le champ, affichées ici à côté du libellé) */
-  .pmt-cb-heading {
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .pmt-card-box .pmt-card-brands { display: none; }
-  .pmt-cb-heading .pmt-card-brands-desktop {
-    display: flex; position: static; transform: none;
-  }
 }
