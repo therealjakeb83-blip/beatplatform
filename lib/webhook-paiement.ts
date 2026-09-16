@@ -57,27 +57,12 @@ export async function resoudreOuCreerClient(
   nom: string | null,
   address?: Stripe.Address | null,
   telephone?: string | null,
-  // Page de paiement custom (Phase 9) — déclaration explicite du client à
-  // CET achat, pas une donnée passivement remontée par Stripe : on écrase
-  // toujours plutôt que de backfiller-si-vide (contrairement à
-  // adresse/prénom ci-dessous), un client peut légitimement redevenir
-  // particulier après un achat pro ou inversement.
-  optionsFacturation?: {
-    typeClient?: 'particulier' | 'professionnel' | null
-    raisonSociale?: string | null
-    numeroTva?: string | null
+  optionsClient?: {
     newsletterOptIn?: boolean
   },
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
-
-  const facturation: Record<string, string | null> = {}
-  if (optionsFacturation?.typeClient) facturation.type_client = optionsFacturation.typeClient
-  if (optionsFacturation?.typeClient) {
-    facturation.raison_sociale = optionsFacturation.typeClient === 'professionnel' ? (optionsFacturation.raisonSociale ?? null) : null
-    facturation.numero_tva = optionsFacturation.typeClient === 'professionnel' ? (optionsFacturation.numeroTva ?? null) : null
-  }
 
   const { data: existingClient } = await supabase
     .from('clients')
@@ -86,10 +71,10 @@ export async function resoudreOuCreerClient(
     .maybeSingle()
 
   if (existingClient) {
-    const backfill: Record<string, string | boolean | null> = { ...facturation }
+    const backfill: Record<string, string | boolean | null> = {}
     // Cette checkbox est un opt-in uniquement : une absence de coche ne doit
     // jamais désinscrire un client qui avait déjà donné son consentement.
-    if (optionsFacturation?.newsletterOptIn === true) {
+    if (optionsClient?.newsletterOptIn === true) {
       backfill.newsletter_consent = true
     }
     if (address && !existingClient.adresse) {
@@ -131,8 +116,7 @@ export async function resoudreOuCreerClient(
       ville: address?.city ?? null,
       code_postal: address?.postal_code ?? null,
       pays: address?.country ?? null,
-      newsletter_consent: optionsFacturation?.newsletterOptIn === true,
-      ...facturation,
+      newsletter_consent: optionsClient?.newsletterOptIn === true,
     })
     .select('id')
     .single()
@@ -245,7 +229,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   // écrites en DB au moment du checkout/de la création du PaymentIntent.
   const { data: tentative } = await supabase
     .from('tentatives_paiement')
-    .select('id, prenom, nom, telephone, adresse, code_postal, ville, pays, type_client, raison_sociale, numero_tva')
+    .select('id, prenom, nom, telephone, adresse, code_postal, ville, pays')
     .eq(ctx.tentativeColonne, ctx.tentativeValeur)
     .maybeSingle()
 
@@ -284,11 +268,10 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     : (ctx.acheteurAdresseRaw ?? null)
   const acheteurAdresse = tentative.adresse ? formaterAdresse(acheteurAdresseRaw) : ctx.acheteurAdresse
   const newsletterOptIn = meta.newsletter_opt_in === 'true'
+  const acheteurRaisonSociale = meta.acheteur_raison_sociale?.trim() || null
+  const acheteurNumeroTva = meta.acheteur_numero_tva?.trim() || null
 
   const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone, {
-    typeClient: tentative.type_client as 'particulier' | 'professionnel' | null,
-    raisonSociale: tentative.raison_sociale,
-    numeroTva: tentative.numero_tva,
     newsletterOptIn,
   })
 
@@ -333,6 +316,8 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     acheteur_nom: acheteurNom,
     acheteur_adresse: acheteurAdresse,
     acheteur_telephone: acheteurTelephone,
+    acheteur_raison_sociale: acheteurRaisonSociale,
+    acheteur_numero_tva: acheteurNumeroTva,
     prix_paye: prixPayeTotal,
     methode_paiement: 'stripe',
     stripe_payment_id: stripePaymentId,

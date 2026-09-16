@@ -41,7 +41,13 @@ export interface FactureInput {
   numeroFacture: string // déjà attribué et figé — jamais recalculé ici
   dateEmission: Date
   vendeur: { nom_artiste: string; slug: string } & InfosLegalesConcedant
-  acheteur: { nom: string | null; email: string | null; adresse: string | null }
+  acheteur: {
+    nom: string | null
+    email: string | null
+    adresse: string | null
+    raisonSociale: string | null
+    numeroTva: string | null
+  }
   lignes: LigneFacture[]
   mandatFacturationVersion: number
   // Numéro de TVA du vendeur au moment de cette vente (snapshot, jamais la
@@ -143,7 +149,13 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   const xDroite = MARGIN_X + maxWidth / 2 + 20
   ligneTexte('Client', { font: fontBold, size: 8, color: [0.5, 0.5, 0.5], x: xDroite })
   y -= 14
-  const lignesAcheteur = [input.acheteur.nom, input.acheteur.adresse, input.acheteur.email].filter(Boolean) as string[]
+  const lignesAcheteur = [
+    input.acheteur.raisonSociale,
+    input.acheteur.nom,
+    input.acheteur.adresse,
+    input.acheteur.numeroTva ? `N° TVA : ${input.acheteur.numeroTva}` : null,
+    input.acheteur.email,
+  ].filter(Boolean) as string[]
   for (const l of lignesAcheteur) {
     ligneTexte(l, { size: 9, x: xDroite })
     y -= 13
@@ -259,7 +271,7 @@ export async function genererFacturePdfPourCommande(
 ): Promise<Uint8Array> {
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, beatmaker_id, client_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, acheteur_nom, acheteur_email, acheteur_adresse, created_at, prix_paye, type_commande')
+    .select('id, beatmaker_id, client_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, acheteur_nom, acheteur_email, acheteur_adresse, acheteur_raison_sociale, acheteur_numero_tva, created_at, prix_paye, type_commande')
     .eq('id', commandeId)
     .single()
 
@@ -322,7 +334,13 @@ export async function genererFacturePdfPourCommande(
     numeroFacture: commande.numero_facture,
     dateEmission: new Date(commande.created_at),
     vendeur: beatmaker,
-    acheteur: { nom: acheteurNom, email: acheteurEmail, adresse: acheteurAdresse },
+    acheteur: {
+      nom: acheteurNom,
+      email: acheteurEmail,
+      adresse: acheteurAdresse,
+      raisonSociale: commande.acheteur_raison_sociale,
+      numeroTva: commande.acheteur_numero_tva,
+    },
     lignes: lignesFacture,
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
     tvaNumero: commande.tva_numero ?? null,

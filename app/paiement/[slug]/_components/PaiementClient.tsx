@@ -533,7 +533,17 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Moyens de paiement */}
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
-            <ExpressButtons slug={slug} items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))} codePromo={codeApplique?.code} newsletterOptIn={newsletterOptIn} onSucces={apresSucces} montantSynchronise={montantSynchronise} />
+            <ExpressButtons
+              slug={slug}
+              items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))}
+              codePromo={codeApplique?.code}
+              newsletterOptIn={newsletterOptIn}
+              professionnel={pro}
+              raisonSociale={champs.raisonSociale}
+              numeroTva={champs.numeroTva}
+              onSucces={apresSucces}
+              montantSynchronise={montantSynchronise}
+            />
           </div>
 
           {/* Séparateur — desktop uniquement, remplace visuellement le bouton
@@ -594,12 +604,16 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                   <input
                     className={`pmt-field${erreursChamps.raisonSociale ? ' has-error' : ''}`}
                     placeholder="Raison sociale"
+                    name="organization"
+                    autoComplete="organization"
                     value={champs.raisonSociale}
                     onChange={e => majChamp('raisonSociale', e.target.value)}
                   />
                   <input
                     className={`pmt-field${erreursChamps.numeroTva ? ' has-error' : ''}`}
                     placeholder="N° de TVA intracommunautaire"
+                    name="vat-number"
+                    autoComplete="off"
                     value={champs.numeroTva}
                     onChange={e => majChamp('numeroTva', e.target.value.toUpperCase())}
                   />
@@ -667,12 +681,15 @@ const navigateurHydrate = () => true
 const renduServeur = () => false
 
 function ExpressButtons({
-  slug, items, codePromo, newsletterOptIn, onSucces, montantSynchronise,
+  slug, items, codePromo, newsletterOptIn, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise,
 }: {
   slug: string
   items: { beatId: string; licenceId: string }[]
   codePromo: string | undefined
   newsletterOptIn: boolean
+  professionnel: boolean
+  raisonSociale: string
+  numeroTva: string
   onSucces: (paymentIntentId: string) => void
   // Vrai une fois que le montant réel (TVA/remises/code promo) a été
   // confirmé par le parent et appliqué à cette instance Elements — tant que
@@ -732,6 +749,9 @@ function ExpressButtons({
                 slug,
                 code_promo: codePromo,
                 newsletter_opt_in: newsletterOptIn,
+                type_client: professionnel ? 'professionnel' : 'particulier',
+                raison_sociale: professionnel ? raisonSociale : undefined,
+                numero_tva: professionnel ? numeroTva : undefined,
               }),
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }

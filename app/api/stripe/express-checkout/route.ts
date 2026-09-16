@@ -114,6 +114,12 @@ export async function POST(request: Request) {
       slug,
       source_marketing: source_marketing ?? 'direct',
       newsletter_opt_in: newsletter_opt_in === true ? 'true' : 'false',
+      ...(type_client === 'professionnel' && raison_sociale?.trim()
+        ? { acheteur_raison_sociale: raison_sociale.trim().slice(0, 200) }
+        : {}),
+      ...(type_client === 'professionnel' && numero_tva?.trim()
+        ? { acheteur_numero_tva: numero_tva.trim().toUpperCase().slice(0, 32) }
+        : {}),
       ...(codePromoValide ? { code_promo: codePromoValide } : {}),
     },
   }
@@ -152,9 +158,6 @@ export async function POST(request: Request) {
     code_postal: code_postal ?? null,
     ville: ville ?? null,
     pays: pays ?? null,
-    type_client: type_client ?? null,
-    raison_sociale: raison_sociale ?? null,
-    numero_tva: numero_tva ?? null,
   }).select('id').single()
 
   if (tentativeError) {

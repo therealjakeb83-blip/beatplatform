@@ -63,6 +63,8 @@ type CommandeDetail = {
   acheteur_nom: string | null
   acheteur_adresse: string | null
   acheteur_telephone: string | null
+  acheteur_raison_sociale: string | null
+  acheteur_numero_tva: string | null
   notes: Note[] | null
   client_id: string | null
   stripe_transfer_group: string | null
@@ -160,7 +162,9 @@ export default async function CommandeDetailPage({
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, statut_livraison, facture_pdf_url, numero_facture,
       source_marketing, type_commande, plateforme_source,
-      acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone, notes, client_id, stripe_transfer_group, tva_taux,
+      acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone,
+      acheteur_raison_sociale, acheteur_numero_tva,
+      notes, client_id, stripe_transfer_group, tva_taux,
       clients (id, prenom, nom, email, pays),
       commande_lignes (
         id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
@@ -381,6 +385,18 @@ export default async function CommandeDetailPage({
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-4">Facturation</p>
             <div className="space-y-3">
               <p className="text-sm text-gray-200">{nomClient}</p>
+              {c.acheteur_raison_sociale && (
+                <div>
+                  <p className="text-[10px] text-gray-600 mb-0.5">Raison sociale</p>
+                  <p className="text-sm text-gray-300">{c.acheteur_raison_sociale}</p>
+                </div>
+              )}
+              {c.acheteur_numero_tva && (
+                <div>
+                  <p className="text-[10px] text-gray-600 mb-0.5">N° de TVA intracommunautaire</p>
+                  <p className="font-mono text-sm text-gray-300">{c.acheteur_numero_tva}</p>
+                </div>
+              )}
               <div>
                 <p className="text-[10px] text-gray-600 mb-0.5">Adresse e-mail</p>
                 {emailClient ? (
