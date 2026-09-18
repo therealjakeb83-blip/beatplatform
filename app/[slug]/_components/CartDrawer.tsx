@@ -28,11 +28,16 @@ export default function CartDrawer({
   reglesLot = [],
   tvaActive = false,
   tvaTaux = null,
+  clientEmail = null,
 }: {
   slug: string
   reglesLot?: ReductionLotRule[]
   tvaActive?: boolean
   tvaTaux?: number | null
+  // Email du compte artiste connecté (session Supabase, voir layout.tsx) —
+  // sert de source directe pour la restriction email d'un code promo, sans
+  // redemander à quelqu'un qui est déjà identifié.
+  clientEmail?: string | null
 }) {
   const { items, isOpen, close, removeItem } = useCart()
 
@@ -67,7 +72,7 @@ export default function CartDrawer({
       const res = await fetch('/api/stripe/valider-code-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, beat_ids: items.map(i => i.beatId), slug, email: emailAcheteur.trim() || undefined }),
+        body: JSON.stringify({ code, beat_ids: items.map(i => i.beatId), slug, email: (clientEmail ?? emailAcheteur).trim() || undefined }),
       })
       const data = await res.json()
       if (data.valide) {
@@ -239,7 +244,7 @@ export default function CartDrawer({
                   <button onClick={() => setCodePromoOpen(true)} className="shop-cart-promo-toggle">Code promo ?</button>
                 )}
 
-                {codeNecessiteEmail && (
+                {codeNecessiteEmail && !clientEmail && (
                   <input
                     type="email"
                     value={emailAcheteur}

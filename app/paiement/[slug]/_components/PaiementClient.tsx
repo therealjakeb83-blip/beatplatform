@@ -35,6 +35,10 @@ type Props = {
   reglesLot: ReductionLotRule[]
   tvaActive: boolean
   tvaTaux: number | null
+  // Email du compte artiste connecté (session Supabase, voir page.tsx) — sert
+  // à préremplir la facturation et à sauter la demande d'email pour un code
+  // promo restreint, sans redemander à quelqu'un déjà identifié.
+  clientEmail: string | null
 }
 
 const CHEVRON_LEFT = (
@@ -79,7 +83,7 @@ export default function PaiementClient(props: Props) {
   )
 }
 
-function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux }: Props) {
+function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
   const { items } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
@@ -127,7 +131,7 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tva
       stripe={stripeClient}
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
-      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} />
+      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} />
     </Elements>
   )
 }
@@ -160,7 +164,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux }: Props) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
@@ -168,7 +172,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 
   const [recapOpen, setRecapOpen] = useState(false)
   const [pro, setPro] = useState(false)
-  const [champs, setChamps] = useState<Champs>(CHAMPS_VIDES)
+  // Préremplit avec l'email du compte connecté (même principe que le panier,
+  // voir CartDrawer.tsx) — reste éditable, au cas où la facturation diffère.
+  const [champs, setChamps] = useState<Champs>(() => (clientEmail ? { ...CHAMPS_VIDES, email: clientEmail } : CHAMPS_VIDES))
   const [erreursChamps, setErreursChamps] = useState<Partial<Record<keyof Champs, string>>>({})
 
   const [codePromoOpen, setCodePromoOpen] = useState(false)
@@ -471,7 +477,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 ) : (
                   <button className="pmt-promo-toggle" onClick={() => setCodePromoOpen(true)}>Code promo ?</button>
                 )}
-                {codeNecessiteEmail && (
+                {codeNecessiteEmail && !clientEmail && (
                   <div className="pmt-promo-email">
                     <input
                       className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}

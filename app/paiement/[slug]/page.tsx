@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { Poppins } from 'next/font/google'
+import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
 import PaiementClient from './_components/PaiementClient'
@@ -23,6 +24,16 @@ export default async function PaiementPage({
 }) {
   const { slug } = await params
   const admin = createAdminClient()
+  const supabase = await createClient()
+
+  // Email du compte artiste connecté (même session que app/[slug]/layout.tsx)
+  // — évite de redemander l'email pour la restriction d'un code promo.
+  const { data: { user } } = await supabase.auth.getUser()
+  let clientEmail: string | null = null
+  if (user) {
+    const { data: client } = await admin.from('clients').select('email').eq('id', user.id).single()
+    clientEmail = client?.email ?? null
+  }
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
@@ -67,6 +78,7 @@ export default async function PaiementPage({
         reglesLot={reglesLot}
         tvaActive={beatmaker.tva_active}
         tvaTaux={beatmaker.tva_taux}
+        clientEmail={clientEmail}
       />
     </div>
   )

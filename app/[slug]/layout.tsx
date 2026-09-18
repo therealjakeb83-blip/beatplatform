@@ -69,13 +69,15 @@ export default async function BoutiqueLayout({
   const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   let clientUser: { prenom: string; nom: string } | null = null
+  let clientEmail: string | null = null
   if (user) {
     const { data: client } = await admin
       .from('clients')
-      .select('prenom, nom')
+      .select('prenom, nom, email')
       .eq('id', user.id)
       .single()
     clientUser = client
+    clientEmail = client?.email ?? null
   }
 
   const { data: beatmaker } = await admin
@@ -186,6 +188,7 @@ export default async function BoutiqueLayout({
               reglesLot={reglesLot}
               tvaActive={beatmaker?.tva_active ?? false}
               tvaTaux={beatmaker?.tva_taux ?? null}
+              clientEmail={clientEmail}
             />
           </BoutiqueThemeRoot>
         </Suspense>
