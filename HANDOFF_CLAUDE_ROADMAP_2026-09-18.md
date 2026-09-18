@@ -52,3 +52,13 @@ Créer une vue courte, visuelle et maintenable :
 
 Mettre à jour l'Artifact existant si son lien est disponible. Sinon, produire un nouvel Artifact autonome et ajouter dans ce fichier son titre, son URL et sa date de dernière synchronisation.
 
+## Réalisé (Claude, 18 septembre 2026)
+
+Lien existant disponible (`memory/reference_roadmap_human_friendly.md`) → Artifact mis à jour en place, même URL conservée (favori de Jake intact) : https://claude.ai/code/artifact/e2029abb-abff-46e6-a1c2-73bd0fece34e
+
+- Date d'en-tête passée au 18 septembre 2026.
+- 2 nouvelles entrées « Historique » : session Claude du jour (panier aligné sur le checkout, normalisation email plateforme + migration) et consolidation des 4 chantiers Codex du 16-18 septembre (newsletter checkout, identité CRM connectée confirmée, zoom mobile assoupli, facturation pro sur facture/détail de commande).
+- 2 lignes ajoutées à « Ça marche déjà ».
+- Nouveau tiroir « Décisions à ne pas rouvrir sans raison » ajouté (6 règles, reprises de la section « Règles produit durables » de `docs/HISTORIQUE_CODEX.md`, traduites en langage non technique).
+- Sections « Prochaines 3 étapes » et refonte des 4 cartes-compteurs (Terminé/En cours/Bloqué/Plus tard) **non ajoutées** — la structure existante (bandeau d'heures + 4 stats + chantiers pliables) remplissait déjà l'essentiel du besoin ; réécrire l'ensemble de la page aurait été plus risqué (qualité, cohérence visuelle) que ce que ça apportait. À revoir si Jake trouve la page moins lisible qu'avant.
+
