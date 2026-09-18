@@ -36,10 +36,12 @@ export default function CartDrawer({
 }) {
   const { items, isOpen, close, removeItem } = useCart()
 
+  const [codePromoOpen, setCodePromoOpen] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplique, setCodeApplique] = useState<{ code: string; type_valeur: 'pourcentage' | 'montant'; valeur: number } | null>(null)
   const [erreurCode, setErreurCode] = useState<string | null>(null)
   const [chargementCode, setChargementCode] = useState(false)
+  const [codeNecessiteEmail, setCodeNecessiteEmail] = useState(false)
   const [emailAcheteur, setEmailAcheteur] = useState('')
   const [, setExpressStatus] = useState<ExpressStatus>('loading')
   const [expressRedirection, setExpressRedirection] = useState(false)
@@ -70,8 +72,10 @@ export default function CartDrawer({
       const data = await res.json()
       if (data.valide) {
         setCodeApplique({ code, type_valeur: data.type_valeur, valeur: data.valeur })
+        setCodeNecessiteEmail(Boolean(data.a_restriction_email))
         setCodeInput('')
       } else {
+        if (data.a_restriction_email) setCodeNecessiteEmail(true)
         setErreurCode(data.erreur ?? 'Code invalide')
       }
     } catch {
@@ -207,15 +211,16 @@ export default function CartDrawer({
                 {codeApplique ? (
                   <div className="shop-cart-promo-applied">
                     <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
-                    <button onClick={() => setCodeApplique(null)} className="shop-cart-promo-remove">Supprimer</button>
+                    <button onClick={() => { setCodeApplique(null); setCodeNecessiteEmail(false) }} className="shop-cart-promo-remove">Supprimer</button>
                   </div>
-                ) : (
+                ) : codePromoOpen ? (
                   <div>
                     <div className="shop-cart-promo-row">
                       <input
                         type="text"
+                        autoFocus
                         value={codeInput}
-                        onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null) }}
+                        onChange={e => { setCodeInput(e.target.value.toUpperCase()); setErreurCode(null); setCodeNecessiteEmail(false) }}
                         onKeyDown={e => e.key === 'Enter' && validerCode()}
                         placeholder="Code promo"
                         className="shop-cart-input"
@@ -230,15 +235,21 @@ export default function CartDrawer({
                     </div>
                     {erreurCode && <p className="shop-cart-error">{erreurCode}</p>}
                   </div>
+                ) : (
+                  <button onClick={() => setCodePromoOpen(true)} className="shop-cart-promo-toggle">Code promo ?</button>
                 )}
 
-                <input
-                  type="email"
-                  value={emailAcheteur}
-                  onChange={e => setEmailAcheteur(e.target.value)}
-                  placeholder="Ton email (si non connecté)"
-                  className="shop-cart-input"
-                />
+                {codeNecessiteEmail && (
+                  <input
+                    type="email"
+                    value={emailAcheteur}
+                    onChange={e => { setEmailAcheteur(e.target.value); setErreurCode(null) }}
+                    onKeyDown={e => e.key === 'Enter' && !codeApplique && validerCode()}
+                    placeholder="Email associé au code promo"
+                    className="shop-cart-input"
+                    autoFocus={!codeApplique}
+                  />
+                )}
 
                 <div className="shop-cart-row">
                   <span>Sous-total</span>
