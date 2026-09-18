@@ -177,7 +177,7 @@ function ContactsHeader() {
                   <div><label className={labelCls}>Prénom <span className="text-indigo-400">*</span></label><input value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Kaaris" className={field} /></div>
                   <div><label className={labelCls}>Nom <span className="text-indigo-400">*</span></label><input value={nom} onChange={e => setNom(e.target.value)} placeholder="Zeriouh" className={field} /></div>
                 </div>
-                <div className="mb-3"><label className={labelCls}>Email <span className="text-indigo-400">*</span></label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@example.com" className={field} /></div>
+                <div className="mb-3"><label className={labelCls}>Email <span className="text-indigo-400">*</span></label><input type="email" value={email} onChange={e => setEmail(e.target.value.toLowerCase())} placeholder="contact@example.com" className={field} /></div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div><label className={labelCls}>Nom artiste</label><input value={nomArtiste} onChange={e => setNomArtiste(e.target.value)} placeholder="Kaaris" className={field} /></div>
                   <div><label className={labelCls}>Téléphone</label><input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="+33 6 12 34 56 78" className={field} /></div>

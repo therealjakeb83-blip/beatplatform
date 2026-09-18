@@ -43,7 +43,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
           type="email"
           required
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value.toLowerCase())}
           placeholder="Ton email"
           className="shop-newsletter-input"
         />

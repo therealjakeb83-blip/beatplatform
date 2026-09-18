@@ -100,7 +100,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const payload = {
         beat_id: id,
         beatmaker_id: c.beatmaker_id || null,
-        email_invite: c.email_invite || null,
+        email_invite: c.email_invite ? c.email_invite.trim().toLowerCase() : null,
         pourcentage: c.pourcentage,
         statut: c.beatmaker_id ? 'actif' : 'en_attente',
       }

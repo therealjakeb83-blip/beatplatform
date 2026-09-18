@@ -263,7 +263,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   }
 
   function majChamp<K extends keyof Champs>(cle: K, valeur: string) {
-    setChamps(c => ({ ...c, [cle]: valeur }))
+    // Email toujours en minuscule dès la saisie — une majuscule non voulue ne
+    // doit jamais faire échouer un rapprochement (restriction code promo,
+    // compte existant, etc).
+    setChamps(c => ({ ...c, [cle]: cle === 'email' ? valeur.toLowerCase() : valeur }))
     setErreursChamps(e => (e[cle] ? { ...e, [cle]: undefined } : e))
   }
 

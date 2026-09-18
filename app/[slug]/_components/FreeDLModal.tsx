@@ -156,7 +156,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
               type="email"
               required
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value.toLowerCase())}
               placeholder="ton@email.com *"
               className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 focus:border-brand-500 text-white placeholder-gray-500 text-sm outline-none transition-colors"
             />

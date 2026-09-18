@@ -278,7 +278,7 @@ function CollaborateursSection({ collaborateurs, onChange }: {
             )}
           </div>
         ) : (
-          <input type="email" value={emailInvite} onChange={e => setEmailInvite(e.target.value)}
+          <input type="email" value={emailInvite} onChange={e => setEmailInvite(e.target.value.toLowerCase())}
             placeholder="email@exemple.com"
             className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
         )}

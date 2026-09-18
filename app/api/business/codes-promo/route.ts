@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { stripe } from '@/lib/stripe'
+import { normaliserEmails } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -72,8 +73,8 @@ export async function POST(request: Request) {
       beats_inclus:            body.beats_inclus?.length ? body.beats_inclus : null,
       beats_exclus:            body.beats_exclus ?? [],
       licences_eligibles:      body.licences_eligibles?.length ? body.licences_eligibles : null,
-      emails_autorises:        body.emails_autorises ?? [],
-      emails_exclus:           body.emails_exclus ?? [],
+      emails_autorises:        normaliserEmails(body.emails_autorises),
+      emails_exclus:           normaliserEmails(body.emails_exclus),
       limite_par_code:         body.limite_par_code ?? null,
       limite_par_article:      body.limite_par_article ?? null,
       limite_par_utilisateur:  body.limite_par_utilisateur ?? null,

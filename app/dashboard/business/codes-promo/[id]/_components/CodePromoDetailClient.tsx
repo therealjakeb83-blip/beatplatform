@@ -636,12 +636,12 @@ function EditSectionContent({
         <div className="space-y-3">
           <div>
             <label className={labelCls}>Emails autorisés</label>
-            <textarea rows={3} value={form.emailsAutorises} onChange={e => setF('emailsAutorises', e.target.value)} placeholder={'exemple@gmail.com\nautre@hotmail.fr'} className={inputCls + ' resize-none font-mono text-xs'} />
+            <textarea rows={3} value={form.emailsAutorises} onChange={e => setF('emailsAutorises', e.target.value.toLowerCase())} placeholder={'exemple@gmail.com\nautre@hotmail.fr'} className={inputCls + ' resize-none font-mono text-xs'} />
             <p className={helpCls}>Un email par ligne. Vide = ouvert à tous.</p>
           </div>
           <div>
             <label className={labelCls}>Emails exclus</label>
-            <textarea rows={3} value={form.emailsExclus} onChange={e => setF('emailsExclus', e.target.value)} placeholder="exemple@gmail.com" className={inputCls + ' resize-none font-mono text-xs'} />
+            <textarea rows={3} value={form.emailsExclus} onChange={e => setF('emailsExclus', e.target.value.toLowerCase())} placeholder="exemple@gmail.com" className={inputCls + ' resize-none font-mono text-xs'} />
           </div>
         </div>
       </div>

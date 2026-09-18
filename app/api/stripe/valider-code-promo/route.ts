@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { normaliserEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -59,18 +60,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ valide: false, erreur: "Ce code a atteint sa limite d'utilisation" })
   }
 
+  // Comparaison insensible à la casse des deux côtés — une majuscule tapée
+  // par erreur (ou déjà en base sur d'anciens codes) ne doit jamais faire
+  // échouer un rapprochement par ailleurs correct.
+  const emailNormalise = normaliserEmail(email as string | undefined)
+  const emailsAutorisesNormalises = (promo.emails_autorises ?? []).map(normaliserEmail)
+  const emailsExclusNormalises = (promo.emails_exclus ?? []).map(normaliserEmail)
+
   // Code réservé à des emails précis (ex. code personnel généré par la
   // relance inactivité) — fail closed : sans email connu, impossible de
   // vérifier la restriction, donc pas de "valide" optimiste en attendant.
-  if (promo.emails_autorises?.length > 0) {
-    if (!email) {
+  if (emailsAutorisesNormalises.length > 0) {
+    if (!emailNormalise) {
       return NextResponse.json({
         valide: false,
         erreur: 'Ce code est personnel — indique ton email ci-dessous puis réessaie',
         a_restriction_email: true,
       })
     }
-    if (!promo.emails_autorises.includes(email as string)) {
+    if (!emailsAutorisesNormalises.includes(emailNormalise)) {
       return NextResponse.json({
         valide: false,
         erreur: 'Adresse email non autorisée pour ce code',
@@ -78,7 +86,7 @@ export async function POST(request: Request) {
       })
     }
   }
-  if (email && promo.emails_exclus?.includes(email as string)) {
+  if (emailNormalise && emailsExclusNormalises.includes(emailNormalise)) {
     return NextResponse.json({ valide: false, erreur: 'Adresse email non autorisée pour ce code' })
   }
 

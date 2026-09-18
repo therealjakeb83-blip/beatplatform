@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
+import { normaliserEmail } from './email'
 
 export type TypeAutomatisation = 'bienvenue_abonnement' | 'abonnement_en_attente' | 'churn_message_perso'
   | 'remerciement_1er_achat' | 'remerciement_2e_achat' | 'remerciement_3e_achat' | 'remerciement_4e_achat_plus'
@@ -289,7 +290,7 @@ async function creerCodePromoRelance(
       date_expiration: dateExpiration.toISOString(),
       statut: 'actif',
       limite_par_utilisateur: 1,
-      emails_autorises: clientEmail ? [clientEmail] : [],
+      emails_autorises: clientEmail ? [normaliserEmail(clientEmail)] : [],
     })
 
     if (!error) return code

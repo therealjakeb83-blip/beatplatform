@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { envoyerCampagne, type ResultatEnvoi } from '@/lib/mailing'
+import { normaliserEmails } from '@/lib/email'
 
 const URL_CAMPAGNES = '/dashboard/business/marketing/campagnes'
 import { evaluerFiltres, type Condition } from '../../_lib/segments'
@@ -63,7 +64,7 @@ async function creerCampagne(formData: FormData) {
     cible_mode:   cibleMode,
     cible_id:     cibleMode !== 'manuel' ? cibleId : null,
     cible_emails: cibleMode === 'manuel'
-      ? (emailsRaw ?? '').split(/[\n,]+/).map(e => e.trim()).filter(Boolean)
+      ? normaliserEmails((emailsRaw ?? '').split(/[\n,]+/))
       : null,
     contenu: template?.contenu ?? [],
   })

@@ -128,7 +128,7 @@ export default function NouvelleCampagneWizard({ segments, listes, templates, se
                 <div>
                   <textarea
                     value={emailsRaw}
-                    onChange={e => setEmailsRaw(e.target.value)}
+                    onChange={e => setEmailsRaw(e.target.value.toLowerCase())}
                     placeholder="un email par ligne, ou séparés par des virgules"
                     rows={6}
                     className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm"

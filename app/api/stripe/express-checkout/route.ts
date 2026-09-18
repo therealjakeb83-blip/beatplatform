@@ -145,7 +145,7 @@ export async function POST(request: Request) {
     type: 'achat_express',
     beatmaker_id: beatmaker.id,
     client_id: clientId,
-    email: user?.email ?? email_acheteur ?? null,
+    email: (user?.email ?? email_acheteur ?? null)?.toLowerCase().trim() || null,
     prix: totalCents / 100,
     code_promo: codePromoValide,
     source_marketing: source_marketing ?? 'direct',

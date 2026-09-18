@@ -256,7 +256,9 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   const nomComplet = tentative.prenom || tentative.nom
     ? [tentative.prenom, tentative.nom].filter(Boolean).join(' ')
     : null
-  const acheteurEmail = ctx.acheteurEmail
+  // Normalisé une seule fois ici, réutilisé pour tout (résolution/création
+  // client, commandes.acheteur_email, envoi d'email) — voir lib/email.ts.
+  const acheteurEmail = ctx.acheteurEmail ? ctx.acheteurEmail.toLowerCase().trim() : null
   const acheteurNom = nomComplet ?? ctx.acheteurNom
   const acheteurTelephone = tentative.telephone ?? ctx.acheteurTelephone ?? null
   const acheteurAdresseRaw: Stripe.Address | null = tentative.adresse

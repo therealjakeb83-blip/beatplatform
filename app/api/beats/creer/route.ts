@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const splits = collaborateurs.map((c: { beatmaker_id?: string; email_invite?: string; pourcentage: number }) => ({
       beat_id: beatId,
       beatmaker_id: c.beatmaker_id || null,
-      email_invite: c.email_invite || null,
+      email_invite: c.email_invite ? c.email_invite.trim().toLowerCase() : null,
       pourcentage: c.pourcentage,
       statut: c.beatmaker_id ? 'actif' : 'en_attente',
     }))

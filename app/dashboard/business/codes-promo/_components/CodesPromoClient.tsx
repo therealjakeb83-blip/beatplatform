@@ -841,7 +841,7 @@ function SectionContent({
             <textarea
               rows={3}
               value={form.emailsAutorises}
-              onChange={e => setF('emailsAutorises', e.target.value)}
+              onChange={e => setF('emailsAutorises', e.target.value.toLowerCase())}
               placeholder={'exemple@gmail.com\nautre@hotmail.fr'}
               className={inputCls + ' resize-none font-mono text-xs'}
             />
@@ -852,7 +852,7 @@ function SectionContent({
             <textarea
               rows={3}
               value={form.emailsExclus}
-              onChange={e => setF('emailsExclus', e.target.value)}
+              onChange={e => setF('emailsExclus', e.target.value.toLowerCase())}
               placeholder="exemple@gmail.com"
               className={inputCls + ' resize-none font-mono text-xs'}
             />

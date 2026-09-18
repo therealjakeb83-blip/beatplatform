@@ -248,7 +248,7 @@ export default function CartDrawer({
                   <input
                     type="email"
                     value={emailAcheteur}
-                    onChange={e => { setEmailAcheteur(e.target.value); setErreurCode(null) }}
+                    onChange={e => { setEmailAcheteur(e.target.value.toLowerCase()); setErreurCode(null) }}
                     onKeyDown={e => e.key === 'Enter' && !codeApplique && validerCode()}
                     placeholder="Email associé au code promo"
                     className="shop-cart-input"
