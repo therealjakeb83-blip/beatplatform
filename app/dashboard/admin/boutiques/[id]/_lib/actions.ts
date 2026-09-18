@@ -4,6 +4,7 @@ import { estAdmin, estRoleAdmin } from '@/lib/admin'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { suspendreBoutique, reactiverBoutique, type RapportSuspension } from '@/lib/admin-boutiques'
+import { MOTIFS_SUSPENSION, type MotifSuspension } from '@/lib/suspension'
 
 // Pas de revalidatePath() ici (ni dans reactiverAction/corrigerBeatmakerAction
 // ci-dessous) : découvert le 2026-07-24 que ça force Next.js à resynchroniser
@@ -12,9 +13,12 @@ import { suspendreBoutique, reactiverBoutique, type RapportSuspension } from '@/
 // mémoire côté client) disparaissait immédiatement après être apparu. Le
 // composant met déjà à jour son affichage lui-même (setStatut/setChamps), pas
 // besoin d'un aller-retour serveur pour cette page.
-export async function suspendreAction(beatmakerId: string, raison: string): Promise<{ rapport?: RapportSuspension; erreur?: string }> {
+export async function suspendreAction(beatmakerId: string, motif: MotifSuspension, precision: string): Promise<{ rapport?: RapportSuspension; erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
-  if (!raison.trim()) return { erreur: 'Une raison est obligatoire.' }
+  // Motif fermé (Phase 10 du chantier 9 bis) — jamais de texte libre en
+  // dehors de la précision demandée pour "autre", voir lib/suspension.ts.
+  if (!MOTIFS_SUSPENSION.some(m => m.valeur === motif)) return { erreur: 'Motif invalide.' }
+  if (motif === 'autre' && !precision.trim()) return { erreur: 'Merci de préciser le motif.' }
 
   // Incident 2026-07-24 : suspendre le compte admin lui-même bloque l'accès
   // à /dashboard/admin (estAdmin() dépend de ce même statut) — plus aucun
@@ -24,7 +28,7 @@ export async function suspendreAction(beatmakerId: string, raison: string): Prom
   if (estRoleAdmin(cible?.role)) return { erreur: 'Impossible de suspendre le compte admin — tu te bloquerais toi-même hors de cet outil.' }
 
   const { data: { user } } = await (await createClient()).auth.getUser()
-  const rapport = await suspendreBoutique(beatmakerId, raison.trim(), user!.id)
+  const rapport = await suspendreBoutique(beatmakerId, motif, motif === 'autre' ? precision.trim() : null, user!.id)
   return { rapport }
 }
 

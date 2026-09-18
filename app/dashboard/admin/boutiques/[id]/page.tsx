@@ -9,7 +9,7 @@ export default async function BoutiqueDetailPage({ params }: { params: Promise<{
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, email, nom_artiste, slug, tagline, bio, telephone, adresse, ville, code_postal, pays, numero_entreprise, notes_admin, statut, suspendu_le, suspendu_raison, created_at, stripe_account_id, devise, abonnement_exempte')
+    .select('id, email, nom_artiste, slug, tagline, bio, telephone, adresse, ville, code_postal, pays, numero_entreprise, notes_admin, statut, suspendu_le, suspendu_motif, suspendu_raison, created_at, stripe_account_id, devise, abonnement_exempte')
     .eq('id', id)
     .maybeSingle()
 

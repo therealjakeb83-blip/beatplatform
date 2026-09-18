@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { RapportSuspension } from '@/lib/admin-boutiques'
+import { MOTIFS_SUSPENSION, libelleMotifSuspension, type MotifSuspension } from '@/lib/suspension'
 
 type Beatmaker = {
   id: string
@@ -20,6 +21,7 @@ type Beatmaker = {
   notes_admin: string | null
   statut: string
   suspendu_le: string | null
+  suspendu_motif: string | null
   suspendu_raison: string | null
   created_at: string
   stripe_account_id: string | null
@@ -36,7 +38,7 @@ type Props = {
   statutAbonnementPlateforme: string | null
   annulationPrevueAbonnementPlateforme: string | null
   nbAbosArtistesActifs: number
-  suspendreAction: (id: string, raison: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
+  suspendreAction: (id: string, motif: MotifSuspension, precision: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
   reactiverAction: (id: string) => Promise<{ rapport?: RapportSuspension; erreur?: string }>
   corrigerBeatmakerAction: (id: string, champs: Partial<ChampsEditables>) => Promise<{ erreur?: string }>
   exempterGateAction: (id: string, exempte: boolean) => Promise<{ erreur?: string }>
@@ -48,7 +50,8 @@ export default function BoutiqueDetailClient({
 }: Props) {
   const [statut, setStatut] = useState(beatmaker.statut)
   const [exempte, setExempte] = useState(beatmaker.abonnement_exempte)
-  const [raison, setRaison] = useState('')
+  const [motif, setMotif] = useState<MotifSuspension | ''>('')
+  const [precision, setPrecision] = useState('')
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const [rapport, setRapport] = useState<RapportSuspension | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -62,14 +65,16 @@ export default function BoutiqueDetailClient({
   const [enregistre, setEnregistre] = useState(false)
 
   function confirmerSuspension() {
+    if (!motif) return
     startTransition(async () => {
-      const res = await suspendreAction(beatmaker.id, raison)
+      const res = await suspendreAction(beatmaker.id, motif, precision)
       if (res.erreur) { setErreur(res.erreur); return }
       setErreur(null)
       setRapport(res.rapport ?? null)
       setStatut('suspendu')
       setModaleOuverte(false)
-      setRaison('')
+      setMotif('')
+      setPrecision('')
     })
   }
 
@@ -121,9 +126,9 @@ export default function BoutiqueDetailClient({
 
       {erreur && <p className="text-sm text-red-400">{erreur}</p>}
 
-      {statut === 'suspendu' && beatmaker.suspendu_raison && (
+      {statut === 'suspendu' && beatmaker.suspendu_motif && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-300">
-          Suspendue {beatmaker.suspendu_le ? `le ${new Date(beatmaker.suspendu_le).toLocaleString('fr-FR')}` : ''} — {beatmaker.suspendu_raison}
+          Suspendue {beatmaker.suspendu_le ? `le ${new Date(beatmaker.suspendu_le).toLocaleString('fr-FR')}` : ''} — {libelleMotifSuspension(beatmaker.suspendu_motif, beatmaker.suspendu_raison)}
         </div>
       )}
 
@@ -179,18 +184,37 @@ export default function BoutiqueDetailClient({
             <p className="text-xs text-gray-500">
               Ceci bloque immédiatement le dashboard ET la boutique publique de {beatmaker.nom_artiste}, et met en pause son abonnement plateforme ainsi que {nbAbosArtistesActifs} abonnement(s) artiste actif(s).
             </p>
-            <textarea
-              value={raison}
-              onChange={e => setRaison(e.target.value)}
-              placeholder="Raison de la suspension (obligatoire)"
-              className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-gray-600"
-              rows={3}
-            />
+            <label className="block space-y-1">
+              <span className="text-xs text-gray-500">Motif (obligatoire)</span>
+              <select
+                value={motif}
+                onChange={e => setMotif(e.target.value as MotifSuspension)}
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-600"
+              >
+                <option value="">— Choisir un motif —</option>
+                {MOTIFS_SUSPENSION.map(m => (
+                  <option key={m.valeur} value={m.valeur}>{m.label}</option>
+                ))}
+              </select>
+            </label>
+            {motif === 'autre' && (
+              <textarea
+                value={precision}
+                onChange={e => setPrecision(e.target.value)}
+                placeholder="Précise le motif (obligatoire)"
+                className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-gray-600"
+                rows={3}
+              />
+            )}
             <div className="flex justify-end gap-2">
               <button onClick={() => setModaleOuverte(false)} className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white transition-colors">
                 Annuler
               </button>
-              <button onClick={confirmerSuspension} disabled={isPending || !raison.trim()} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-500 transition-colors disabled:opacity-50">
+              <button
+                onClick={confirmerSuspension}
+                disabled={isPending || !motif || (motif === 'autre' && !precision.trim())}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+              >
                 {isPending ? 'Suspension…' : 'Confirmer la suspension'}
               </button>
             </div>

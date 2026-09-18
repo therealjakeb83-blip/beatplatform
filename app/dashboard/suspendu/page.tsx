@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { libelleMotifSuspension } from '@/lib/suspension'
 import DeconnexionButton from '../DeconnexionButton'
 
 export default async function DashboardSuspenduPage() {
@@ -10,7 +11,7 @@ export default async function DashboardSuspenduPage() {
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()
-  const { data: beatmaker } = await admin.from('beatmakers').select('statut, suspendu_raison').eq('id', user.id).single()
+  const { data: beatmaker } = await admin.from('beatmakers').select('statut, suspendu_motif, suspendu_raison').eq('id', user.id).single()
 
   if (beatmaker?.statut !== 'suspendu') redirect('/dashboard')
 
@@ -19,8 +20,8 @@ export default async function DashboardSuspenduPage() {
       <div className="text-center max-w-md">
         <h1 className="text-2xl font-bold mb-2">Compte suspendu</h1>
         <p className="text-gray-400 mb-1">Ton accès à {NOM_PLATEFORME} est temporairement suspendu.</p>
-        {beatmaker.suspendu_raison && (
-          <p className="text-sm text-gray-500 mb-4">Motif : {beatmaker.suspendu_raison}</p>
+        {beatmaker.suspendu_motif && (
+          <p className="text-sm text-gray-500 mb-4">Motif : {libelleMotifSuspension(beatmaker.suspendu_motif, beatmaker.suspendu_raison)}</p>
         )}
         <p className="text-sm text-gray-500 mb-8">
           Contacte-nous pour en savoir plus ou débloquer ton compte à{' '}

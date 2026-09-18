@@ -85,6 +85,13 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     description: "Envoyé au collaborateur quand ses fonds non réclamés sont reversés à l'autre beatmaker (J+60).",
     declencheur: 'Déclencheur : cron quotidien /api/cron/splits-expiration',
   },
+  {
+    type: 'suspension',
+    nom: 'Suspension de compte',
+    titrePlaceholder: 'Ton compte a été suspendu',
+    description: "Envoyé quand l'admin suspend une boutique, en plus du message affiché à la prochaine tentative de connexion.",
+    declencheur: 'Déclencheur : suspension manuelle depuis /dashboard/admin/boutiques/[id]',
+  },
 ]
 
 export default function MailsPlateformeClient({ templates, sauvegarderTemplate, genererApercu }: Props) {

@@ -230,6 +230,7 @@ export type TypeTemplatePlateforme =
   | 'collab_fonds_attente'
   | 'collab_rappel_fonds'
   | 'collab_expiration'
+  | 'suspension'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
   nom_artiste: NOM_PLATEFORME,
@@ -255,6 +256,7 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   collab_fonds_attente: "Des fonds t'attendent",
   collab_rappel_fonds: "Rappel — des fonds arrivent à expiration",
   collab_expiration: 'Tes fonds en attente ont expiré',
+  suspension: 'Ton compte a été suspendu',
 }
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
@@ -279,6 +281,8 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return "Tu as des fonds en attente sur une collaboration — configure ton compte Stripe avant qu'ils ne soient définitivement reversés à l'autre beatmaker."
     case 'collab_expiration':
       return "Ta part sur une collaboration n'a pas été réclamée dans les 60 jours et a été reversée à l'autre beatmaker, conformément à notre politique de rétention."
+    case 'suspension':
+      return `Ton compte ${NOM_PLATEFORME} a été suspendu par notre équipe. Ton dashboard et ta boutique publique ne sont plus accessibles tant que la situation n'est pas résolue.`
   }
 }
 
@@ -318,6 +322,15 @@ function corpsInvitationCollab(nomProprietaire: string, titreBeat: string, pourc
       <tr>
         <td style="padding:8px 0;font-size:13px;color:#111827;">Ta part</td>
         <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${pourcentage}%</td>
+      </tr>
+    </table>`
+}
+
+function corpsSuspension(motifLabel: string): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      <tr>
+        <td style="padding:8px 0;font-size:13px;color:#111827;">Motif</td>
+        <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;">${echapper(motifLabel)}</td>
       </tr>
     </table>`
 }
@@ -518,6 +531,38 @@ export async function envoyerConfirmationAnnulationPlateforme({
   })
 }
 
+// Chantier 9 bis, Phase 10 (2026-09-18) — envoyé quand l'admin suspend une
+// boutique (lib/admin-boutiques.ts, suspendreBoutique()), en plus du
+// message déjà affiché sur /dashboard/suspendu quand le beatmaker tente de
+// se reconnecter (proxy.ts). motifLabel vient de lib/suspension.ts
+// (libelleMotifSuspension) — déjà en langage naturel, inclut la précision
+// écrite si le motif choisi est "autre".
+export async function envoyerSuspensionPlateforme({
+  to,
+  beatmakerId,
+  motifLabel,
+}: {
+  to: string
+  beatmakerId: string
+  motifLabel: string
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme('suspension')
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'plateforme_suspension',
+    to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME.suspension,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME.suspension,
+      intro: intro || introDefautPlateforme('suspension'),
+      corpsHtml: corpsSuspension(motifLabel),
+      cta: { texte: 'Nous contacter', lien: 'mailto:contact@jakebmusic.com' },
+    }),
+  })
+}
+
 // Ces 4 emails concernent les collaborations (splits) entre beatmakers —
 // migrés depuis de simples emails texte vers le système "Mails My
 // Producer" (audit 2026-07-29, F3) : branding cohérent, titre/intro
@@ -650,6 +695,7 @@ const CORPS_EXEMPLE_INVITATION = corpsInvitationCollab('Jake B', 'Midnight Drive
 const CORPS_EXEMPLE_FONDS = corpsFondsCollab('Midnight Drive', '45.00')
 const CORPS_EXEMPLE_RAPPEL = corpsRappelFondsCollab('Midnight Drive', '45.00', 10)
 const CORPS_EXEMPLE_EXPIRATION = corpsFondsCollab('Midnight Drive', '45.00', 'Montant reversé')
+const CORPS_EXEMPLE_SUSPENSION = corpsSuspension('Fraude')
 
 export async function genererApercuTransactionnelPlateforme(
   type: TypeTemplatePlateforme,
@@ -670,6 +716,7 @@ export async function genererApercuTransactionnelPlateforme(
     collab_fonds_attente: { corpsHtml: CORPS_EXEMPLE_FONDS, cta: { texte: 'Configurer mon compte Stripe', lien: '#' } },
     collab_rappel_fonds: { corpsHtml: CORPS_EXEMPLE_RAPPEL, cta: { texte: 'Configurer mon compte Stripe', lien: '#' } },
     collab_expiration: { corpsHtml: CORPS_EXEMPLE_EXPIRATION },
+    suspension: { corpsHtml: CORPS_EXEMPLE_SUSPENSION, cta: { texte: 'Nous contacter', lien: '#' } },
   }
 
   return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })

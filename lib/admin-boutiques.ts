@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { journaliserDecision } from '@/lib/decisions-log'
+import { envoyerSuspensionPlateforme } from '@/lib/emails'
+import { libelleMotifSuspension, type MotifSuspension } from '@/lib/suspension'
 
 // Suspendre/Réactiver une boutique (15c) — voir mémoire session 2026-07-24 :
 // une boutique suspendue ne doit plus faire payer personne. La cascade pause
@@ -17,22 +19,35 @@ export type RapportSuspension = {
   artistes: { total: number; reussis: number; ignores: number; echecs: { id: string; email: string | null; erreur: string }[] }
 }
 
-export async function suspendreBoutique(beatmakerId: string, raison: string, adminId: string): Promise<RapportSuspension> {
+export async function suspendreBoutique(beatmakerId: string, motif: MotifSuspension, precision: string | null, adminId: string): Promise<RapportSuspension> {
   const admin = createAdminClient()
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, stripe_account_id')
+    .select('id, email, stripe_account_id')
     .eq('id', beatmakerId)
     .single()
 
   // 1. Bloque l'accès immédiatement (proxy.ts + boutique publique) — le plus
-  // important, indépendant du succès des pauses Stripe qui suivent.
+  // important, indépendant du succès des pauses Stripe qui suivent. Motif
+  // fermé (Phase 10 du chantier 9 bis) — plus de texte libre, voir
+  // lib/suspension.ts et la contrainte CHECK en base.
+  const motifLabel = libelleMotifSuspension(motif, precision)
   await admin.from('beatmakers').update({
     statut: 'suspendu',
     suspendu_le: new Date().toISOString(),
-    suspendu_raison: raison,
+    suspendu_motif: motif,
+    suspendu_raison: precision,
   }).eq('id', beatmakerId)
+
+  // 1.5. Email automatique au beatmaker (demande explicite de Jake) — en
+  // plus du message déjà affiché sur /dashboard/suspendu à la prochaine
+  // tentative de connexion. Awaité comme tout envoi transactionnel en fin
+  // de handler (voir feedback_serverless_fire_and_forget) ; n'échoue jamais
+  // bruyamment (envoyerEmailUnique catch ses propres erreurs).
+  if (beatmaker?.email) {
+    await envoyerSuspensionPlateforme({ to: beatmaker.email, beatmakerId, motifLabel })
+  }
 
   // 2. Pause de l'abonnement plateforme (ce que le beatmaker paie à Jake)
   const rapportPlateforme: RapportSuspension['plateforme'] = { existe: false, pause: false }
@@ -106,7 +121,7 @@ export async function suspendreBoutique(beatmakerId: string, raison: string, adm
     entityType: 'boutique',
     entityId: beatmakerId,
     action: 'suspension',
-    motif: raison,
+    motif: motifLabel,
   })
 
   return { plateforme: rapportPlateforme, artistes: rapportArtistes }
@@ -124,6 +139,7 @@ export async function reactiverBoutique(beatmakerId: string, adminId: string): P
   await admin.from('beatmakers').update({
     statut: 'actif',
     suspendu_le: null,
+    suspendu_motif: null,
     suspendu_raison: null,
   }).eq('id', beatmakerId)
 
