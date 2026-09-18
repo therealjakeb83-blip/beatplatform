@@ -1,4 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Beatplatform
+
+SaaS de boutiques, CRM, marketing, analytics et paiements pour beatmakers.
+
+## Documentation projet
+
+- `ROADMAP.md` — priorités, état réel et journal détaillé des sessions.
+- `docs/HISTORIQUE_CODEX.md` — synthèse du travail réalisé avec Codex depuis le début.
+- `CLAUDE.md` — architecture et règles de reprise pour les assistants.
+- `DATABASE.md` — modèle de données et conventions métier.
+- `HANDOFF_CLAUDE_ROADMAP_2026-09-18.md` — brief de mise à jour de la roadmap human-friendly avec Claude Artifacts.
+
+## Développement local
 
 ## Getting Started
 
