@@ -1,10 +1,15 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
 import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat, uploadPdfFacture } from '@/lib/livraison'
 import { genererContratPdfPourVente } from '@/lib/contrat'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import TelechargerBouton from './_components/TelechargerBouton'
+import VerificationGate from './_components/VerificationGate'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { normaliserEmail } from '@/lib/email'
+import { cookieAccesTelechargement } from '@/lib/telechargement-acces'
 
 export const runtime = 'nodejs'
 
@@ -26,12 +31,36 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, beatmaker_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url')
+    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url')
     .eq('id', commandeId)
     .single()
 
   if (commandeError) console.error('[telechargement] Erreur query commande:', JSON.stringify(commandeError))
   if (!commande) notFound()
+
+  // Accès (Phase 11, 9 bis) — l'UUID de commande reste la vraie protection ;
+  // ceci n'est qu'une confirmation légère, pas un vrai système d'auth (voir
+  // lib/telechargement-acces.ts). 3 accès directs sans rien taper : cookie
+  // déjà posé (email confirmé une fois, ou juste après paiement — voir
+  // /api/telechargement/lookup), client connecté correspondant à cette
+  // commande, ou beatmaker vendeur connecté à son dashboard.
+  const cookieStore = await cookies()
+  let accesAutorise = cookieStore.get(cookieAccesTelechargement(commandeId))?.value === '1'
+
+  if (!accesAutorise) {
+    const supabaseAuth = await createClient()
+    const { data: { user } } = await supabaseAuth.auth.getUser()
+    if (user) {
+      accesAutorise =
+        user.id === commande.beatmaker_id ||
+        user.id === commande.client_id ||
+        normaliserEmail(user.email) === normaliserEmail(commande.acheteur_email)
+    }
+  }
+
+  if (!accesAutorise) {
+    return <VerificationGate commandeId={commandeId} />
+  }
 
   const { data: lignes, error: lignesError } = await supabase
     .from('commande_lignes')

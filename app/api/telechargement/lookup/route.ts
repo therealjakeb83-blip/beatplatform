@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { cookieAccesTelechargement, DUREE_COOKIE_ACCES } from '@/lib/telechargement-acces'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -22,6 +24,18 @@ export async function GET(request: Request) {
   if (!data) {
     return NextResponse.json({ erreur: 'Commande introuvable' }, { status: 404 })
   }
+
+  // Accès direct à la page de téléchargement (Phase 11, 9 bis) — ce lookup
+  // n'est atteignable qu'avec un session_id/payment_intent Stripe légitime,
+  // qui prouve déjà le paiement : pas besoin de reconfirmer l'email.
+  const cookieStore = await cookies()
+  cookieStore.set(cookieAccesTelechargement(data.id), '1', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: DUREE_COOKIE_ACCES,
+    path: `/telechargement/${data.id}`,
+    sameSite: 'lax',
+  })
 
   return NextResponse.json({ commande_id: data.id })
 }
