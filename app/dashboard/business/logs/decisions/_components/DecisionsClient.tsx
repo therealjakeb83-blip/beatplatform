@@ -15,6 +15,7 @@ const ENTITY_LABEL: Record<string, string> = {
   boutique:       'Boutique',
   page_legale:    'Légal',
   licence_texte:  'Licences',
+  collaboration:  'Collaboration',
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -23,6 +24,12 @@ const ACTION_LABEL: Record<string, string> = {
   reactivation:        'Réactivation',
   publication:         'Publication',
   modification_texte:  'Modification du texte',
+  invitation:          'Invitation à collaborer',
+  acceptation:         'Acceptation d’une collaboration',
+  refus:               'Refus d’une collaboration',
+  retrait_invitation:  'Invitation retirée',
+  depart:              'Départ d’une collaboration',
+  eviction:            'Éviction d’un collaborateur',
 }
 
 const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
@@ -55,6 +62,17 @@ function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>
     const nom = licenceNoms[log.entity_id]
     return nom ? `Modification de la licence "${nom}"` : "Modification du texte d'une licence"
   }
+  if (log.entity_type === 'collaboration') {
+    const titre = typeof details.titre_beat === 'string' ? details.titre_beat : 'un beat'
+    const nom = typeof details.nom_collaborateur === 'string' ? details.nom_collaborateur : 'un collaborateur'
+    const part = typeof details.pourcentage === 'number' ? ` (${details.pourcentage} %)` : ''
+    if (log.action === 'invitation') return `Invitation de ${nom}${part} sur « ${titre} »`
+    if (log.action === 'acceptation') return `Acceptation de la collaboration${part} sur « ${titre} » par ${nom}`
+    if (log.action === 'refus') return `Refus de la collaboration sur « ${titre} » par ${nom}`
+    if (log.action === 'retrait_invitation') return `Invitation de ${nom} retirée sur « ${titre} »`
+    if (log.action === 'depart') return `Départ de ${nom} de la collaboration sur « ${titre} »`
+    if (log.action === 'eviction') return `Éviction de ${nom} sur « ${titre} »`
+  }
   return ACTION_LABEL[log.action] ?? log.action
 }
 
@@ -70,6 +88,7 @@ const ENTITY_FILTERS = [
   { value: 'boutique',       label: 'Boutique' },
   { value: 'page_legale',    label: 'Pages légales' },
   { value: 'licence_texte',  label: 'Licences' },
+  { value: 'collaboration',  label: 'Collaborations' },
 ]
 
 function hrefEntite(entity: string) {

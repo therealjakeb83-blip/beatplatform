@@ -93,16 +93,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Montant trop faible pour un paiement express' }, { status: 400 })
   }
 
-  // Répartition des fonds — même logique que /api/stripe/checkout : dès qu'un
-  // article du panier a des splits, toute la session bascule en mode "fonds
-  // retenus + transferts manuels par article" (voir finaliserCommandePayee).
-  const beatIds = [...new Set(items.map(i => i.beat_id))]
-  const { data: splitsData } = await admin
-    .from('beat_splits')
-    .select('beat_id')
-    .in('beat_id', beatIds)
-  const hasSplits = (splitsData?.length ?? 0) > 0
-
   const paymentIntentParams: import('stripe').default.PaymentIntentCreateParams = {
     amount: totalCents,
     currency: 'eur',
@@ -124,14 +114,10 @@ export async function POST(request: Request) {
     },
   }
 
-  // Même règle que /api/stripe/checkout : Direct Charge sauf split (fonds
-  // retenus) ou beatmaker pas encore connecté à Stripe.
-  const directChargeActif = !hasSplits && !!beatmaker.stripe_account_id
-
-  if (hasSplits) {
-    paymentIntentParams.transfer_group = crypto.randomUUID()
-    paymentIntentParams.metadata = { ...paymentIntentParams.metadata, has_splits: 'true' }
-  }
+  // Un beat en collaboration non terminée est déjà refusé par
+  // calculerLignesPanier (hors_vente_collab) : plus aucun mode « fonds retenus
+  // + transferts » n'est possible ici (Phase 12, remplacé par la Phase 13).
+  const directChargeActif = !!beatmaker.stripe_account_id
 
   // Direct Charge : le PaymentIntent est créé directement sur le compte
   // connecté (options `stripeAccount`) — jamais application_fee_amount/

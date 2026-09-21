@@ -182,7 +182,7 @@ export async function calculerLignesPanier(
 
   const { data: beatsData } = await admin
     .from('beats')
-    .select('id, titre, image_url, beatmaker_id')
+    .select('id, titre, image_url, beatmaker_id, hors_vente_collab')
     .in('id', beatIds)
     .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
@@ -225,6 +225,13 @@ export async function calculerLignesPanier(
     const beat = beatMap.get(item.beat_id)
     if (!beat || String(beat.beatmaker_id) !== String(beatmaker.id)) {
       return { ok: false, erreur: 'Beat introuvable', status: 404 }
+    }
+    // Beat en collaboration non terminée : hors vente tant que tous les
+    // collaborateurs n'ont pas accepté (et tant que la Phase 13 n'ouvre pas les
+    // ventes collab). Seul point de calcul de prix des paiements : ce contrôle
+    // couvre le paiement express, la page de paiement et le panier.
+    if (beat.hors_vente_collab) {
+      return { ok: false, erreur: `« ${beat.titre} » n’est plus disponible pour le moment`, status: 409 }
     }
 
     const beatLicence = beatLicenceMap.get(`${item.beat_id}:${item.licence_id}`)

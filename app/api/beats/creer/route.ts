@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { envoyerInvitationCollab } from '@/lib/emails'
+import { traiterCollaborateursBeat, notifierNouvellesInvitations, type CollaborateurEntrant } from '@/lib/collaboration-beat'
 import { synchroniserCategoriesPersonnalisees } from '@/lib/categories'
 
 export async function POST(request: Request) {
@@ -44,17 +44,27 @@ export async function POST(request: Request) {
   // Ambiances/Instruments (lecture seule, Phase 7).
   await synchroniserCategoriesPersonnalisees(supabase, user.id, { styles, typeBeat: type_beat })
 
+  // Collaborateurs (Phase 12) : chacun est ajouté à l'état « invitée » — jamais
+  // actif d'office. L'invitation part à l'enregistrement du beat (pas avant),
+  // et le beat reste hors vente tant que tous n'ont pas accepté.
+  const admin = createAdminClient()
+  let nouvellesInvitations: Awaited<ReturnType<typeof traiterCollaborateursBeat>> = { ok: true, nouvelles: [] }
   if (collaborateurs?.length) {
-    const splits = collaborateurs.map((c: { beatmaker_id?: string; email_invite?: string; pourcentage: number }) => ({
-      beat_id: beatId,
-      beatmaker_id: c.beatmaker_id || null,
-      email_invite: c.email_invite ? c.email_invite.trim().toLowerCase() : null,
-      pourcentage: c.pourcentage,
-      statut: c.beatmaker_id ? 'actif' : 'en_attente',
-    }))
-
-    const { error: splitsError } = await supabase.from('beat_splits').insert(splits)
-    if (splitsError) return Response.json({ error: splitsError.message }, { status: 500 })
+    nouvellesInvitations = await traiterCollaborateursBeat({
+      admin,
+      beatId,
+      proprietaireId: user.id,
+      collaborateurs: collaborateurs as CollaborateurEntrant[],
+      licencesActivesIds: licences_actives,
+      exclusifPrixOverride: exclusif_prix_override,
+      exclusifSurDemande: exclusif_sur_demande,
+    })
+    if (!nouvellesInvitations.ok) {
+      // Beat tout neuf, sans vente ni collaboration : on l'efface pour que le
+      // formulaire puisse être renvoyé corrigé avec le même identifiant.
+      await admin.from('beats').delete().eq('id', beatId)
+      return Response.json({ error: nouvellesInvitations.erreur }, { status: nouvellesInvitations.status })
+    }
   }
 
   if (licences_actives) {
@@ -79,27 +89,8 @@ export async function POST(request: Request) {
     }
   }
 
-  // Email d'invitation aux collabs non inscrits si le beat est publié directement
-  if (statut === 'public' && collaborateurs?.length) {
-    const emailInvites = (collaborateurs as Array<{ beatmaker_id?: string; email_invite?: string; pourcentage: number }>)
-      .filter(c => c.email_invite)
-    if (emailInvites.length) {
-      const adminBm = createAdminClient()
-      const { data: bm } = await adminBm.from('beatmakers').select('nom_artiste').eq('id', user.id).single()
-      if (bm?.nom_artiste) {
-        await Promise.all(
-          emailInvites.map(c =>
-            envoyerInvitationCollab({
-              to: c.email_invite!,
-              nomProprietaire: bm.nom_artiste,
-              titreBeat: titre,
-              pourcentage: c.pourcentage,
-              beatmakerId: user.id,
-            }).catch(() => {})
-          )
-        )
-      }
-    }
+  if (nouvellesInvitations.ok) {
+    await notifierNouvellesInvitations({ admin, beatId, proprietaireId: user.id, titreBeat: titre, nouvelles: nouvellesInvitations.nouvelles })
   }
 
   return Response.json({ id: beatId })

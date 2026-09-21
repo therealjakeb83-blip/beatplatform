@@ -44,6 +44,7 @@ export default async function BeatDetailPage({
     .eq('beatmaker_id', beatmaker.id)
     .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
+    .eq('hors_vente_collab', false)
     .single()
 
   if (!beat) notFound()
@@ -102,12 +103,14 @@ export default async function BeatDetailPage({
     icone: iconeParInstrument.get(nom) ?? null,
   }))
 
-  // Crédits "ft." — collaborateurs du beat avec un compte beatmaker existant
-  // (une invitation en attente par email n'a pas de nom public à afficher).
+  // Crédits "ft." — uniquement les collaborateurs ACTIFS (Phase 12) : après un
+  // départ ou une éviction, l'ancien collaborateur n'est plus crédité (les
+  // contrats et factures déjà émis gardent son nom).
   const { data: splitsData } = await admin
     .from('beat_splits')
     .select('beatmaker_id, beatmakers(nom_artiste)')
     .eq('beat_id', beatId)
+    .eq('statut', 'active')
     .not('beatmaker_id', 'is', null)
   const featuring = ((splitsData ?? []) as unknown as { beatmakers: { nom_artiste: string } | null }[])
     .map(s => s.beatmakers?.nom_artiste)
@@ -134,6 +137,7 @@ export default async function BeatDetailPage({
     .eq('statut', 'public')
     .neq('id', beatId)
     .is('supprime_le', null)
+    .eq('hors_vente_collab', false)
     .order('created_at', { ascending: false })
     .limit(40)
 

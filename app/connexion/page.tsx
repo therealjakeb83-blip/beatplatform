@@ -28,8 +28,13 @@ export default function ConnexionPage() {
       return
     }
 
+    // Retour vers la page voulue (lien d'une invitation de collaboration…) —
+    // uniquement un chemin interne du site, jamais une adresse externe.
+    const redirection = new URLSearchParams(window.location.search).get('redirect')
+    const destination = redirection && redirection.startsWith('/') && !redirection.startsWith('//') ? redirection : '/dashboard'
+
     router.refresh()
-    router.push('/dashboard')
+    router.push(destination)
   }
 
   return (

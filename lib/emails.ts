@@ -5,9 +5,9 @@ import { NOM_PLATEFORME } from './constantes'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
 const COULEUR_DEFAUT = '#4f46e5'
 
-// envoyerInvitationCollab / envoyerFondsEnAttente / envoyerRappelFonds /
-// envoyerConfirmationExpiration ont été migrées vers le système "Mails My
-// Producer" (branding fixe, titre/intro éditables par l'admin) — voir plus
+// envoyerInvitationCollab (les emails « fonds en attente / rappel / expiration »
+// ont été supprimés en Phase 12 avec l'ancien système de splits) a été migrée
+// vers le système "Mails My Producer" (branding fixe, titre/intro éditables par l'admin) — voir plus
 // bas, section "Emails My Producer → beatmaker". Corrige au passage le bug
 // fire-and-forget des appelants (audit 2026-07-29, F3) : envoyerEmailUnique
 // n'a jamais levé d'exception (toujours loggé dans email_logs même en cas
@@ -227,9 +227,6 @@ export type TypeTemplatePlateforme =
   | 'paiement_echoue'
   | 'annulation'
   | 'collab_invitation'
-  | 'collab_fonds_attente'
-  | 'collab_rappel_fonds'
-  | 'collab_expiration'
   | 'suspension'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
@@ -253,9 +250,6 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   paiement_echoue: "Le paiement de ton abonnement a échoué",
   annulation: 'Ton abonnement a été annulé',
   collab_invitation: 'Tu es invité à collaborer sur un beat',
-  collab_fonds_attente: "Des fonds t'attendent",
-  collab_rappel_fonds: "Rappel — des fonds arrivent à expiration",
-  collab_expiration: 'Tes fonds en attente ont expiré',
   suspension: 'Ton compte a été suspendu',
 }
 
@@ -274,13 +268,7 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
     case 'annulation':
       return `Ton abonnement ${NOM_PLATEFORME} est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.`
     case 'collab_invitation':
-      return `Un beatmaker t'invite à collaborer sur un de ses beats. Crée ton compte ${NOM_PLATEFORME} pour visualiser ta part et recevoir tes revenus.`
-    case 'collab_fonds_attente':
-      return 'Un beat sur lequel tu collabores vient d\'être vendu. Configure ton compte Stripe pour recevoir ta part.'
-    case 'collab_rappel_fonds':
-      return "Tu as des fonds en attente sur une collaboration — configure ton compte Stripe avant qu'ils ne soient définitivement reversés à l'autre beatmaker."
-    case 'collab_expiration':
-      return "Ta part sur une collaboration n'a pas été réclamée dans les 60 jours et a été reversée à l'autre beatmaker, conformément à notre politique de rétention."
+      return `Un beatmaker t'invite à collaborer sur un de ses beats. Connecte-toi à ${NOM_PLATEFORME} (ou crée ton compte) puis accepte l'invitation depuis ton espace Collaborations. Le beat ne sera pas mis en vente tant que tu n'auras pas accepté.`
     case 'suspension':
       return `Ton compte ${NOM_PLATEFORME} a été suspendu par notre équipe. Ton dashboard et ta boutique publique ne sont plus accessibles tant que la situation n'est pas résolue.`
   }
@@ -331,38 +319,6 @@ function corpsSuspension(motifLabel: string): string {
       <tr>
         <td style="padding:8px 0;font-size:13px;color:#111827;">Motif</td>
         <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;">${echapper(motifLabel)}</td>
-      </tr>
-    </table>`
-}
-
-function corpsFondsCollab(titreBeat: string, montantEuros: string, labelMontant = 'Montant en attente'): string {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
-      <tr>
-        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Beat</td>
-        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">${echapper(titreBeat)}</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 0;font-size:13px;color:#111827;">${echapper(labelMontant)}</td>
-        <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(montantEuros)}€</td>
-      </tr>
-    </table>`
-}
-
-function corpsRappelFondsCollab(titreBeat: string, montantEuros: string, joursRestants: number): string {
-  const urgence = joursRestants <= 10
-  const couleur = urgence ? '#dc2626' : '#111827'
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
-      <tr>
-        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Beat</td>
-        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;">${echapper(titreBeat)}</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">Montant en attente</td>
-        <td style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${echapper(montantEuros)}€</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 0;font-size:13px;color:${couleur};font-weight:${urgence ? 700 : 400};">Jours restants avant reversement</td>
-        <td style="padding:8px 0;font-size:13px;color:${couleur};font-weight:${urgence ? 700 : 400};text-align:right;white-space:nowrap;">${joursRestants} jour${joursRestants > 1 ? 's' : ''}</td>
       </tr>
     </table>`
 }
@@ -578,12 +534,14 @@ export async function envoyerInvitationCollab({
   titreBeat,
   pourcentage,
   beatmakerId,
+  aDejaUnCompte = false,
 }: {
   to: string
   nomProprietaire: string
   titreBeat: string
   pourcentage: number
   beatmakerId: string
+  aDejaUnCompte?: boolean
 }) {
   const { titre, intro } = await chargerTemplatePlateforme('collab_invitation')
   await envoyerEmailUnique({
@@ -597,104 +555,21 @@ export async function envoyerInvitationCollab({
       titre: titre || TITRE_DEFAUT_PLATEFORME.collab_invitation,
       intro: intro || introDefautPlateforme('collab_invitation'),
       corpsHtml: corpsInvitationCollab(nomProprietaire, titreBeat, pourcentage),
-      cta: { texte: 'Créer mon compte', lien: `${APP_URL}/inscription` },
+      // Lien personnel : jamais d'acceptation depuis l'email — le collaborateur
+      // se connecte (ou crée son compte) puis accepte depuis son dashboard.
+      cta: aDejaUnCompte
+        ? { texte: 'Voir l’invitation', lien: `${APP_URL}/connexion?redirect=/dashboard/business/collabs` }
+        : { texte: 'Créer mon compte', lien: `${APP_URL}/inscription?email=${encodeURIComponent(to)}` },
     }),
   })
 }
 
-export async function envoyerFondsEnAttente({
-  to,
-  titreBeat,
-  montantEuros,
-  beatmakerId,
-}: {
-  to: string
-  titreBeat: string
-  montantEuros: string
-  beatmakerId: string
-}) {
-  const { titre, intro } = await chargerTemplatePlateforme('collab_fonds_attente')
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_collab_fonds_attente',
-    to,
-    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_fonds_attente,
-    html: rendreEmailTransactionnel({
-      branding: BRANDING_PLATEFORME,
-      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_fonds_attente,
-      intro: intro || introDefautPlateforme('collab_fonds_attente'),
-      corpsHtml: corpsFondsCollab(titreBeat, montantEuros),
-      cta: { texte: 'Configurer mon compte Stripe', lien: `${APP_URL}/inscription` },
-    }),
-  })
-}
-
-export async function envoyerRappelFonds({
-  to,
-  titreBeat,
-  montantEuros,
-  joursRestants,
-  beatmakerId,
-}: {
-  to: string
-  titreBeat: string
-  montantEuros: string
-  joursRestants: number
-  beatmakerId: string
-}) {
-  const { titre, intro } = await chargerTemplatePlateforme('collab_rappel_fonds')
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_collab_rappel_fonds',
-    to,
-    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_rappel_fonds,
-    html: rendreEmailTransactionnel({
-      branding: BRANDING_PLATEFORME,
-      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_rappel_fonds,
-      intro: intro || introDefautPlateforme('collab_rappel_fonds'),
-      corpsHtml: corpsRappelFondsCollab(titreBeat, montantEuros, joursRestants),
-      cta: { texte: 'Configurer mon compte Stripe', lien: `${APP_URL}/inscription` },
-    }),
-  })
-}
-
-export async function envoyerConfirmationExpiration({
-  to,
-  titreBeat,
-  montantEuros,
-  beatmakerId,
-}: {
-  to: string
-  titreBeat: string
-  montantEuros: string
-  beatmakerId: string
-}) {
-  const { titre, intro } = await chargerTemplatePlateforme('collab_expiration')
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'plateforme_collab_expiration',
-    to,
-    subject: titre || TITRE_DEFAUT_PLATEFORME.collab_expiration,
-    html: rendreEmailTransactionnel({
-      branding: BRANDING_PLATEFORME,
-      titre: titre || TITRE_DEFAUT_PLATEFORME.collab_expiration,
-      intro: intro || introDefautPlateforme('collab_expiration'),
-      corpsHtml: corpsFondsCollab(titreBeat, montantEuros, 'Montant reversé'),
-    }),
-  })
-}
 
 // ── Aperçu (page réglages admin) — mêmes titre/intro par défaut que
 // l'envoi réel, données d'exemple à la place des vraies dates/prix. Ne
 // passe jamais par envoyerEmailUnique (pas d'envoi, pas de log).
 const CORPS_EXEMPLE_PLATEFORME = corpsAbonnementPlateforme('mensuel', 49.99, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString())
 const CORPS_EXEMPLE_INVITATION = corpsInvitationCollab('Jake B', 'Midnight Drive', 30)
-const CORPS_EXEMPLE_FONDS = corpsFondsCollab('Midnight Drive', '45.00')
-const CORPS_EXEMPLE_RAPPEL = corpsRappelFondsCollab('Midnight Drive', '45.00', 10)
-const CORPS_EXEMPLE_EXPIRATION = corpsFondsCollab('Midnight Drive', '45.00', 'Montant reversé')
 const CORPS_EXEMPLE_SUSPENSION = corpsSuspension('Fraude')
 
 export async function genererApercuTransactionnelPlateforme(
@@ -713,9 +588,6 @@ export async function genererApercuTransactionnelPlateforme(
     paiement_echoue: { corpsHtml: '', cta: { texte: 'Mettre à jour ma carte', lien: '#' } },
     annulation: { corpsHtml: '', cta: { texte: 'Me réabonner', lien: '#' } },
     collab_invitation: { corpsHtml: CORPS_EXEMPLE_INVITATION, cta: { texte: 'Créer mon compte', lien: '#' } },
-    collab_fonds_attente: { corpsHtml: CORPS_EXEMPLE_FONDS, cta: { texte: 'Configurer mon compte Stripe', lien: '#' } },
-    collab_rappel_fonds: { corpsHtml: CORPS_EXEMPLE_RAPPEL, cta: { texte: 'Configurer mon compte Stripe', lien: '#' } },
-    collab_expiration: { corpsHtml: CORPS_EXEMPLE_EXPIRATION },
     suspension: { corpsHtml: CORPS_EXEMPLE_SUSPENSION, cta: { texte: 'Nous contacter', lien: '#' } },
   }
 

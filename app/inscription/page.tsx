@@ -1,11 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { normaliserEmail } from '@/lib/email'
 
 export default function InscriptionPage() {
-  const [email, setEmail] = useState('')
+  return (
+    <Suspense fallback={null}>
+      <InscriptionFormulaire />
+    </Suspense>
+  )
+}
+
+function InscriptionFormulaire() {
+  // Lien d'une invitation de collaboration : l'adresse invitée est pré-remplie.
+  const emailInvite = normaliserEmail(useSearchParams().get('email'))
+  const [email, setEmail] = useState(emailInvite)
   const [password, setPassword] = useState('')
   const [nomArtiste, setNomArtiste] = useState('')
   const [erreur, setErreur] = useState('')

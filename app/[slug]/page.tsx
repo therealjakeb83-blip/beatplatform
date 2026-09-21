@@ -80,6 +80,7 @@ export default async function BoutiquePage({
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'public')
     .is('supprime_le', null)
+    .eq('hors_vente_collab', false)
     .or(`date_sortie.is.null,date_sortie.lte.${now}`)
     .order('created_at', { ascending: false })
 
@@ -95,6 +96,7 @@ export default async function BoutiquePage({
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'prive')
     .is('supprime_le', null)
+    .eq('hors_vente_collab', false)
     .order('created_at', { ascending: false })
 
   type RawBeat = {

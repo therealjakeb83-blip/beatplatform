@@ -77,6 +77,8 @@ export async function proxy(request: NextRequest) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/connexion'
+      url.search = ''
+      url.searchParams.set('redirect', pathname)
       return NextResponse.redirect(url)
     }
 
@@ -142,7 +144,9 @@ export async function proxy(request: NextRequest) {
   // Pages auth beatmaker — redirige vers /dashboard si déjà connecté en tant que beatmaker
   if ((pathname === '/connexion' || pathname === '/inscription') && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    const retour = request.nextUrl.searchParams.get('redirect')
+    url.search = ''
+    url.pathname = retour && retour.startsWith('/dashboard') && !retour.startsWith('//') ? retour : '/dashboard'
     return NextResponse.redirect(url)
   }
 
