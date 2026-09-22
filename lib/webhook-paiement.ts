@@ -4,7 +4,7 @@ import { genererContratPdfPourVente } from '@/lib/contrat'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { genererNumeroFacture } from '@/lib/facturation'
 import { uploadPdfContrat, uploadPdfFacture } from '@/lib/livraison'
-import { envoyerFondsEnAttente, confirmationCommande, alerteProblemeLivraison } from '@/lib/emails'
+import { confirmationCommande, alerteProblemeLivraison } from '@/lib/emails'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
@@ -217,8 +217,6 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   const { meta } = ctx
   const prixPayeTotal = ctx.totalCents / 100
   const stripePaymentId = ctx.stripePaymentId
-  const hasSplits = meta.has_splits === 'true'
-  const transferGroup = meta.transfer_group ?? null
   const promoCode = meta.code_promo ?? null
 
   const supabase = createAdminClient()
@@ -292,7 +290,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   const [{ data: beatsData }, { data: licencesData }, { data: splitsData }, { data: beatmaker }, { data: cgvData }] = await Promise.all([
     supabase.from('beats').select('id, titre, bpm, cle').in('id', beatIds),
     supabase.from('licences').select('id, nom, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive, streams_limite, ventes_physiques_limite, vues_video_limite, clips_video_limite, radio_tv_limite, lives_performances_autorise').in('id', licenceIds),
-    supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds),
+    supabase.from('beat_splits').select('id, beat_id, pourcentage, beatmaker_id, email_invite, beatmakers(nom_artiste, email, stripe_account_id)').in('beat_id', beatIds).eq('statut', 'active'),
     supabase.from('beatmakers').select('nom_artiste, email, slug, stripe_account_id, tva_active, tva_taux, tva_numero, mandat_facturation_version, facturation_format, fuseau_horaire').eq('id', meta.beatmaker_id).single(),
     supabase.from('boutique_pages_legales').select('version').eq('beatmaker_id', meta.beatmaker_id).eq('type_page', 'cgv').maybeSingle(),
   ])
@@ -348,7 +346,6 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     plateforme_source: 'my_producer',
     source_marketing: meta.source_marketing ?? 'direct',
     type_commande: 'LICENCE',
-    stripe_transfer_group: hasSplits ? transferGroup : null,
   }).select('id').single()
 
   if (error || !commande) {
@@ -458,22 +455,6 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
         .eq('beat_id', tLigne.beat_id)
         .eq('beatmaker_id', meta.beatmaker_id)
       if (acheteError) console.error('[webhook-paiement] Erreur maj free_downloads.achete:', JSON.stringify(acheteError))
-    }
-
-    // Distribuer les fonds pour cet article (le panier entier route en mode
-    // "fonds retenus + transferts manuels" dès qu'un seul article a des splits)
-    if (hasSplits && transferGroup) {
-      const montantLigneCents = Math.round(Number(tLigne.prix) * 100)
-      await distribuerSplitsArticle({
-        supabase,
-        splits: splitsBeat,
-        beatmaker,
-        commandeId: commande.id,
-        beatmakerId: meta.beatmaker_id,
-        montantCents: montantLigneCents,
-        transferGroup,
-        titreBeat: beat?.titre ?? 'Beat',
-      })
     }
 
     // Contrat PDF par article
@@ -641,121 +622,6 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
         .eq('id', existingLead.id)
       if (leadError) console.error('[webhook-paiement] Erreur opt-in newsletter lead:', JSON.stringify(leadError))
     }
-  }
-}
-
-async function distribuerSplitsArticle({
-  supabase,
-  splits,
-  beatmaker,
-  commandeId,
-  beatmakerId,
-  montantCents,
-  transferGroup,
-  titreBeat,
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any
-  splits: {
-    id: string
-    beat_id: string
-    pourcentage: number
-    beatmaker_id: string | null
-    email_invite: string | null
-    beatmakers: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
-  }[]
-  beatmaker: { nom_artiste: string; email: string; stripe_account_id: string | null } | null
-  commandeId: string
-  beatmakerId: string
-  montantCents: number
-  transferGroup: string
-  titreBeat: string
-}) {
-  // Aucun split sur cet article : 100% part au propriétaire du beat (le beatmaker
-  // de la boutique) — le panier entier route quand même en mode manuel car un
-  // AUTRE article du même panier a des splits.
-  const totalCents = montantCents
-  const splitPayments: Record<string, unknown>[] = []
-  let montantProprioCents = totalCents
-
-  for (const split of splits) {
-    const montantCents = Math.round(totalCents * split.pourcentage / 100)
-    montantProprioCents -= montantCents
-
-    if (split.beatmaker_id && split.beatmakers?.stripe_account_id) {
-      // Collab inscrit avec compte Stripe → transfer immédiat
-      let stripeTransferId: string | null = null
-      try {
-        const transfer = await stripe.transfers.create({
-          amount: montantCents,
-          currency: 'eur',
-          destination: split.beatmakers.stripe_account_id,
-          transfer_group: transferGroup,
-          description: `Split ${split.pourcentage}% — ${titreBeat} — commande ${commandeId}`,
-        })
-        stripeTransferId = transfer.id
-        console.log('[webhook-paiement] Transfer créé:', transfer.id, 'pour', split.beatmakers.nom_artiste)
-      } catch (err) {
-        console.error('[webhook-paiement] Erreur transfer collab:', err)
-      }
-      splitPayments.push({
-        commande_id: commandeId,
-        beat_split_id: split.id,
-        beatmaker_id: split.beatmaker_id,
-        email_invite: null,
-        montant: montantCents,
-        stripe_transfer_id: stripeTransferId,
-        statut: stripeTransferId ? 'transfere' : 'en_attente',
-      })
-    } else {
-      // Collab non inscrit → fonds en attente + email
-      splitPayments.push({
-        commande_id: commandeId,
-        beat_split_id: split.id,
-        beatmaker_id: null,
-        email_invite: split.email_invite,
-        montant: montantCents,
-        stripe_transfer_id: null,
-        statut: 'en_attente',
-      })
-      if (split.email_invite) {
-        const montantEuros = (montantCents / 100).toFixed(2)
-        await envoyerFondsEnAttente({ to: split.email_invite, titreBeat, montantEuros, beatmakerId })
-      }
-    }
-  }
-
-  // Part du propriétaire du beat
-  if (montantProprioCents > 0 && beatmaker?.stripe_account_id) {
-    let stripeTransferId: string | null = null
-    try {
-      const transfer = await stripe.transfers.create({
-        amount: montantProprioCents,
-        currency: 'eur',
-        destination: beatmaker.stripe_account_id,
-        transfer_group: transferGroup,
-        description: `Part propriétaire — ${titreBeat} — commande ${commandeId}`,
-      })
-      stripeTransferId = transfer.id
-      console.log('[webhook-paiement] Transfer propriétaire créé:', transfer.id)
-    } catch (err) {
-      console.error('[webhook-paiement] Erreur transfer propriétaire:', err)
-    }
-    splitPayments.push({
-      commande_id: commandeId,
-      beat_split_id: null,
-      beatmaker_id: beatmakerId,
-      email_invite: null,
-      montant: montantProprioCents,
-      stripe_transfer_id: stripeTransferId,
-      statut: stripeTransferId ? 'transfere' : 'en_attente',
-    })
-  }
-
-  if (splitPayments.length) {
-    const { error } = await supabase.from('split_payments').insert(splitPayments)
-    if (error) console.error('[webhook-paiement] Erreur insert split_payments:', JSON.stringify(error))
-    else console.log('[webhook-paiement] split_payments insérés:', splitPayments.length)
   }
 }
 

@@ -65,27 +65,6 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     declencheur: 'Déclencheur : création/publication d\'un beat avec collaborateur non inscrit',
   },
   {
-    type: 'collab_fonds_attente',
-    nom: 'Fonds en attente',
-    titrePlaceholder: "Des fonds t'attendent",
-    description: "Envoyé quand un beat avec collaborateur non inscrit se vend.",
-    declencheur: 'Déclencheur : webhook Stripe checkout.session.completed',
-  },
-  {
-    type: 'collab_rappel_fonds',
-    nom: 'Rappel fonds en attente',
-    titrePlaceholder: 'Rappel — des fonds arrivent à expiration',
-    description: "Rappels à J+30 et J+50 avant reversement des fonds non réclamés (J+60).",
-    declencheur: 'Déclencheur : cron quotidien /api/cron/splits-expiration',
-  },
-  {
-    type: 'collab_expiration',
-    nom: 'Fonds expirés',
-    titrePlaceholder: 'Tes fonds en attente ont expiré',
-    description: "Envoyé au collaborateur quand ses fonds non réclamés sont reversés à l'autre beatmaker (J+60).",
-    declencheur: 'Déclencheur : cron quotidien /api/cron/splits-expiration',
-  },
-  {
     type: 'suspension',
     nom: 'Suspension de compte',
     titrePlaceholder: 'Ton compte a été suspendu',

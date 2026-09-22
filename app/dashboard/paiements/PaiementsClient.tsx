@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE, texteMandatFulfillment } from '@/lib/fulfillment'
 import { MOYENS_PAIEMENT_TOGGLABLES, normaliserMoyensPaiement, type MoyenPaiementNiveauA } from '@/lib/moyens-paiement'
 import { validerStatementDescriptor } from '@/lib/statement-descriptor'
@@ -10,15 +10,8 @@ const LABEL_MOYEN_PAIEMENT: Record<MoyenPaiementNiveauA, string> = {
   carte: 'Carte bancaire',
 }
 
-type RapportDeblocage = {
-  debloques: { beat: string; montant: number }[]
-  echecs: { beat: string; erreur: string }[]
-}
-
 export default function PaiementsClient({
   stripeAccountId,
-  fondsEnAttenteCount,
-  fondsEnAttenteTotal,
   mandatFulfillmentActif,
   mandatFulfillmentVersion,
   mandatFulfillmentAccepteLe,
@@ -26,8 +19,6 @@ export default function PaiementsClient({
   statementDescriptor,
 }: {
   stripeAccountId: string | null
-  fondsEnAttenteCount: number
-  fondsEnAttenteTotal: number
   mandatFulfillmentActif: boolean
   mandatFulfillmentVersion: number | null
   mandatFulfillmentAccepteLe: string | null
@@ -35,40 +26,7 @@ export default function PaiementsClient({
   statementDescriptor: string
 }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [chargementConnect, setChargementConnect] = useState(false)
-  const [chargementDeblocage, setChargementDeblocage] = useState(false)
-  const [erreurDeblocage, setErreurDeblocage] = useState('')
-  const [rapportDeblocage, setRapportDeblocage] = useState<RapportDeblocage | null>(null)
-
-  async function debloquerFonds() {
-    setChargementDeblocage(true)
-    setErreurDeblocage('')
-    setRapportDeblocage(null)
-    try {
-      const res = await fetch('/api/stripe/splits/debloquer', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        setErreurDeblocage(data?.erreur || 'Impossible de débloquer les fonds en attente.')
-        return
-      }
-      setRapportDeblocage({ debloques: data.debloques ?? [], echecs: data.echecs ?? [] })
-      router.refresh()
-    } catch {
-      setErreurDeblocage('Erreur lors du déblocage des paiements en attente.')
-    } finally {
-      setChargementDeblocage(false)
-    }
-  }
-
-  // Déclenchement automatique au retour de l'onboarding Stripe Connect
-  // (return_url avec ?connected=true) — même logique que le bouton manuel.
-  useEffect(() => {
-    if (searchParams.get('connected') === 'true' && stripeAccountId) {
-      debloquerFonds()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
   const [chargementMandat, setChargementMandat] = useState(false)
   const [erreurMandat, setErreurMandat] = useState('')
 
@@ -331,65 +289,6 @@ export default function PaiementsClient({
             </button>
           )}
         </section>
-
-        {/* Fonds en attente (splits collab) */}
-        {(fondsEnAttenteCount > 0 || rapportDeblocage) && (
-          <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-lg font-bold mb-1">Fonds en attente</h2>
-            <p className="text-gray-400 text-sm mb-4">
-              Paiements de collaborations pas encore transférés sur ton compte bancaire.
-            </p>
-
-            {fondsEnAttenteCount > 0 && (
-              <p className="text-sm text-gray-300 mb-4">
-                <span className="text-white font-semibold">{fondsEnAttenteTotal.toFixed(2)}€</span> en attente sur {fondsEnAttenteCount} paiement{fondsEnAttenteCount > 1 ? 's' : ''}.
-              </p>
-            )}
-
-            <button
-              onClick={debloquerFonds}
-              disabled={chargementDeblocage || !stripeAccountId}
-              className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
-            >
-              {chargementDeblocage ? 'Déblocage...' : 'Débloquer mes fonds en attente'}
-            </button>
-            {!stripeAccountId && (
-              <p className="text-gray-500 text-xs mt-2">Connecte d&apos;abord ton compte Stripe ci-dessus.</p>
-            )}
-
-            {erreurDeblocage && (
-              <p className="text-red-400 text-sm mt-3">{erreurDeblocage}</p>
-            )}
-
-            {rapportDeblocage && (
-              <div className="mt-4 flex flex-col gap-2">
-                {rapportDeblocage.debloques.length > 0 && (
-                  <div className="text-sm">
-                    <p className="text-green-400 font-medium mb-1">{rapportDeblocage.debloques.length} paiement{rapportDeblocage.debloques.length > 1 ? 's' : ''} débloqué{rapportDeblocage.debloques.length > 1 ? 's' : ''} :</p>
-                    <ul className="text-gray-300 text-xs flex flex-col gap-0.5">
-                      {rapportDeblocage.debloques.map((d, i) => (
-                        <li key={i}>• {d.beat} — {d.montant.toFixed(2)}€</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {rapportDeblocage.echecs.length > 0 && (
-                  <div className="text-sm">
-                    <p className="text-orange-400 font-medium mb-1">{rapportDeblocage.echecs.length} échec{rapportDeblocage.echecs.length > 1 ? 's' : ''} :</p>
-                    <ul className="text-gray-300 text-xs flex flex-col gap-0.5">
-                      {rapportDeblocage.echecs.map((e, i) => (
-                        <li key={i}>• {e.beat} — {e.erreur}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {rapportDeblocage.debloques.length === 0 && rapportDeblocage.echecs.length === 0 && (
-                  <p className="text-gray-500 text-sm">Rien à débloquer pour l&apos;instant.</p>
-                )}
-              </div>
-            )}
-          </section>
-        )}
 
       </div>
     </main>

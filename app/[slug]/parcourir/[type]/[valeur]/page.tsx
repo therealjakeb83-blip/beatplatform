@@ -47,6 +47,7 @@ export default async function ParcourirCategoriePage({
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'public')
     .is('supprime_le', null)
+    .eq('hors_vente_collab', false)
     .or(`date_sortie.is.null,date_sortie.lte.${now}`)
     .contains(typeDb, [valeur])
     .order('created_at', { ascending: false })

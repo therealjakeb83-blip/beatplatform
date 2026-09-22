@@ -8,7 +8,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 // architecturales clés retenues".
 
 export type ActeurDecision = 'beatmaker' | 'admin'
-export type EntiteDecision = 'commande' | 'boutique' | 'page_legale' | 'licence_texte'
+export type EntiteDecision = 'commande' | 'boutique' | 'page_legale' | 'licence_texte' | 'collaboration'
 
 type DecisionLog = {
   beatmakerId: string

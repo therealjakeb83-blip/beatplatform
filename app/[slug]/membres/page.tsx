@@ -71,6 +71,7 @@ export default async function MembresPage({
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'prive')
     .is('supprime_le', null)
+    .eq('hors_vente_collab', false)
     .order('created_at', { ascending: false })
 
   type RawBeat = { id: string; titre: string; bpm: number | null; cle: string | null; image_url: string | null; mp3_tague_url: string | null; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null; beat_licences: { actif: boolean; prix_override: number | null; sur_demande: boolean; licences: { id: string; nom: string; modele: string; prix: number; actif: boolean; inclut_mp3: boolean; inclut_wav: boolean; inclut_stems: boolean; streams_limite: number | null; vues_video_limite: number | null; clips_video_limite: number | null; est_exclusive: boolean } | null }[] | null }

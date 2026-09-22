@@ -96,9 +96,10 @@ export async function POST(request: Request) {
       }
     }
 
-    if (event.type === 'account.updated') {
-      await traiterCompteConnecte(event.data.object as Stripe.Account)
-    }
+    // account.updated : l'ancien déblocage automatique des « fonds en attente »
+    // des collaborateurs (Phase 10) a été retiré en Phase 12 — l'argent ne
+    // transite plus par la plateforme. L'état du compte de paiement d'un
+    // beatmaker est lu directement chez Stripe (checklist « prêt à vendre »).
 
     if (event.type === 'checkout.session.expired') {
       await traiterExpirationTentative(event.data.object as Stripe.Checkout.Session)
@@ -814,104 +815,3 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
   else console.log('[webhook] Échec de renouvellement plateforme tracé pour abo', aboPlateforme.id)
 }
 
-async function traiterCompteConnecte(account: Stripe.Account) {
-  // Déclenché quand un beatmaker connecte son compte Stripe (payouts_enabled → true)
-  if (!account.payouts_enabled) return
-
-  const supabase = createAdminClient()
-
-  // Retrouver le beatmaker via son stripe_account_id
-  const { data: beatmaker } = await supabase
-    .from('beatmakers')
-    .select('id, email')
-    .eq('stripe_account_id', account.id)
-    .maybeSingle()
-
-  if (!beatmaker) {
-    console.log('[webhook] account.updated — beatmaker non trouvé pour', account.id)
-    return
-  }
-
-  // Lier les beat_splits en attente par email_invite si pas encore liés
-  if (account.email || beatmaker.email) {
-    const email = account.email ?? beatmaker.email
-    await supabase
-      .from('beat_splits')
-      .update({ beatmaker_id: beatmaker.id, statut: 'actif', email_invite: null })
-      .eq('email_invite', email)
-      .is('beatmaker_id', null)
-    console.log('[webhook] beat_splits liés pour', email)
-  }
-
-  // Récupérer tous ses split_payments en attente (par beatmaker_id OU email_invite)
-  // `commandes` n'a plus de relation directe vers `beats` depuis le passage
-  // au panier multi-articles (Phase 2c) — le titre passe par beat_split_id →
-  // beat_splits → beats. Bug trouvé en testant F4 (audit 2026-07-29) : cassait
-  // silencieusement tout déblocage automatique à la connexion Stripe depuis
-  // le 2026-07-09 (relation inexistante → requête en erreur → traité comme
-  // "aucun split en attente" sans jamais logger l'erreur réelle).
-  const { data: pendingByBeatmakerId, error: errBeatmakerId } = await supabase
-    .from('split_payments')
-    .select('id, montant, commandes(stripe_transfer_group), beat_splits(beats(titre))')
-    .eq('beatmaker_id', beatmaker.id)
-    .eq('statut', 'en_attente')
-  if (errBeatmakerId) console.error('[webhook] Erreur lecture pendingByBeatmakerId:', errBeatmakerId.message)
-
-  const { data: pendingByEmail, error: errEmail } = account.email ? await supabase
-    .from('split_payments')
-    .select('id, montant, email_invite, commandes(stripe_transfer_group), beat_splits(beats(titre))')
-    .eq('email_invite', account.email)
-    .eq('statut', 'en_attente') : { data: [], error: null }
-  if (errEmail) console.error('[webhook] Erreur lecture pendingByEmail:', errEmail.message)
-
-  type PendingSplit = {
-    id: string
-    montant: number
-    email_invite?: string | null
-    commandes: { stripe_transfer_group: string | null } | null
-    beat_splits: { beats: { titre: string } | null } | null
-  }
-
-  const pending = [
-    ...((pendingByBeatmakerId ?? []) as unknown as PendingSplit[]),
-    ...((pendingByEmail ?? []) as unknown as PendingSplit[]),
-  ]
-
-  if (pending.length === 0) {
-    console.log('[webhook] Aucun split en attente pour', beatmaker.id)
-    return
-  }
-
-  console.log('[webhook] Déblocage de', pending.length, 'splits pour', beatmaker.id)
-
-  for (const sp of pending) {
-    const transferGroup = sp.commandes?.stripe_transfer_group
-    const titreBeat = sp.beat_splits?.beats?.titre ?? 'Beat'
-    if (!transferGroup) continue
-
-    try {
-      const transfer = await stripe.transfers.create({
-        amount: sp.montant,
-        currency: 'eur',
-        destination: account.id,
-        transfer_group: transferGroup,
-        description: `Déblocage split — ${titreBeat} — sp ${sp.id}`,
-      })
-
-      await supabase
-        .from('split_payments')
-        .update({
-          statut: 'transfere',
-          stripe_transfer_id: transfer.id,
-          // Si c'était un email_invite, mettre à jour beatmaker_id
-          beatmaker_id: beatmaker.id,
-          email_invite: null,
-        })
-        .eq('id', sp.id)
-
-      console.log('[webhook] Transfer débloqué:', transfer.id, 'pour sp', sp.id)
-    } catch (err) {
-      console.error('[webhook] Erreur déblocage split', sp.id, ':', err)
-    }
-  }
-}

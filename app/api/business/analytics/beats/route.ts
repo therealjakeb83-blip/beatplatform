@@ -21,9 +21,8 @@ export async function GET(request: Request) {
     { data: beatmaker },
   ] = await Promise.all([
     admin.from('beats')
-      .select('id, titre, couleur, styles')
+      .select('id, titre, couleur, styles, supprime_le')
       .eq('beatmaker_id', user.id)
-      .is('supprime_le', null)
       .order('created_at', { ascending: false }),
     // Niveau article — un panier de plusieurs beats donne plusieurs lignes, chacune attribuée à son beat
     admin.from('commande_lignes')
@@ -81,7 +80,7 @@ export async function GET(request: Request) {
     const free_dl = dlMap.get(b.id) ?? 0
     const durees  = dureeMap.get(b.id) ?? []
     const duree_moy = durees.length > 0 ? Math.round(durees.reduce((s, d) => s + d, 0) / durees.length) : null
-    return { id: b.id, titre: b.titre, couleur: b.couleur, styles: b.styles ?? [], ca, ventes, ecoutes, free_dl, duree_moy }
+    return { id: b.id, titre: b.titre, couleur: b.couleur, styles: b.styles ?? [], supprime: !!b.supprime_le, ca, ventes, ecoutes, free_dl, duree_moy }
   })
 
   // KPIs globaux

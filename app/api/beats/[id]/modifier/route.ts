@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { envoyerInvitationCollab } from '@/lib/emails'
+import { traiterCollaborateursBeat, notifierNouvellesInvitations, type CollaborateurEntrant } from '@/lib/collaboration-beat'
 import { synchroniserCategoriesPersonnalisees } from '@/lib/categories'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -28,27 +28,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     exclusif_sur_demande, exclusif_prix_override,
   } = body
 
-  // Données nécessaires pour détecter les transitions de statut et nouveaux collabs
-  let wasPublic = false
-  let previousEmailInvites: string[] = []
-
-  if (statut === 'public') {
-    const { data: currentBeat } = await supabase.from('beats')
-      .select('statut')
-      .eq('id', id)
-      .eq('beatmaker_id', user.id)
-      .single()
-    wasPublic = currentBeat?.statut === 'public'
-
-    if (wasPublic && collaborateurs) {
-      const { data: existingInvites } = await supabase.from('beat_splits')
-        .select('email_invite')
-        .eq('beat_id', id)
-        .not('email_invite', 'is', null)
-      previousEmailInvites = (existingInvites ?? []).map(s => s.email_invite!)
-    }
-  }
-
   const update: Record<string, unknown> = {
     titre, statut, free_download_actif,
     bpm: bpm ? parseInt(bpm) : null,
@@ -75,40 +54,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await synchroniserCategoriesPersonnalisees(supabase, user.id, { styles, typeBeat: type_beat })
 
-  if (collaborateurs) {
-    // Réconciliation par id plutôt que delete+recreate systématique : un
-    // split_payments.beat_split_id est relié avec "on delete set null"
-    // (etape10_split_payments.sql) — recréer la ligne à chaque sauvegarde du
-    // beat (même sans toucher aux collaborateurs) orphelinait silencieusement
-    // tout l'historique de paiements déjà reçus par le collaborateur, qui
-    // n'apparaissait alors plus dans /dashboard/business/collabs (bug trouvé
-    // en testant F4, audit 2026-07-29). On ne supprime désormais que les
-    // lignes réellement retirées, on met à jour celles qui existent déjà
-    // (même id conservé) et on n'insère que les nouvelles.
-    type CollabInput = { id?: string; beatmaker_id?: string; email_invite?: string; pourcentage: number }
-    const incoming = collaborateurs as CollabInput[]
-
-    const { data: existingRows } = await supabase.from('beat_splits').select('id').eq('beat_id', id)
-    const existingIds = new Set((existingRows ?? []).map(r => r.id))
-
-    const idsASupprimer = [...existingIds].filter(rid => !incoming.some(c => c.id === rid))
-    if (idsASupprimer.length) {
-      await supabase.from('beat_splits').delete().in('id', idsASupprimer)
-    }
-
-    await Promise.all(incoming.map(c => {
-      const payload = {
-        beat_id: id,
-        beatmaker_id: c.beatmaker_id || null,
-        email_invite: c.email_invite ? c.email_invite.trim().toLowerCase() : null,
-        pourcentage: c.pourcentage,
-        statut: c.beatmaker_id ? 'actif' : 'en_attente',
-      }
-      return c.id && existingIds.has(c.id)
-        ? supabase.from('beat_splits').update(payload).eq('id', c.id)
-        : supabase.from('beat_splits').insert(payload)
-    }))
-  }
+  // Collaborateurs (Phase 12) : cette route ne fait plus qu'AJOUTER de nouvelles
+  // invitations (état « invitée »). Une collaboration existante ne se modifie
+  // ni ne se supprime ici : la part est verrouillée, et retirer une invitation,
+  // quitter ou évincer passent par leurs propres routes (avec journal).
+  const admin = createAdminClient()
+  const traitement = await traiterCollaborateursBeat({
+    admin,
+    beatId: id,
+    proprietaireId: user.id,
+    collaborateurs: collaborateurs as CollaborateurEntrant[] | undefined,
+    licencesActivesIds: licences_actives,
+    exclusifPrixOverride: exclusif_prix_override,
+    exclusifSurDemande: exclusif_sur_demande,
+  })
+  if (!traitement.ok) return Response.json({ error: traitement.erreur }, { status: traitement.status })
 
   if (licences_actives) {
     const { data: licences } = await supabase
@@ -131,50 +91,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
-  // Email d'invitation aux collabs non inscrits
-  if (statut === 'public') {
-    type CollabInput = { beatmaker_id?: string; email_invite?: string; pourcentage: number }
-    let invitesANotifier: Array<{ email: string; pourcentage: number }> = []
-
-    if (!wasPublic) {
-      // Beat vient de passer public → notifier tous les email_invite
-      if (collaborateurs) {
-        invitesANotifier = (collaborateurs as CollabInput[])
-          .filter(c => c.email_invite)
-          .map(c => ({ email: c.email_invite!, pourcentage: c.pourcentage }))
-      } else {
-        // Statut change mais pas les collabs → query les splits existants
-        const { data: splits } = await supabase.from('beat_splits')
-          .select('email_invite, pourcentage')
-          .eq('beat_id', id)
-          .not('email_invite', 'is', null)
-        invitesANotifier = (splits ?? []).map(s => ({ email: s.email_invite!, pourcentage: s.pourcentage }))
-      }
-    } else if (collaborateurs) {
-      // Beat déjà public → notifier seulement les nouveaux email_invite
-      invitesANotifier = (collaborateurs as CollabInput[])
-        .filter(c => c.email_invite && !previousEmailInvites.includes(c.email_invite))
-        .map(c => ({ email: c.email_invite!, pourcentage: c.pourcentage }))
-    }
-
-    if (invitesANotifier.length) {
-      const adminBm = createAdminClient()
-      const { data: bm } = await adminBm.from('beatmakers').select('nom_artiste').eq('id', user.id).single()
-      if (bm?.nom_artiste) {
-        await Promise.all(
-          invitesANotifier.map(inv =>
-            envoyerInvitationCollab({
-              to: inv.email,
-              nomProprietaire: bm.nom_artiste,
-              titreBeat: titre,
-              pourcentage: inv.pourcentage,
-              beatmakerId: user.id,
-            }).catch(() => {})
-          )
-        )
-      }
-    }
-  }
+  await notifierNouvellesInvitations({ admin, beatId: id, proprietaireId: user.id, titreBeat: titre, nouvelles: traitement.nouvelles })
 
   return Response.json({ success: true })
 }

@@ -10,7 +10,7 @@ import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDuree, getGranulariteLabel,
 type Props = { periode: Periode; debut: string; fin: string }
 
 type BeatRow = {
-  id: string; titre: string; couleur: string | null; styles: string[]
+  id: string; titre: string; couleur: string | null; styles: string[]; supprime?: boolean
   ca: number; ventes: number; ecoutes: number; free_dl: number; duree_moy: number | null
 }
 
@@ -121,7 +121,7 @@ export default function TabBeats({ periode, debut, fin }: Props) {
                         {b.titre.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-white font-medium">{b.titre}</p>
+                        <p className="text-white font-medium">{b.titre}{b.supprime && <span className="ml-2 text-[10px] font-normal text-gray-500 border border-gray-700 rounded px-1.5 py-0.5">supprimé</span>}</p>
                         {b.styles.length > 0 && <p className="text-[10px] text-gray-500">{b.styles[0]}</p>}
                       </div>
                     </Link>

@@ -6,7 +6,7 @@ export type DecisionLogRow = {
   id: string
   created_at: string
   actor_type: 'beatmaker' | 'admin'
-  entity_type: 'commande' | 'boutique' | 'page_legale' | 'licence_texte'
+  entity_type: 'commande' | 'boutique' | 'page_legale' | 'licence_texte' | 'collaboration'
   entity_id: string
   action: string
   motif: string | null
