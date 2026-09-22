@@ -254,9 +254,19 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
                   </td>
 
                   <td className="px-5 py-3 text-right">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUT_BADGE[b.statut] ?? 'bg-gray-700 text-gray-400'}`}>
-                      {STATUT_LABEL[b.statut] ?? b.statut}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUT_BADGE[b.statut] ?? 'bg-gray-700 text-gray-400'}`}>
+                        {STATUT_LABEL[b.statut] ?? b.statut}
+                      </span>
+                      {b.hors_vente_collab && (
+                        <span
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400"
+                          title="Ce beat n'est pas en vente tant que tous les collaborateurs n'ont pas accepté."
+                        >
+                          En attente de collaboration
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
