@@ -13,7 +13,7 @@ export default function NouveauBeatClient({ beatId, licences, categories }: { be
     typeBeat: [], freeDownload: false, collaborateurs: [],
     licencesActives: licences.map(l => l.id),
     exclusifSurDemande: false,
-    exclusifPrixOverride: '',
+    licenceOverrides: {},
   }
 
   async function handleSubmit(values: BeatFormValues, urls: Record<string, string>) {
@@ -31,7 +31,7 @@ export default function NouveauBeatClient({ beatId, licences, categories }: { be
         collaborateurs: values.collaborateurs,
         licences_actives: values.licencesActives,
         exclusif_sur_demande: values.exclusifSurDemande,
-        exclusif_prix_override: values.exclusifPrixOverride || null,
+        licence_overrides: values.licenceOverrides,
         ...urls,
       }),
     })

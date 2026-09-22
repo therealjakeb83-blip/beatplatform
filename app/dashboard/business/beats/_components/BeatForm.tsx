@@ -50,7 +50,10 @@ export type BeatFormValues = {
   collaborateurs: Collaborateur[]
   licencesActives: string[]
   exclusifSurDemande: boolean
-  exclusifPrixOverride: string
+  // Prix spécifique à ce beat, par licence (Phase 12) — clé = licence.id,
+  // valeur = prix en euros tapé par le beatmaker ; absent/vide = suit le
+  // prix général de la licence.
+  licenceOverrides: Record<string, string>
 }
 
 export type ExistingUrls = {
@@ -405,7 +408,12 @@ export default function BeatForm({
   const [collaborateurs, setCollaborateurs] = useState(initialValues.collaborateurs)
   const [licencesActives, setLicencesActives] = useState<string[]>(initialValues.licencesActives)
   const [exclusifSurDemande, setExclusifSurDemande] = useState(initialValues.exclusifSurDemande)
-  const [exclusifPrixOverride, setExclusifPrixOverride] = useState(initialValues.exclusifPrixOverride)
+  const [licenceOverrides, setLicenceOverrides] = useState<Record<string, string>>(initialValues.licenceOverrides)
+  // Le champ "prix pour ce beat" reste replié par défaut (la plupart des
+  // beats suivent le prix général) — déplié d'office s'il a déjà une valeur.
+  const [overridesOuverts, setOverridesOuverts] = useState<Set<string>>(
+    () => new Set(Object.keys(initialValues.licenceOverrides).filter(id => initialValues.licenceOverrides[id]))
+  )
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(existingUrls.image_url ?? null)
   const [useLogo, setUseLogo] = useState(false)
@@ -478,7 +486,7 @@ export default function BeatForm({
       if (mp3PropreFile) urls.mp3_propre_url = await uploadAudio(mp3PropreFile, beatId, 'mp3_propre')
       if (wavFile) urls.wav_url = await uploadAudio(wavFile, beatId, 'wav')
       if (stemsFile) urls.stems_url = await uploadAudio(stemsFile, beatId, 'stems')
-      await onSubmit({ titre, bpm, note, mode, statut, dateSortie, styles, ambiances, instruments, typeBeat, freeDownload, collaborateurs, licencesActives, exclusifSurDemande, exclusifPrixOverride }, urls)
+      await onSubmit({ titre, bpm, note, mode, statut, dateSortie, styles, ambiances, instruments, typeBeat, freeDownload, collaborateurs, licencesActives, exclusifSurDemande, licenceOverrides }, urls)
     } catch (err) {
       setErreur(err instanceof Error ? err.message : 'Erreur inconnue.')
     } finally {
@@ -652,8 +660,8 @@ export default function BeatForm({
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
-                            value={exclusifPrixOverride}
-                            onChange={e => setExclusifPrixOverride(e.target.value)}
+                            value={licenceOverrides[licence.id] ?? ''}
+                            onChange={e => setLicenceOverrides(o => ({ ...o, [licence.id]: e.target.value }))}
                             placeholder={`Prix global : ${licence.prix}€`}
                             min={1}
                             className="w-40 px-3 py-2 rounded-lg bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
@@ -663,6 +671,40 @@ export default function BeatForm({
                       )}
                       {exclusifSurDemande && (
                         <p className="text-xs text-gray-400">Un bouton &quot;Me contacter&quot; sera affiché à la place du prix sur ta boutique.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Prix spécifique pour ce beat (Phase 12) — pour toutes les
+                      licences sauf Exclusive, qui a déjà son propre prix ci-dessus. */}
+                  {!isExclusive && isActive && (
+                    <div className="border-t border-gray-700 px-4 py-3">
+                      {overridesOuverts.has(licence.id) ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={licenceOverrides[licence.id] ?? ''}
+                            onChange={e => setLicenceOverrides(o => ({ ...o, [licence.id]: e.target.value }))}
+                            placeholder={`Prix général : ${licence.prix}€`}
+                            min={1}
+                            className="w-40 px-3 py-2 rounded-lg bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                          />
+                          <span className="text-gray-400 text-sm">€ pour ce beat</span>
+                          <button type="button"
+                            onClick={() => {
+                              setLicenceOverrides(o => ({ ...o, [licence.id]: '' }))
+                              setOverridesOuverts(s => { const n = new Set(s); n.delete(licence.id); return n })
+                            }}
+                            className="text-gray-500 hover:text-red-400 text-xs ml-1">
+                            Revenir au prix général
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button"
+                          onClick={() => setOverridesOuverts(s => new Set(s).add(licence.id))}
+                          className="text-xs text-indigo-400 hover:text-indigo-300">
+                          + Prix spécifique pour ce beat
+                        </button>
                       )}
                     </div>
                   )}

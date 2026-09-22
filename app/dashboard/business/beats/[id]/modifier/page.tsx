@@ -82,6 +82,14 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
     ? (beatLicences ?? []).find(x => x.licence_id === exclusifLicence.id)
     : null
 
+  // Prix spécifique à ce beat (Phase 12), pour toutes les licences — pas
+  // seulement Exclusive, qui garde son propre champ dédié dans le formulaire.
+  const licenceOverrides = Object.fromEntries(
+    (beatLicences ?? [])
+      .filter(bl => bl.prix_override != null)
+      .map(bl => [bl.licence_id as string, String(bl.prix_override)])
+  )
+
   return (
     <ModifierBeatClient
       beat={beat}
@@ -89,7 +97,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
       licences={licences ?? []}
       licencesActives={licencesActives}
       exclusifSurDemande={exclusifBeatLicence?.sur_demande ?? false}
-      exclusifPrixOverride={exclusifBeatLicence?.prix_override ? String(exclusifBeatLicence.prix_override) : ''}
+      licenceOverrides={licenceOverrides}
       categories={categories}
       lectureSeule={lectureSeule}
     />

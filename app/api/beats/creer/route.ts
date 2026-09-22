@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     styles, ambiances, instruments, type_beat,
     free_download_actif, image_url, mp3_tague_url,
     mp3_propre_url, wav_url, stems_url, collaborateurs, licences_actives,
-    exclusif_sur_demande, exclusif_prix_override,
+    exclusif_sur_demande, licence_overrides,
   } = body
 
   const { error: beatError } = await supabase.from('beats').insert({
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       proprietaireId: user.id,
       collaborateurs: collaborateurs as CollaborateurEntrant[],
       licencesActivesIds: licences_actives,
-      exclusifPrixOverride: exclusif_prix_override,
+      licenceOverrides: licence_overrides,
       exclusifSurDemande: exclusif_sur_demande,
     })
     if (!nouvellesInvitations.ok) {
@@ -75,17 +75,20 @@ export async function POST(request: Request) {
       .eq('actif', true)
 
     if (licences?.length) {
-      const exclusifLicence = licences.find((l: { id: string; modele: string }) => l.modele === 'exclusive')
       await supabase.from('beat_licences').insert(
-        licences.map((l: { id: string; modele: string }) => ({
-          beat_id: beatId,
-          licence_id: l.id,
-          actif: licences_actives.includes(l.id),
-          prix_override: l.modele === 'exclusive' && exclusif_prix_override ? parseInt(exclusif_prix_override) : null,
-          sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
-        }))
+        licences.map((l: { id: string; modele: string }) => {
+          const override = licence_overrides?.[l.id]
+          return {
+            beat_id: beatId,
+            licence_id: l.id,
+            actif: licences_actives.includes(l.id),
+            // Prix spécifique à ce beat (Phase 12) — pour toutes les licences,
+            // pas seulement Exclusive ; vide/absent = suit le prix général.
+            prix_override: override != null && override !== '' ? parseInt(String(override)) : null,
+            sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
+          }
+        })
       )
-      void exclusifLicence
     }
   }
 

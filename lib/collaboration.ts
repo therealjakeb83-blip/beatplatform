@@ -77,8 +77,10 @@ type LicenceCourte = { id: string; nom: string; modele: string; prix: number }
 
 /**
  * Prix plancher d'un beat : aucune licence achetable de ce beat ne peut coûter
- * moins que ce plancher (sauf 0 € = beat offert). Les prix de licence étant
- * globaux au beatmaker, le contrôle se fait à l'enregistrement du beat.
+ * moins que ce plancher (sauf 0 € = beat offert). Les prix de licence sont
+ * globaux au beatmaker par défaut, mais un beat peut avoir un prix spécifique
+ * par licence (`beat_licences.prix_override`, `licenceOverrides` ici) — c'est
+ * ce prix réellement appliqué qui est vérifié, pas le prix général.
  */
 export async function verifierPlancherLicences(
   admin: SupabaseClient,
@@ -86,7 +88,7 @@ export async function verifierPlancherLicences(
     beatmakerId: string
     participants: Participant[]
     licencesActivesIds: string[]
-    exclusifPrixOverride?: number | string | null
+    licenceOverrides?: Record<string, number | string | null | undefined>
     exclusifSurDemande?: boolean
   },
 ): Promise<{ ok: true } | { ok: false; erreur: string }> {
@@ -99,16 +101,15 @@ export async function verifierPlancherLicences(
     .eq('beatmaker_id', params.beatmakerId)
     .in('id', params.licencesActivesIds)
 
-  const override = params.exclusifPrixOverride ? parseInt(String(params.exclusifPrixOverride)) : null
-
   for (const l of (data ?? []) as LicenceCourte[]) {
     if (l.modele === 'exclusive' && params.exclusifSurDemande) continue
-    const prixEuros = l.modele === 'exclusive' && override ? override : l.prix
+    const override = params.licenceOverrides?.[l.id]
+    const prixEuros = override != null && override !== '' ? parseInt(String(override)) : l.prix
     const cents = Math.round(prixEuros * 100)
     if (!prixAutorise(cents, plancher)) {
       return {
         ok: false,
-        erreur: `La licence « ${l.nom} » est à ${formaterEuros(cents)} : avec cette répartition, le prix minimum de ce beat est ${formaterEuros(plancher)}. Augmente le prix de cette licence ou change la répartition.`,
+        erreur: `La licence « ${l.nom} » est à ${formaterEuros(cents)} : avec cette répartition, le prix minimum de ce beat est ${formaterEuros(plancher)}. Augmente le prix de cette licence (ou le prix spécifique à ce beat) ou change la répartition.`,
       }
     }
   }
@@ -125,28 +126,39 @@ export function participantsDepuisParts(partsCollaborateurs: number[]): Particip
 }
 
 /**
- * Avant de BAISSER le prix d'une licence : vérifie qu'aucun beat en
+ * Avant de BAISSER le prix général d'une licence : vérifie qu'aucun beat en
  * collaboration (non terminée) ayant cette licence active ne passerait sous
  * son prix plancher. Retourne les titres des beats bloquants.
+ *
+ * `beatIdsAVerifier` restreint la vérification à cette liste précise (utilisé
+ * par le changement de prix "certains beats"/"futurs beats seulement" —
+ * app/api/licences/[id]/modifier — où seule une partie des beats reçoit
+ * réellement le nouveau prix). Sans ce paramètre, tous les beats utilisant la
+ * licence sont vérifiés (comportement par défaut, prix appliqué "à tous").
+ * Un beat qui a déjà un prix spécifique (`prix_override`) n'est jamais
+ * concerné : son prix ne bouge pas quand le prix général change.
  */
 export async function beatsBloquantsBaissePrixLicence(
   admin: SupabaseClient,
-  params: { beatmakerId: string; licenceId: string; nouveauPrixEuros: number },
+  params: { beatmakerId: string; licenceId: string; nouveauPrixEuros: number; beatIdsAVerifier?: string[] },
 ): Promise<{ titre: string; plancherCents: number }[]> {
+  if (params.beatIdsAVerifier && params.beatIdsAVerifier.length === 0) return []
   const nouveauCents = Math.round(params.nouveauPrixEuros * 100)
 
-  const { data: beats } = await admin
+  let requeteBeats = admin
     .from('beats')
     .select('id, titre')
     .eq('beatmaker_id', params.beatmakerId)
     .eq('hors_vente_collab', true)
     .is('supprime_le', null)
+  if (params.beatIdsAVerifier) requeteBeats = requeteBeats.in('id', params.beatIdsAVerifier)
+  const { data: beats } = await requeteBeats
   const beatIds = (beats ?? []).map(b => b.id as string)
   if (beatIds.length === 0) return []
 
   const [{ data: parts }, { data: liens }] = await Promise.all([
     admin.from('beat_splits').select('beat_id, pourcentage').in('beat_id', beatIds).in('statut', STATUTS_OUVERTS),
-    admin.from('beat_licences').select('beat_id, actif, sur_demande, prix_override, licences(modele)').eq('licence_id', params.licenceId).in('beat_id', beatIds),
+    admin.from('beat_licences').select('beat_id, actif, sur_demande, prix_override').eq('licence_id', params.licenceId).in('beat_id', beatIds),
   ])
 
   const partsParBeat = new Map<string, number[]>()
@@ -155,11 +167,10 @@ export async function beatsBloquantsBaissePrixLicence(
   }
 
   const bloquants: { titre: string; plancherCents: number }[] = []
-  for (const lien of (liens ?? []) as unknown as { beat_id: string; actif: boolean; sur_demande: boolean; prix_override: number | null; licences: { modele: string } | { modele: string }[] | null }[]) {
+  for (const lien of (liens ?? []) as { beat_id: string; actif: boolean; sur_demande: boolean; prix_override: number | null }[]) {
     if (!lien.actif || lien.sur_demande) continue
-    const modele = Array.isArray(lien.licences) ? lien.licences[0]?.modele : lien.licences?.modele
-    // Un prix propre à ce beat (exclusive) prime sur le prix de la licence : la baisse ne le touche pas.
-    if (modele === 'exclusive' && lien.prix_override) continue
+    // Un prix propre à ce beat prime sur le prix général : la baisse ne le touche pas.
+    if (lien.prix_override != null) continue
     const plancher = plancherPrixCents(participantsDepuisParts(partsParBeat.get(lien.beat_id) ?? []))
     if (!prixAutorise(nouveauCents, plancher)) {
       const titre = (beats ?? []).find(b => b.id === lien.beat_id)?.titre as string | undefined

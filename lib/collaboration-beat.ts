@@ -57,7 +57,7 @@ export async function traiterCollaborateursBeat(params: {
   proprietaireId: string
   collaborateurs: CollaborateurEntrant[] | undefined
   licencesActivesIds: string[] | undefined
-  exclusifPrixOverride?: number | string | null
+  licenceOverrides?: Record<string, number | string | null | undefined>
   exclusifSurDemande?: boolean
 }): Promise<Resultat> {
   const { admin, beatId, proprietaireId } = params
@@ -116,7 +116,7 @@ export async function traiterCollaborateursBeat(params: {
     beatmakerId: proprietaireId,
     participants,
     licencesActivesIds: params.licencesActivesIds ?? [],
-    exclusifPrixOverride: params.exclusifPrixOverride,
+    licenceOverrides: params.licenceOverrides,
     exclusifSurDemande: params.exclusifSurDemande,
   })
   if (!plancher.ok) return { ok: false, erreur: plancher.erreur, status: 400 }

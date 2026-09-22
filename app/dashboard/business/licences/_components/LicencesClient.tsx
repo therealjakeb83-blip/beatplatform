@@ -54,12 +54,33 @@ function aDesLimitesNumeriques(modele: string): boolean {
   return modele === 'mp3' || modele === 'wav' || modele === 'stems'
 }
 
+type ApplicationPrix = 'tous' | 'certains' | 'futurs'
+type BeatDeLaLicence = { id: string; titre: string; aDejaUnPrixSpecifique: boolean }
+
 export default function LicencesClient({ licences: initial }: { licences: Licence[] }) {
   const [licences, setLicences] = useState(initial)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(FORM_VIDE)
   const [saving, setSaving] = useState(false)
   const [erreur, setErreur] = useState('')
+
+  // Changement de prix général (Phase 12) — le choix n'apparaît que si le
+  // prix tapé est différent du prix actuel de la licence.
+  const [application, setApplication] = useState<ApplicationPrix>('tous')
+  const [beatsDeLaLicence, setBeatsDeLaLicence] = useState<BeatDeLaLicence[]>([])
+  const [beatsSelectionnes, setBeatsSelectionnes] = useState<Set<string>>(new Set())
+  const [chargementBeats, setChargementBeats] = useState(false)
+
+  async function chargerBeatsDeLaLicence(licenceId: string) {
+    setChargementBeats(true)
+    try {
+      const res = await fetch(`/api/licences/${licenceId}/beats`)
+      const data = await res.json()
+      setBeatsDeLaLicence(Array.isArray(data) ? data : [])
+    } finally {
+      setChargementBeats(false)
+    }
+  }
 
   async function patch(id: string, data: Record<string, unknown>) {
     const res = await fetch(`/api/licences/${id}/modifier`, {
@@ -102,6 +123,9 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
       lives_performances_autorise: licence.lives_performances_autorise,
     })
     setErreur('')
+    setApplication('tous')
+    setBeatsSelectionnes(new Set())
+    setBeatsDeLaLicence([])
   }
 
   async function saveEdit(licence: Licence) {
@@ -118,6 +142,8 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
         clips_video_limite: form.clips_video_limite || null,
         radio_tv_limite: form.radio_tv_limite || null,
         lives_performances_autorise: form.lives_performances_autorise,
+        application,
+        beats_selectionnes: application === 'certains' ? [...beatsSelectionnes] : undefined,
       })
       setLicences(l => l.map(x => x.id === licence.id ? {
         ...x,
@@ -212,6 +238,72 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
                     />
                   </div>
                 </div>
+
+                {parseInt(form.prix) !== licence.prix && !isNaN(parseInt(form.prix)) && (
+                  <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 flex flex-col gap-3">
+                    <p className="text-xs text-gray-400">
+                      Ce prix s&apos;applique à tous les beats qui utilisent cette licence. Ce nouveau prix concerne :
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {([
+                        ['tous', 'Tous les beats', 'Comportement habituel — sauf les beats qui ont déjà un prix spécifique.'],
+                        ['certains', 'Certains beats', 'Tu choisis lesquels ; les autres gardent leur prix actuel.'],
+                        ['futurs', 'Futurs beats seulement', 'Aucun beat existant ne change ; seuls les prochains beats créés suivront ce nouveau prix.'],
+                      ] as [ApplicationPrix, string, string][]).map(([valeur, label, description]) => (
+                        <label key={valeur} className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`application-${licence.id}`}
+                            checked={application === valeur}
+                            onChange={() => {
+                              setApplication(valeur)
+                              if (valeur === 'certains' && beatsDeLaLicence.length === 0) chargerBeatsDeLaLicence(licence.id)
+                            }}
+                            className="mt-0.5"
+                          />
+                          <span className="text-sm">
+                            <span className="text-gray-200">{label}</span>
+                            <span className="block text-xs text-gray-500">{description}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {application === 'certains' && (
+                      <div className="border-t border-gray-800 pt-3">
+                        {chargementBeats && <p className="text-xs text-gray-500">Chargement des beats…</p>}
+                        {!chargementBeats && beatsDeLaLicence.length === 0 && (
+                          <p className="text-xs text-gray-500">Aucun beat n&apos;utilise cette licence pour le moment.</p>
+                        )}
+                        {!chargementBeats && beatsDeLaLicence.length > 0 && (
+                          <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                              Coche les beats qui reçoivent le nouveau prix — les autres gardent {licence.prix}€
+                            </p>
+                            {beatsDeLaLicence.map(b => (
+                              <label key={b.id} className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={beatsSelectionnes.has(b.id)}
+                                  onChange={() => setBeatsSelectionnes(s => {
+                                    const n = new Set(s)
+                                    if (n.has(b.id)) n.delete(b.id)
+                                    else n.add(b.id)
+                                    return n
+                                  })}
+                                />
+                                <span className="text-gray-200">{b.titre}</span>
+                                {b.aDejaUnPrixSpecifique && (
+                                  <span className="text-[10px] text-gray-600">(a déjà un prix spécifique — non concerné)</span>
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {aDesLimitesNumeriques(licence.modele) && (
                   <div className="grid grid-cols-2 gap-4">

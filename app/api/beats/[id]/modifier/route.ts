@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     styles, ambiances, instruments, type_beat,
     free_download_actif, image_url, mp3_tague_url,
     mp3_propre_url, wav_url, stems_url, collaborateurs, licences_actives,
-    exclusif_sur_demande, exclusif_prix_override,
+    exclusif_sur_demande, licence_overrides,
   } = body
 
   const update: Record<string, unknown> = {
@@ -65,7 +65,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     proprietaireId: user.id,
     collaborateurs: collaborateurs as CollaborateurEntrant[] | undefined,
     licencesActivesIds: licences_actives,
-    exclusifPrixOverride: exclusif_prix_override,
+    licenceOverrides: licence_overrides,
     exclusifSurDemande: exclusif_sur_demande,
   })
   if (!traitement.ok) return Response.json({ error: traitement.erreur }, { status: traitement.status })
@@ -79,13 +79,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (licences?.length) {
       await supabase.from('beat_licences').upsert(
-        licences.map((l: { id: string; modele: string }) => ({
-          beat_id: id,
-          licence_id: l.id,
-          actif: licences_actives.includes(l.id),
-          prix_override: l.modele === 'exclusive' && exclusif_prix_override ? parseInt(exclusif_prix_override) : null,
-          sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
-        })),
+        licences.map((l: { id: string; modele: string }) => {
+          const override = licence_overrides?.[l.id]
+          return {
+            beat_id: id,
+            licence_id: l.id,
+            actif: licences_actives.includes(l.id),
+            prix_override: override != null && override !== '' ? parseInt(String(override)) : null,
+            sur_demande: l.modele === 'exclusive' ? (exclusif_sur_demande ?? false) : false,
+          }
+        }),
         { onConflict: 'beat_id,licence_id' }
       )
     }
