@@ -9,8 +9,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 const BASE = '/dashboard/business'
 
-// Chemins accessibles tels quels (comparaison exacte).
-const CHEMINS_LIBRES_EXACTS = ['/dashboard']
+// Chemins accessibles tels quels (comparaison exacte). `/dashboard/business`
+// (Vue d'ensemble) est volontairement une page d'atterrissage libre, pas
+// une fonctionnalité Pro : un beatmaker clique "Business" depuis /dashboard
+// et doit y arriver normalement, sans deviner une URL — retour de Jake le
+// 2026-09-22, un simple lien caché n'est pas une vraie porte d'entrée.
+const CHEMINS_LIBRES_EXACTS = ['/dashboard', BASE, `${BASE}/`]
 
 // Préfixes accessibles (le chemin lui-même ou tout ce qui suit un '/').
 const PREFIXES_LIBRES = [
