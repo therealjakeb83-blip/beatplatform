@@ -1,15 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import type { SplitRow, SplitPaymentRow } from '../page'
+import { useRouter } from 'next/navigation'
+import type { SplitRow } from '../page'
+import { CONDITIONS_COLLAB_TEXTES, CONDITIONS_COLLAB_VERSION_ACTUELLE } from '@/lib/collaboration-conditions'
 
-type Onglet = 'collabs' | 'demandes' | 'refusees'
+type Onglet = 'demandes' | 'collabs' | 'refusees'
 
 const ONGLETS: { label: string; value: Onglet }[] = [
-  { label: 'Mes collabs', value: 'collabs'  },
-  { label: 'Demandes',    value: 'demandes' },
-  { label: 'Refusées',    value: 'refusees' },
+  { label: 'Demandes',   value: 'demandes' },
+  { label: 'Mes collabs', value: 'collabs' },
+  { label: 'Refusées',   value: 'refusees' },
 ]
+
+const LIBELLE_STATUT: Record<SplitRow['statut'], string> = {
+  invitee: 'En attente de ta réponse',
+  active: 'Active',
+  refusee: 'Refusée par toi',
+  retiree: 'Invitation retirée',
+  quittee: 'Quittée',
+  evincee: 'Éviction',
+}
 
 function BeatCover({ beat }: { beat: SplitRow['beats'] }) {
   if (!beat) return <div className="w-12 h-12 rounded-lg bg-gray-800 flex-shrink-0" />
@@ -33,318 +44,208 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function VentesDetail({ payments, pourcentage, titreBeat }: { payments: SplitPaymentRow[]; pourcentage: number; titreBeat: string }) {
-  const ventes = payments.filter(p => p.statut !== 'expire').sort((a, b) => b.created_at.localeCompare(a.created_at))
-  if (ventes.length === 0) return <p className="text-xs text-gray-600 py-2">Aucune vente pour ce beat.</p>
+// Acceptation = UN texte (résumé + dépliable) + UNE case (Phase 12, Q8/Q10 du
+// grill-me). Le texte lui-même vit dans lib/collaboration-conditions.ts,
+// partagé avec l'aperçu qu'en verra une future page d'invitation directe.
+function PanneauAcceptation({ split, onAccepte, onErreur }: {
+  split: SplitRow
+  onAccepte: () => void
+  onErreur: (msg: string) => void
+}) {
+  const [detailOuvert, setDetailOuvert] = useState(false)
+  const [coche, setCoche] = useState(false)
+  const [envoiEnCours, setEnvoiEnCours] = useState(false)
+  const conditions = CONDITIONS_COLLAB_TEXTES[CONDITIONS_COLLAB_VERSION_ACTUELLE]
+
+  async function accepter() {
+    setEnvoiEnCours(true)
+    const res = await fetch(`/api/business/collabs/${split.id}/accepter`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accepte: true }),
+    })
+    setEnvoiEnCours(false)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { onErreur(data.erreur ?? 'Erreur lors de l’acceptation.'); return }
+    onAccepte()
+  }
 
   return (
-    <div className="mt-3 border-t border-gray-800 pt-3 flex flex-col gap-2">
-      <p className="text-xs text-gray-500 font-medium mb-1">Détail des ventes — {titreBeat} ({pourcentage}%)</p>
-      {ventes.map(p => (
-        <div key={p.id} className="flex items-center justify-between gap-3 text-xs">
-          <span className="text-gray-400">{formatDate(p.created_at)}</span>
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-            p.statut === 'transfere' ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'
-          }`}>
-            {p.statut === 'transfere' ? 'Reçu' : 'En attente'}
-          </span>
-          <span className="font-semibold text-white">{(p.montant / 100).toFixed(2)}€</span>
-          {p.stripe_transfer_id && (
-            <span className="text-gray-700 font-mono truncate max-w-[120px]" title={p.stripe_transfer_id}>
-              {p.stripe_transfer_id.slice(0, 12)}…
-            </span>
-          )}
+    <div className="mt-3 border-t border-gray-800 pt-3 flex flex-col gap-3">
+      <ul className="list-disc pl-5 flex flex-col gap-1">
+        {conditions.resume.map((point, i) => (
+          <li key={i} className="text-xs text-gray-400">{point}</li>
+        ))}
+      </ul>
+      <button type="button" onClick={() => setDetailOuvert(v => !v)} className="text-xs text-indigo-400 hover:underline self-start">
+        {detailOuvert ? 'Masquer le texte complet' : 'Lire le texte complet'}
+      </button>
+      {detailOuvert && (
+        <div className="flex flex-col gap-3 bg-gray-950 border border-gray-800 rounded-lg p-3 max-h-64 overflow-y-auto">
+          {conditions.complet.map((section, i) => (
+            <div key={i}>
+              <p className="text-xs font-semibold text-gray-300 mb-1">{section.titre}</p>
+              {section.paragraphes.map((p, j) => (
+                <p key={j} className="text-xs text-gray-500 mb-1 last:mb-0">{p}</p>
+              ))}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+      <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer">
+        <input type="checkbox" checked={coche} onChange={e => setCoche(e.target.checked)} className="mt-0.5" />
+        J’ai lu et j’accepte ces conditions de collaboration (part fixée à {split.pourcentage}%, mandat donné au propriétaire du beat pour gérer la vente).
+      </label>
+      <div className="flex gap-2">
+        <button type="button" disabled={!coche || envoiEnCours} onClick={accepter}
+          className="px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors">
+          {envoiEnCours ? 'Envoi…' : 'Accepter la collaboration'}
+        </button>
+      </div>
     </div>
   )
 }
 
-export default function CollabsClient({
-  splits: initial,
-  totalRecu,
-  montantBloque,
-  nomArtiste,
-}: {
-  splits: SplitRow[]
-  totalRecu: number
-  montantBloque: number
-  nomArtiste: string
-}) {
+export default function CollabsClient({ splits: initial }: { splits: SplitRow[] }) {
+  const router = useRouter()
   const [splits, setSplits] = useState(initial)
-  const [onglet, setOnglet] = useState<Onglet>('collabs')
-  const [loadingId, setLoadingId] = useState<string | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [telechargement, setTelechargement] = useState(false)
+  const [onglet, setOnglet] = useState<Onglet>('demandes')
+  const [ouvertId, setOuvertId] = useState<string | null>(null)
+  const [actionEnCours, setActionEnCours] = useState<string | null>(null)
+  const [erreur, setErreur] = useState('')
 
-  const actives  = splits.filter(s => s.statut === 'actif')
-  const demandes = splits.filter(s => s.statut === 'en_attente')
-  const refusees = splits.filter(s => s.statut === 'refuse')
+  const demandes = splits.filter(s => s.statut === 'invitee')
+  const actives  = splits.filter(s => s.statut === 'active')
+  const refusees = splits.filter(s => ['refusee', 'retiree', 'quittee', 'evincee'].includes(s.statut))
 
-  const counts: Record<Onglet, number> = {
-    collabs:  actives.length,
-    demandes: demandes.length,
-    refusees: refusees.length,
-  }
-
-  async function accepter(id: string) {
-    setLoadingId(id)
-    const res = await fetch(`/api/business/collabs/${id}/accepter`, { method: 'POST' })
-    if (res.ok) {
-      setSplits(prev => prev.map(s =>
-        s.id === id ? { ...s, statut: 'actif' as const, email_invite: null } : s
-      ))
-    }
-    setLoadingId(null)
+  function majStatutLocal(id: string, statut: SplitRow['statut']) {
+    setSplits(prev => prev.map(s => (s.id === id ? { ...s, statut } : s)))
   }
 
   async function refuser(id: string) {
-    setLoadingId(id)
+    setActionEnCours(id); setErreur('')
     const res = await fetch(`/api/business/collabs/${id}/refuser`, { method: 'POST' })
-    if (res.ok) {
-      setSplits(prev => prev.map(s =>
-        s.id === id ? { ...s, statut: 'refuse' as const } : s
-      ))
-    }
-    setLoadingId(null)
+    setActionEnCours(null)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setErreur(data.erreur ?? 'Erreur lors du refus.'); return }
+    majStatutLocal(id, 'refusee')
   }
 
-  async function telechargerReleve() {
-    setTelechargement(true)
-    const annee = new Date().getFullYear()
-    const res = await fetch(`/api/business/collabs/releve?annee=${annee}`)
-    if (res.ok) {
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `releve-collabs-${annee}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-    setTelechargement(false)
+  async function quitter(id: string) {
+    setActionEnCours(id); setErreur('')
+    const res = await fetch(`/api/business/collabs/${id}/quitter`, { method: 'POST' })
+    setActionEnCours(null)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setErreur(data.erreur ?? 'Erreur lors du départ.'); return }
+    majStatutLocal(id, 'quittee')
+  }
+
+  function onAccepteReussi(id: string) {
+    majStatutLocal(id, 'active')
+    setOuvertId(null)
+    // hors_vente_collab reste vrai tant que la Phase 13 n'ouvre pas les
+    // ventes collab (interrupteur global prévu au lot 4) — le beat
+    // n'apparaît pas comme "en vente" ailleurs même une fois tout accepté.
+    router.refresh()
+  }
+
+  function nomBeatmaker(s: SplitRow): string {
+    return s.beats?.beatmakers?.nom_artiste ?? 'Un beatmaker'
   }
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="max-w-3xl mx-auto px-6 py-8">
+      <h1 className="text-2xl font-bold text-white mb-1">Collaborations</h1>
+      <p className="text-sm text-gray-500 mb-6">Les collaborations où tu es invité en tant que collaborateur (pas propriétaire).</p>
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Collaborations</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {actives.length} beat{actives.length !== 1 ? 's' : ''} en collab
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="text-right space-y-1">
-            {totalRecu > 0 && (
-              <div>
-                <p className="text-xs text-gray-500">Reçu</p>
-                <p className="text-xl font-black text-green-400">{totalRecu.toFixed(2)}€</p>
-              </div>
-            )}
-            {montantBloque > 0 && (
-              <div>
-                <p className="text-xs text-gray-500">Bloqué (demandes)</p>
-                <p className="text-lg font-bold text-amber-400">{montantBloque.toFixed(2)}€</p>
-              </div>
-            )}
-          </div>
-          {totalRecu > 0 && (
-            <button
-              onClick={telechargerReleve}
-              disabled={telechargement}
-              className="text-xs px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
-            >
-              {telechargement ? 'Génération…' : `↓ Relevé ${new Date().getFullYear()}`}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-0 mb-6 border-b border-gray-800">
+      <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit mb-6">
         {ONGLETS.map(o => (
-          <button
-            key={o.value}
-            onClick={() => setOnglet(o.value)}
-            className={`px-4 py-2.5 text-sm transition-colors relative ${
-              onglet === o.value
-                ? 'text-white font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-indigo-500'
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            {o.label}
-            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
-              onglet === o.value ? 'bg-indigo-500/20 text-indigo-300' : 'bg-gray-800 text-gray-500'
-            }`}>
-              {counts[o.value]}
-            </span>
+          <button key={o.value} onClick={() => setOnglet(o.value)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${onglet === o.value ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+            {o.label} {o.value === 'demandes' && demandes.length > 0 && <span className="ml-1 text-indigo-400">({demandes.length})</span>}
           </button>
         ))}
       </div>
 
-      {/* ── Mes collabs ── */}
-      {onglet === 'collabs' && (
-        <>
-          {actives.length === 0 ? (
-            <div className="text-center py-20 text-gray-600">
-              <p className="text-base">Aucune collaboration pour l&apos;instant.</p>
-              <p className="text-sm mt-2">Quand un beatmaker t&apos;ajoute sur un beat, il apparaîtra ici.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {actives.map(s => {
-                const beat = s.beats
-                const recu = s.split_payments
-                  .filter(p => p.statut === 'transfere')
-                  .reduce((sum, p) => sum + p.montant, 0) / 100
-                const nbVentes = s.split_payments.filter(p => p.statut !== 'expire').length
-                const isExpanded = expandedId === s.id
+      {erreur && <p className="text-red-400 text-sm mb-4">{erreur}</p>}
 
-                return (
-                  <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                    <div className="flex gap-4 items-center">
-                      <BeatCover beat={beat} />
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-white truncate">{beat?.titre ?? 'Beat supprimé'}</p>
-                          {beat && beat.statut !== 'public' && (
-                            <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded flex-shrink-0">
-                              {beat.statut === 'prive' ? 'Privé' : 'Brouillon'}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Par {beat?.beatmakers?.nom_artiste ?? 'Beatmaker'} · Ta part : {s.pourcentage}%
-                        </p>
-                      </div>
-
-                      <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-                        {recu > 0 ? (
-                          <p className="text-sm font-bold text-green-400">
-                            +{recu.toFixed(2)}€ <span className="text-xs font-normal text-gray-500">reçu</span>
-                          </p>
-                        ) : (
-                          <p className="text-xs text-gray-600">Pas encore vendu</p>
-                        )}
-                        {nbVentes > 0 && (
-                          <button
-                            onClick={() => setExpandedId(isExpanded ? null : s.id)}
-                            className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                          >
-                            {isExpanded ? '▲ Masquer' : `▼ ${nbVentes} vente${nbVentes > 1 ? 's' : ''}`}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <VentesDetail
-                        payments={s.split_payments}
-                        pourcentage={s.pourcentage}
-                        titreBeat={beat?.titre ?? 'Beat'}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4 text-sm text-gray-400">
-            <p className="font-medium text-white mb-1">Recevoir tes revenus</p>
-            <p>Pour recevoir les paiements de tes collaborations, connecte ton compte Stripe dans <a href="/dashboard/paiements" className="text-indigo-400 hover:text-indigo-300">Paiements</a>.</p>
-          </div>
-        </>
-      )}
-
-      {/* ── Demandes ── */}
       {onglet === 'demandes' && (
-        <div className="flex flex-col gap-3">
-          {demandes.length === 0 ? (
-            <div className="text-center py-16 text-xs text-gray-700">Aucune demande en attente</div>
-          ) : (
-            demandes.map(s => {
-              const beat = s.beats
-              const montantEnAttente = s.split_payments
-                .filter(p => p.statut === 'en_attente')
-                .reduce((sum, p) => sum + p.montant, 0) / 100
-              const isLoading = loadingId === s.id
-
-              return (
-                <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-semibold text-white">{beat?.beatmakers?.nom_artiste ?? 'Beatmaker'}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mb-1">
-                        Beat : <span className="text-gray-300">{beat?.titre ?? '—'}</span>
-                      </p>
-                      <p className="text-xs text-indigo-400 font-medium">
-                        Split proposé : {s.pourcentage}%
-                      </p>
-                      {montantEnAttente > 0 && (
-                        <p className="text-xs text-amber-400 font-medium mt-1">
-                          {montantEnAttente.toFixed(2)}€ en attente de récupération
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => accepter(s.id)}
-                        disabled={isLoading}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
-                      >
-                        {isLoading ? '...' : 'Accepter'}
-                      </button>
-                      <button
-                        onClick={() => refuser(s.id)}
-                        disabled={isLoading}
-                        className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-xs transition-colors"
-                      >
-                        Refuser
-                      </button>
-                    </div>
+        demandes.length === 0 ? (
+          <p className="text-sm text-gray-600">Aucune demande en attente.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {demandes.map(s => (
+              <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <BeatCover beat={s.beats} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">{s.beats?.titre ?? 'Beat'}</p>
+                    <p className="text-xs text-gray-500">Invité par {nomBeatmaker(s)} — {formatDate(s.created_at)}</p>
                   </div>
+                  <span className="text-indigo-400 text-sm font-semibold">{s.pourcentage}%</span>
                 </div>
-              )
-            })
-          )}
-        </div>
+                {ouvertId === s.id ? (
+                  <PanneauAcceptation split={s} onAccepte={() => onAccepteReussi(s.id)} onErreur={setErreur} />
+                ) : (
+                  <div className="flex gap-2 mt-3">
+                    <button type="button" onClick={() => setOuvertId(s.id)}
+                      className="px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs font-medium transition-colors">
+                      Voir et répondre
+                    </button>
+                    <button type="button" disabled={actionEnCours === s.id} onClick={() => refuser(s.id)}
+                      className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs transition-colors disabled:opacity-50">
+                      {actionEnCours === s.id ? 'Refus…' : 'Refuser'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
       )}
 
-      {/* ── Refusées ── */}
+      {onglet === 'collabs' && (
+        actives.length === 0 ? (
+          <p className="text-sm text-gray-600">Aucune collaboration active pour l’instant.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {actives.map(s => (
+              <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
+                <BeatCover beat={s.beats} />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">{s.beats?.titre ?? 'Beat'}</p>
+                  <p className="text-xs text-gray-500">Par {nomBeatmaker(s)}{s.accepte_le ? ` — accepté le ${formatDate(s.accepte_le)}` : ''}</p>
+                </div>
+                <span className="text-indigo-400 text-sm font-semibold">{s.pourcentage}%</span>
+                <button type="button" disabled={actionEnCours === s.id} onClick={() => { if (confirm('Quitter cette collaboration ? Le propriétaire repasse à 100% sur ce beat.')) quitter(s.id) }}
+                  className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/60 text-gray-300 hover:text-red-300 text-xs transition-colors disabled:opacity-50">
+                  {actionEnCours === s.id ? 'Départ…' : 'Quitter'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
       {onglet === 'refusees' && (
-        <div className="flex flex-col gap-3">
-          {refusees.length === 0 ? (
-            <div className="text-center py-16 text-xs text-gray-700">Aucune invitation refusée</div>
-          ) : (
-            refusees.map(s => {
-              const beat = s.beats
-              return (
-                <div key={s.id} className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4 opacity-60">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-semibold text-white">{beat?.beatmakers?.nom_artiste ?? 'Beatmaker'}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mb-1">
-                        Beat : <span className="text-gray-300">{beat?.titre ?? '—'}</span>
-                      </p>
-                      <p className="text-xs text-gray-600">Split proposé : {s.pourcentage}%</p>
-                    </div>
-                  </div>
+        refusees.length === 0 ? (
+          <p className="text-sm text-gray-600">Rien ici pour l’instant.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {refusees.map(s => (
+              <div key={s.id} className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex items-center gap-3 opacity-80">
+                <BeatCover beat={s.beats} />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-300">{s.beats?.titre ?? 'Beat'}</p>
+                  <p className="text-xs text-gray-500">
+                    Par {nomBeatmaker(s)} — {LIBELLE_STATUT[s.statut]}
+                    {s.statut === 'evincee' && s.motif_eviction ? ` (${s.motif_eviction})` : ''}
+                  </p>
                 </div>
-              )
-            })
-          )}
-        </div>
+                <span className="text-gray-500 text-sm">{s.pourcentage}%</span>
+              </div>
+            ))}
+          </div>
+        )
       )}
-
     </div>
   )
 }

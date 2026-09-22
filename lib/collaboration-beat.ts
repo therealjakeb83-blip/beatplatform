@@ -3,6 +3,9 @@ import { normaliserEmail } from '@/lib/email'
 import { validerRepartition, type Participant } from '@/lib/collaboration-parts'
 import { STATUTS_OUVERTS, verifierPlancherLicences, journaliserCollaboration } from '@/lib/collaboration'
 import { envoyerInvitationCollab } from '@/lib/emails'
+import { MESSAGE_ADRESSE_REFUSEE } from '@/lib/collaboration-messages'
+
+export { MESSAGE_ADRESSE_REFUSEE }
 
 // Traitement des collaborateurs à l'enregistrement d'un beat (création ou
 // modification) — Phase 12. Règles :
@@ -32,12 +35,6 @@ export type NouvelleInvitation = {
 type Resultat = { ok: true; nouvelles: NouvelleInvitation[] } | { ok: false; erreur: string; status: number }
 
 const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-// Message volontairement neutre : il ne dit jamais POURQUOI l'adresse est
-// refusée (sinon A pourrait deviner quelles adresses appartiennent à des
-// artistes/clients).
-export const MESSAGE_ADRESSE_REFUSEE =
-  'Cette adresse ne peut pas recevoir d’invitation. Invite la personne par son @slug si elle a un compte beatmaker, ou utilise une autre adresse.'
 
 /**
  * Vrai si l'adresse appartient à un compte artiste/client existant qui n'est

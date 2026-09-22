@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { CategorieOptions } from '@/lib/categories'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { MESSAGE_ADRESSE_REFUSEE } from '@/lib/collaboration-messages'
 
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const MODES = ['majeur', 'mineur']
@@ -33,6 +34,35 @@ export type Collaborateur = {
   nom_artiste?: string
   email_invite?: string
   pourcentage: number
+  // Présent uniquement pour un collaborateur DÉJÀ enregistré en base
+  // (invitee/active/refusee) — absent pour un ajout fait dans cette session,
+  // pas encore soumis. Sert à distinguer les deux dans CollaborateursSection :
+  // un ajout de session se retire d'un clic (✕), un collaborateur existant
+  // passe par ses propres routes (retirer/évincer), jamais par le simple
+  // retrait de ce tableau (Phase 12, lot 3).
+  statut?: 'invitee' | 'active' | 'refusee'
+}
+
+// Historique en lecture seule (Phase 12, lot 3) : un collaborateur qui a
+// retiré/quitté/été évincé ne doit plus jamais être renvoyé dans le tableau
+// `collaborateurs` soumis à l'enregistrement du beat (sinon il serait
+// réinvité silencieusement — traiterCollaborateursBeat ne filtre que sur les
+// statuts ouverts pour détecter les doublons).
+export type CollaborationHistorique = {
+  id: string
+  nom: string
+  statut: 'retiree' | 'quittee' | 'evincee'
+  motif?: string | null
+  pourcentage: number
+}
+
+const LIBELLE_STATUT_COLLAB: Record<string, string> = {
+  invitee: 'En attente de réponse',
+  active: 'Actif',
+  refusee: 'A refusé',
+  retiree: 'Invitation retirée',
+  quittee: 'A quitté',
+  evincee: 'Évincé',
 }
 
 export type BeatFormValues = {
@@ -205,23 +235,55 @@ function CategorieSelector({ label, options, selected, onChange, hybride, placeh
   )
 }
 
-function CollaborateursSection({ collaborateurs, onChange }: {
-  collaborateurs: Collaborateur[]; onChange: (v: Collaborateur[]) => void
+function CollaborateursSection({ collaborateurs, onChange, historique, onHistoriqueChange, beatEnVente }: {
+  collaborateurs: Collaborateur[]
+  onChange: (v: Collaborateur[]) => void
+  historique: CollaborationHistorique[]
+  onHistoriqueChange: (v: CollaborationHistorique[]) => void
+  beatEnVente: boolean
 }) {
   const [recherche, setRecherche] = useState('')
-  const [resultats, setResultats] = useState<{ id: string; nom_artiste: string }[]>([])
+  const [resultats, setResultats] = useState<{ id: string; nom_artiste: string; slug: string; logo_url: string | null }[]>([])
   const [emailInvite, setEmailInvite] = useState('')
+  const [emailBloque, setEmailBloque] = useState(false)
   const [pourcentage, setPourcentage] = useState('50')
   const [mode, setMode] = useState<'recherche' | 'email'>('recherche')
   const [erreur, setErreur] = useState('')
+  // Avertissement Q3 du grill-me : ajouter le premier collaborateur à un beat
+  // déjà en vente le retire de la vente jusqu'à acceptation — A doit le
+  // confirmer explicitement avant l'invitation.
+  const [avertissementConfirme, setAvertissementConfirme] = useState(false)
+  const [actionEnCours, setActionEnCours] = useState<string | null>(null)
+  const [evictionOuverte, setEvictionOuverte] = useState<string | null>(null)
+  const [motifEviction, setMotifEviction] = useState('')
+
   const restant = 100 - collaborateurs.reduce((sum, c) => sum + c.pourcentage, 0)
+  const aUneCollabOuverteExistante = collaborateurs.some(c => !!c.statut)
+  const nouveauxNonSauves = collaborateurs.filter(c => !c.statut)
+  const avertissementRequis = beatEnVente && !aUneCollabOuverteExistante && nouveauxNonSauves.length === 0 && !avertissementConfirme
 
   async function rechercherBeatmaker(q: string) {
     setRecherche(q)
-    if (q.length < 2) { setResultats([]); return }
+    if (q.length < 3) { setResultats([]); return }
     const res = await fetch(`/api/beatmakers/recherche?q=${encodeURIComponent(q)}`)
     setResultats(await res.json())
   }
+
+  // Blocage à la saisie (Q5b du grill-me) : vérifie en direct, sans attendre
+  // l'enregistrement du beat, si l'adresse appartient à un compte artiste.
+  useEffect(() => {
+    let annule = false
+    const valide = mode === 'email' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInvite)
+    const t = setTimeout(async () => {
+      if (annule) return
+      if (!valide) { setEmailBloque(false); return }
+      const res = await fetch(`/api/beatmakers/email-invitable?email=${encodeURIComponent(emailInvite)}`)
+      const data = await res.json().catch(() => ({}))
+      if (!annule) setEmailBloque(!!data.bloque)
+    }, valide ? 400 : 0)
+    return () => { annule = true; clearTimeout(t) }
+  }, [emailInvite, mode])
+
   // Même règle que le serveur (lib/collaboration-parts.ts) : redonné ici pour
   // un retour immédiat au clic sur "Ajouter", sans attendre l'enregistrement
   // du beat — le serveur reste la vraie source de vérité (retour de Jake,
@@ -245,12 +307,45 @@ function CollaborateursSection({ collaborateurs, onChange }: {
   function ajouterEmail() {
     const pct = parseInt(pourcentage)
     if (!emailInvite) { setErreur('Indique une adresse email.'); return }
+    if (emailBloque) { setErreur(MESSAGE_ADRESSE_REFUSEE); return }
     const err = erreurAjout(pct, collaborateurs.some(c => c.email_invite === emailInvite))
     if (err) { setErreur(err); return }
     setErreur('')
     onChange([...collaborateurs, { id: crypto.randomUUID(), type: 'email', email_invite: emailInvite, pourcentage: pct }])
     setEmailInvite('')
   }
+
+  function nomAffiche(c: Collaborateur): string {
+    return c.type === 'compte' ? (c.nom_artiste ?? 'Beatmaker') : (c.email_invite ?? 'Email')
+  }
+
+  // Retirer/évincer un collaborateur EXISTANT ne passe jamais par un simple
+  // retrait du tableau `collaborateurs` (l'enregistrement du beat ne touche
+  // jamais une collaboration déjà en base) : ces boutons appellent
+  // directement les routes dédiées, journalisées et notifiées (Phase 12, lot 3).
+  async function retirerInvitation(c: Collaborateur) {
+    setActionEnCours(c.id); setErreur('')
+    const res = await fetch(`/api/business/collabs/${c.id}/retirer`, { method: 'POST' })
+    setActionEnCours(null)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setErreur(data.erreur ?? 'Erreur lors du retrait.'); return }
+    onChange(collaborateurs.filter(x => x.id !== c.id))
+    onHistoriqueChange([{ id: c.id, nom: nomAffiche(c), statut: 'retiree', pourcentage: c.pourcentage }, ...historique])
+  }
+  async function confirmerEviction(c: Collaborateur) {
+    if (!motifEviction.trim()) { setErreur('Indique un motif pour l’éviction.'); return }
+    setActionEnCours(c.id); setErreur('')
+    const res = await fetch(`/api/business/collabs/${c.id}/evincer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motif: motifEviction.trim() }),
+    })
+    setActionEnCours(null)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setErreur(data.erreur ?? 'Erreur lors de l’éviction.'); return }
+    onChange(collaborateurs.filter(x => x.id !== c.id))
+    onHistoriqueChange([{ id: c.id, nom: nomAffiche(c), statut: 'evincee', motif: motifEviction.trim(), pourcentage: c.pourcentage }, ...historique])
+    setEvictionOuverte(null); setMotifEviction('')
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -260,57 +355,130 @@ function CollaborateursSection({ collaborateurs, onChange }: {
       {collaborateurs.length > 0 && (
         <div className="flex flex-col gap-2">
           {collaborateurs.map(c => (
-            <div key={c.id} className="flex items-center justify-between bg-gray-800 px-4 py-2 rounded-lg">
-              <div>
-                <span className="text-sm text-white font-medium">{c.type === 'compte' ? c.nom_artiste : c.email_invite}</span>
-                {c.type === 'email' && <span className="ml-2 text-xs text-yellow-400">invitation en attente</span>}
+            <div key={c.id} className="flex flex-col gap-2 bg-gray-800 px-4 py-2 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-white font-medium">{nomAffiche(c)}</span>
+                  {c.statut ? (
+                    <span className={`ml-2 text-xs ${c.statut === 'active' ? 'text-green-400' : c.statut === 'refusee' ? 'text-red-400' : 'text-yellow-400'}`}>
+                      {LIBELLE_STATUT_COLLAB[c.statut]}
+                    </span>
+                  ) : (
+                    c.type === 'email' && <span className="ml-2 text-xs text-yellow-400">invitation en attente</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-indigo-400 text-sm font-semibold">{c.pourcentage}%</span>
+                  {!c.statut && (
+                    <button type="button" onClick={() => { onChange(collaborateurs.filter(x => x.id !== c.id)); setErreur('') }} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
+                  )}
+                  {(c.statut === 'invitee' || c.statut === 'refusee') && (
+                    <button type="button" disabled={actionEnCours === c.id} onClick={() => retirerInvitation(c)}
+                      className="text-xs text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50">
+                      {actionEnCours === c.id ? 'Retrait…' : 'Retirer l’invitation'}
+                    </button>
+                  )}
+                  {c.statut === 'active' && evictionOuverte !== c.id && (
+                    <button type="button" onClick={() => { setEvictionOuverte(c.id); setMotifEviction(''); setErreur('') }} className="text-xs text-gray-400 hover:text-red-400 transition-colors">
+                      Évincer
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-indigo-400 text-sm font-semibold">{c.pourcentage}%</span>
-                <button type="button" onClick={() => { onChange(collaborateurs.filter(x => x.id !== c.id)); setErreur('') }} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
-              </div>
+              {evictionOuverte === c.id && (
+                <div className="flex flex-col gap-2 border-t border-gray-700 pt-2">
+                  <p className="text-xs text-gray-400">Motif de l’éviction (transmis à {nomAffiche(c)}) :</p>
+                  <input type="text" value={motifEviction} onChange={e => setMotifEviction(e.target.value)}
+                    placeholder="Motif obligatoire..."
+                    className="px-3 py-1.5 rounded-lg bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-red-500 text-sm" />
+                  <div className="flex gap-2">
+                    <button type="button" disabled={actionEnCours === c.id} onClick={() => confirmerEviction(c)}
+                      className="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs transition-colors disabled:opacity-50">
+                      {actionEnCours === c.id ? 'Éviction…' : 'Confirmer l’éviction'}
+                    </button>
+                    <button type="button" onClick={() => { setEvictionOuverte(null); setMotifEviction('') }} className="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-xs transition-colors">
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
-      <div className="flex gap-2 mb-1">
-        {(['recherche', 'email'] as const).map(m => (
-          <button key={m} type="button" onClick={() => { setMode(m); setErreur('') }}
-            className={`text-xs px-3 py-1 rounded-full transition-colors ${mode === m ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
-            {m === 'recherche' ? `Compte ${NOM_PLATEFORME}` : 'Inviter par email'}
+
+      {historique.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs text-gray-500 font-medium">Historique</p>
+          {historique.map(h => (
+            <div key={h.id} className="flex items-center justify-between px-4 py-1.5 rounded-lg bg-gray-900/60 text-xs text-gray-500">
+              <span>{h.nom} — {LIBELLE_STATUT_COLLAB[h.statut]}{h.motif ? ` (${h.motif})` : ''}</span>
+              <span>{h.pourcentage}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {avertissementRequis ? (
+        <div className="flex flex-col gap-2 bg-amber-950/40 border border-amber-800 rounded-lg px-4 py-3">
+          <p className="text-sm text-amber-300">
+            Ce beat est actuellement en vente. Ajouter un collaborateur le retire de la vente jusqu’à ce qu’il accepte l’invitation.
+          </p>
+          <button type="button" onClick={() => setAvertissementConfirme(true)}
+            className="self-start px-3 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-white text-xs transition-colors">
+            Je confirme, inviter quand même
           </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        {mode === 'recherche' ? (
-          <div className="flex-1 relative">
-            <input type="text" value={recherche} onChange={e => rechercherBeatmaker(e.target.value)}
-              placeholder="Rechercher un beatmaker..."
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
-            {resultats.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden z-10">
-                {resultats.map(r => (
-                  <button key={r.id} type="button" onClick={() => ajouterCompte(r)}
-                    className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors">
-                    {r.nom_artiste}
-                  </button>
-                ))}
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2 mb-1">
+            {(['recherche', 'email'] as const).map(m => (
+              <button key={m} type="button" onClick={() => { setMode(m); setErreur('') }}
+                className={`text-xs px-3 py-1 rounded-full transition-colors ${mode === m ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
+                {m === 'recherche' ? `Compte ${NOM_PLATEFORME}` : 'Inviter par email'}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            {mode === 'recherche' ? (
+              <div className="flex-1 relative">
+                <input type="text" value={recherche} onChange={e => rechercherBeatmaker(e.target.value)}
+                  placeholder="Nom d’artiste ou @slug (3 lettres min.)..."
+                  className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
+                {resultats.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden z-10">
+                    {resultats.map(r => (
+                      <button key={r.id} type="button" onClick={() => ajouterCompte(r)}
+                        className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors">
+                        {r.logo_url ? (
+                          <img src={r.logo_url} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                        ) : (
+                          <span className="w-6 h-6 rounded-full bg-gray-700 flex-shrink-0" />
+                        )}
+                        <span>{r.nom_artiste} <span className="text-gray-500">@{r.slug}</span></span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1">
+                <input type="email" value={emailInvite} onChange={e => setEmailInvite(e.target.value.toLowerCase())}
+                  placeholder="email@exemple.com"
+                  className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
+                {emailBloque && <p className="text-red-400 text-xs mt-1">{MESSAGE_ADRESSE_REFUSEE}</p>}
               </div>
             )}
+            <input type="number" value={pourcentage} onChange={e => setPourcentage(e.target.value)}
+              min={1} max={restant}
+              className="w-20 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm text-center" placeholder="%" />
+            <button type="button" onClick={mode === 'recherche' ? () => resultats.length === 1 && ajouterCompte(resultats[0]) : ajouterEmail}
+              className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors">
+              Ajouter
+            </button>
           </div>
-        ) : (
-          <input type="email" value={emailInvite} onChange={e => setEmailInvite(e.target.value.toLowerCase())}
-            placeholder="email@exemple.com"
-            className="flex-1 px-4 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm" />
-        )}
-        <input type="number" value={pourcentage} onChange={e => setPourcentage(e.target.value)}
-          min={1} max={restant}
-          className="w-20 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm text-center" placeholder="%" />
-        <button type="button" onClick={mode === 'recherche' ? () => resultats.length === 1 && ajouterCompte(resultats[0]) : ajouterEmail}
-          className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors">
-          Ajouter
-        </button>
-      </div>
+        </>
+      )}
       {erreur && <p className="text-red-400 text-xs">{erreur}</p>}
     </div>
   )
@@ -382,6 +550,7 @@ export default function BeatForm({
   onSubmit,
   onDelete,
   lectureSeule = false,
+  historiqueCollaborateurs = [],
 }: {
   beatId: string
   initialValues: BeatFormValues
@@ -392,6 +561,7 @@ export default function BeatForm({
   onSubmit: (values: BeatFormValues, urls: Record<string, string>) => Promise<void>
   onDelete?: () => Promise<void>
   lectureSeule?: boolean
+  historiqueCollaborateurs?: CollaborationHistorique[]
 }) {
   const [titre, setTitre] = useState(initialValues.titre)
   const [bpm, setBpm] = useState(initialValues.bpm)
@@ -406,6 +576,12 @@ export default function BeatForm({
   const [ongletTag, setOngletTag] = useState<'styles' | 'ambiances' | 'instruments' | 'typeBeat'>('styles')
   const [freeDownload, setFreeDownload] = useState(initialValues.freeDownload)
   const [collaborateurs, setCollaborateurs] = useState(initialValues.collaborateurs)
+  const [historiqueCollab, setHistoriqueCollab] = useState<CollaborationHistorique[]>(historiqueCollaborateurs)
+  // "En vente" tel qu'enregistré en base au chargement de la page — sert
+  // uniquement à l'avertissement Q3 (retiré de la vente si on ajoute un
+  // collaborateur maintenant), indépendant du menu "statut" si l'utilisateur
+  // le change sans avoir encore enregistré.
+  const beatEnVente = initialValues.statut !== 'masque' && initialValues.statut !== 'vendu'
   const [licencesActives, setLicencesActives] = useState<string[]>(initialValues.licencesActives)
   const [exclusifSurDemande, setExclusifSurDemande] = useState(initialValues.exclusifSurDemande)
   const [licenceOverrides, setLicenceOverrides] = useState<Record<string, string>>(initialValues.licenceOverrides)
@@ -596,7 +772,13 @@ export default function BeatForm({
       {/* Collaborateurs */}
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-gray-200 border-b border-gray-800 pb-2">Collaborateurs</h2>
-        <CollaborateursSection collaborateurs={collaborateurs} onChange={setCollaborateurs} />
+        <CollaborateursSection
+          collaborateurs={collaborateurs}
+          onChange={setCollaborateurs}
+          historique={historiqueCollab}
+          onHistoriqueChange={setHistoriqueCollab}
+          beatEnVente={beatEnVente}
+        />
       </section>
 
       {/* Options */}

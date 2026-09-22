@@ -569,6 +569,125 @@ export async function envoyerInvitationCollab({
 // l'envoi réel, données d'exemple à la place des vraies dates/prix. Ne
 // passe jamais par envoyerEmailUnique (pas d'envoi, pas de log).
 const CORPS_EXEMPLE_PLATEFORME = corpsAbonnementPlateforme('mensuel', 49.99, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString())
+// Les 5 emails ci-dessous (Phase 12, lot 3 — vie de la collaboration) restent
+// volontairement en texte simple (comme envoyerCategorieCertifiee plus haut),
+// pas encore migrés vers le système "Mails My Producer" (titre/intro éditables
+// par l'admin, template `collab_invitation` ci-dessus) — décision du
+// 2026-09-22, pour ne pas ouvrir 3 fichiers d'admin supplémentaires à ce lot.
+// `beatmakerId` est toujours celui du PROPRIÉTAIRE du beat (comme pour
+// envoyerInvitationCollab), même quand le destinataire `to` est le
+// collaborateur, pour que l'envoi apparaisse dans les logs mailing du
+// propriétaire.
+
+export async function envoyerCollabAcceptee({
+  to, beatmakerId, nomCollaborateur, titreBeat, pourcentage,
+}: {
+  to: string; beatmakerId: string; nomCollaborateur: string; titreBeat: string; pourcentage: number
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'collab_acceptation',
+    to,
+    subject: `${nomCollaborateur} a accepté ta collaboration sur "${titreBeat}"`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `${nomCollaborateur} a accepté ta demande de collaboration sur le beat "${titreBeat}" (part : ${pourcentage}%).`,
+      `Retrouve le détail dans ton espace Collaborations.`,
+      ``,
+      `— L'équipe ${NOM_PLATEFORME}`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerCollabRefusee({
+  to, beatmakerId, nomCollaborateur, titreBeat,
+}: {
+  to: string; beatmakerId: string; nomCollaborateur: string; titreBeat: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'collab_refus',
+    to,
+    subject: `${nomCollaborateur} a refusé ta demande de collaboration sur "${titreBeat}"`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `${nomCollaborateur} a refusé ta demande de collaboration sur le beat "${titreBeat}".`,
+      `Tu peux retirer cette invitation depuis la fiche du beat pour le remettre en vente, ou inviter quelqu'un d'autre.`,
+      ``,
+      `— L'équipe ${NOM_PLATEFORME}`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerCollabRetrait({
+  to, beatmakerId, nomProprietaire, titreBeat,
+}: {
+  to: string; beatmakerId: string; nomProprietaire: string; titreBeat: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'collab_retrait',
+    to,
+    subject: `${nomProprietaire} a retiré son invitation sur "${titreBeat}"`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `${nomProprietaire} a retiré son invitation à collaborer sur le beat "${titreBeat}". Tu n'as plus d'action à faire.`,
+      ``,
+      `— L'équipe ${NOM_PLATEFORME}`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerCollabDepart({
+  to, beatmakerId, nomCollaborateur, titreBeat,
+}: {
+  to: string; beatmakerId: string; nomCollaborateur: string; titreBeat: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'collab_depart',
+    to,
+    subject: `${nomCollaborateur} a quitté la collaboration sur "${titreBeat}"`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `${nomCollaborateur} a quitté la collaboration sur le beat "${titreBeat}". Tu es repassé à 100% sur ce beat ; les ventes déjà réalisées ne changent pas.`,
+      ``,
+      `— L'équipe ${NOM_PLATEFORME}`,
+    ].join('\n'),
+  })
+}
+
+export async function envoyerCollabEviction({
+  to, beatmakerId, nomProprietaire, titreBeat, motif,
+}: {
+  to: string; beatmakerId: string; nomProprietaire: string; titreBeat: string; motif: string
+}) {
+  await envoyerEmailUnique({
+    beatmakerId,
+    type: 'transactionnel',
+    evenement: 'collab_eviction',
+    to,
+    subject: `Ta collaboration sur "${titreBeat}" a pris fin`,
+    text: [
+      `Bonjour,`,
+      ``,
+      `${nomProprietaire} a mis fin à ta collaboration sur le beat "${titreBeat}".`,
+      `Motif indiqué : ${motif}`,
+      `Les ventes déjà réalisées ne changent pas. Ton nom n'apparaîtra plus sur ce beat à partir de maintenant.`,
+      ``,
+      `— L'équipe ${NOM_PLATEFORME}`,
+    ].join('\n'),
+  })
+}
+
 const CORPS_EXEMPLE_INVITATION = corpsInvitationCollab('Jake B', 'Midnight Drive', 30)
 const CORPS_EXEMPLE_SUSPENSION = corpsSuspension('Fraude')
 

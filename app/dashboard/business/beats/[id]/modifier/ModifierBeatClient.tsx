@@ -2,7 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, LicenceInfo, CategoriesOptions } from '../../_components/BeatForm'
+import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, CollaborationHistorique, LicenceInfo, CategoriesOptions } from '../../_components/BeatForm'
+
+const STATUTS_OUVERTS = ['invitee', 'active', 'refusee']
 
 export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, licenceOverrides, categories, lectureSeule = false }: {
   beat: Record<string, unknown>
@@ -12,6 +14,7 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
     email_invite: string | null
     pourcentage: number
     statut: string
+    motif_eviction?: string | null
     beatmakers: { nom_artiste: string } | null
   }>
   licences: LicenceInfo[]
@@ -37,18 +40,35 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
     instruments: (beat.instruments as string[]) ?? [],
     typeBeat: (beat.type_beat as string[]) ?? [],
     freeDownload: (beat.free_download_actif as boolean) ?? false,
-    collaborateurs: splits.map(s => ({
+    // Seules les collaborations ENCORE OUVERTES entrent dans le tableau soumis
+    // à l'enregistrement du beat — une collaboration terminée (retirée,
+    // quittée, évincée) ne doit plus jamais y repasser, sinon elle serait
+    // réinvitée silencieusement à chaque sauvegarde (traiterCollaborateursBeat
+    // ne compare qu'aux statuts ouverts pour détecter les doublons). Voir
+    // `historique` juste en dessous pour l'affichage en lecture seule.
+    collaborateurs: splits.filter(s => STATUTS_OUVERTS.includes(s.statut)).map(s => ({
       id: s.id,
       type: s.beatmaker_id ? 'compte' : 'email',
       beatmaker_id: s.beatmaker_id ?? undefined,
       nom_artiste: s.beatmakers?.nom_artiste,
       email_invite: s.email_invite ?? undefined,
       pourcentage: s.pourcentage,
+      statut: s.statut as Collaborateur['statut'],
     } as Collaborateur)),
     licencesActives,
     exclusifSurDemande,
     licenceOverrides,
   }
+
+  const historiqueCollaborateurs: CollaborationHistorique[] = splits
+    .filter(s => !STATUTS_OUVERTS.includes(s.statut))
+    .map(s => ({
+      id: s.id,
+      nom: s.beatmakers?.nom_artiste ?? s.email_invite ?? 'Collaborateur',
+      statut: s.statut as CollaborationHistorique['statut'],
+      motif: s.motif_eviction ?? null,
+      pourcentage: s.pourcentage,
+    }))
 
   const existingUrls: ExistingUrls = {
     image_url: beat.image_url as string | null,
@@ -104,6 +124,7 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
         onSubmit={handleSubmit}
         onDelete={handleDelete}
         lectureSeule={lectureSeule}
+        historiqueCollaborateurs={historiqueCollaborateurs}
       />
     </div>
   )

@@ -35,6 +35,86 @@ export const TRANSITIONS_COLLAB: Record<string, { de: StatutCollaboration[]; ver
   evincer: { de: ['active'], vers: 'evincee', par: 'A' },
 }
 
+export type CollaborationAvecBeat = {
+  id: string
+  statut: StatutCollaboration
+  beatmaker_id: string | null
+  email_invite: string | null
+  pourcentage: number
+  beat: { id: string; titre: string; beatmaker_id: string; nom_artiste: string }
+}
+
+/** Charge une collaboration avec le beat et le nom du propriétaire — utilisé par
+ * les 5 routes accepter/refuser/retirer/quitter/évincer pour vérifier l'identité
+ * de l'appelant avant toute transition. */
+export async function chargerCollaboration(admin: SupabaseClient, id: string): Promise<CollaborationAvecBeat | null> {
+  const { data } = await admin
+    .from('beat_splits')
+    .select('id, statut, beatmaker_id, email_invite, pourcentage, beats(id, titre, beatmaker_id, beatmakers(nom_artiste))')
+    .eq('id', id)
+    .maybeSingle()
+  if (!data) return null
+  const beatRaw = data.beats as unknown
+  const beat = (Array.isArray(beatRaw) ? beatRaw[0] : beatRaw) as
+    { id: string; titre: string; beatmaker_id: string; beatmakers: { nom_artiste: string } | { nom_artiste: string }[] | null } | null
+  if (!beat) return null
+  const beatmakerInfo = Array.isArray(beat.beatmakers) ? beat.beatmakers[0] : beat.beatmakers
+  return {
+    id: data.id as string,
+    statut: data.statut as StatutCollaboration,
+    beatmaker_id: data.beatmaker_id as string | null,
+    email_invite: data.email_invite as string | null,
+    pourcentage: data.pourcentage as number,
+    beat: { id: beat.id, titre: beat.titre, beatmaker_id: beat.beatmaker_id, nom_artiste: beatmakerInfo?.nom_artiste ?? 'Beatmaker' },
+  }
+}
+
+/** Adresse à notifier pour une collaboration : l'email invité s'il n'a pas encore
+ * de compte, sinon l'email du compte beatmaker lié. */
+export async function emailDestinataireCollab(
+  admin: SupabaseClient,
+  collab: { beatmaker_id: string | null; email_invite: string | null },
+): Promise<string | null> {
+  if (collab.email_invite) return collab.email_invite
+  if (!collab.beatmaker_id) return null
+  const { data } = await admin.from('beatmakers').select('email').eq('id', collab.beatmaker_id).maybeSingle()
+  return (data?.email as string | undefined) ?? null
+}
+
+const CHAMP_DATE_TRANSITION: Record<keyof typeof TRANSITIONS_COLLAB, string> = {
+  accepter: 'accepte_le',
+  refuser: 'refuse_le',
+  retirer: 'retire_le',
+  quitter: 'quitte_le',
+  evincer: 'evince_le',
+}
+
+/**
+ * Applique une transition d'état sur une collaboration, de façon atomique
+ * (l'UPDATE ne touche la ligne que si son statut est encore dans les états
+ * de départ attendus — protège contre un double clic ou une action déjà
+ * traitée entre-temps par l'autre partie).
+ */
+export async function transitionnerCollaboration(
+  admin: SupabaseClient,
+  params: { id: string; action: keyof typeof TRANSITIONS_COLLAB; extra?: Record<string, unknown> },
+): Promise<{ ok: true } | { ok: false; erreur: string }> {
+  const transition = TRANSITIONS_COLLAB[params.action]
+  const { data, error } = await admin
+    .from('beat_splits')
+    .update({
+      statut: transition.vers,
+      [CHAMP_DATE_TRANSITION[params.action]]: new Date().toISOString(),
+      ...params.extra,
+    })
+    .eq('id', params.id)
+    .in('statut', transition.de)
+    .select('id')
+  if (error) return { ok: false, erreur: error.message }
+  if (!data || data.length === 0) return { ok: false, erreur: 'Cette collaboration a déjà changé d’état.' }
+  return { ok: true }
+}
+
 export type ActionCollaboration = 'invitation' | 'acceptation' | 'refus' | 'retrait_invitation' | 'depart' | 'eviction'
 
 /**

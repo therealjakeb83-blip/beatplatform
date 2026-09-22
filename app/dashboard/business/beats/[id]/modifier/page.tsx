@@ -40,7 +40,7 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
   // déjà vérifié comme appartenant à `user.id` juste au-dessus.
   const { data: splitsRaw } = await admin
     .from('beat_splits')
-    .select('id, beatmaker_id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
+    .select('id, beatmaker_id, email_invite, pourcentage, statut, motif_eviction, beatmakers(nom_artiste)')
     .eq('beat_id', id)
 
   const splits = (splitsRaw ?? []).map(s => ({
