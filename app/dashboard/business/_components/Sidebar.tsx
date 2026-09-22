@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { initiales } from '../_lib/utils'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { pageAccessibleEnPlanFree } from '@/lib/acces-plan'
 
 const BASE = '/dashboard/business'
 
@@ -15,8 +16,23 @@ const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/p
 const ANALYTICS_ROUTE  = `${BASE}/analytics`
 const LOGS_ROUTES      = [`${BASE}/logs`]
 
-export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
+const LOCK_ICON = (
+  <span className="text-[10px] opacity-60" title="Nécessite un abonnement">🔒</span>
+)
+
+export default function Sidebar({ nomArtiste, planFree }: { nomArtiste: string; planFree: boolean }) {
   const pathname = usePathname()
+
+  // Plan Free (Phase 12 lot 2) — un lien hors de la matrice d'accès
+  // (lib/acces-plan.ts) renvoie vers /dashboard/abonnement au lieu de sa
+  // cible réelle, avec un cadenas visuel. L'accès réel reste tranché par
+  // proxy.ts, jamais par ce seul affichage (défense en profondeur).
+  function bloque(href: string): boolean {
+    return planFree && !pageAccessibleEnPlanFree(href)
+  }
+  function cible(href: string): string {
+    return bloque(href) ? '/dashboard/abonnement' : href
+  }
 
   const isCrm       = CRM_ROUTES.some(r => pathname.startsWith(r))
   const isMarketing = MARKETING_ROUTES.some(r => pathname.startsWith(r))
@@ -33,31 +49,38 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
   const [logsOpen,      setLogsOpen]      = useState(isLogs)
 
   function navItem(href: string, label: string, active: boolean) {
+    const verrouille = bloque(href)
     return (
       <Link
-        href={href}
-        className={`flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
-          active
+        href={cible(href)}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+          verrouille
+            ? 'text-gray-600 hover:text-gray-400 hover:bg-gray-800/40'
+            : active
             ? 'bg-indigo-600 text-white font-semibold'
             : 'text-gray-400 hover:text-white hover:bg-gray-800/60'
         }`}
       >
         {label}
+        {verrouille && LOCK_ICON}
       </Link>
     )
   }
 
   function subItem(href: string, label: string, active: boolean, badge?: number) {
+    const verrouille = bloque(href)
     return (
       <Link
-        href={href}
+        href={cible(href)}
         className={`flex items-center justify-between pl-8 pr-3 py-1.5 rounded-lg text-xs transition-colors ${
-          active
+          verrouille
+            ? 'text-gray-600 hover:text-gray-500 hover:bg-gray-800/30'
+            : active
             ? 'text-white bg-gray-800'
             : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40'
         }`}
       >
-        <span>{label}</span>
+        <span className="flex items-center gap-1.5">{label}{verrouille && LOCK_ICON}</span>
         {badge != null && badge > 0 && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold">
             {badge}
@@ -75,8 +98,11 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
     onToggle: () => void,
     onNavigate: () => void,
   ) {
+    const verrouille = bloque(href)
     const base = `flex items-center rounded-lg text-sm transition-colors ${
-      active
+      verrouille
+        ? 'text-gray-600 hover:text-gray-400 hover:bg-gray-800/40'
+        : active
         ? 'bg-indigo-600 text-white'
         : 'text-gray-400 hover:text-white hover:bg-gray-800/60'
     }`
@@ -84,11 +110,12 @@ export default function Sidebar({ nomArtiste }: { nomArtiste: string }) {
     return (
       <div className={base}>
         <Link
-          href={href}
+          href={cible(href)}
           onClick={onNavigate}
-          className={`flex-1 px-3 py-2 ${active ? 'font-semibold' : ''}`}
+          className={`flex-1 px-3 py-2 flex items-center gap-1.5 ${active && !verrouille ? 'font-semibold' : ''}`}
         >
           {label}
+          {verrouille && LOCK_ICON}
         </Link>
         <button
           onClick={onToggle}

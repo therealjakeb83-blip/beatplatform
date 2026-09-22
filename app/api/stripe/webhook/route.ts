@@ -98,8 +98,13 @@ export async function POST(request: Request) {
 
     // account.updated : l'ancien déblocage automatique des « fonds en attente »
     // des collaborateurs (Phase 10) a été retiré en Phase 12 — l'argent ne
-    // transite plus par la plateforme. L'état du compte de paiement d'un
-    // beatmaker est lu directement chez Stripe (checklist « prêt à vendre »).
+    // transite plus par la plateforme. Réutilisé en Phase 12 lot 2 pour tenir
+    // à jour beatmakers.stripe_compte_operationnel (checklist « prêt à
+    // vendre ») — lib/pret-a-vendre.ts revérifie aussi une fois auprès de
+    // Stripe en secours si cet event a été manqué.
+    if (event.type === 'account.updated') {
+      await traiterMajCompteOperationnel(event.data.object as Stripe.Account)
+    }
 
     if (event.type === 'checkout.session.expired') {
       await traiterExpirationTentative(event.data.object as Stripe.Checkout.Session)
@@ -813,5 +818,22 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
 
   if (error) console.error('[webhook] Erreur insert tentative renouvellement plateforme:', JSON.stringify(error))
   else console.log('[webhook] Échec de renouvellement plateforme tracé pour abo', aboPlateforme.id)
+}
+
+// Phase 12 lot 2 — tient à jour beatmakers.stripe_compte_operationnel
+// (checklist « prêt à vendre »). Ne fait jamais régresser un compte déjà
+// opérationnel vers false ici : un compte réellement suspendu par Stripe
+// redeviendra visible au prochain checkout (lib/pret-a-vendre.ts revérifie
+// en direct), pas besoin de le refléter en temps réel côté plateforme.
+async function traiterMajCompteOperationnel(account: Stripe.Account) {
+  if (!account.charges_enabled || !account.payouts_enabled) return
+
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('beatmakers')
+    .update({ stripe_compte_operationnel: true })
+    .eq('stripe_account_id', account.id)
+
+  if (error) console.error('[webhook] Erreur maj stripe_compte_operationnel pour', account.id, ':', JSON.stringify(error))
 }
 

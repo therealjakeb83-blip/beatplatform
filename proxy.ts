@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { estRoleAdmin } from '@/lib/admin'
+import { aUnAbonnementPlateformeActif, pageAccessibleEnPlanFree } from '@/lib/acces-plan'
 
 // Délai maximum accordé à Supabase pour répondre à CHAQUE requête faite par
 // proxy.ts sur une page /dashboard (proxy.ts s'exécute avant tout rendu).
@@ -111,29 +112,24 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Étape 8b — gate abonnement plateforme. Le compte admin et les
-    // boutiques de test exemptées (`abonnement_exempte`, laisser-passer
-    // admin) ne sont jamais bloqués. `/dashboard/abonnement` reste toujours
-    // accessible pour permettre de souscrire.
+    // Étape 8b — gate abonnement plateforme, étendu en Phase 12 lot 2 (plan
+    // Free). Le compte admin et les boutiques de test exemptées
+    // (`abonnement_exempte`, laisser-passer admin) ne sont jamais bloqués.
+    // `/dashboard/abonnement` reste toujours accessible pour permettre de
+    // souscrire. Sans abonnement actif, un beatmaker n'est plus totalement
+    // bloqué (comportement d'origine de l'Étape 8b) : il garde un accès
+    // PARTIEL, limité aux pages du plan Free (lib/acces-plan.ts) — seule une
+    // page hors de cette liste redirige encore vers /dashboard/abonnement.
     const gateExempte = estRoleAdmin(beatmaker.role) || beatmaker.abonnement_exempte
     if (!gateExempte && pathname !== '/dashboard/abonnement' && pathname !== '/dashboard/suspendu') {
-      let abonnementActif: { id: string } | null = null
+      let abonnementActif = false
       try {
-        const { data } = await avecTimeout(
-          supabase
-            .from('abonnements_plateforme')
-            .select('id')
-            .eq('beatmaker_id', beatmaker.id)
-            .in('statut', ['actif', 'en_essai'])
-            .limit(1)
-            .maybeSingle()
-        )
-        abonnementActif = data
+        abonnementActif = await avecTimeout(aUnAbonnementPlateformeActif(supabase, beatmaker.id))
       } catch {
         return versVerificationEnCours()
       }
 
-      if (!abonnementActif) {
+      if (!abonnementActif && !pageAccessibleEnPlanFree(pathname)) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard/abonnement'
         return NextResponse.redirect(url)

@@ -31,6 +31,10 @@ export async function PATCH(request: Request) {
       tva_active: actif,
       tva_taux: taux,
       tva_numero: actif ? (tva_numero ?? null) : null,
+      // Checklist « prêt à vendre » (Phase 12 lot 2, Q7) — la décision doit
+      // être explicite, y compris pour désactiver la TVA : posé à chaque
+      // enregistrement réussi, jamais déduit d'une simple valeur par défaut.
+      tva_decision_prise_le: new Date().toISOString(),
     })
     .eq('id', user.id)
 

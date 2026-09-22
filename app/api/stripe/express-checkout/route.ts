@@ -2,6 +2,8 @@ import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
+import { calculerPretAVendre } from '@/lib/pret-a-vendre'
+import { estRoleAdmin } from '@/lib/admin'
 import { NextResponse } from 'next/server'
 
 // Paiement express (Apple Pay/Google Pay/PayPal) — soit un achat unitaire
@@ -54,13 +56,15 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  const CHAMPS_BEATMAKER = 'id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct, role, abonnement_exempte'
+
   const { data: beatmakerRow } = await supabase
     .from('beatmakers')
-    .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+    .select(CHAMPS_BEATMAKER)
     .eq('slug', slug)
     .single()
 
-  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean }
+  type BeatmakerRow = { id: string; stripe_account_id: string | null; tva_active: boolean; tva_taux: number | null; abo_remise_pct: number | null; abo_actif: boolean; role: string | null; abonnement_exempte: boolean }
   let beatmaker = beatmakerRow as BeatmakerRow | null
 
   const admin = createAdminClient()
@@ -68,13 +72,34 @@ export async function POST(request: Request) {
   if (!beatmaker) {
     const { data: bm } = await admin
       .from('beatmakers')
-      .select('id, stripe_account_id, tva_active, tva_taux, abo_actif, abo_remise_pct')
+      .select(CHAMPS_BEATMAKER)
       .eq('slug', slug)
       .single()
     beatmaker = bm as BeatmakerRow | null
   }
 
   if (!beatmaker) return NextResponse.json({ erreur: 'Boutique introuvable' }, { status: 404 })
+
+  // Checklist « prêt à vendre » (Phase 12 lot 2, Q7) — jusqu'ici seule
+  // l'existence de stripe_account_id était vérifiée, jamais que le compte
+  // puisse réellement encaisser ni le reste des critères (TVA, adresse,
+  // mandats, CGV/mentions légales). A est toujours seul concédant/maître de
+  // la vente pour un achat sur sa boutique (un beat en collaboration non
+  // terminée est déjà exclu par calculerLignesPanier via hors_vente_collab).
+  // Boutiques de test exemptées + compte admin non concernés (Q7b) — même
+  // laisser-passer que le gate d'accès dashboard (Étape 8b), pour ne pas
+  // bloquer les comptes de test déjà utilisés par ailleurs sans configurer
+  // ces 8 critères sur chacun d'eux.
+  const exempteReadiness = estRoleAdmin(beatmaker.role) || beatmaker.abonnement_exempte
+  if (!exempteReadiness) {
+    const readiness = await calculerPretAVendre(admin, beatmaker.id, { estConcedant: true })
+    if (!readiness.pret) {
+      return NextResponse.json(
+        { erreur: 'Cette boutique n\'est pas encore prête à vendre — réessaie plus tard.' },
+        { status: 400 },
+      )
+    }
+  }
 
   const remisePct = await resoudreRemiseAbonne(admin, beatmaker, user, slug)
 
