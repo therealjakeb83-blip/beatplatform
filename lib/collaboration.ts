@@ -134,14 +134,20 @@ export function participantsDepuisParts(partsCollaborateurs: number[]): Particip
  * par le changement de prix "certains beats"/"futurs beats seulement" —
  * app/api/licences/[id]/modifier — où seule une partie des beats reçoit
  * réellement le nouveau prix). Sans ce paramètre, tous les beats utilisant la
- * licence sont vérifiés (comportement par défaut, prix appliqué "à tous").
- * Un beat qui a déjà un prix spécifique (`prix_override`) n'est jamais
- * concerné : son prix ne bouge pas quand le prix général change.
+ * licence sont vérifiés. Par défaut, un prix spécifique reste prioritaire ;
+ * `inclurePrixSpecifiques` permet au mode "tous les beats" de les contrôler
+ * aussi, puisqu'il va supprimer leurs overrides.
  */
 export async function beatsBloquantsBaissePrixLicence(
   admin: SupabaseClient,
-  params: { beatmakerId: string; licenceId: string; nouveauPrixEuros: number; beatIdsAVerifier?: string[] },
-): Promise<{ titre: string; plancherCents: number }[]> {
+  params: {
+    beatmakerId: string
+    licenceId: string
+    nouveauPrixEuros: number
+    beatIdsAVerifier?: string[]
+    inclurePrixSpecifiques?: boolean
+  },
+): Promise<{ id: string; titre: string; plancherCents: number }[]> {
   if (params.beatIdsAVerifier && params.beatIdsAVerifier.length === 0) return []
   const nouveauCents = Math.round(params.nouveauPrixEuros * 100)
 
@@ -166,15 +172,15 @@ export async function beatsBloquantsBaissePrixLicence(
     partsParBeat.set(p.beat_id, [...(partsParBeat.get(p.beat_id) ?? []), p.pourcentage])
   }
 
-  const bloquants: { titre: string; plancherCents: number }[] = []
+  const bloquants: { id: string; titre: string; plancherCents: number }[] = []
   for (const lien of (liens ?? []) as { beat_id: string; actif: boolean; sur_demande: boolean; prix_override: number | null }[]) {
     if (!lien.actif || lien.sur_demande) continue
     // Un prix propre à ce beat prime sur le prix général : la baisse ne le touche pas.
-    if (lien.prix_override != null) continue
+    if (lien.prix_override != null && !params.inclurePrixSpecifiques) continue
     const plancher = plancherPrixCents(participantsDepuisParts(partsParBeat.get(lien.beat_id) ?? []))
     if (!prixAutorise(nouveauCents, plancher)) {
       const titre = (beats ?? []).find(b => b.id === lien.beat_id)?.titre as string | undefined
-      bloquants.push({ titre: titre ?? 'Beat', plancherCents: plancher })
+      bloquants.push({ id: lien.beat_id, titre: titre ?? 'Beat', plancherCents: plancher })
     }
   }
   return bloquants

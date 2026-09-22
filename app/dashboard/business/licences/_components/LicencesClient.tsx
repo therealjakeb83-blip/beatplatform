@@ -56,6 +56,18 @@ function aDesLimitesNumeriques(modele: string): boolean {
 
 type ApplicationPrix = 'tous' | 'certains' | 'futurs'
 type BeatDeLaLicence = { id: string; titre: string; aDejaUnPrixSpecifique: boolean }
+type BeatExclu = { id: string; titre: string; plancher: string }
+type ErreurApi = {
+  error?: string
+  confirmation_requise?: boolean
+  beats_exclus?: BeatExclu[]
+}
+
+class ErreurRequete extends Error {
+  constructor(message: string, readonly details: ErreurApi) {
+    super(message)
+  }
+}
 
 export default function LicencesClient({ licences: initial }: { licences: Licence[] }) {
   const [licences, setLicences] = useState(initial)
@@ -70,6 +82,7 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
   const [beatsDeLaLicence, setBeatsDeLaLicence] = useState<BeatDeLaLicence[]>([])
   const [beatsSelectionnes, setBeatsSelectionnes] = useState<Set<string>>(new Set())
   const [chargementBeats, setChargementBeats] = useState(false)
+  const [confirmation, setConfirmation] = useState<{ licence: Licence; beats: BeatExclu[] } | null>(null)
 
   async function chargerBeatsDeLaLicence(licenceId: string) {
     setChargementBeats(true)
@@ -89,7 +102,8 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
       body: JSON.stringify(data),
     })
     const result = await res.json()
-    if (!res.ok) throw new Error(result.error)
+    if (!res.ok) throw new ErreurRequete(result.error ?? 'Erreur inconnue.', result)
+    return result
   }
 
   async function toggleActif(licence: Licence) {
@@ -128,7 +142,7 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
     setBeatsDeLaLicence([])
   }
 
-  async function saveEdit(licence: Licence) {
+  async function saveEdit(licence: Licence, confirmerExclusions = false) {
     setSaving(true)
     setErreur('')
     try {
@@ -144,6 +158,7 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
         lives_performances_autorise: form.lives_performances_autorise,
         application,
         beats_selectionnes: application === 'certains' ? [...beatsSelectionnes] : undefined,
+        confirmer_exclusions: confirmerExclusions,
       })
       setLicences(l => l.map(x => x.id === licence.id ? {
         ...x,
@@ -158,7 +173,11 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
       } : x))
       setEditId(null)
     } catch (err) {
-      setErreur(err instanceof Error ? err.message : 'Erreur inconnue.')
+      if (err instanceof ErreurRequete && err.details.confirmation_requise && err.details.beats_exclus?.length) {
+        setConfirmation({ licence, beats: err.details.beats_exclus })
+      } else {
+        setErreur(err instanceof Error ? err.message : 'Erreur inconnue.')
+      }
     } finally {
       setSaving(false)
     }
@@ -246,7 +265,7 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
                     </p>
                     <div className="flex flex-col gap-2">
                       {([
-                        ['tous', 'Tous les beats', 'Comportement habituel — sauf les beats qui ont déjà un prix spécifique.'],
+                        ['tous', 'Tous les beats', 'Le nouveau prix s’applique partout et remplace les prix spécifiques existants.'],
                         ['certains', 'Certains beats', 'Tu choisis lesquels ; les autres gardent leur prix actuel.'],
                         ['futurs', 'Futurs beats seulement', 'Aucun beat existant ne change ; seuls les prochains beats créés suivront ce nouveau prix.'],
                       ] as [ApplicationPrix, string, string][]).map(([valeur, label, description]) => (
@@ -294,7 +313,7 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
                                 />
                                 <span className="text-gray-200">{b.titre}</span>
                                 {b.aDejaUnPrixSpecifique && (
-                                  <span className="text-[10px] text-gray-600">(a déjà un prix spécifique — non concerné)</span>
+                                  <span className="text-[10px] text-gray-600">(son prix spécifique sera remplacé si coché)</span>
                                 )}
                               </label>
                             ))}
@@ -401,6 +420,49 @@ export default function LicencesClient({ licences: initial }: { licences: Licenc
           </div>
         ))}
       </div>
+
+      {confirmation && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="confirmation-prix-titre">
+          <div className="w-full max-w-lg rounded-xl border border-gray-700 bg-gray-900 p-6 shadow-2xl">
+            <h2 id="confirmation-prix-titre" className="text-lg font-semibold text-white">
+              Certains beats garderont leur prix actuel
+            </h2>
+            <p className="mt-2 text-sm text-gray-400">
+              Le nouveau prix est trop bas pour les collaborations suivantes. Elles seront exclues de la modification et leur prix actuel sera conservé comme prix spécifique.
+            </p>
+            <ul className="mt-4 max-h-56 overflow-y-auto space-y-2">
+              {confirmation.beats.map(beat => (
+                <li key={beat.id} className="rounded-lg bg-gray-800 px-3 py-2 text-sm text-gray-200">
+                  <span className="font-medium">{beat.titre}</span>
+                  <span className="block text-xs text-amber-400">Prix minimum : {beat.plancher}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmation(null)}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const licence = confirmation.licence
+                  setConfirmation(null)
+                  void saveEdit(licence, true)
+                }}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                Valider quand même
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

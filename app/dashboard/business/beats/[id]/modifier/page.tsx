@@ -10,7 +10,12 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const { data: beat } = await supabase
+  // Comme la liste des beats, cette page utilise le client serveur pour ses
+  // lectures. L'accès reste borné au propriétaire authentifié par le filtre
+  // beatmaker_id ; cela évite qu'une policy RLS manquante transforme un beat
+  // pourtant visible dans la liste en fausse 404.
+  const admin = createAdminClient()
+  const { data: beat } = await admin
     .from('beats')
     .select('*')
     .eq('id', id)
@@ -33,7 +38,6 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
   // authentifié normal — la jointure revenait vide silencieusement, laissant
   // le nom du collaborateur blanc dans la liste. Sûr : le beat lui-même est
   // déjà vérifié comme appartenant à `user.id` juste au-dessus.
-  const admin = createAdminClient()
   const { data: splitsRaw } = await admin
     .from('beat_splits')
     .select('id, beatmaker_id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
@@ -45,13 +49,13 @@ export default async function ModifierBeatPage({ params }: { params: Promise<{ i
   }))
 
   const [{ data: licences }, { data: beatLicences }, categories] = await Promise.all([
-    supabase
+    admin
       .from('licences')
       .select('id, nom, prix, modele, inclut_mp3, inclut_wav, inclut_stems, est_exclusive, streams_limite')
       .eq('beatmaker_id', user.id)
       .eq('actif', true)
       .order('ordre'),
-    supabase
+    admin
       .from('beat_licences')
       .select('licence_id, actif, prix_override, sur_demande')
       .eq('beat_id', id),
