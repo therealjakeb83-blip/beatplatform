@@ -210,6 +210,7 @@ function CollaborateursSection({ collaborateurs, onChange }: {
   const [emailInvite, setEmailInvite] = useState('')
   const [pourcentage, setPourcentage] = useState('50')
   const [mode, setMode] = useState<'recherche' | 'email'>('recherche')
+  const [erreur, setErreur] = useState('')
   const restant = 100 - collaborateurs.reduce((sum, c) => sum + c.pourcentage, 0)
 
   async function rechercherBeatmaker(q: string) {
@@ -218,15 +219,32 @@ function CollaborateursSection({ collaborateurs, onChange }: {
     const res = await fetch(`/api/beatmakers/recherche?q=${encodeURIComponent(q)}`)
     setResultats(await res.json())
   }
+  // Même règle que le serveur (lib/collaboration-parts.ts) : redonné ici pour
+  // un retour immédiat au clic sur "Ajouter", sans attendre l'enregistrement
+  // du beat — le serveur reste la vraie source de vérité (retour de Jake,
+  // test T10 : le message n'apparaissait qu'après "Mettre à jour").
+  function erreurAjout(pct: number, dejaPresent: boolean): string {
+    if (collaborateurs.length >= 3) return 'Un beat accepte au maximum 3 collaborateurs (plus toi).'
+    if (dejaPresent) return 'Cette personne est déjà ajoutée.'
+    if (!pct || pct <= 0) return 'Indique un pourcentage.'
+    if (pct < 10) return 'Chaque part doit valoir au moins 10 %.'
+    if (pct >= restant) return `Il ne te reste que ${restant}% à répartir.`
+    return ''
+  }
   function ajouterCompte(bm: { id: string; nom_artiste: string }) {
     const pct = parseInt(pourcentage)
-    if (!pct || pct <= 0 || pct >= restant || collaborateurs.find(c => c.beatmaker_id === bm.id)) return
+    const err = erreurAjout(pct, collaborateurs.some(c => c.beatmaker_id === bm.id))
+    if (err) { setErreur(err); return }
+    setErreur('')
     onChange([...collaborateurs, { id: crypto.randomUUID(), type: 'compte', beatmaker_id: bm.id, nom_artiste: bm.nom_artiste, pourcentage: pct }])
     setRecherche(''); setResultats([])
   }
   function ajouterEmail() {
     const pct = parseInt(pourcentage)
-    if (!emailInvite || !pct || pct <= 0 || pct >= restant || collaborateurs.find(c => c.email_invite === emailInvite)) return
+    if (!emailInvite) { setErreur('Indique une adresse email.'); return }
+    const err = erreurAjout(pct, collaborateurs.some(c => c.email_invite === emailInvite))
+    if (err) { setErreur(err); return }
+    setErreur('')
     onChange([...collaborateurs, { id: crypto.randomUUID(), type: 'email', email_invite: emailInvite, pourcentage: pct }])
     setEmailInvite('')
   }
@@ -246,7 +264,7 @@ function CollaborateursSection({ collaborateurs, onChange }: {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-indigo-400 text-sm font-semibold">{c.pourcentage}%</span>
-                <button type="button" onClick={() => onChange(collaborateurs.filter(x => x.id !== c.id))} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
+                <button type="button" onClick={() => { onChange(collaborateurs.filter(x => x.id !== c.id)); setErreur('') }} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
               </div>
             </div>
           ))}
@@ -254,7 +272,7 @@ function CollaborateursSection({ collaborateurs, onChange }: {
       )}
       <div className="flex gap-2 mb-1">
         {(['recherche', 'email'] as const).map(m => (
-          <button key={m} type="button" onClick={() => setMode(m)}
+          <button key={m} type="button" onClick={() => { setMode(m); setErreur('') }}
             className={`text-xs px-3 py-1 rounded-full transition-colors ${mode === m ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
             {m === 'recherche' ? `Compte ${NOM_PLATEFORME}` : 'Inviter par email'}
           </button>
@@ -290,6 +308,7 @@ function CollaborateursSection({ collaborateurs, onChange }: {
           Ajouter
         </button>
       </div>
+      {erreur && <p className="text-red-400 text-xs">{erreur}</p>}
     </div>
   )
 }
