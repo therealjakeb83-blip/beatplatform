@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import type Stripe from 'stripe'
 import { paiementsDisponiblesDans, PAYS_PAR_DEFAUT, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
 
 // Code d'activité Stripe « Digital Goods: Media, Books, Movies, Music ».
@@ -34,33 +35,48 @@ export async function POST(request: Request) {
     // naissance) — celles-là exigent un jeton de compte pour une plateforme
     // française. Le beatmaker confirme ou modifie tout chez Stripe.
     const urlBoutique = new URL(origin).hostname === 'localhost' ? undefined : `${origin}/${beatmaker.slug}`
-    let account
-    try {
-      account = await stripe.accounts.create({
-        type: 'express',
-        country: pays,
-        email: beatmaker.email,
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
-        business_profile: {
-          name: beatmaker.nom_artiste ?? undefined,
-          mcc: MCC_MUSIQUE_NUMERIQUE,
-          product_description: 'Vente en ligne de licences de beats (musique instrumentale) sous forme de fichiers numériques.',
-          ...(urlBoutique ? { url: urlBoutique } : {}),
-        },
-        metadata: { beatmaker_id: user.id },
-        // Repris s'il a déjà été choisi avant la connexion du compte (voir
-        // /api/stripe/statement-descriptor, qui le pousse directement sur les
-        // comptes déjà connectés — ici on couvre le cas inverse).
-        ...(beatmaker.statement_descriptor
-          ? { settings: { payments: { statement_descriptor: beatmaker.statement_descriptor } } }
-          : {}),
-      })
-    } catch (err) {
-      console.error('[connect/creer] Création du compte Stripe refusée pour', pays, ':', err instanceof Error ? err.message : err)
-      return NextResponse.json({ erreur: MESSAGE_PAIEMENTS_INDISPONIBLES }, { status: 400 })
+    const parametres: Stripe.AccountCreateParams = {
+      type: 'express',
+      country: pays,
+      email: beatmaker.email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      business_profile: {
+        name: beatmaker.nom_artiste ?? undefined,
+        mcc: MCC_MUSIQUE_NUMERIQUE,
+        product_description: 'Vente en ligne de licences de beats (musique instrumentale) sous forme de fichiers numériques.',
+        ...(urlBoutique ? { url: urlBoutique } : {}),
+      },
+      metadata: { beatmaker_id: user.id },
+      // Repris s'il a déjà été choisi avant la connexion du compte (voir
+      // /api/stripe/statement-descriptor, qui le pousse directement sur les
+      // comptes déjà connectés — ici on couvre le cas inverse).
+      ...(beatmaker.statement_descriptor
+        ? { settings: { payments: { statement_descriptor: beatmaker.statement_descriptor } } }
+        : {}),
+    }
+
+    // Jeton de compte créé dans le navigateur (prénom/nom/adresse, jamais vus
+    // par la plateforme). S'il est refusé, le compte est créé sans lui :
+    // le beatmaker saisit simplement tout chez Stripe, comme avant.
+    const { account_token: accountToken } = await request.json().catch(() => ({}))
+    let account: Stripe.Account | null = null
+    if (typeof accountToken === 'string' && accountToken.startsWith('ct_')) {
+      try {
+        account = await stripe.accounts.create({ ...parametres, account_token: accountToken })
+      } catch (err) {
+        console.warn('[connect/creer] Pré-remplissage par jeton refusé, création sans jeton :', err instanceof Error ? err.message : err)
+      }
+    }
+    if (!account) {
+      try {
+        account = await stripe.accounts.create(parametres)
+      } catch (err) {
+        console.error('[connect/creer] Création du compte Stripe refusée pour', pays, ':', err instanceof Error ? err.message : err)
+        return NextResponse.json({ erreur: MESSAGE_PAIEMENTS_INDISPONIBLES }, { status: 400 })
+      }
     }
     accountId = account.id
 

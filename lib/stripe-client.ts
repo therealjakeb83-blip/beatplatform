@@ -6,9 +6,8 @@ import { loadStripe, type Stripe } from '@stripe/stripe-js'
 // paiements). Sans effet en mode live, où elle ne s'affiche jamais.
 const OPTIONS = { developerTools: { assistant: { enabled: false } } }
 
-// Client Stripe.js plateforme — utilisé uniquement pour le mode "held"
-// (ventes avec split collab, fonds retenus sur la plateforme, voir
-// lib/webhook-paiement.ts).
+// Client Stripe.js plateforme — utilisé pour créer le jeton de compte qui
+// pré-remplit l'onboarding Stripe (Phase 12 lot 4, /dashboard/paiements).
 export const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!, OPTIONS)
 
 // Ventes simples (Direct Charge, toutes les boutiques depuis la Phase 2) :
