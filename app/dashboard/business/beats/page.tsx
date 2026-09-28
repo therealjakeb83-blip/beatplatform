@@ -17,6 +17,12 @@ export type BeatRow = {
   mp3_tague_url: string | null
   mis_en_avant: boolean
   hors_vente_collab: boolean
+  // Pourquoi le beat est hors vente, pour distinguer le badge (Phase 12, lot
+  // 3, retour de Jake du 2026-09-28) : une invitation encore en attente n'a
+  // rien à voir avec une collaboration refusée qu'A n'a pas encore "publiée
+  // quand même" — 'active' compte aussi hors vente (ventes collab pas encore
+  // ouvertes, lot 4) mais n'a pas son propre badge pour l'instant.
+  collabBadge: 'attente' | 'refusee' | null
 }
 
 export default async function BeatsPage() {
@@ -34,6 +40,28 @@ export default async function BeatsPage() {
     .order('created_at', { ascending: false })
     .limit(500)
 
+  const idsHorsVente = (rawBeats ?? [])
+    .filter(b => (b as Record<string, unknown>).hors_vente_collab)
+    .map(b => b.id as string)
+
+  const collabBadgeParBeat = new Map<string, 'attente' | 'refusee'>()
+  if (idsHorsVente.length > 0) {
+    const { data: splits } = await admin
+      .from('beat_splits')
+      .select('beat_id, statut')
+      .in('beat_id', idsHorsVente)
+      .in('statut', ['invitee', 'active', 'refusee'])
+
+    const parBeat = new Map<string, string[]>()
+    for (const s of (splits ?? []) as { beat_id: string; statut: string }[]) {
+      parBeat.set(s.beat_id, [...(parBeat.get(s.beat_id) ?? []), s.statut])
+    }
+    for (const [beatId, statuts] of parBeat) {
+      if (statuts.includes('invitee') || statuts.includes('active')) collabBadgeParBeat.set(beatId, 'attente')
+      else if (statuts.includes('refusee')) collabBadgeParBeat.set(beatId, 'refusee')
+    }
+  }
+
   const beats: BeatRow[] = (rawBeats ?? []).map(b => ({
     id:            b.id as string,
     titre:         b.titre as string,
@@ -48,6 +76,7 @@ export default async function BeatsPage() {
     mp3_tague_url: b.mp3_tague_url as string | null,
     mis_en_avant:  (b as Record<string, unknown>).mis_en_avant as boolean ?? false,
     hors_vente_collab: (b as Record<string, unknown>).hors_vente_collab as boolean ?? false,
+    collabBadge: collabBadgeParBeat.get(b.id as string) ?? null,
   }))
 
   return <BeatsClient beats={beats} />

@@ -35,24 +35,29 @@ export type Collaborateur = {
   email_invite?: string
   pourcentage: number
   // Présent uniquement pour un collaborateur DÉJÀ enregistré en base et
-  // encore ouvert (invitee/active/refusee — un refus reste ouvert tant que A
-  // n'a pas explicitement retiré l'invitation, voir lib/collaboration.ts) —
-  // absent pour un ajout fait dans cette session, pas encore soumis. Sert à
-  // distinguer les deux dans CollaborateursSection : un ajout de session se
-  // retire d'un clic (✕), un collaborateur existant passe par ses propres
-  // routes (retirer/évincer), jamais par le simple retrait de ce tableau.
-  statut?: 'invitee' | 'active' | 'refusee'
+  // encore "à traiter" (invitee/active) — absent pour un ajout fait dans
+  // cette session, pas encore soumis. Un refus n'apparaît JAMAIS ici : il
+  // s'affiche directement en Historique, verrouillé (voir
+  // CollaborationHistorique), A n'a plus d'action sur l'invitation
+  // elle-même. Sert à distinguer les deux dans CollaborateursSection : un
+  // ajout de session se retire d'un clic (✕), un collaborateur existant
+  // passe par sa propre route (évincer), jamais par le simple retrait de ce
+  // tableau.
+  statut?: 'invitee' | 'active'
 }
 
-// Historique en lecture seule (Phase 12, lot 3) : un collaborateur retiré,
-// parti ou évincé ne doit plus jamais être renvoyé dans le tableau
+// Historique en lecture seule (Phase 12, lot 3) : un collaborateur refusé,
+// retiré, parti ou évincé ne doit plus jamais être renvoyé dans le tableau
 // `collaborateurs` soumis à l'enregistrement du beat (sinon il serait
 // réinvité silencieusement — traiterCollaborateursBeat ne filtre que sur les
-// statuts ouverts pour détecter les doublons).
+// statuts ouverts pour détecter les doublons). Un refus reste "ouvert" côté
+// base (bloque toujours la vente, lib/collaboration.ts) mais s'affiche ici
+// comme terminé : A n'a plus rien à faire sur l'invitation, seulement sur le
+// beat (bouton "Publier quand même" ou ré-enregistrement).
 export type CollaborationHistorique = {
   id: string
   nom: string
-  statut: 'retiree' | 'quittee' | 'evincee'
+  statut: 'refusee' | 'retiree' | 'quittee' | 'evincee'
   motif?: string | null
   pourcentage: number
 }
@@ -361,7 +366,7 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
                 <div>
                   <span className="text-sm text-white font-medium">{nomAffiche(c)}</span>
                   {c.statut ? (
-                    <span className={`ml-2 text-xs ${c.statut === 'active' ? 'text-green-400' : c.statut === 'refusee' ? 'text-red-400' : 'text-yellow-400'}`}>
+                    <span className={`ml-2 text-xs ${c.statut === 'active' ? 'text-green-400' : 'text-yellow-400'}`}>
                       {LIBELLE_STATUT_COLLAB[c.statut]}
                     </span>
                   ) : (
@@ -373,7 +378,7 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
                   {!c.statut && (
                     <button type="button" onClick={() => { onChange(collaborateurs.filter(x => x.id !== c.id)); setErreur('') }} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
                   )}
-                  {(c.statut === 'invitee' || c.statut === 'refusee') && (
+                  {c.statut === 'invitee' && (
                     <button type="button" disabled={actionEnCours === c.id} onClick={() => retirerInvitation(c)}
                       className="text-xs text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50">
                       {actionEnCours === c.id ? 'Retrait…' : 'Retirer l’invitation'}
@@ -417,6 +422,11 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
               <span>{h.pourcentage}%</span>
             </div>
           ))}
+          {historique.some(h => h.statut === 'refusee') && (
+            <p className="text-xs text-gray-600">
+              Le beat reste hors vente tant que tu ne choisis pas de le publier quand même (bouton sur la liste des beats, ou en ré-enregistrant cette fiche).
+            </p>
+          )}
         </div>
       )}
 

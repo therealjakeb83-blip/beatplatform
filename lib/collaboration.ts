@@ -156,6 +156,41 @@ export async function journaliserCollaboration(p: {
   }
 }
 
+/**
+ * « Publier quand même » (Phase 12, lot 3, retour de Jake du 2026-09-28) :
+ * une collaboration refusée reste affichée "Refusée", verrouillée — A n'a
+ * aucune action à faire dessus. Le beat reste hors vente jusqu'à ce qu'A
+ * décide explicitement de passer outre, de deux façons possibles : un bouton
+ * dédié sur la liste des beats, ou simplement en ré-enregistrant la fiche du
+ * beat. Les deux appellent cette même fonction : elle retire silencieusement
+ * (jamais d'email à B — il sait déjà, c'est lui qui a refusé) toutes les
+ * collaborations refusées de ce beat, ce qui laisse le trigger de recalcul
+ * remettre le beat en vente si plus rien ne le bloque.
+ */
+export async function debloquerCollaborationsRefusees(
+  admin: SupabaseClient,
+  params: { beatId: string; acteurId: string },
+): Promise<void> {
+  const { data } = await admin
+    .from('beat_splits')
+    .select('id, pourcentage, beatmaker_id, beats(titre)')
+    .eq('beat_id', params.beatId)
+    .eq('statut', 'refusee')
+  for (const s of (data ?? []) as { id: string; pourcentage: number; beatmaker_id: string | null; beats: { titre: string } | { titre: string }[] | null }[]) {
+    const resultat = await transitionnerCollaboration(admin, { id: s.id, action: 'retirer' })
+    if (!resultat.ok) continue
+    const beatInfo = Array.isArray(s.beats) ? s.beats[0] : s.beats
+    await journaliserCollaboration({
+      action: 'retrait_invitation',
+      collaborationId: s.id,
+      proprietaireId: params.acteurId,
+      acteurId: params.acteurId,
+      collaborateurId: s.beatmaker_id,
+      details: { beat_id: params.beatId, titre_beat: beatInfo?.titre ?? 'Beat', pourcentage: s.pourcentage, publie_malgre_refus: true },
+    })
+  }
+}
+
 function formaterEuros(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',') + ' €'
 }

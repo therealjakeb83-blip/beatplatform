@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { traiterCollaborateursBeat, notifierNouvellesInvitations, type CollaborateurEntrant } from '@/lib/collaboration-beat'
+import { debloquerCollaborationsRefusees } from '@/lib/collaboration'
 import { synchroniserCategoriesPersonnalisees } from '@/lib/categories'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -69,6 +70,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // ni ne se supprime ici : la part est verrouillée, et retirer une invitation,
   // quitter ou évincer passent par leurs propres routes (avec journal).
   const admin = createAdminClient()
+
+  // Ré-enregistrer le beat vaut "publier quand même" (retour de Jake, lot 3,
+  // 2026-09-28) : une collaboration refusée est déjà verrouillée à l'écran
+  // (aucun bouton dessus), donc c'est cette action — ou le bouton dédié sur
+  // la liste des beats — qui débloque le beat, jamais automatiquement.
+  await debloquerCollaborationsRefusees(admin, { beatId: id, acteurId: user.id })
+
   const traitement = await traiterCollaborateursBeat({
     admin,
     beatId: id,

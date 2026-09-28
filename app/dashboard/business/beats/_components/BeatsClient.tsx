@@ -87,6 +87,13 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
     }
   }
 
+  async function publierMalgreRefus(e: React.MouseEvent, beat: BeatRow) {
+    e.stopPropagation()
+    setBeats(prev => prev.map(b => b.id === beat.id ? { ...b, hors_vente_collab: false, collabBadge: null } : b))
+    const res = await fetch(`/api/beats/${beat.id}/publier-malgre-refus`, { method: 'POST' })
+    if (!res.ok) router.refresh()
+  }
+
   const genres = useMemo(() => {
     const set = new Set<string>()
     for (const b of beats) {
@@ -258,12 +265,34 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUT_BADGE[b.statut] ?? 'bg-gray-700 text-gray-400'}`}>
                         {STATUT_LABEL[b.statut] ?? b.statut}
                       </span>
-                      {b.hors_vente_collab && (
+                      {b.collabBadge === 'attente' && (
                         <span
                           className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400"
                           title="Ce beat n'est pas en vente tant que tous les collaborateurs n'ont pas accepté."
                         >
                           En attente de collaboration
+                        </span>
+                      )}
+                      {b.collabBadge === 'refusee' && (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-500/20 text-red-400"
+                            title="Le collaborateur invité a refusé. Le beat reste hors vente tant que tu ne choisis pas de le publier quand même."
+                          >
+                            Collaboration refusée
+                          </span>
+                          <button
+                            type="button"
+                            onClick={e => publierMalgreRefus(e, b)}
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                          >
+                            Publier quand même
+                          </button>
+                        </div>
+                      )}
+                      {b.hors_vente_collab && !b.collabBadge && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">
+                          Hors vente (collaboration)
                         </span>
                       )}
                     </div>

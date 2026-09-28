@@ -4,10 +4,15 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, CollaborationHistorique, LicenceInfo, CategoriesOptions } from '../../_components/BeatForm'
 
-// Même liste que lib/collaboration.ts (dupliquée ici, fichier serveur non
-// importable dans ce composant client, voir lib/collaboration-messages.ts
-// pour la même raison ailleurs).
-const STATUTS_OUVERTS = ['invitee', 'active', 'refusee']
+// États encore "à traiter" dans la fiche du beat : invitée (attend une
+// réponse de B) ou active. Une collaboration refusée compte toujours comme
+// "ouverte" côté base (lib/collaboration.ts, STATUTS_OUVERTS — bloque encore
+// la vente et une ré-invitation), mais s'affiche ici directement en
+// Historique, verrouillée, sans bouton (retour de Jake, lot 3, 2026-09-28) :
+// A ne "traite" plus l'invitation elle-même, il choisit de publier le beat
+// quand même (bouton dédié ou simple ré-enregistrement, voir
+// lib/collaboration.ts::debloquerCollaborationsRefusees).
+const STATUTS_AVEC_ACTION = ['invitee', 'active']
 
 export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, licenceOverrides, categories, lectureSeule = false }: {
   beat: Record<string, unknown>
@@ -49,7 +54,7 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
     // réinvitée silencieusement à chaque sauvegarde (traiterCollaborateursBeat
     // ne compare qu'aux statuts ouverts pour détecter les doublons). Voir
     // `historique` juste en dessous pour l'affichage en lecture seule.
-    collaborateurs: splits.filter(s => STATUTS_OUVERTS.includes(s.statut)).map(s => ({
+    collaborateurs: splits.filter(s => STATUTS_AVEC_ACTION.includes(s.statut)).map(s => ({
       id: s.id,
       type: s.beatmaker_id ? 'compte' : 'email',
       beatmaker_id: s.beatmaker_id ?? undefined,
@@ -64,7 +69,7 @@ export default function ModifierBeatClient({ beat, splits, licences, licencesAct
   }
 
   const historiqueCollaborateurs: CollaborationHistorique[] = splits
-    .filter(s => !STATUTS_OUVERTS.includes(s.statut))
+    .filter(s => !STATUTS_AVEC_ACTION.includes(s.statut))
     .map(s => ({
       id: s.id,
       nom: s.beatmakers?.nom_artiste ?? s.email_invite ?? 'Collaborateur',
