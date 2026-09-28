@@ -7,7 +7,7 @@ import { genererNumeroFacture, modeleFactureEffectif } from '@/lib/facturation'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { uploadPdfFacture } from '@/lib/livraison'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
+import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -97,12 +97,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // account.updated : l'ancien déblocage automatique des « fonds en attente »
-    // des collaborateurs (Phase 10) a été retiré en Phase 12 — l'argent ne
-    // transite plus par la plateforme. Réutilisé en Phase 12 lot 2 pour tenir
-    // à jour beatmakers.stripe_compte_operationnel (checklist « prêt à
-    // vendre ») — lib/pret-a-vendre.ts revérifie aussi une fois auprès de
-    // Stripe en secours si cet event a été manqué.
+    // account.updated d'un compte connecté n'arrive en pratique que sur
+    // /api/stripe/webhook-connect (constaté au lot 1 de la Phase 13 : jamais
+    // reçu ici) — gardé au cas où l'endpoint plateforme l'écouterait aussi.
     if (event.type === 'account.updated') {
       await traiterMajCompteOperationnel(event.data.object as Stripe.Account)
     }
@@ -823,33 +820,4 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
   else console.log('[webhook] Échec de renouvellement plateforme tracé pour abo', aboPlateforme.id)
 }
 
-// Phase 12 lot 2 — tient à jour beatmakers.stripe_compte_operationnel
-// (checklist « prêt à vendre »). Ne fait jamais régresser un compte déjà
-// opérationnel vers false ici : un compte réellement suspendu par Stripe
-// redeviendra visible au prochain checkout (lib/pret-a-vendre.ts revérifie
-// en direct), pas besoin de le refléter en temps réel côté plateforme.
-async function traiterMajCompteOperationnel(account: Stripe.Account) {
-  const operationnel = !!(account.charges_enabled && account.payouts_enabled)
-  const supabase = createAdminClient()
-
-  const { data: avant } = await supabase
-    .from('beatmakers')
-    .select('id, stripe_compte_operationnel')
-    .eq('stripe_account_id', account.id)
-    .maybeSingle()
-  if (!avant || !!avant.stripe_compte_operationnel === operationnel) return
-
-  const { error } = await supabase
-    .from('beatmakers')
-    .update({ stripe_compte_operationnel: operationnel })
-    .eq('id', avant.id)
-
-  if (error) {
-    console.error('[webhook] Erreur maj stripe_compte_operationnel pour', account.id, ':', JSON.stringify(error))
-    return
-  }
-  // Phase 12 lot 4 : le statut « prêt à vendre » en dépend — les beats collab
-  // où il vend sortent de la boutique (ou y reviennent), A et B prévenus.
-  await rafraichirPretAVendre(avant.id as string)
-}
 

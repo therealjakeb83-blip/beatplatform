@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { traiterPaiementExpress, marquerLitige, resoudreLitige } from '@/lib/webhook-paiement'
+import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -79,6 +80,13 @@ export async function POST(request: Request) {
       if (paymentIntent.metadata?.type === 'achat_express') {
         await traiterPaiementExpress(paymentIntent, stripeAccountId)
       }
+    }
+
+    // Compte vendeur devenu opérationnel ou suspendu (onboarding, contrôle
+    // Stripe…) — n'arrive QUE sur cet endpoint, jamais sur le webhook
+    // plateforme. Event à cocher sur cet endpoint (.scratch/phase13-abonner-account-updated.mjs).
+    if (event.type === 'account.updated') {
+      await traiterMajCompteOperationnel(event.data.object as Stripe.Account)
     }
 
     if (event.type === 'charge.dispute.created') {
