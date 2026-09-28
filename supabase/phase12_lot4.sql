@@ -39,8 +39,10 @@ INSERT INTO parametres_plateforme (id) VALUES (true) ON CONFLICT (id) DO NOTHING
 
 ALTER TABLE parametres_plateforme ENABLE ROW LEVEL SECURITY;
 -- Lecture seule côté serveur (client admin) ; aucune policy : ni anon ni
--- authenticated n'y ont accès.
+-- authenticated n'y ont accès. Supabase leur donne des droits par défaut sur
+-- toute nouvelle table : retirés explicitement (constaté en vérifiant T0).
 GRANT SELECT, UPDATE ON parametres_plateforme TO service_role;
+REVOKE ALL ON parametres_plateforme FROM anon, authenticated;
 
 -- ------------------------------------------------------------
 -- 3. Nouveau calcul de beats.hors_vente_collab (feu vert, partie « accords »)
