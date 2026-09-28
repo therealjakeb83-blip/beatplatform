@@ -347,7 +347,7 @@ Décisions prises avant de coder (2026-09-28) : **verrou email liste blanche** p
 
 #### Checklist tests Phase 13 lot 1 — codé le 2026-09-28, à tester item par item avec Jake
 Fait : migration `supabase/phase13_lot1_paiement_multi.sql` ; `lib/stripe-comptes.ts` (comptes `controller`, repli Dashboard complet) ; `lib/paiement-multi-repartition.ts` (tranches) ; `lib/paiement-multi.ts` (réservation / capture / annulation / commande + tranches / balayage) ; routes `/api/stripe/paiement-multi/preparer` et `/payer`, `/api/cron/paiements-multi` (quotidien) + `/api/admin/paiements-multi/balayer?age=0` ; prix plancher et parts ≥ 1 € appliqués au paiement (`lib/pricing.ts`) ; panier collab = carte seule (express masqué, `express-checkout` refuse) ; **verrou `PAIEMENT_MULTI_VENDEURS_DISPONIBLE` ouvert** ; pas de facture pour une commande multi-vendeurs avant le lot 3 ; remboursement d'une commande multi-vendeurs refusé proprement jusqu'au lot 4.
-- **T0** migration exécutée + requêtes de vérification en bas du fichier
+- ✅ **T0** (2026-09-28) migration exécutée + vérifiée en base : 2 colonnes, 0 part, `quote_part_pct` facultatif, 0 commande multi, aucun droit anon/authenticated sur `tentatives_paiement_parts`
 - ✅ **T1** (Claude, script `.scratch/phase13-t1-repartition.ts`, 19/19) : solo, 50/50, 33/33/34, 4 participants, panier mixte, plusieurs beats collab, ligne à 0 €, plancher (90 % limité, 100 % → 0 € autorisé), 10 000 paniers aléatoires sans centime perdu
 - **T2** recréation du compte Stripe de `jakeb-test` (SQL fourni avant) + onboarding de test ; script : `losses.payments = stripe`, `fees.payer = account`, Dashboard express (ou repli `full`, visible dans le log Vercel `[connect/creer]`)
 - **T3** idem `nic-beat-2809` (Belgique)
