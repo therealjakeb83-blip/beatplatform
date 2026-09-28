@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { verifierFeuVertBeat, PAIEMENT_MULTI_VENDEURS_DISPONIBLE } from '@/lib/feu-vert-collab'
+import { plancherPrixCents, appliquerRemiseAvecPlancher, controlerParts, type Participant } from '@/lib/collaboration-parts'
 
 // Calcul de prix serveur pour un achat de beat — jamais confiance dans le
 // front. Utilisé par /api/stripe/express-checkout (page de paiement custom,
@@ -18,6 +19,11 @@ export type LigneCalculee = {
   reductionCodeCents: number
   codePromoApplique: boolean
   reductionLotId: string | null
+  // Beat en collaboration : vendeurs de la ligne, propriétaire (A) en premier
+  // (`id` = beatmaker_id). null = beat solo, 100 % au propriétaire.
+  participants: Participant[] | null
+  // Remise réduite pour ne pas passer sous le prix plancher du beat collab.
+  remiseLimitee: boolean
 }
 
 export type BeatmakerPourPrix = {
@@ -168,7 +174,9 @@ type LigneIntermediaire = {
   titre: string
   image_url: string | null
   licence: LicenceRow
+  prixBase: number // prix catalogue, avant toute remise
   prixApresRemise: number // après remise abonné, avant code promo / réduction par lot
+  participants: Participant[] | null
 }
 
 /** Recalcule le prix de chaque article du panier à partir de beat_id/licence_id (jamais du prix envoyé par le front). */
@@ -237,9 +245,25 @@ export async function calculerLignesPanier(
     // Collaborateurs actifs (lot 4) : feu vert complet vérifié ici — tous
     // les vendeurs prêts à vendre — puis double verrou tant que le paiement
     // réparti de la Phase 13 n'existe pas.
+    let participants: Participant[] | null = null
     if ((beat.quote_part_proprietaire ?? 100) < 100) {
       const feuVert = await verifierFeuVertBeat(admin, beat.id as string)
       if (!feuVert.ok || !PAIEMENT_MULTI_VENDEURS_DISPONIBLE) {
+        return { ok: false, erreur: `« ${beat.titre} » n’est plus disponible pour le moment`, status: 409 }
+      }
+      const { data: splits } = await admin
+        .from('beat_splits')
+        .select('beatmaker_id, pourcentage')
+        .eq('beat_id', beat.id)
+        .eq('statut', 'active')
+      participants = [
+        { id: String(beatmaker.id), pourcentage: beat.quote_part_proprietaire as number },
+        ...((splits ?? []) as { beatmaker_id: string | null; pourcentage: number }[])
+          .filter(s => s.beatmaker_id)
+          .map(s => ({ id: s.beatmaker_id as string, pourcentage: s.pourcentage })),
+      ]
+      if (participants.reduce((s, p) => s + p.pourcentage, 0) !== 100) {
+        console.error('[pricing] Répartition incohérente pour le beat', beat.id, participants)
         return { ok: false, erreur: `« ${beat.titre} » n’est plus disponible pour le moment`, status: 409 }
       }
     }
@@ -267,7 +291,7 @@ export async function calculerLignesPanier(
     const remisePctItem = estIllimite ? 0 : ctx.remisePct
     const prixApresRemise = remisePctItem > 0 ? Math.round(prixBaseHT * (1 - remisePctItem / 100)) : prixBaseHT
 
-    intermediaires.push({ index, item, titre: beat.titre, image_url: beat.image_url, licence, prixApresRemise })
+    intermediaires.push({ index, item, titre: beat.titre, image_url: beat.image_url, licence, prixBase: prixBaseHT, prixApresRemise, participants })
   }
 
   // Passe 2 — groupe par licence et détermine les articles offerts. Article
@@ -345,6 +369,22 @@ export async function calculerLignesPanier(
       }
     }
 
+    // Beat collab (Phase 12, Q9) : les remises (membre, code, lot) ne peuvent
+    // pas descendre sous le prix plancher — sauf pour arriver à 0 € — et
+    // chaque part doit valoir au moins 1 €.
+    let remiseLimitee = false
+    if (ligne.participants) {
+      const plancher = plancherPrixCents(ligne.participants)
+      const r = appliquerRemiseAvecPlancher(ligne.prixBase, ligne.prixBase - prixApresRemise, plancher)
+      if (r.remiseLimitee) {
+        reductionCodeCents = Math.max(0, reductionCodeCents - (r.prixFinalCents - prixApresRemise))
+        prixApresRemise = r.prixFinalCents
+        remiseLimitee = true
+      }
+      const controle = controlerParts(prixApresRemise, ligne.participants)
+      if (!controle.ok) return { ok: false, erreur: `« ${ligne.titre} » : ${controle.erreur}`, status: 409 }
+    }
+
     const prixTotal = prixApresRemise
 
     lignes.push({
@@ -357,6 +397,8 @@ export async function calculerLignesPanier(
       reductionCodeCents,
       codePromoApplique: codePromoAppliqueItem,
       reductionLotId,
+      participants: ligne.participants,
+      remiseLimitee,
     })
   }
 

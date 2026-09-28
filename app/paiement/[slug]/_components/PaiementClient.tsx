@@ -15,6 +15,7 @@ import type {
   StripeExpressCheckoutElementReadyEvent,
   StripeExpressCheckoutElementConfirmEvent,
   StripeCardNumberElementChangeEvent,
+  StripeCardNumberElement,
 } from '@stripe/stripe-js'
 import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { CartProvider, useCart } from '@/app/[slug]/_components/CartContext'
@@ -25,7 +26,7 @@ import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/e
 
 const MONTANT_DETECTION_CENTS = 1000
 
-type ContextePaiement = { mode: 'direct' | 'held'; stripe_account_id: string | null }
+type ContextePaiement = { mode: 'direct' | 'multi'; stripe_account_id: string | null }
 
 type Props = {
   slug: string
@@ -39,6 +40,12 @@ type Props = {
   // à préremplir la facturation et à sauter la demande d'email pour un code
   // promo restreint, sans redemander à quelqu'un déjà identifié.
   clientEmail: string | null
+}
+
+type PropsForm = Props & {
+  // Panier avec un beat collab (Phase 13) : paiement réparti entre vendeurs,
+  // carte uniquement.
+  multiVendeurs: boolean
 }
 
 const CHEVRON_LEFT = (
@@ -127,11 +134,11 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tva
 
   return (
     <Elements
-      key={contexte?.mode === 'direct' ? `direct:${contexte.stripe_account_id}` : 'held'}
+      key={contexte?.mode === 'direct' ? `direct:${contexte.stripe_account_id}` : 'plateforme'}
       stripe={stripeClient}
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
-      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} />
+      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} multiVendeurs={contexte?.mode === 'multi'} />
     </Elements>
   )
 }
@@ -164,7 +171,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail, multiVendeurs }: PropsForm) {
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
@@ -288,11 +295,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
     return Object.keys(erreurs).length === 0
   }
 
-  async function creerPaymentIntent() {
-    const res = await fetch('/api/stripe/express-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+  function corpsPaiement() {
+    return JSON.stringify({
         items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
         slug,
         code_promo: codeApplique?.code,
@@ -309,9 +313,67 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
         numero_tva: pro ? champs.numeroTva : undefined,
         newsletter_opt_in: newsletterOptIn,
         source_marketing: typeof window !== 'undefined' ? (sessionStorage.getItem('source_marketing') ?? 'direct') : 'direct',
-      }),
+      })
+  }
+
+  async function creerPaymentIntent() {
+    const res = await fetch('/api/stripe/express-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: corpsPaiement(),
     })
     return res.json() as Promise<{ clientSecret?: string; erreur?: string }>
+  }
+
+  function detailsFacturation() {
+    return {
+      name: `${champs.prenom} ${champs.nom}`.trim(),
+      email: champs.email,
+      phone: champs.telephone.trim() || undefined,
+      address: {
+        line1: champs.adresse,
+        postal_code: champs.codePostal,
+        city: champs.ville,
+        country: champs.pays,
+      },
+    }
+  }
+
+  // Paiement réparti (Phase 13) : la carte est enregistrée sur la plateforme
+  // (aucun débit), puis le serveur encaisse la part de chaque vendeur.
+  async function payerMultiVendeurs(cardNumberElement: StripeCardNumberElement) {
+    if (!stripe) return
+    const res = await fetch('/api/stripe/paiement-multi/preparer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: corpsPaiement(),
+    })
+    const data = await res.json() as { clientSecret?: string; erreur?: string }
+    if (!res.ok || !data.clientSecret) {
+      setErreurGlobale(data.erreur ?? 'Erreur serveur, réessaie')
+      return
+    }
+
+    const { error, setupIntent } = await stripe.confirmCardSetup(data.clientSecret, {
+      payment_method: { card: cardNumberElement, billing_details: detailsFacturation() },
+    })
+    if (error || !setupIntent) {
+      setErreurGlobale(error?.message ?? 'Carte refusée')
+      return
+    }
+
+    const resPaiement = await fetch('/api/stripe/paiement-multi/payer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setup_intent_id: setupIntent.id }),
+    })
+    const paiement = await resPaiement.json() as { commande_id?: string; erreur?: string }
+    if (!resPaiement.ok || !paiement.commande_id) {
+      setErreurGlobale(paiement.erreur ?? 'Le paiement n’a pas pu aboutir.')
+      return
+    }
+    clear()
+    window.location.href = `/telechargement/${paiement.commande_id}`
   }
 
   async function apresSucces(paymentIntentId: string) {
@@ -339,6 +401,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
     setSubmitting(true)
     setErreurGlobale(null)
     try {
+      if (multiVendeurs) {
+        await payerMultiVendeurs(cardNumberElement)
+        return
+      }
       const data = await creerPaymentIntent()
       if (!data.clientSecret) {
         setErreurGlobale(data.erreur ?? 'Erreur serveur, réessaie')
@@ -348,17 +414,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
         payment_method: {
           card: cardNumberElement,
-          billing_details: {
-            name: `${champs.prenom} ${champs.nom}`.trim(),
-            email: champs.email,
-            phone: champs.telephone.trim() || undefined,
-            address: {
-              line1: champs.adresse,
-              postal_code: champs.codePostal,
-              city: champs.ville,
-              country: champs.pays,
-            },
-          },
+          billing_details: detailsFacturation(),
         },
       })
 
@@ -539,7 +595,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             <span className="pmt-newsletter-label">Je veux recevoir les nouveaux beats et les offres par e-mail</span>
           </label>
 
-          {/* Moyens de paiement */}
+          {/* Moyens de paiement — masqués pour un panier avec un beat collab
+              (carte uniquement, Phase 13) */}
+          {!multiVendeurs && (<>
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
             <ExpressButtons
@@ -558,6 +616,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Séparateur — desktop uniquement, remplace visuellement le bouton
               "Payer par carte" (masqué au-dessus du breakpoint) */}
           <div className="pmt-carte-separator"><span>ou payer par carte</span></div>
+          </>)}
 
           {/* Payer par carte */}
           <div className="pmt-carte-accordion">

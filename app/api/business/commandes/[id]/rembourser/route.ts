@@ -33,7 +33,7 @@ export async function POST(
 
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, statut, beatmaker_id, prix_paye, stripe_payment_id, stripe_account_id, stripe_transfer_group')
+    .select('id, statut, beatmaker_id, prix_paye, stripe_payment_id, stripe_account_id, stripe_transfer_group, paiement_multi_vendeurs')
     .eq('id', commandeId)
     .eq('beatmaker_id', user.id)
     .single()
@@ -41,6 +41,12 @@ export async function POST(
   if (!commande) return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
   if (commande.statut !== 'payee') {
     return NextResponse.json({ error: 'Seules les commandes payées peuvent être remboursées' }, { status: 400 })
+  }
+
+  if (commande.paiement_multi_vendeurs) {
+    return NextResponse.json({
+      error: 'Le remboursement des ventes en collaboration arrive bientôt (un remboursement par vendeur).',
+    }, { status: 400 })
   }
 
   if (commande.stripe_transfer_group) {

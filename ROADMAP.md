@@ -345,6 +345,23 @@ Décisions prises avant de coder (2026-09-28) : **verrou email liste blanche** p
 | 4 — Remboursements, avoirs, litiges | Bouton de A, remboursements de B reflétés, avoirs (solo + collab), encart litige (solo + collab) ; tests réels : remboursement à solde nul, réponse à un litige | 5-9 h |
 | 5 — Ouverture et ménage | `PAIEMENT_MULTI_VENDEURS_DISPONIBLE = true`, vente collab de bout en bout, suppression de l'ancien système | 1-2 h |
 
+#### Checklist tests Phase 13 lot 1 — codé le 2026-09-28, à tester item par item avec Jake
+Fait : migration `supabase/phase13_lot1_paiement_multi.sql` ; `lib/stripe-comptes.ts` (comptes `controller`, repli Dashboard complet) ; `lib/paiement-multi-repartition.ts` (tranches) ; `lib/paiement-multi.ts` (réservation / capture / annulation / commande + tranches / balayage) ; routes `/api/stripe/paiement-multi/preparer` et `/payer`, `/api/cron/paiements-multi` (quotidien) + `/api/admin/paiements-multi/balayer?age=0` ; prix plancher et parts ≥ 1 € appliqués au paiement (`lib/pricing.ts`) ; panier collab = carte seule (express masqué, `express-checkout` refuse) ; **verrou `PAIEMENT_MULTI_VENDEURS_DISPONIBLE` ouvert** ; pas de facture pour une commande multi-vendeurs avant le lot 3 ; remboursement d'une commande multi-vendeurs refusé proprement jusqu'au lot 4.
+- **T0** migration exécutée + requêtes de vérification en bas du fichier
+- ✅ **T1** (Claude, script `.scratch/phase13-t1-repartition.ts`, 19/19) : solo, 50/50, 33/33/34, 4 participants, panier mixte, plusieurs beats collab, ligne à 0 €, plancher (90 % limité, 100 % → 0 € autorisé), 10 000 paniers aléatoires sans centime perdu
+- **T2** recréation du compte Stripe de `jakeb-test` (SQL fourni avant) + onboarding de test ; script : `losses.payments = stripe`, `fees.payer = account`, Dashboard express (ou repli `full`, visible dans le log Vercel `[connect/creer]`)
+- **T3** idem `nic-beat-2809` (Belgique)
+- **T4** vente solo sur `jakeb-test` (4242) inchangée, avec le nouveau compte
+- **T5** vente collab `jakeb-test` + `nic-beat-2809` (4242) : 1 page, 1 clic ; script : 2 encaissements sur 2 comptes, 0 sur la plateforme ; 1 commande `paiement_multi_vendeurs`, 2 tranches justes ; contrat généré
+- **T6** panier mixte (beat solo de A + beat collab) : 2 encaissements, tranche de A = solo + sa part
+- **T7** carte refusée (4000 0000 0000 0002) : rien encaissé, aucune commande, parts « annulee/echouee »
+- **T8** une seule part échoue (script) : l'autre réservation annulée, rien encaissé
+- **T9** 3D Secure : 4000 0025 0000 3155 → une validation, vente OK ; 4000 0027 6000 3184 (toujours exiger) → message clair, tout annulé (validation à l'écran = lot 2)
+- **T10** double clic / rechargement pendant le paiement : une seule commande
+- **T11** abandon (carte validée puis page fermée) → `/api/admin/paiements-multi/balayer?age=0` → tentative « expiree », rien encaissé. Le cas « encaissé sans commande » n'est pas reproductible sans casser le serveur en plein paiement : prouvé par lecture de code (`balayerPaiementsMulti`)
+- **T12** code promo 90 % sur le beat collab : total de la page = prix plancher (le message « réduction limitée » à l'écran = lot 2)
+- ✅ **T13** (Claude) : `tsc` OK, `eslint` sans nouvelle erreur (3 erreurs préexistantes inchangées), `build` OK
+
 - **Phase 6.7 (beat cadeau)** : exclure les beats collab. **Avant lancement** : exiger l'adresse de TOUS les vendeurs ; vérifier les CGV boutique par défaut (mention collab) ; avis d'un professionnel sur les textes provisoires (aucun fiscaliste consulté : hypothèses validées par Jake seul) ; **rang 15a** cadrage plans Free/Pro + coûts (Stripe Connect par compte actif à vérifier).
 
 ## Légende

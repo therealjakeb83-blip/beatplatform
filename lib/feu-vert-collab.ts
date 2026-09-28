@@ -9,9 +9,9 @@ import { calculerPretAVendreOuExempte } from '@/lib/pret-a-vendre'
 // partie « vendeurs prêts » n'existe qu'ici, vérifiée au paiement.
 
 // Double verrou : même interrupteur ON, aucun panier avec un beat collab ne
-// peut être payé tant que le paiement réparti entre vendeurs (Phase 13)
-// n'est pas codé — sinon A encaisserait 100 % du prix à la place de B.
-export const PAIEMENT_MULTI_VENDEURS_DISPONIBLE = false
+// peut être payé tant que ce drapeau est faux. Ouvert au lot 1 de la Phase 13
+// (paiement réparti entre vendeurs, lib/paiement-multi.ts).
+export const PAIEMENT_MULTI_VENDEURS_DISPONIBLE = true
 
 export type RaisonFeuRouge = 'accords_incomplets' | 'ventes_collab_fermees' | 'vendeur_pas_pret'
 

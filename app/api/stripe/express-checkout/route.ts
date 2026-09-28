@@ -4,6 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
 import { calculerPretAVendre } from '@/lib/pret-a-vendre'
 import { estRoleAdmin } from '@/lib/admin'
+import { panierEstMultiVendeurs } from '@/lib/paiement-multi-repartition'
 import { NextResponse } from 'next/server'
 
 // Paiement express (Apple Pay/Google Pay/PayPal) — soit un achat unitaire
@@ -111,6 +112,11 @@ export async function POST(request: Request) {
   const lignesResult = await calculerLignesPanier(admin, beatmaker, items, { remisePct, promo })
   if (!lignesResult.ok) return NextResponse.json({ erreur: lignesResult.erreur }, { status: lignesResult.status })
   const lignes = lignesResult.value
+  // Panier avec un beat collab : jamais encaissé en entier sur le compte de A
+  // (paiement réparti, carte uniquement — /api/stripe/paiement-multi).
+  if (panierEstMultiVendeurs(lignes)) {
+    return NextResponse.json({ erreur: 'Ce panier se paie uniquement par carte.' }, { status: 409 })
+  }
   const totalCents = lignes.reduce((s, l) => s + l.prixTotalCents, 0)
 
   if (totalCents < 50) {

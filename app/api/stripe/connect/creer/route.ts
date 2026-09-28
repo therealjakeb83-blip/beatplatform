@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { creerCompteVendeur } from '@/lib/stripe-comptes'
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 import { paiementsDisponiblesDans, PAYS_PAR_DEFAUT, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
@@ -36,8 +37,7 @@ export async function POST(request: Request) {
     const urlBoutique = new URL(origin).hostname === 'localhost' ? undefined : `${origin}/${beatmaker.slug}`
     let account
     try {
-      account = await stripe.accounts.create({
-        type: 'express',
+      const { compte, dashboard } = await creerCompteVendeur({
         country: pays,
         email: beatmaker.email,
         capabilities: {
@@ -58,6 +58,8 @@ export async function POST(request: Request) {
           ? { settings: { payments: { statement_descriptor: beatmaker.statement_descriptor } } }
           : {}),
       })
+      account = compte
+      console.log('[connect/creer] Compte', compte.id, 'créé — Stripe responsable des soldes négatifs, Dashboard', dashboard)
     } catch (err) {
       console.error('[connect/creer] Création du compte Stripe refusée pour', pays, ':', err instanceof Error ? err.message : err)
       return NextResponse.json({ erreur: MESSAGE_PAIEMENTS_INDISPONIBLES }, { status: 400 })

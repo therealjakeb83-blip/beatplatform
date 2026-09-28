@@ -122,5 +122,16 @@ export async function POST(request: Request) {
       .catch(error => console.error('[contexte-paiement] Google Pay non assuré:', error)),
   ])
 
+  // Panier avec au moins un beat collab (Phase 13) : paiement réparti entre
+  // vendeurs, carte uniquement, Stripe.js chargé sur la plateforme (la carte y
+  // est seulement enregistrée, jamais débitée) — pas de boutons express.
+  const { data: collabs } = await admin
+    .from('beats')
+    .select('id')
+    .in('id', beat_ids)
+    .lt('quote_part_proprietaire', 100)
+    .limit(1)
+  if (collabs?.length) return NextResponse.json({ mode: 'multi', stripe_account_id: null })
+
   return NextResponse.json({ mode: 'direct', stripe_account_id: beatmaker.stripe_account_id })
 }

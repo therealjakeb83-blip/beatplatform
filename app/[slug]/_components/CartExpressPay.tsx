@@ -28,7 +28,7 @@ type Props = {
   onSuccess: (info: { paymentIntentId: string }) => void
 }
 
-type ContextePaiement = { mode: 'direct' | 'held'; stripe_account_id: string | null }
+type ContextePaiement = { mode: 'direct' | 'multi'; stripe_account_id: string | null }
 
 export default function CartExpressPay(props: Props) {
   const { slug, items } = props
@@ -55,23 +55,28 @@ export default function CartExpressPay(props: Props) {
   // reste jamais bloqué en "détection" indéfiniment pour autant.
   const resolu = beatIdsKey ? contexte : null
   if (resolu === undefined) return null
+  // Panier avec un beat collab (Phase 13) : carte uniquement, pas d'express.
+  if (resolu?.mode === 'multi') return <ExpressMasque onStatusChange={props.onStatusChange} />
 
   // Direct Charge : Stripe.js chargé avec le contexte du compte connecté.
-  // "held" (splits collab) : fonds retenus sur la plateforme, client Stripe.js
-  // plateforme classique, sans contexte de compte connecté.
   const stripeClient = resolu?.mode === 'direct' && resolu.stripe_account_id
     ? chargerStripePourCompte(resolu.stripe_account_id)
     : stripePromise
 
   return (
     <Elements
-      key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : 'held'}
+      key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : 'plateforme'}
       stripe={stripeClient}
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
     >
       <ExpressButtons {...props} />
     </Elements>
   )
+}
+
+function ExpressMasque({ onStatusChange }: Pick<Props, 'onStatusChange'>) {
+  useEffect(() => { onStatusChange('hidden') }, [onStatusChange])
+  return null
 }
 
 function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {

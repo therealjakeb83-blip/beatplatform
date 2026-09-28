@@ -188,7 +188,7 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
 
 type ContextePaiement = {
   meta: Stripe.Metadata
-  tentativeColonne: 'stripe_session_id' | 'stripe_payment_intent_id'
+  tentativeColonne: 'stripe_session_id' | 'stripe_payment_intent_id' | 'stripe_setup_intent_id'
   tentativeValeur: string
   acheteurEmail: string | null
   acheteurNom: string | null
@@ -205,6 +205,10 @@ type ContextePaiement = {
   // remboursement futur sans option stripeAccount) ; sinon l'id du compte
   // connecté sur lequel vit réellement le PaymentIntent (Direct Charge).
   stripeAccountId: string | null
+  // Paiement réparti entre vendeurs (Phase 13) : un encaissement par vendeur,
+  // suivi dans commande_tranches — pas de facture unique au nom de A (les
+  // factures par vendeur arrivent au lot 3).
+  paiementMulti?: boolean
 }
 
 // Cœur commun aux deux chemins de paiement (panier classique via Checkout
@@ -213,7 +217,7 @@ type ContextePaiement = {
 // contrats PDF, email de confirmation, automatisations CRM. Rien ici ne doit
 // dépendre de la forme exacte de l'objet Stripe d'origine — voir
 // traiterPaiement()/traiterPaiementExpress() pour l'adaptation en amont.
-export async function finaliserCommandePayee(ctx: ContextePaiement) {
+export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<string | null> {
   const { meta } = ctx
   const prixPayeTotal = ctx.totalCents / 100
   const stripePaymentId = ctx.stripePaymentId
@@ -233,7 +237,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
 
   if (!tentative) {
     console.error('[webhook-paiement] Aucune tentative_paiement pour', ctx.tentativeColonne, ':', ctx.tentativeValeur)
-    return
+    return null
   }
 
   const { data: tentativeLignes } = await supabase
@@ -243,7 +247,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
 
   if (!tentativeLignes || tentativeLignes.length === 0) {
     console.error('[webhook-paiement] Aucune ligne de panier pour la tentative:', tentative.id)
-    return
+    return null
   }
 
   // Page de paiement custom (Phase 9) : le formulaire capture prénom/nom/
@@ -346,11 +350,12 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
     plateforme_source: 'my_producer',
     source_marketing: meta.source_marketing ?? 'direct',
     type_commande: 'LICENCE',
+    paiement_multi_vendeurs: ctx.paiementMulti === true,
   }).select('id').single()
 
   if (error || !commande) {
     console.error('[webhook-paiement] Erreur insert commande:', JSON.stringify(error))
-    return
+    return null
   }
 
   console.log('[webhook-paiement] Commande créée:', commande.id, '—', tentativeLignes.length, 'article(s)')
@@ -361,7 +366,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
   // que le beatmaker n'a pas explicitement accepté le mandat de facturation
   // (pas de préselection silencieuse, même principe que les pages légales).
   let numeroFactureAttribue = false
-  if (beatmaker?.mandat_facturation_version) {
+  if (beatmaker?.mandat_facturation_version && !ctx.paiementMulti) {
     try {
       const numeroFacture = await genererNumeroFacture(supabase, {
         beatmakerId: meta.beatmaker_id,
@@ -625,6 +630,8 @@ export async function finaliserCommandePayee(ctx: ContextePaiement) {
       if (leadError) console.error('[webhook-paiement] Erreur opt-in newsletter lead:', JSON.stringify(leadError))
     }
   }
+
+  return commande.id
 }
 
 // ─── Litiges Stripe (rang 9 ROADMAP, décidé avec Jake le 2026-08-31) ────────
