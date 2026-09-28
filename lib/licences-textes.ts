@@ -20,7 +20,6 @@ export type VariableLicence = { token: string; description: string }
 const VARIABLES_COMMUNES: VariableLicence[] = [
   { token: '{{identite_concedant}}', description: 'Identité complète du beatmaker (nom, SIRET, adresse...), composée automatiquement' },
   { token: '{{identite_licencie}}', description: "Nom et adresse de l'acheteur" },
-  { token: '{{bloc_collaborateurs}}', description: "Paragraphe listant les collaborateurs du beat (vide s'il n'y en a pas)" },
   { token: '{{boutique}}', description: 'Slug de la boutique' },
   { token: '{{titre_beat}}', description: 'Titre du beat vendu' },
   { token: '{{prix_paye}}', description: "Montant réellement payé par l'acheteur, remises incluses" },
@@ -72,7 +71,7 @@ Le présent contrat est conclu entre :
 Et :
 
 {{identite_licencie}}, ci-après dénommé « Le Licencié ».
-{{bloc_collaborateurs}}
+
 1. PRÉAMBULE
 
 La présente Licence régit, avec les Conditions Générales de Vente de la boutique {{boutique}}, les conditions applicables à la concession non exclusive de droits sur l'œuvre de musique instrumentale du Concédant, ci-après dénommée « l'Œuvre », en contrepartie du versement d'un prix forfaitaire par le Licencié.
@@ -358,7 +357,7 @@ Le présent contrat est conclu entre :
 Et :
 
 {{identite_licencie}}, ci-après dénommé « Le Licencié ».
-{{bloc_collaborateurs}}
+
 1. PRÉAMBULE
 
 La présente Licence régit, avec les Conditions Générales de Vente de la boutique {{boutique}}, les conditions applicables à la concession non exclusive de droits sur l'œuvre de musique instrumentale du Concédant, ci-après dénommée « l'Œuvre », en contrepartie du versement d'un prix forfaitaire par le Licencié.
@@ -382,7 +381,7 @@ La présente Licence autorise le Licencié à incorporer l'Œuvre dans une seule
 
 Dans le cadre de la présente Licence, le Licencié recevra les fichiers suivants : {{fichiers_livres}}.
 
-Les fichiers seront mis à disposition par courrier électronique envoyé automatiquement après validation de la commande et, le cas échéant, réception par le Concédant de l'intégralité du paiement dû par le Licencié.
+Les fichiers seront mis à disposition par courrier électronique envoyé automatiquement après validation de la commande et, le cas échéant, réception de l'intégralité du paiement dû par le Licencié.
 
 La date de validation du paiement ou, dans le cas d'une Licence accordée gratuitement, la date de validation de la commande marque également la date de prise d'effet de la présente Licence.
 
@@ -658,7 +657,7 @@ Le présent contrat est conclu entre :
 Et :
 
 {{identite_licencie}}, ci-après dénommé « Le Licencié ».
-{{bloc_collaborateurs}}
+
 1. PRÉAMBULE
 
 La présente Licence régit, avec les Conditions Générales de Vente de la boutique {{boutique}}, les conditions applicables à la concession exclusive de droits d'exploitation sur l'œuvre de musique instrumentale du Concédant, ci-après dénommée « l'Œuvre », en contrepartie du versement d'un prix forfaitaire par le Licencié.
@@ -682,7 +681,7 @@ La présente Licence autorise le Licencié à incorporer l'Œuvre dans une ou pl
 
 Dans le cadre de la présente Licence, le Licencié recevra les fichiers suivants : {{fichiers_livres}}.
 
-Les fichiers seront mis à disposition par courrier électronique envoyé automatiquement après validation de la commande et, le cas échéant, réception par le Concédant de l'intégralité du paiement dû par le Licencié.
+Les fichiers seront mis à disposition par courrier électronique envoyé automatiquement après validation de la commande et, le cas échéant, réception de l'intégralité du paiement dû par le Licencié.
 
 La date de validation du paiement ou, dans le cas d'une Licence accordée gratuitement, la date de validation de la commande marque également la date de prise d'effet de la présente Licence.
 
@@ -954,6 +953,35 @@ ${NOM_PLATEFORME} n'effectue aucune validation juridique des conditions de licen
 }
 
 // ============================================================
+// Paragraphe « collaborateurs » (Phase 12, Q11 du grill-me) — comme le bloc
+// RÔLE DE LA PLATEFORME : jamais dans le texte éditable, ajouté par le code
+// quand le beat a des collaborateurs actifs au moment de la vente, placé
+// juste après l'identité des parties. Non modifiable, non supprimable par A.
+// Texte provisoire validé par Jake, à faire relire.
+// ============================================================
+export function blocCollaborateurs(noms: string[]): string {
+  return `Lorsque l'Œuvre a été composée en collaboration, les co-compositeurs sont : ${noms.join(', ')}. Le Concédant est seul concédant au titre du présent Contrat et seul maître de la vente (prix, conditions, publication, remboursements), en vertu des accords que ses collaborateurs lui ont consentis. La vente est toutefois réalisée conjointement : le prix payé est réparti directement entre le Concédant et ses collaborateurs, chacun pour sa quote-part, et chacun émet sa propre facture pour sa part. Les collaborateurs ne deviennent pas parties au présent Contrat en qualité de concédants.`
+}
+
+// Ancienne balise éditable (avant le lot 4) : peut encore figurer dans un
+// texte déjà personnalisé par un beatmaker — elle marque alors l'endroit du
+// paragraphe, sinon on le place après la ligne qui présente le Licencié.
+const BALISE_COLLABORATEURS_HISTORIQUE = '{{bloc_collaborateurs}}'
+const REPERE_LICENCIE = '« Le Licencié »'
+
+function insererBlocCollaborateurs(texte: string, noms: string[]): string {
+  const bloc = noms.length > 0 ? blocCollaborateurs(noms) : ''
+  if (texte.includes(BALISE_COLLABORATEURS_HISTORIQUE)) {
+    return texte.replaceAll(BALISE_COLLABORATEURS_HISTORIQUE, bloc ? `\n${bloc}\n` : '')
+  }
+  if (!bloc) return texte
+  const repere = texte.indexOf(REPERE_LICENCIE)
+  const finDeLigne = repere === -1 ? -1 : texte.indexOf('\n', repere)
+  if (finDeLigne === -1) return `${texte}\n\n${bloc}`
+  return `${texte.slice(0, finDeLigne)}\n\n${bloc}${texte.slice(finDeLigne)}`
+}
+
+// ============================================================
 // Résolution des variables — n'intervient qu'une seule fois, au moment de
 // générer le PDF de contrat pour une vente précise (jamais au moment où le
 // beatmaker enregistre son texte).
@@ -1020,19 +1048,14 @@ function ligneLimite(valeur: number | null, singulier: string, pluriel: string):
 }
 
 export function resoudreVariablesLicence(texte: string, d: DonneesLicenceContrat): string {
-  const blocCollaborateurs = d.collaborateurs.length > 0
-    ? `Lorsque l'Œuvre a été composée en collaboration, le ou les co-compositeurs concernés sont identifiés comme suit : ${d.collaborateurs.map(c => c.nom).join(', ')}. La présence d'un ou plusieurs collaborateurs ne leur confère pas la qualité de Concédant au titre du présent Contrat. Le Concédant demeure seul vendeur de la Licence et seul Concédant contractuellement désigné à l'égard du Licencié.\n`
-    : ''
-
   const identiteLicencie = [d.licencieNom, d.licencieAdresse ? `demeurant ${d.licencieAdresse}` : null]
     .filter(Boolean)
     .join(', ') || 'Le Licencié'
 
-  return texte
+  return insererBlocCollaborateurs(texte, d.collaborateurs.map(c => c.nom))
     .replaceAll('{{type_licence}}', d.typeLicenceLabel)
     .replaceAll('{{identite_concedant}}', identiteConcedant(d.concedant))
     .replaceAll('{{identite_licencie}}', identiteLicencie)
-    .replaceAll('{{bloc_collaborateurs}}', blocCollaborateurs)
     .replaceAll('{{boutique}}', d.boutique)
     .replaceAll('{{titre_beat}}', d.titreBeat)
     .replaceAll('{{prix_paye}}', d.prixPaye)
