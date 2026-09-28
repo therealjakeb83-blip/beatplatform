@@ -204,7 +204,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
         ? total * (1 - codeApplique.valeur / 100)
         : Math.max(0, total - codeApplique.valeur))
     : total
-  const tva = detailTva(totalApresCode, { tvaActive, tvaTaux })
 
   // Montant réellement facturé (TVA/remises/code promo/lot déjà appliqués
   // côté serveur) — jamais une approximation locale, sinon la fenêtre Apple/
@@ -215,6 +214,15 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   // paiement s'ouvrait alors sur le montant de détection par défaut (10 €)
   // au lieu du vrai total (bug réel constaté par Jake).
   const [montantSynchronise, setMontantSynchronise] = useState(false)
+  // Le total affiché (récapitulatif ET bouton « Payer ») est TOUJOURS celui
+  // calculé par le serveur, qui est aussi celui débité — le calcul local
+  // (totalApresCode) ne connaît ni le prix plancher des beats collab, ni les
+  // restrictions d'un code promo par beat/licence : il ne sert qu'en attendant.
+  const [totalServeurCents, setTotalServeurCents] = useState<number | null>(null)
+  const [beatsRemiseLimitee, setBeatsRemiseLimitee] = useState<string[]>([])
+  const [erreurPrix, setErreurPrix] = useState<string | null>(null)
+  const totalAffiche = totalServeurCents !== null ? totalServeurCents / 100 : totalApresCode
+  const tva = detailTva(totalAffiche, { tvaActive, tvaTaux })
   useEffect(() => {
     if (!elements || items.length === 0) return
     let annule = false
@@ -230,11 +238,16 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       }),
     })
       .then(r => r.json())
-      .then((data: { totalCents?: number }) => {
+      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[]; erreur?: string }) => {
         if (annule) return
         if (typeof data.totalCents === 'number') {
           elements.update({ amount: data.totalCents })
+          setTotalServeurCents(data.totalCents)
+          setBeatsRemiseLimitee(data.beatsRemiseLimitee ?? [])
+          setErreurPrix(null)
           setMontantSynchronise(true)
+        } else {
+          setErreurPrix(data.erreur ?? 'Impossible de calculer le prix, réessaie.')
         }
       })
       .catch(() => {})
@@ -487,7 +500,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 </div>
                 <span className="pmt-recap-label">{items.length} beat{items.length > 1 ? 's' : ''}</span>
                 <span className="pmt-recap-total-col">
-                  <span className="pmt-recap-total">{formatPrix(totalApresCode)}</span>
+                  <span className="pmt-recap-total">{formatPrix(totalAffiche)}</span>
                   {tva && <span className="pmt-recap-tva">dont {tva.taux} % TVA</span>}
                 </span>
                 <span className={`pmt-recap-chevron${recapOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
@@ -557,7 +570,12 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 <div className="pmt-hr" />
                 <div className="pmt-row pmt-row-sub"><span>Sous-total</span><span>{formatPrix(total)}</span></div>
                 {tva && <div className="pmt-row pmt-row-sub"><span>TVA ({tva.taux} %)</span><span>{formatPrix(tva.montant)}</span></div>}
-                <div className="pmt-row pmt-row-total"><span>{tva ? 'Total TTC' : 'Total'}</span><span>{formatPrix(totalApresCode)}</span></div>
+                <div className="pmt-row pmt-row-total"><span>{tva ? 'Total TTC' : 'Total'}</span><span>{formatPrix(totalAffiche)}</span></div>
+                {beatsRemiseLimitee.length > 0 && (
+                  <p className="pmt-remise-limitee">
+                    Réduction limitée pour {beatsRemiseLimitee.map(t => `« ${t} »`).join(', ')} : un beat en collaboration ne peut pas descendre sous le prix qui garantit au moins 1 € à chaque artiste.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -714,10 +732,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                   </div>
                 </div>
 
-                {erreurGlobale && <p className="pmt-error-global">{erreurGlobale}</p>}
+                {(erreurGlobale || erreurPrix) && <p className="pmt-error-global">{erreurGlobale ?? erreurPrix}</p>}
 
-                <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk}>
-                  {submitting ? 'Traitement…' : `Payer ${formatPrix(totalApresCode)}`}
+                <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk || !montantSynchronise}>
+                  {submitting ? 'Traitement…' : montantSynchronise ? `Payer ${formatPrix(totalAffiche)}` : 'Calcul du prix…'}
                 </button>
                 <p className="pmt-legal">
                   En payant, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.

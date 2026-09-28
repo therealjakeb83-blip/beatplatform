@@ -1928,6 +1928,7 @@ a.shop-tabbar-item.is-active { color: #fff; font-weight: 600; }
 
 .shop-cart-note { text-align: center; font-size: 10.5px; color: rgba(10,10,12,.4); }
 .shop-cart-tva-note { text-align: right; font-size: 10.5px; color: rgba(10,10,12,.4); margin-top: -4px; }
+.shop-cart-remise-limitee { font-size: 11px; line-height: 1.45; color: rgba(10,10,12,.55); margin: 0; }
 .shop-cart-error { color: #E11D48; font-size: 12px; }
 
 .shop-cart-express { width: 100%; min-height: 46px; margin-bottom: 2px; transition: opacity .25s ease; }

@@ -4,8 +4,9 @@ import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, type Item
 import { NextResponse } from 'next/server'
 
 // Prévisualisation du montant réel (TVA/remises/code promo déjà inclus) —
-// utilisée par le paiement express (Apple Pay/Google Pay) pour que le
-// montant affiché dans la fenêtre native soit exactement celui facturé.
+// SEULE source du total affiché au client (panier, page de paiement, bouton
+// « Payer », fenêtre Apple/Google Pay) : le prix affiché doit toujours être
+// exactement celui qui sera débité.
 // Ne crée jamais de PaymentIntent ni aucune écriture en base, contrairement
 // à /api/stripe/express-checkout — appel possible à chaque changement de
 // licence sélectionnée sans effet de bord.
@@ -50,6 +51,10 @@ export async function POST(request: Request) {
   if (!lignesResult.ok) return NextResponse.json({ erreur: lignesResult.erreur }, { status: lignesResult.status })
 
   const totalCents = lignesResult.value.reduce((s, l) => s + l.prixTotalCents, 0)
+  // Beats collab dont la remise a été réduite pour que chaque vendeur touche
+  // au moins 1 € (Phase 12, Q9) — affiché au client, qui voit ainsi toujours
+  // le montant exact qui sera débité.
+  const beatsRemiseLimitee = lignesResult.value.filter(l => l.remiseLimitee).map(l => l.titre)
 
-  return NextResponse.json({ totalCents })
+  return NextResponse.json({ totalCents, beatsRemiseLimitee })
 }

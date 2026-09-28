@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useCart } from './CartContext'
 import CartExpressPay, { type ExpressStatus } from './CartExpressPay'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
@@ -50,6 +50,35 @@ export default function CartDrawer({
   const [emailAcheteur, setEmailAcheteur] = useState('')
   const [, setExpressStatus] = useState<ExpressStatus>('loading')
   const [expressRedirection, setExpressRedirection] = useState(false)
+  // Total affiché = celui calculé par le serveur, exactement celui qui sera
+  // débité (prix plancher des beats collab, restrictions de code promo par
+  // beat/licence) — le calcul local ne sert qu'en attendant la réponse.
+  const [prixServeur, setPrixServeur] = useState<{ cle: string; totalCents: number; beatsRemiseLimitee: string[] } | null>(null)
+  const clePrix = `${items.map(i => `${i.beatId}:${i.licenceId}`).join(',')}|${codeApplique?.code ?? ''}`
+
+  useEffect(() => {
+    if (!isOpen || items.length === 0) return
+    let annule = false
+    fetch('/api/stripe/prix-panier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug,
+        items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
+        code_promo: codeApplique?.code,
+        email_acheteur: (clientEmail ?? emailAcheteur).trim() || undefined,
+      }),
+    })
+      .then(r => r.json())
+      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[] }) => {
+        if (!annule && typeof data.totalCents === 'number') {
+          setPrixServeur({ cle: clePrix, totalCents: data.totalCents, beatsRemiseLimitee: data.beatsRemiseLimitee ?? [] })
+        }
+      })
+      .catch(() => {})
+    return () => { annule = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, slug, clePrix])
 
   if (!isOpen) return null
 
@@ -60,6 +89,8 @@ export default function CartDrawer({
         ? total * (1 - codeApplique.valeur / 100)
         : Math.max(0, total - codeApplique.valeur))
     : total
+  const serveurAJour = prixServeur?.cle === clePrix ? prixServeur : null
+  const totalAffiche = serveurAJour ? serveurAJour.totalCents / 100 : totalApresCode
   const promoBanner = computePromoBanner(items, reglesLot)
   const beatGratuitDebloque = hasFreeItem(items, reglesLot)
 
@@ -263,14 +294,19 @@ export default function CartDrawer({
                 <div className="shop-cart-row is-total">
                   <span>Total</span>
                   <span>
-                    {codeApplique && totalApresCode !== total && (
+                    {codeApplique && totalAffiche !== total && (
                       <span className="shop-cart-strike">{formatPrix(total)}</span>
                     )}
-                    {formatPrix(totalApresCode)}
+                    {formatPrix(totalAffiche)}
                   </span>
                 </div>
+                {serveurAJour && serveurAJour.beatsRemiseLimitee.length > 0 && (
+                  <p className="shop-cart-remise-limitee">
+                    Réduction limitée pour {serveurAJour.beatsRemiseLimitee.map(t => `« ${t} »`).join(', ')} : un beat en collaboration ne peut pas descendre sous le prix qui garantit au moins 1 € à chaque artiste.
+                  </p>
+                )}
                 {(() => {
-                  const tva = detailTva(totalApresCode, { tvaActive, tvaTaux })
+                  const tva = detailTva(totalAffiche, { tvaActive, tvaTaux })
                   return tva ? (
                     <div className="shop-cart-tva-note">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</div>
                   ) : null

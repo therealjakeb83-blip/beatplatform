@@ -104,6 +104,7 @@
 .pmt-row { display: flex; justify-content: space-between; align-items: center; }
 .pmt-row-sub { font-size: 12.5px; color: rgba(10, 10, 12, .55); }
 .pmt-row-total { font-size: 15px; font-weight: 700; }
+.pmt-remise-limitee { font-size: 12px; line-height: 1.45; color: rgba(10, 10, 12, .6); margin: 6px 0 0; }
 
 /* Code promo */
 .pmt-promo-row { display: flex; gap: 8px; }
