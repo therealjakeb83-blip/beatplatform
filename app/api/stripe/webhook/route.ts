@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
 import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiementExpress } from '@/lib/webhook-paiement'
-import { genererNumeroFacture } from '@/lib/facturation'
+import { genererNumeroFacture, modeleFactureEffectif } from '@/lib/facturation'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { uploadPdfFacture } from '@/lib/livraison'
 import { fuseauSur } from '@/lib/fuseau-horaire'
@@ -708,7 +708,7 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
   // ne recevaient jamais de numero_facture/facture_pdf_url.
   const { data: beatmakerFacturation } = await supabase
     .from('beatmakers')
-    .select('slug, mandat_facturation_version, facturation_format, fuseau_horaire')
+    .select('slug, mandat_facturation_version, facturation_format, fuseau_horaire, pays, facture_modele, facture_mentions')
     .eq('id', abo.beatmaker_id)
     .single()
 
@@ -724,6 +724,8 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
       await supabase.from('commandes').update({
         numero_facture: numeroFacture,
         mandat_facturation_version: beatmakerFacturation.mandat_facturation_version,
+        facture_modele: modeleFactureEffectif(beatmakerFacturation.facture_modele, beatmakerFacturation.pays),
+        facture_mentions: beatmakerFacturation.facture_mentions ?? null,
       }).eq('id', commandeAbo.id)
 
       const pdfBytes = await genererFacturePdfPourCommande(supabase, commandeAbo.id)

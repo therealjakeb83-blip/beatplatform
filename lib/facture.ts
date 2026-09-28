@@ -2,6 +2,7 @@ import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib'
 import sharp from 'sharp'
 import type { createAdminClient } from '@/utils/supabase/admin'
 import { NOM_PLATEFORME } from './constantes'
+import type { ModeleFacture } from './facturation'
 import type { InfosLegalesConcedant } from './licences-textes'
 
 // Récupère le logo du beatmaker et le prépare pour un embed pdf-lib (PNG,
@@ -59,6 +60,10 @@ export interface FactureInput {
   // l'inverser pixel par pixel avant embed (voir chargerLogoPourFacture) —
   // déjà PNG, déjà inversé si besoin, prêt à être embarqué tel quel.
   logoPng: Uint8Array | null
+  // Figés sur la commande au moment de l'attribution du numéro (voir
+  // supabase/facture_modele_libre.sql) — jamais la valeur live du beatmaker.
+  modele: ModeleFacture
+  mentions: string | null
 }
 
 const PAGE_W = 595
@@ -85,6 +90,32 @@ function identiteVendeur(v: InfosLegalesConcedant): string {
 // toLocaleString('fr-FR') pour les séparateurs de milliers.
 function nettoyerTexte(texte: string): string {
   return texte.replace(/[  ]/g, ' ')
+}
+
+function decouperEnLignes(texte: string, font: PDFFont, taille: number, largeurMax: number): string[] {
+  if (!texte.trim()) return ['']
+  const lignes: string[] = []
+  let courante = ''
+  for (const mot of texte.split(/ +/)) {
+    const essai = courante ? `${courante} ${mot}` : mot
+    if (font.widthOfTextAtSize(essai, taille) <= largeurMax) {
+      courante = essai
+      continue
+    }
+    if (courante) lignes.push(courante)
+    // Mot plus long qu'une ligne entière (URL...) : coupé caractère par caractère.
+    courante = ''
+    for (const c of Array.from(mot)) {
+      if (font.widthOfTextAtSize(courante + c, taille) > largeurMax && courante) {
+        lignes.push(courante)
+        courante = c
+      } else {
+        courante += c
+      }
+    }
+  }
+  if (courante) lignes.push(courante)
+  return lignes
 }
 
 export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array> {
@@ -136,7 +167,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   const adresse = adresseVendeur(input.vendeur)
   const lignesVendeur = [
     identite,
-    input.vendeur.numero_entreprise ? `SIRET : ${input.vendeur.numero_entreprise}` : null,
+    input.vendeur.numero_entreprise ? `Numéro d'entreprise : ${input.vendeur.numero_entreprise}` : null,
     adresse,
     input.tvaNumero ? `N° TVA : ${input.tvaNumero}` : null,
   ].filter(Boolean) as string[]
@@ -239,7 +270,8 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
 
   // Juste sous le total, centrées — pas en pied de page fixe (retour de
   // Jake, voir capture annotée) : le texte légal (TVA non applicable, s'il
-  // y a lieu) puis la mention courte du mandataire, dans cet ordre.
+  // y a lieu, modèle français uniquement), les mentions du beatmaker, puis
+  // la mention courte du mandataire, dans cet ordre.
   const centrer = (texte: string, taille: number, font: PDFFont) => {
     const largeur = font.widthOfTextAtSize(texte, taille)
     return MARGIN_X + (maxWidth - largeur) / 2
@@ -247,10 +279,26 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
 
   y -= 26
 
-  if (!assujettiTva) {
+  if (!assujettiTva && input.modele === 'francais') {
     const texteTva = 'TVA non applicable, article 293 B du Code général des impôts.'
     page.drawText(texteTva, { x: centrer(texteTva, 8, fontRegular), y, font: fontRegular, size: 8, color: rgb(0.5, 0.5, 0.5) })
     y -= 12
+  }
+
+  if (input.mentions) {
+    // Texte saisi librement par le beatmaker : la police standard (WinAnsi)
+    // plante sur tout caractère qu'elle ne sait pas encoder (emoji...) —
+    // ces caractères sont retirés plutôt que de faire échouer la facture.
+    const encodables = new Set(fontRegular.getCharacterSet())
+    const tailleMentions = 8
+    for (const paragraphe of input.mentions.split('\n')) {
+      const propre = Array.from(nettoyerTexte(paragraphe)).filter(c => encodables.has(c.codePointAt(0)!)).join('')
+      for (const l of decouperEnLignes(propre, fontRegular, tailleMentions, maxWidth)) {
+        if (l) page.drawText(l, { x: centrer(l, tailleMentions, fontRegular), y, font: fontRegular, size: tailleMentions, color: rgb(0.4, 0.4, 0.4) })
+        y -= 11
+      }
+    }
+    y -= 4
   }
 
   const texteMandat = nettoyerTexte(`Facture établie par ${NOM_PLATEFORME} au nom et pour le compte de ${input.vendeur.nom_artiste}.`)
@@ -271,7 +319,7 @@ export async function genererFacturePdfPourCommande(
 ): Promise<Uint8Array> {
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, beatmaker_id, client_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, acheteur_nom, acheteur_email, acheteur_adresse, acheteur_raison_sociale, acheteur_numero_tva, created_at, prix_paye, type_commande')
+    .select('id, beatmaker_id, client_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, facture_modele, facture_mentions, acheteur_nom, acheteur_email, acheteur_adresse, acheteur_raison_sociale, acheteur_numero_tva, created_at, prix_paye, type_commande')
     .eq('id', commandeId)
     .single()
 
@@ -345,5 +393,9 @@ export async function genererFacturePdfPourCommande(
     mandatFacturationVersion: commande.mandat_facturation_version ?? 1,
     tvaNumero: commande.tva_numero ?? null,
     logoPng,
+    // Commande antérieure à ce réglage (rien de figé) : modèle français sans
+    // mention, exactement la facture d'avant.
+    modele: commande.facture_modele === 'libre' ? 'libre' : 'francais',
+    mentions: commande.facture_mentions ?? null,
   })
 }

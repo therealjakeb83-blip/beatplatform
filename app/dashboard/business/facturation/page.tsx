@@ -1,6 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { getZonedParts, fuseauSur } from '@/lib/fuseau-horaire'
+import { modeleFactureEffectif, modeleFactureParDefaut } from '@/lib/facturation'
+import { nomPays } from '@/lib/pays'
 import FacturationClient from './FacturationClient'
 
 export default async function FacturationPage() {
@@ -10,7 +12,7 @@ export default async function FacturationPage() {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('slug, mandat_facturation_version, mandat_facturation_accepte_at, facturation_format, facturation_offset, facturation_annee_courante, facturation_compteur, facturation_offset_mode, facturation_offset_manuel, fuseau_horaire, tva_active, tva_taux, tva_numero')
+    .select('slug, mandat_facturation_version, mandat_facturation_accepte_at, facturation_format, facturation_offset, facturation_annee_courante, facturation_compteur, facturation_offset_mode, facturation_offset_manuel, fuseau_horaire, tva_active, tva_taux, tva_numero, pays, facture_modele, facture_mentions')
     .eq('id', user.id)
     .single()
 
@@ -36,6 +38,11 @@ export default async function FacturationPage() {
       tvaActive={beatmaker?.tva_active ?? false}
       tvaTaux={beatmaker?.tva_taux ?? 20}
       tvaNumero={beatmaker?.tva_numero ?? ''}
+      modeleFacture={modeleFactureEffectif(beatmaker?.facture_modele, beatmaker?.pays)}
+      modeleParDefaut={modeleFactureParDefaut(beatmaker?.pays)}
+      modeleChoisiExplicitement={!!beatmaker?.facture_modele}
+      nomPaysBeatmaker={nomPays(beatmaker?.pays)}
+      mentionsFacture={beatmaker?.facture_mentions ?? ''}
     />
   )
 }

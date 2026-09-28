@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { MANDAT_FACTURATION_VERSION_ACTUELLE, formatFacturationValide } from '@/lib/facturation'
+import { MANDAT_FACTURATION_VERSION_ACTUELLE, MENTIONS_FACTURE_MAX, formatFacturationValide, modeleFactureValide, normaliserMentionsFacture } from '@/lib/facturation'
 import { NextResponse } from 'next/server'
 import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 
@@ -29,8 +29,10 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
   const body = await request.json() as {
-    action?: 'accepter_mandat' | 'definir_format' | 'reinitialiser_format' | 'definir_offset'
+    action?: 'accepter_mandat' | 'definir_format' | 'reinitialiser_format' | 'definir_offset' | 'definir_modele'
     format?: string
+    modele?: string
+    mentions?: string
     offsetMode?: 'aleatoire' | 'manuel'
     offsetManuel?: number
   }
@@ -65,6 +67,22 @@ export async function POST(request: Request) {
     const { error } = await supabase
       .from('beatmakers')
       .update({ facturation_format: null, facturation_format_accepte_at: null })
+      .eq('id', user.id)
+    if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (body.action === 'definir_modele') {
+    if (!modeleFactureValide(body.modele)) {
+      return NextResponse.json({ erreur: 'Modèle invalide.' }, { status: 400 })
+    }
+    const mentions = normaliserMentionsFacture(body.mentions)
+    if (mentions && mentions.length > MENTIONS_FACTURE_MAX) {
+      return NextResponse.json({ erreur: `Les mentions ne peuvent pas dépasser ${MENTIONS_FACTURE_MAX} caractères.` }, { status: 400 })
+    }
+    const { error } = await supabase
+      .from('beatmakers')
+      .update({ facture_modele: body.modele, facture_mentions: mentions })
       .eq('id', user.id)
     if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

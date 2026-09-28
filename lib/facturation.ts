@@ -91,3 +91,39 @@ export async function genererNumeroFacture(
   const format = params.format && formatFacturationValide(params.format) ? params.format : FORMAT_FACTURATION_PAR_DEFAUT
   return formaterNumeroFacture(format, { slug: params.slug, num, jour: zoned.day, mois: zoned.month, annee: zoned.year })
 }
+
+// ============================================================
+// Modèle de facture (Q6c du grill-me Phase 12) — « Français » ajoute les
+// mentions françaises automatiques (article 293 B), « Libre » s'en tient au
+// strict minimum. Dans les deux cas, le beatmaker peut ajouter ses propres
+// mentions en bas de facture.
+// ============================================================
+export type ModeleFacture = 'francais' | 'libre'
+
+export const MENTIONS_FACTURE_MAX = 500
+
+export function modeleFactureValide(valeur: unknown): valeur is ModeleFacture {
+  return valeur === 'francais' || valeur === 'libre'
+}
+
+export function modeleFactureParDefaut(pays: string | null | undefined): ModeleFacture {
+  const code = (pays ?? '').trim().toUpperCase()
+  return code === 'FR' || code === 'FRANCE' ? 'francais' : 'libre'
+}
+
+export function modeleFactureEffectif(choix: string | null | undefined, pays: string | null | undefined): ModeleFacture {
+  return modeleFactureValide(choix) ? choix : modeleFactureParDefaut(pays)
+}
+
+// Retours à la ligne unifiés, espaces de fin retirés, lignes vides en trop
+// réduites — null si rien d'utile, pour ne jamais stocker une chaîne vide.
+export function normaliserMentionsFacture(texte: string | null | undefined): string | null {
+  const propre = (texte ?? '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map(l => l.trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return propre || null
+}

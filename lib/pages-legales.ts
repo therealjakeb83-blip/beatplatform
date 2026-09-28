@@ -22,7 +22,7 @@ export type InfosLegalesBeatmaker = {
 
 export const CHAMPS_INFOS_LEGALES: { cle: keyof InfosLegalesBeatmaker; label: string; placeholder: string }[] = [
   { cle: 'raison_sociale', label: 'Nom légal / raison sociale', placeholder: 'ex: Jean Dupont, ou Dupont Prod SASU' },
-  { cle: 'numero_entreprise', label: 'SIRET (si applicable)', placeholder: '123 456 789 00012' },
+  { cle: 'numero_entreprise', label: "Numéro d'entreprise (SIRET en France)", placeholder: '123 456 789 00012' },
   { cle: 'adresse', label: 'Adresse', placeholder: '12 rue des Beats' },
   { cle: 'code_postal', label: 'Code postal', placeholder: '75001' },
   { cle: 'ville', label: 'Ville', placeholder: 'Paris' },

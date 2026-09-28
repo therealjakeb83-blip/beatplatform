@@ -133,7 +133,7 @@ export default function PagesLegalesForm({
       <div className="mb-8 p-5 rounded-lg bg-gray-900 border border-gray-800">
         <h2 className="text-sm font-semibold text-gray-200 mb-1">Tes informations légales</h2>
         <p className="text-xs text-gray-500 mb-4">
-          Utilisées pour remplir automatiquement les modèles ci-dessous (nom, SIRET, adresse, contact). Modifie-les
+          Utilisées pour remplir automatiquement les modèles ci-dessous (nom, numéro d&apos;entreprise, adresse, contact). Modifie-les
           ici une seule fois plutôt que dans chaque page — {!complet && 'à compléter avant de publier tes pages légales.'}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

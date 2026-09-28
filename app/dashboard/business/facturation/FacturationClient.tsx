@@ -9,6 +9,8 @@ import {
   VARIABLES_FACTURATION,
   formatFacturationValide,
   formaterNumeroFacture,
+  MENTIONS_FACTURE_MAX,
+  type ModeleFacture,
 } from '@/lib/facturation'
 
 const LABEL_VARIABLE: Record<string, string> = {
@@ -51,6 +53,11 @@ export default function FacturationClient({
   tvaActive,
   tvaTaux,
   tvaNumero,
+  modeleFacture,
+  modeleParDefaut,
+  modeleChoisiExplicitement,
+  nomPaysBeatmaker,
+  mentionsFacture,
 }: {
   slug: string
   mandatVersion: number | null
@@ -65,6 +72,11 @@ export default function FacturationClient({
   tvaActive: boolean
   tvaTaux: number
   tvaNumero: string
+  modeleFacture: ModeleFacture
+  modeleParDefaut: ModeleFacture
+  modeleChoisiExplicitement: boolean
+  nomPaysBeatmaker: string
+  mentionsFacture: string
 }) {
   const router = useRouter()
   const mandatActif = !!mandatAccepteLe
@@ -89,16 +101,50 @@ export default function FacturationClient({
   // sauvegardé (bug réel remonté par Jake). Resynchronisation pendant le
   // rendu (pattern React recommandé, pas un useEffect) dès que le serveur
   // renvoie des props différentes des dernières connues.
-  const [propsPrecedentes, setPropsPrecedentes] = useState({ formatPersonnalise, offsetMode, offsetManuel })
+  const [modeleSaisi, setModeleSaisi] = useState<ModeleFacture>(modeleFacture)
+  const [mentionsSaisies, setMentionsSaisies] = useState(mentionsFacture)
+  const [chargementModele, setChargementModele] = useState(false)
+  const [erreurModele, setErreurModele] = useState('')
+  const [modeleSauvegardeOk, setModeleSauvegardeOk] = useState(false)
+
+  const [propsPrecedentes, setPropsPrecedentes] = useState({ formatPersonnalise, offsetMode, offsetManuel, modeleFacture, mentionsFacture })
   if (
     propsPrecedentes.formatPersonnalise !== formatPersonnalise ||
     propsPrecedentes.offsetMode !== offsetMode ||
-    propsPrecedentes.offsetManuel !== offsetManuel
+    propsPrecedentes.offsetManuel !== offsetManuel ||
+    propsPrecedentes.modeleFacture !== modeleFacture ||
+    propsPrecedentes.mentionsFacture !== mentionsFacture
   ) {
-    setPropsPrecedentes({ formatPersonnalise, offsetMode, offsetManuel })
+    setPropsPrecedentes({ formatPersonnalise, offsetMode, offsetManuel, modeleFacture, mentionsFacture })
     setFormatSaisi(formatPersonnalise ?? FORMAT_FACTURATION_PAR_DEFAUT)
     setModeSaisi(offsetMode)
     setManuelSaisi(offsetManuel ? String(offsetManuel) : '1')
+    setModeleSaisi(modeleFacture)
+    setMentionsSaisies(mentionsFacture)
+  }
+
+  async function sauvegarderModele() {
+    setChargementModele(true)
+    setErreurModele('')
+    setModeleSauvegardeOk(false)
+    try {
+      const res = await fetch('/api/business/facturation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'definir_modele', modele: modeleSaisi, mentions: mentionsSaisies }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setErreurModele(data?.erreur || 'Impossible d’enregistrer le modèle de facture.')
+        return
+      }
+      setModeleSauvegardeOk(true)
+      router.refresh()
+    } catch {
+      setErreurModele('Erreur réseau, réessaie.')
+    } finally {
+      setChargementModele(false)
+    }
   }
 
   // TVA — déplacé depuis /dashboard/paiements (2026-09-09), pour regrouper
@@ -306,6 +352,57 @@ export default function FacturationClient({
               Tant que ce mandat n&apos;est pas accepté, aucune facture n&apos;est générée pour tes ventes.
             </p>
           )}
+        </section>
+
+        {/* Modèle de facture */}
+        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h2 className="text-lg font-bold mb-1">Modèle de facture</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Choisis les mentions ajoutées automatiquement sur tes factures. Tu restes responsable des mentions obligatoires dans ton pays : ajoute celles qui manquent dans le champ ci-dessous.
+          </p>
+
+          <div className="flex flex-col gap-3 mb-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" checked={modeleSaisi === 'francais'} onChange={() => { setModeleSaisi('francais'); setModeleSauvegardeOk(false) }} className="accent-indigo-600 mt-0.5" />
+              <span>
+                <span className="text-sm text-gray-300 block">Français</span>
+                <span className="text-gray-600 text-xs">Ajoute les mentions françaises automatiques, par exemple « TVA non applicable, article 293 B du CGI » si tu n&apos;appliques pas la TVA.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" checked={modeleSaisi === 'libre'} onChange={() => { setModeleSaisi('libre'); setModeleSauvegardeOk(false) }} className="accent-indigo-600 mt-0.5" />
+              <span>
+                <span className="text-sm text-gray-300 block">Libre</span>
+                <span className="text-gray-600 text-xs">Aucune mention automatique : seulement le numéro, la date, toi, ton client, les produits et le total.</span>
+              </span>
+            </label>
+          </div>
+          <p className="text-gray-600 text-xs mb-4">
+            {modeleChoisiExplicitement
+              ? `Modèle proposé par défaut pour ton pays (${nomPaysBeatmaker}) : ${modeleParDefaut === 'francais' ? 'Français' : 'Libre'}.`
+              : `Choisi automatiquement selon ton pays (${nomPaysBeatmaker}) — tu peux le changer.`}
+          </p>
+
+          <label className="block text-xs font-medium text-gray-400 mb-1">Mentions à ajouter en bas de facture</label>
+          <textarea
+            value={mentionsSaisies}
+            onChange={e => { setMentionsSaisies(e.target.value); setModeleSauvegardeOk(false) }}
+            maxLength={MENTIONS_FACTURE_MAX}
+            rows={4}
+            placeholder="ex. mentions légales propres à ton pays, conditions de paiement..."
+            className="w-full px-3 py-2 rounded-lg bg-gray-800 text-white text-sm border border-gray-700 focus:outline-none focus:border-indigo-500"
+          />
+          <p className="text-gray-600 text-xs mt-1 mb-4">{mentionsSaisies.length}/{MENTIONS_FACTURE_MAX} caractères — facultatif. S&apos;applique à tes prochaines factures, jamais à celles déjà émises.</p>
+
+          <button
+            onClick={sauvegarderModele}
+            disabled={chargementModele}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+          >
+            {chargementModele ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+          {modeleSauvegardeOk && <p className="text-green-400 text-sm mt-2">Modèle enregistré.</p>}
+          {erreurModele && <p className="text-red-400 text-sm mt-2">{erreurModele}</p>}
         </section>
 
         {/* TVA */}
