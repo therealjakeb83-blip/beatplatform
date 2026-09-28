@@ -10,8 +10,13 @@ export type StatutCollaboration = 'invitee' | 'active' | 'refusee' | 'retiree' |
 
 // États « non terminés » : la collaboration compte encore dans la répartition
 // et le beat reste hors vente (invitée, active — tant que les ventes collab ne
-// sont pas ouvertes —, refusée tant que A n'a pas retiré l'invitation).
-export const STATUTS_OUVERTS: StatutCollaboration[] = ['invitee', 'active', 'refusee']
+// sont pas ouvertes). Un refus FERME la collaboration tout seul, comme un
+// retrait (retour de Jake pendant le test T7 du lot 3, 2026-09-28) : sinon A
+// devait cliquer "Retirer l'invitation" après coup, et B recevait un second
+// email ("invitation retirée") pour une action qu'il avait lui-même
+// provoquée en refusant. Voir supabase/phase12_lot3_refus_ferme_collab.sql —
+// change aussi les 2 index d'unicité et le trigger de recalcul en base.
+export const STATUTS_OUVERTS: StatutCollaboration[] = ['invitee', 'active']
 
 export const LIBELLES_STATUT_COLLAB: Record<StatutCollaboration, string> = {
   invitee: 'Invitée',
@@ -29,8 +34,10 @@ export function estCollaborationOuverte(statut: string): boolean {
 // Qui peut faire passer une collaboration d'un état à un autre.
 export const TRANSITIONS_COLLAB: Record<string, { de: StatutCollaboration[]; vers: StatutCollaboration; par: 'B' | 'A' }> = {
   accepter: { de: ['invitee'], vers: 'active', par: 'B' },
+  // Un refus est déjà terminal (voir STATUTS_OUVERTS ci-dessus) : plus besoin
+  // de "retirer" une invitation refusée, elle libère le beat toute seule.
   refuser: { de: ['invitee'], vers: 'refusee', par: 'B' },
-  retirer: { de: ['invitee', 'refusee'], vers: 'retiree', par: 'A' },
+  retirer: { de: ['invitee'], vers: 'retiree', par: 'A' },
   quitter: { de: ['active'], vers: 'quittee', par: 'B' },
   evincer: { de: ['active'], vers: 'evincee', par: 'A' },
 }

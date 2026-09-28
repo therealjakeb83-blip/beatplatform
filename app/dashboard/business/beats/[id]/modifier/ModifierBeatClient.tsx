@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, CollaborationHistorique, LicenceInfo, CategoriesOptions } from '../../_components/BeatForm'
 
-const STATUTS_OUVERTS = ['invitee', 'active', 'refusee']
+// Un refus ferme la collaboration tout seul (lot 3, retour de test T7) —
+// même liste que lib/collaboration.ts (dupliquée ici, fichier serveur non
+// importable dans ce composant client, voir lib/collaboration-messages.ts
+// pour la même raison ailleurs).
+const STATUTS_OUVERTS = ['invitee', 'active']
 
 export default function ModifierBeatClient({ beat, splits, licences, licencesActives, exclusifSurDemande, licenceOverrides, categories, lectureSeule = false }: {
   beat: Record<string, unknown>
