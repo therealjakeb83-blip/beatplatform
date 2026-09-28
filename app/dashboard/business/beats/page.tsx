@@ -20,9 +20,9 @@ export type BeatRow = {
   // Pourquoi le beat est hors vente, pour distinguer le badge (Phase 12, lot
   // 3, retour de Jake du 2026-09-28) : une invitation encore en attente n'a
   // rien à voir avec une collaboration refusée qu'A n'a pas encore "publiée
-  // quand même" — 'active' compte aussi hors vente (ventes collab pas encore
-  // ouvertes, lot 4) mais n'a pas son propre badge pour l'instant.
-  collabBadge: 'attente' | 'refusee' | null
+  // quand même". 'prete' (lot 4) : tous les collaborateurs ont accepté, le
+  // beat n'attend plus que l'ouverture des ventes collab (Phase 13).
+  collabBadge: 'attente' | 'refusee' | 'prete' | null
 }
 
 export default async function BeatsPage() {
@@ -44,7 +44,7 @@ export default async function BeatsPage() {
     .filter(b => (b as Record<string, unknown>).hors_vente_collab)
     .map(b => b.id as string)
 
-  const collabBadgeParBeat = new Map<string, 'attente' | 'refusee'>()
+  const collabBadgeParBeat = new Map<string, 'attente' | 'refusee' | 'prete'>()
   if (idsHorsVente.length > 0) {
     const { data: splits } = await admin
       .from('beat_splits')
@@ -57,8 +57,9 @@ export default async function BeatsPage() {
       parBeat.set(s.beat_id, [...(parBeat.get(s.beat_id) ?? []), s.statut])
     }
     for (const [beatId, statuts] of parBeat) {
-      if (statuts.includes('invitee') || statuts.includes('active')) collabBadgeParBeat.set(beatId, 'attente')
+      if (statuts.includes('invitee')) collabBadgeParBeat.set(beatId, 'attente')
       else if (statuts.includes('refusee')) collabBadgeParBeat.set(beatId, 'refusee')
+      else collabBadgeParBeat.set(beatId, 'prete')
     }
   }
 

@@ -273,6 +273,14 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
                           En attente de collaboration
                         </span>
                       )}
+                      {b.collabBadge === 'prete' && (
+                        <span
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300"
+                          title="Tous les collaborateurs ont accepté. Les ventes en collaboration ouvriront prochainement."
+                        >
+                          Collab prête — ventes bientôt ouvertes
+                        </span>
+                      )}
                       {b.collabBadge === 'refusee' && (
                         <div className="flex items-center gap-1.5">
                           <span
