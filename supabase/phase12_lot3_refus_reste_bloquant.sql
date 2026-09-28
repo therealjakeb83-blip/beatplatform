@@ -17,6 +17,32 @@
 BEGIN;
 
 -- ------------------------------------------------------------
+-- 0. Garde-fou : le va-et-vient des tests du lot 3 a produit, sur au moins
+--    une paire (beat, collaborateur), DEUX invitations comptant toutes les
+--    deux comme "ouvertes" une fois 'refusee' remis dans cet état (une
+--    ré-invitation avait pu se faire entre-temps, le temps où la migration
+--    précédente excluait 'refusee' des index d'unicité). Sans ce nettoyage,
+--    la recréation des index ci-dessous échoue (clé dupliquée). Ne garde
+--    comme "encore ouverte" que la ligne la plus récente de chaque groupe ;
+--    les plus anciennes passent à 'retiree' (obsolètes : rejouées depuis).
+-- ------------------------------------------------------------
+WITH doublons_compte AS (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY beat_id, beatmaker_id ORDER BY created_at DESC) AS rang
+  FROM beat_splits
+  WHERE beatmaker_id IS NOT NULL AND statut IN ('invitee', 'active', 'refusee')
+)
+UPDATE beat_splits SET statut = 'retiree', retire_le = now()
+WHERE id IN (SELECT id FROM doublons_compte WHERE rang > 1);
+
+WITH doublons_email AS (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY beat_id, email_invite ORDER BY created_at DESC) AS rang
+  FROM beat_splits
+  WHERE email_invite IS NOT NULL AND statut IN ('invitee', 'active', 'refusee')
+)
+UPDATE beat_splits SET statut = 'retiree', retire_le = now()
+WHERE id IN (SELECT id FROM doublons_email WHERE rang > 1);
+
+-- ------------------------------------------------------------
 -- 1. Trigger de recalcul : redevient invitee/active/refusee (comme au lot 1)
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION recalculer_collaboration_beat(p_beat_id uuid) RETURNS void
@@ -54,14 +80,13 @@ CREATE UNIQUE INDEX beat_splits_un_email_ouvert_par_beat
   WHERE email_invite IS NOT NULL AND statut IN ('invitee', 'active', 'refusee');
 
 -- ------------------------------------------------------------
--- 3. Recalcule tout beat ayant une collaboration refusee : redevient
---    hors_vente_collab=true / quote_part réduite comme avant la migration
---    précédente (annule le déblocage fait par erreur).
+-- 3. Recalcule TOUS les beats (comme au lot 1) : remet à niveau aussi bien
+--    les refus redevenus bloquants que les doublons nettoyés à l'étape 0.
 -- ------------------------------------------------------------
 DO $$
 DECLARE r record;
 BEGIN
-  FOR r IN SELECT DISTINCT beat_id FROM beat_splits WHERE statut = 'refusee' LOOP
+  FOR r IN SELECT DISTINCT beat_id FROM beat_splits LOOP
     PERFORM recalculer_collaboration_beat(r.beat_id);
   END LOOP;
 END $$;
@@ -77,3 +102,6 @@ COMMIT;
 -- select indexdef from pg_indexes where tablename = 'beat_splits'
 --  and indexname in ('beat_splits_un_compte_ouvert_par_beat', 'beat_splits_un_email_ouvert_par_beat');
 --  -- les deux définitions doivent de nouveau contenir 'refusee'
+-- select beat_id, beatmaker_id, count(*) from beat_splits
+--  where statut in ('invitee','active','refusee') group by 1,2 having count(*) > 1;
+--  -- doit renvoyer 0 ligne (plus de doublon ouvert)
