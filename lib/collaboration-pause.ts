@@ -6,17 +6,25 @@ type SplitActif = { beat_id: string; beatmaker_id: string | null; email_invite: 
 type BeatCourt = { id: string; titre: string; beatmaker_id: string }
 
 /**
- * Q15 du grill-me Phase 12 : quand le compte de paiement d'un vendeur n'est
- * plus opérationnel, chaque beat collab où il vend (comme propriétaire ou
- * comme collaborateur actif) est « en pause » — tous les vendeurs de ce beat
- * sont prévenus (A et B). Déclenché par le webhook account.updated, une
- * seule fois au passage opérationnel → non opérationnel.
+ * Q15 du grill-me + retour de Jake au test T2 (lot 4) : quand un vendeur
+ * n'est plus éligible aux paiements, chaque beat collab où il vend est retiré
+ * de la vente (par la base) et tous les vendeurs de ce beat sont prévenus
+ * (A et B). Appelé par lib/pret-a-vendre-suivi.ts au passage prêt → pas prêt,
+ * seulement pour le ou les rôles réellement perdus.
  */
-export async function notifierPauseCollab(admin: SupabaseClient, vendeurId: string): Promise<void> {
+export async function notifierPauseCollab(
+  admin: SupabaseClient,
+  vendeurId: string,
+  roles: { commeProprietaire: boolean; commeCollaborateur: boolean },
+): Promise<void> {
   const [{ data: vendeur }, { data: commeProprietaire }, { data: commeCollaborateur }] = await Promise.all([
     admin.from('beatmakers').select('nom_artiste').eq('id', vendeurId).maybeSingle(),
-    admin.from('beats').select('id').eq('beatmaker_id', vendeurId).is('supprime_le', null),
-    admin.from('beat_splits').select('beat_id').eq('beatmaker_id', vendeurId).eq('statut', 'active'),
+    roles.commeProprietaire
+      ? admin.from('beats').select('id').eq('beatmaker_id', vendeurId).is('supprime_le', null)
+      : Promise.resolve({ data: [] }),
+    roles.commeCollaborateur
+      ? admin.from('beat_splits').select('beat_id').eq('beatmaker_id', vendeurId).eq('statut', 'active')
+      : Promise.resolve({ data: [] }),
   ])
   const candidats = [
     ...((commeProprietaire ?? []) as { id: string }[]).map(b => b.id),
@@ -44,8 +52,8 @@ export async function notifierPauseCollab(admin: SupabaseClient, vendeurId: stri
   const nomVendeur = (vendeur?.nom_artiste as string | undefined) ?? 'Un vendeur'
   for (const beat of (beats ?? []) as BeatCourt[]) {
     const destinataires = [
-      { beatmaker_id: beat.beatmaker_id, email_invite: null },
-      ...(actifsParBeat.get(beat.id) ?? []),
+      { beatmaker_id: beat.beatmaker_id, email_invite: null, estProprietaire: true },
+      ...(actifsParBeat.get(beat.id) ?? []).map(s => ({ ...s, estProprietaire: false })),
     ]
     for (const d of destinataires) {
       const to = await emailDestinataireCollab(admin, d)
@@ -56,6 +64,7 @@ export async function notifierPauseCollab(admin: SupabaseClient, vendeurId: stri
         titreBeat: beat.titre,
         nomVendeurConcerne: nomVendeur,
         estLeVendeurConcerne: d.beatmaker_id === vendeurId,
+        estProprietaire: d.estProprietaire,
       })
     }
   }

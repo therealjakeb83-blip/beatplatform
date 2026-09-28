@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -13,5 +14,6 @@ export async function PATCH(request: Request) {
     .eq('id', user.id)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
+  await rafraichirPretAVendre(user.id)
   return Response.json({ success: true })
 }

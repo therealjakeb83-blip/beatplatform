@@ -109,10 +109,10 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
   },
   {
     type: 'collab_pause',
-    nom: 'Collab — beat en pause',
-    titrePlaceholder: 'Un beat en collaboration est en pause',
-    description: "Envoyé à tous les vendeurs d'un beat collab quand le compte Stripe de l'un d'eux n'est plus opérationnel.",
-    declencheur: 'Déclencheur : webhook Stripe account.updated (compte devenu non opérationnel) → A et B',
+    nom: 'Collab — action requise (beat retiré de la vente)',
+    titrePlaceholder: 'Action requise sur un beat en collaboration',
+    description: "Envoyé à tous les vendeurs d'un beat collab quand l'un d'eux n'est plus éligible aux paiements (Stripe, mandat, TVA, adresse…). Le beat sort de la vente jusqu'à ce que ce soit réglé.",
+    declencheur: 'Déclencheur : un vendeur passe de « prêt à vendre » à « pas prêt » (réglage modifié ou webhook Stripe account.updated) → A et B',
   },
   {
     type: 'conditions_mise_a_jour',

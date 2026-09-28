@@ -189,6 +189,23 @@ export default function CollabsClient({ splits: initial, criteresManquants }: { 
 
       {erreur && <p className="text-red-400 text-sm mb-4">{erreur}</p>}
 
+      {actives.length > 0 && criteresManquants.length > 0 && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6 flex flex-col gap-2">
+          <p className="text-sm font-semibold text-orange-300">Action requise : tu n’es plus éligible aux paiements</p>
+          <p className="text-xs text-gray-400">
+            Tes collaborations actives sont retirées de la vente tant que ta configuration n’est pas complète. Elles reviennent automatiquement une fois que c’est réglé.
+          </p>
+          <ul className="flex flex-col gap-1">
+            {criteresManquants.map(c => (
+              <li key={c.libelle} className="text-xs text-gray-300 flex items-center justify-between gap-2">
+                <span>• {c.libelle}</span>
+                <Link href={c.lienReglage} className="text-indigo-400 hover:underline flex-shrink-0">Régler</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {onglet === 'demandes' && (
         demandes.length === 0 ? (
           <p className="text-sm text-gray-600">Aucune demande en attente.</p>

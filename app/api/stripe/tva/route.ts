@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { descriptionAvecTva } from '@/lib/prix-affiche'
 import { NextResponse } from 'next/server'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -55,5 +56,6 @@ export async function PATCH(request: Request) {
     await stripe.products.update(beatmaker.stripe_product_id, { description: descriptionComplete })
   }
 
+  await rafraichirPretAVendre(user.id)
   return NextResponse.json({ ok: true })
 }

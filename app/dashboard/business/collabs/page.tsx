@@ -75,8 +75,10 @@ export default async function CollabsPage() {
     })
 
   // Lot 4 (Q7c) : B voit ce qui lui manque pour vendre AVANT d'accepter.
-  const aDesDemandes = splits.some(s => s.statut === 'invitee')
-  const readiness = aDesDemandes
+  // Aussi pour ses collabs actives : s'il n'est plus éligible, elles sont
+  // retirées de la vente et il doit voir quoi régler.
+  const concerne = splits.some(s => s.statut === 'invitee' || s.statut === 'active')
+  const readiness = concerne
     ? await calculerPretAVendreOuExempte(admin, user.id, { estConcedant: false })
     : { pret: true, criteres: [] }
   const criteresManquants = readiness.criteres

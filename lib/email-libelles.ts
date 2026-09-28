@@ -15,6 +15,6 @@ export const LIBELLES_EVENEMENTS_PLATEFORME: Record<string, string> = {
   plateforme_collab_depart: 'Collab — départ',
   plateforme_collab_eviction: 'Collab — collaborateur retiré',
   plateforme_collab_beat_supprime: 'Collab — beat supprimé',
-  plateforme_collab_pause: 'Collab — beat en pause',
+  plateforme_collab_pause: 'Collab — action requise',
   plateforme_conditions_mise_a_jour: 'Mise à jour des conditions',
 }

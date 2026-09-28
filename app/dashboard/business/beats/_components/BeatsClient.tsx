@@ -281,6 +281,22 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
                           Collab prête — ventes bientôt ouvertes
                         </span>
                       )}
+                      {b.collabBadge === 'action_moi' && (
+                        <span
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400"
+                          title="Ce beat est retiré de la vente tant que ta configuration de paiement n'est pas complète (voir « Ce qu'il te manque pour vendre » dans la Vue d'ensemble)."
+                        >
+                          Action requise — termine ta configuration de paiement
+                        </span>
+                      )}
+                      {b.collabBadge === 'action_collab' && (
+                        <span
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400"
+                          title="Ce beat est retiré de la vente tant qu'un de tes collaborateurs n'a pas terminé sa configuration de paiement. Il a été prévenu par email."
+                        >
+                          Action requise — un collaborateur n&apos;est plus éligible aux paiements
+                        </span>
+                      )}
                       {b.collabBadge === 'refusee' && (
                         <div className="flex items-center gap-1.5">
                           <span

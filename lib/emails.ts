@@ -264,7 +264,7 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   collab_depart: 'Un collaborateur a quitté ton beat',
   collab_eviction: 'Ta collaboration a pris fin',
   collab_beat_supprime: 'Un beat en collaboration a été supprimé',
-  collab_pause: 'Un beat en collaboration est en pause',
+  collab_pause: 'Action requise sur un beat en collaboration',
   conditions_mise_a_jour: `Mise à jour des conditions ${NOM_PLATEFORME}`,
   suspension: 'Ton compte a été suspendu',
 }
@@ -298,7 +298,7 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
     case 'collab_beat_supprime':
       return "Le propriétaire a supprimé un beat sur lequel tu collabores. Ton historique (ventes, factures) reste consultable. Si tu avais une invitation en attente sur ce beat, elle n'est plus valable."
     case 'collab_pause':
-      return "Le compte de paiement d'un des vendeurs de ce beat n'est plus opérationnel. Le beat ne peut plus être vendu tant que ce n'est pas réglé (depuis la page Paiements du compte concerné)."
+      return "Un des vendeurs de ce beat n'est plus éligible aux paiements : sa configuration (compte de paiement, mandats, TVA, adresse…) n'est plus complète. Le beat est retiré de la vente jusqu'à ce que ce soit réglé, puis il revient automatiquement."
     case 'conditions_mise_a_jour':
       return `Nous mettons à jour un des textes de ${NOM_PLATEFORME}. Tu n'as rien à faire : les nouvelles conditions s'appliqueront automatiquement à la date indiquée ci-dessous, et les ventes faites avant restent sous l'ancienne version. Si tu n'es pas d'accord, tu peux quitter la plateforme ou te retirer d'une collaboration avant cette date. La répartition convenue entre collaborateurs ne change jamais.`
     case 'suspension':
@@ -715,15 +715,18 @@ export async function envoyerCollabBeatSupprime({
 }
 
 export async function envoyerCollabPause({
-  to, beatmakerId, titreBeat, nomVendeurConcerne, estLeVendeurConcerne,
+  to, beatmakerId, titreBeat, nomVendeurConcerne, estLeVendeurConcerne, estProprietaire,
 }: {
-  to: string; beatmakerId: string; titreBeat: string; nomVendeurConcerne: string; estLeVendeurConcerne: boolean
+  to: string; beatmakerId: string; titreBeat: string; nomVendeurConcerne: string; estLeVendeurConcerne: boolean; estProprietaire: boolean
 }) {
+  // Le vendeur concerné est renvoyé là où s'affiche la liste de ce qui lui
+  // manque : Vue d'ensemble pour A, page Collaborations pour B.
+  const lienConfiguration = estProprietaire ? `${APP_URL}/dashboard/business` : `${APP_URL}/dashboard/business/collabs`
   await envoyerEmailCollab({
     type: 'collab_pause', to, beatmakerId,
     cta: estLeVendeurConcerne
-      ? { texte: 'Régler mon compte de paiement', lien: `${APP_URL}/dashboard/paiements` }
-      : CTA_COLLABS,
+      ? { texte: 'Terminer ma configuration', lien: lienConfiguration }
+      : estProprietaire ? CTA_MES_BEATS : CTA_COLLABS,
     corpsHtml: corpsLignes([['Beat', titreBeat], ['Compte concerné', estLeVendeurConcerne ? 'Le tien' : nomVendeurConcerne]]),
   })
 }

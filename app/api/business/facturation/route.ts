@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { MANDAT_FACTURATION_VERSION_ACTUELLE, formatFacturationValide } from '@/lib/facturation'
 import { NextResponse } from 'next/server'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 
 // Une seule route POST (pas de DELETE — cf. règle Vercel DELETE body), action
 // explicite dans le corps. Même pattern que /api/stripe/fulfillment.
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
       })
       .eq('id', user.id)
     if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+    await rafraichirPretAVendre(user.id)
     return NextResponse.json({ ok: true })
   }
 

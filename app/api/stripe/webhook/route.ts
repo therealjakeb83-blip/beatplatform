@@ -7,7 +7,7 @@ import { genererNumeroFacture } from '@/lib/facturation'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { uploadPdfFacture } from '@/lib/livraison'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { notifierPauseCollab } from '@/lib/collaboration-pause'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -846,8 +846,8 @@ async function traiterMajCompteOperationnel(account: Stripe.Account) {
     console.error('[webhook] Erreur maj stripe_compte_operationnel pour', account.id, ':', JSON.stringify(error))
     return
   }
-  // Phase 12 lot 4 (Q15) : un compte qui perd son statut opérationnel met
-  // en pause les beats collab où il vend — A et B sont prévenus.
-  if (!operationnel) await notifierPauseCollab(supabase, avant.id as string)
+  // Phase 12 lot 4 : le statut « prêt à vendre » en dépend — les beats collab
+  // où il vend sortent de la boutique (ou y reviennent), A et B prévenus.
+  await rafraichirPretAVendre(avant.id as string)
 }
 

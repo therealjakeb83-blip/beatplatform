@@ -2,6 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { validerStatementDescriptor } from '@/lib/statement-descriptor'
 import { NextResponse } from 'next/server'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -42,5 +43,6 @@ export async function PATCH(request: Request) {
 
   if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
 
+  await rafraichirPretAVendre(user.id)
   return NextResponse.json({ ok: true })
 }

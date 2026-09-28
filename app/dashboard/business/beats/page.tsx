@@ -20,9 +20,11 @@ export type BeatRow = {
   // Pourquoi le beat est hors vente, pour distinguer le badge (Phase 12, lot
   // 3, retour de Jake du 2026-09-28) : une invitation encore en attente n'a
   // rien à voir avec une collaboration refusée qu'A n'a pas encore "publiée
-  // quand même". 'prete' (lot 4) : tous les collaborateurs ont accepté, le
-  // beat n'attend plus que l'ouverture des ventes collab (Phase 13).
-  collabBadge: 'attente' | 'refusee' | 'prete' | null
+  // quand même". Tous acceptés (lot 4) : 'prete' si tous les vendeurs sont
+  // prêts à vendre (le beat n'attend plus que l'ouverture des ventes collab),
+  // sinon 'action_moi' (A doit finir sa configuration) ou 'action_collab'
+  // (un collaborateur n'est plus éligible aux paiements).
+  collabBadge: 'attente' | 'refusee' | 'prete' | 'action_moi' | 'action_collab' | null
 }
 
 export default async function BeatsPage() {
@@ -44,21 +46,32 @@ export default async function BeatsPage() {
     .filter(b => (b as Record<string, unknown>).hors_vente_collab)
     .map(b => b.id as string)
 
-  const collabBadgeParBeat = new Map<string, 'attente' | 'refusee' | 'prete'>()
+  const collabBadgeParBeat = new Map<string, NonNullable<BeatRow['collabBadge']>>()
   if (idsHorsVente.length > 0) {
-    const { data: splits } = await admin
-      .from('beat_splits')
-      .select('beat_id, statut')
-      .in('beat_id', idsHorsVente)
-      .in('statut', ['invitee', 'active', 'refusee'])
+    const [{ data: splits }, { data: moi }] = await Promise.all([
+      admin
+        .from('beat_splits')
+        .select('beat_id, statut, beatmakers(pret_a_vendre_collaborateur)')
+        .in('beat_id', idsHorsVente)
+        .in('statut', ['invitee', 'active', 'refusee']),
+      admin.from('beatmakers').select('pret_a_vendre_concedant').eq('id', user.id).maybeSingle(),
+    ])
 
-    const parBeat = new Map<string, string[]>()
-    for (const s of (splits ?? []) as { beat_id: string; statut: string }[]) {
-      parBeat.set(s.beat_id, [...(parBeat.get(s.beat_id) ?? []), s.statut])
+    type SplitBadge = { beat_id: string; statut: string; beatmakers: { pret_a_vendre_collaborateur: boolean } | { pret_a_vendre_collaborateur: boolean }[] | null }
+    const parBeat = new Map<string, SplitBadge[]>()
+    for (const s of (splits ?? []) as unknown as SplitBadge[]) {
+      parBeat.set(s.beat_id, [...(parBeat.get(s.beat_id) ?? []), s])
     }
-    for (const [beatId, statuts] of parBeat) {
+    for (const [beatId, lignes] of parBeat) {
+      const statuts = lignes.map(l => l.statut)
+      const collaborateurPasPret = lignes.some(l => {
+        const bm = Array.isArray(l.beatmakers) ? l.beatmakers[0] : l.beatmakers
+        return l.statut === 'active' && !bm?.pret_a_vendre_collaborateur
+      })
       if (statuts.includes('invitee')) collabBadgeParBeat.set(beatId, 'attente')
       else if (statuts.includes('refusee')) collabBadgeParBeat.set(beatId, 'refusee')
+      else if (!moi?.pret_a_vendre_concedant) collabBadgeParBeat.set(beatId, 'action_moi')
+      else if (collaborateurPasPret) collabBadgeParBeat.set(beatId, 'action_collab')
       else collabBadgeParBeat.set(beatId, 'prete')
     }
   }
