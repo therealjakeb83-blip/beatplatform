@@ -31,9 +31,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     details: { beat_id: collab.beat.id, titre_beat: collab.beat.titre, pourcentage: collab.pourcentage },
   })
 
-  const destinataire = await emailDestinataireCollab(admin, collab)
-  if (destinataire) {
-    await envoyerCollabRetrait({ to: destinataire, beatmakerId: collab.beat.beatmaker_id, nomProprietaire: collab.beat.nom_artiste, titreBeat: collab.beat.titre })
+  // Pas d'email à B si l'invitation était déjà refusée : c'est B qui a
+  // refusé en premier, il n'a aucune raison d'être notifié une deuxième fois
+  // pour ce retrait (retour de Jake, test T7 du lot 3, 2026-09-28). Seule une
+  // invitation encore 'invitee' (B n'a pas répondu) justifie ce mail.
+  if (collab.statut === 'invitee') {
+    const destinataire = await emailDestinataireCollab(admin, collab)
+    if (destinataire) {
+      await envoyerCollabRetrait({ to: destinataire, beatmakerId: collab.beat.beatmaker_id, nomProprietaire: collab.beat.nom_artiste, titreBeat: collab.beat.titre })
+    }
   }
 
   return NextResponse.json({ ok: true })

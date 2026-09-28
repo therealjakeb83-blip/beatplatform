@@ -35,24 +35,24 @@ export type Collaborateur = {
   email_invite?: string
   pourcentage: number
   // Présent uniquement pour un collaborateur DÉJÀ enregistré en base et
-  // encore ouvert (invitee/active — un refus ferme la collaboration tout
-  // seul depuis le retour de test T7, voir lib/collaboration.ts) — absent
-  // pour un ajout fait dans cette session, pas encore soumis. Sert à
+  // encore ouvert (invitee/active/refusee — un refus reste ouvert tant que A
+  // n'a pas explicitement retiré l'invitation, voir lib/collaboration.ts) —
+  // absent pour un ajout fait dans cette session, pas encore soumis. Sert à
   // distinguer les deux dans CollaborateursSection : un ajout de session se
   // retire d'un clic (✕), un collaborateur existant passe par ses propres
   // routes (retirer/évincer), jamais par le simple retrait de ce tableau.
-  statut?: 'invitee' | 'active'
+  statut?: 'invitee' | 'active' | 'refusee'
 }
 
-// Historique en lecture seule (Phase 12, lot 3) : un collaborateur refusé,
-// retiré, parti ou évincé ne doit plus jamais être renvoyé dans le tableau
+// Historique en lecture seule (Phase 12, lot 3) : un collaborateur retiré,
+// parti ou évincé ne doit plus jamais être renvoyé dans le tableau
 // `collaborateurs` soumis à l'enregistrement du beat (sinon il serait
 // réinvité silencieusement — traiterCollaborateursBeat ne filtre que sur les
 // statuts ouverts pour détecter les doublons).
 export type CollaborationHistorique = {
   id: string
   nom: string
-  statut: 'refusee' | 'retiree' | 'quittee' | 'evincee'
+  statut: 'retiree' | 'quittee' | 'evincee'
   motif?: string | null
   pourcentage: number
 }
@@ -361,7 +361,7 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
                 <div>
                   <span className="text-sm text-white font-medium">{nomAffiche(c)}</span>
                   {c.statut ? (
-                    <span className={`ml-2 text-xs ${c.statut === 'active' ? 'text-green-400' : 'text-yellow-400'}`}>
+                    <span className={`ml-2 text-xs ${c.statut === 'active' ? 'text-green-400' : c.statut === 'refusee' ? 'text-red-400' : 'text-yellow-400'}`}>
                       {LIBELLE_STATUT_COLLAB[c.statut]}
                     </span>
                   ) : (
@@ -373,7 +373,7 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
                   {!c.statut && (
                     <button type="button" onClick={() => { onChange(collaborateurs.filter(x => x.id !== c.id)); setErreur('') }} className="text-gray-500 hover:text-red-400 text-sm">✕</button>
                   )}
-                  {c.statut === 'invitee' && (
+                  {(c.statut === 'invitee' || c.statut === 'refusee') && (
                     <button type="button" disabled={actionEnCours === c.id} onClick={() => retirerInvitation(c)}
                       className="text-xs text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50">
                       {actionEnCours === c.id ? 'Retrait…' : 'Retirer l’invitation'}
