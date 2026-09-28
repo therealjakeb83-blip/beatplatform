@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
 import { NextResponse } from 'next/server'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 
 // Une seule route POST (pas de DELETE pour la révocation — cf. règle Vercel
 // DELETE body) avec une action explicite dans le corps.
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
       })
       .eq('id', user.id)
     if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+    await rafraichirPretAVendre(user.id)
     return NextResponse.json({ ok: true })
   }
 
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
       .update({ fulfillment_mandat_revoque_at: new Date().toISOString() })
       .eq('id', user.id)
     if (error) return NextResponse.json({ erreur: error.message }, { status: 500 })
+    await rafraichirPretAVendre(user.id)
     return NextResponse.json({ ok: true })
   }
 

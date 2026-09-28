@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { SplitRow } from '../page'
+import type { SplitRow, CritereManquant } from '../page'
+import Link from 'next/link'
 import { CONDITIONS_COLLAB_TEXTES, CONDITIONS_COLLAB_VERSION_ACTUELLE } from '@/lib/collaboration-conditions'
 
 type Onglet = 'demandes' | 'collabs' | 'refusees'
@@ -47,11 +48,13 @@ function formatDate(iso: string) {
 // Acceptation = UN texte (résumé + dépliable) + UNE case (Phase 12, Q8/Q10 du
 // grill-me). Le texte lui-même vit dans lib/collaboration-conditions.ts,
 // partagé avec l'aperçu qu'en verra une future page d'invitation directe.
-function PanneauAcceptation({ split, onAccepte, onErreur }: {
+function PanneauAcceptation({ split, criteresManquants, onAccepte, onErreur }: {
   split: SplitRow
+  criteresManquants: CritereManquant[]
   onAccepte: () => void
   onErreur: (msg: string) => void
 }) {
+  const pretAVendre = criteresManquants.length === 0
   const [detailOuvert, setDetailOuvert] = useState(false)
   const [coche, setCoche] = useState(false)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
@@ -64,7 +67,13 @@ function PanneauAcceptation({ split, onAccepte, onErreur }: {
     })
     setEnvoiEnCours(false)
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) { onErreur(data.erreur ?? 'Erreur lors de l’acceptation.'); return }
+    if (!res.ok) {
+      const manquants = Array.isArray(data.criteresManquants) && data.criteresManquants.length > 0
+        ? ` Il te manque : ${data.criteresManquants.join(', ')}.`
+        : ''
+      onErreur((data.erreur ?? 'Erreur lors de l’acceptation.') + manquants)
+      return
+    }
     onAccepte()
   }
 
@@ -90,12 +99,25 @@ function PanneauAcceptation({ split, onAccepte, onErreur }: {
           ))}
         </div>
       )}
+      {!pretAVendre && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 flex flex-col gap-1.5">
+          <p className="text-xs font-semibold text-orange-300">Avant d’accepter, termine la configuration de ton compte vendeur :</p>
+          <ul className="flex flex-col gap-1">
+            {criteresManquants.map(c => (
+              <li key={c.libelle} className="text-xs text-gray-300 flex items-center justify-between gap-2">
+                <span>• {c.libelle}</span>
+                <Link href={c.lienReglage} className="text-indigo-400 hover:underline flex-shrink-0">Régler</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer">
         <input type="checkbox" checked={coche} onChange={e => setCoche(e.target.checked)} className="mt-0.5" />
         J’ai lu et j’accepte ces conditions de collaboration (part fixée à {split.pourcentage}%, mandat donné au propriétaire du beat pour gérer la vente).
       </label>
       <div className="flex gap-2">
-        <button type="button" disabled={!coche || envoiEnCours} onClick={accepter}
+        <button type="button" disabled={!coche || envoiEnCours || !pretAVendre} onClick={accepter}
           className="px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors">
           {envoiEnCours ? 'Envoi…' : 'Accepter la collaboration'}
         </button>
@@ -104,7 +126,7 @@ function PanneauAcceptation({ split, onAccepte, onErreur }: {
   )
 }
 
-export default function CollabsClient({ splits: initial }: { splits: SplitRow[] }) {
+export default function CollabsClient({ splits: initial, criteresManquants }: { splits: SplitRow[]; criteresManquants: CritereManquant[] }) {
   const router = useRouter()
   const [splits, setSplits] = useState(initial)
   const [onglet, setOnglet] = useState<Onglet>('demandes')
@@ -141,9 +163,9 @@ export default function CollabsClient({ splits: initial }: { splits: SplitRow[] 
   function onAccepteReussi(id: string) {
     majStatutLocal(id, 'active')
     setOuvertId(null)
-    // hors_vente_collab reste vrai tant que la Phase 13 n'ouvre pas les
-    // ventes collab (interrupteur global prévu au lot 4) — le beat
-    // n'apparaît pas comme "en vente" ailleurs même une fois tout accepté.
+    // hors_vente_collab reste vrai tant que l'interrupteur global des ventes
+    // collab est OFF (lot 4, jusqu'à la Phase 13) — le beat n'apparaît pas
+    // comme "en vente" ailleurs même une fois tout accepté.
     router.refresh()
   }
 
@@ -167,6 +189,23 @@ export default function CollabsClient({ splits: initial }: { splits: SplitRow[] 
 
       {erreur && <p className="text-red-400 text-sm mb-4">{erreur}</p>}
 
+      {actives.length > 0 && criteresManquants.length > 0 && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6 flex flex-col gap-2">
+          <p className="text-sm font-semibold text-orange-300">Action requise : tu n’es plus éligible aux paiements</p>
+          <p className="text-xs text-gray-400">
+            Tes collaborations actives sont retirées de la vente tant que ta configuration n’est pas complète. Elles reviennent automatiquement une fois que c’est réglé.
+          </p>
+          <ul className="flex flex-col gap-1">
+            {criteresManquants.map(c => (
+              <li key={c.libelle} className="text-xs text-gray-300 flex items-center justify-between gap-2">
+                <span>• {c.libelle}</span>
+                <Link href={c.lienReglage} className="text-indigo-400 hover:underline flex-shrink-0">Régler</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {onglet === 'demandes' && (
         demandes.length === 0 ? (
           <p className="text-sm text-gray-600">Aucune demande en attente.</p>
@@ -183,7 +222,7 @@ export default function CollabsClient({ splits: initial }: { splits: SplitRow[] 
                   <span className="text-indigo-400 text-sm font-semibold">{s.pourcentage}%</span>
                 </div>
                 {ouvertId === s.id ? (
-                  <PanneauAcceptation split={s} onAccepte={() => onAccepteReussi(s.id)} onErreur={setErreur} />
+                  <PanneauAcceptation split={s} criteresManquants={criteresManquants} onAccepte={() => onAccepteReussi(s.id)} onErreur={setErreur} />
                 ) : (
                   <div className="flex gap-2 mt-3">
                     <button type="button" onClick={() => setOuvertId(s.id)}

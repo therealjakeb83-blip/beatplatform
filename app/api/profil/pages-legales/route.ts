@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 import { TYPES_PAGES_LEGALES, type TypePageLegale } from '@/lib/pages-legales'
 import { journaliserDecision } from '@/lib/decisions-log'
 
@@ -66,5 +67,6 @@ export async function PATCH(request: Request) {
     details: { type_page, version_precedente: existante?.version ?? null },
   })
 
+  await rafraichirPretAVendre(user.id)
   return Response.json({ success: true })
 }

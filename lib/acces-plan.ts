@@ -17,8 +17,12 @@ const BASE = '/dashboard/business'
 const CHEMINS_LIBRES_EXACTS = ['/dashboard', BASE, `${BASE}/`]
 
 // Préfixes accessibles (le chemin lui-même ou tout ce qui suit un '/').
+// `/dashboard/legal` (lot 4) : seule page où se règle l'adresse, critère
+// « prêt à vendre » obligatoire — sans elle un collaborateur en plan Free ne
+// pourrait jamais accepter une collaboration.
 const PREFIXES_LIBRES = [
   '/dashboard/paiements',
+  '/dashboard/legal',
   `${BASE}/facturation`,
   `${BASE}/analytics`,
   `${BASE}/commandes`,

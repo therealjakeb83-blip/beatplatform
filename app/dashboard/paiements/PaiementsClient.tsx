@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE, texteMandatFulfillment } from '@/lib/fulfillment'
 import { MOYENS_PAIEMENT_TOGGLABLES, normaliserMoyensPaiement, type MoyenPaiementNiveauA } from '@/lib/moyens-paiement'
 import { validerStatementDescriptor } from '@/lib/statement-descriptor'
+import { PAYS, nomPays, paiementsDisponiblesDans, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
+import { stripePromise } from '@/lib/stripe-client'
+import Link from 'next/link'
 
 const LABEL_MOYEN_PAIEMENT: Record<MoyenPaiementNiveauA, string> = {
   carte: 'Carte bancaire',
@@ -17,6 +20,8 @@ export default function PaiementsClient({
   mandatFulfillmentAccepteLe,
   moyensPaiementAcceptes,
   statementDescriptor,
+  pays: paysInitial,
+  adresse,
 }: {
   stripeAccountId: string | null
   mandatFulfillmentActif: boolean
@@ -24,6 +29,8 @@ export default function PaiementsClient({
   mandatFulfillmentAccepteLe: string | null
   moyensPaiementAcceptes: string[]
   statementDescriptor: string
+  pays: string
+  adresse: { ligne: string | null; codePostal: string | null; ville: string | null }
 }) {
   const router = useRouter()
   const [chargementConnect, setChargementConnect] = useState(false)
@@ -121,12 +128,72 @@ export default function PaiementsClient({
     }
   }
 
+  const [pays, setPays] = useState(paysInitial)
+  const [erreurConnect, setErreurConnect] = useState('')
+
+  async function changerPays(nouveau: string) {
+    const precedent = pays
+    setPays(nouveau)
+    setErreurConnect('')
+    const res = await fetch('/api/stripe/pays', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pays: nouveau }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      setPays(precedent)
+      setErreurConnect(data?.erreur || 'Impossible de changer le pays.')
+    }
+  }
+
+  const [prenom, setPrenom] = useState('')
+  const [nomLegal, setNomLegal] = useState('')
+  const adresseComplete = !!(adresse.ligne && adresse.codePostal && adresse.ville)
+
+  // Pré-remplissage par jeton de compte (lot 4, Q7c/Q7d) : prénom, nom et
+  // adresse partent du navigateur directement chez Stripe (obligatoire pour
+  // une plateforme française), la plateforme ne reçoit qu'un jeton opaque et
+  // ne stocke jamais ces données d'identité. Facultatif : sans prénom/nom,
+  // le compte est créé comme avant et tout se saisit chez Stripe.
+  async function creerJetonCompte(): Promise<string | null> {
+    if (!prenom.trim() || !nomLegal.trim()) return null
+    try {
+      const stripe = await stripePromise
+      if (!stripe) return null
+      const { token, error } = await stripe.createToken('account', {
+        business_type: 'individual',
+        individual: {
+          first_name: prenom.trim(),
+          last_name: nomLegal.trim(),
+          ...(adresseComplete
+            ? { address: { line1: adresse.ligne!, postal_code: adresse.codePostal!, city: adresse.ville!, country: pays } }
+            : {}),
+        },
+      })
+      if (error) console.warn('[paiements] Jeton de compte Stripe refusé :', error.message)
+      return token?.id ?? null
+    } catch (err) {
+      console.warn('[paiements] Jeton de compte Stripe impossible :', err)
+      return null
+    }
+  }
+
   async function connecterStripe() {
     setChargementConnect(true)
-    const res = await fetch('/api/stripe/connect/creer', { method: 'POST' })
-    const data = await res.json()
+    setErreurConnect('')
+    const accountToken = stripeAccountId ? null : await creerJetonCompte()
+    const res = await fetch('/api/stripe/connect/creer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(accountToken ? { account_token: accountToken } : {}),
+    })
+    const data = await res.json().catch(() => ({}))
     if (data.url) window.location.href = data.url
-    else setChargementConnect(false)
+    else {
+      setErreurConnect(data.erreur || 'Impossible de contacter Stripe, réessaie.')
+      setChargementConnect(false)
+    }
   }
 
 
@@ -264,6 +331,23 @@ export default function PaiementsClient({
             Lie ton compte bancaire pour recevoir les paiements de tes acheteurs.
           </p>
 
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-400 mb-1">Pays de ton activité</label>
+            {stripeAccountId ? (
+              <p className="text-sm text-gray-300">
+                {nomPays(pays)} <span className="text-gray-600 text-xs">(fixé à la création du compte Stripe, non modifiable)</span>
+              </p>
+            ) : (
+              <select
+                value={pays}
+                onChange={e => changerPays(e.target.value)}
+                className="w-full max-w-xs px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+              >
+                {PAYS.map(p => <option key={p.code} value={p.code}>{p.nom}</option>)}
+              </select>
+            )}
+          </div>
+
           {stripeAccountId ? (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -280,13 +364,54 @@ export default function PaiementsClient({
               </button>
             </div>
           ) : (
-            <button
-              onClick={connecterStripe}
-              disabled={chargementConnect}
-              className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
-            >
-              {chargementConnect ? 'Redirection...' : 'Connecter mon compte bancaire'}
-            </button>
+            paiementsDisponiblesDans(pays) ? (
+              <div className="flex flex-col gap-4">
+              <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Gagne du temps chez Stripe (facultatif)</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Ton prénom et ton nom légal sont envoyés directement à Stripe depuis ton navigateur pour pré-remplir ton inscription — ils ne sont jamais enregistrés sur notre plateforme.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={prenom}
+                    onChange={e => setPrenom(e.target.value)}
+                    placeholder="Prénom"
+                    autoComplete="given-name"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={nomLegal}
+                    onChange={e => setNomLegal(e.target.value)}
+                    placeholder="Nom"
+                    autoComplete="family-name"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500 text-sm"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  {adresseComplete
+                    ? <>Adresse transmise aussi : <span className="text-gray-300">{adresse.ligne}, {adresse.codePostal} {adresse.ville}</span></>
+                    : <>Ajoute ton adresse dans <Link href="/dashboard/legal" className="text-indigo-400 hover:underline">Pages légales</Link> pour qu&apos;elle soit pré-remplie aussi.</>}
+                </p>
+              </div>
+              <button
+                onClick={connecterStripe}
+                disabled={chargementConnect}
+                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
+              >
+                {chargementConnect ? 'Redirection...' : 'Connecter mon compte bancaire'}
+              </button>
+              </div>
+            ) : (
+              <p className="text-sm text-orange-400">{MESSAGE_PAIEMENTS_INDISPONIBLES}</p>
+            )
+          )}
+
+          {erreurConnect && (
+            <p className="text-red-400 text-sm mt-3">{erreurConnect}</p>
           )}
         </section>
 

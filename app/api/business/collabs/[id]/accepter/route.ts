@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { chargerCollaboration, transitionnerCollaboration, journaliserCollaboration, emailDestinataireCollab } from '@/lib/collaboration'
 import { CONDITIONS_COLLAB_VERSION_ACTUELLE } from '@/lib/collaboration-conditions'
 import { envoyerCollabAcceptee } from '@/lib/emails'
+import { calculerPretAVendreOuExempte } from '@/lib/pret-a-vendre'
 
 // B accepte l'invitation — Phase 12, lot 3. Acceptation = UN texte + UNE case
 // (Q8/Q10 du grill-me) : le client envoie `accepte: true` seulement après que
@@ -30,6 +31,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const estDestinataire = collab.beatmaker_id === user.id || (!!collab.email_invite && collab.email_invite === userEmail)
   if (!estDestinataire) return NextResponse.json({ erreur: 'Non autorisé' }, { status: 403 })
+
+  // Lot 4 (Q7b) : B n'accepte qu'une fois « prêt à vendre » — mêmes
+  // critères que A, sans ceux du concédant (livraison, CGV, mentions).
+  const readiness = await calculerPretAVendreOuExempte(admin, user.id, { estConcedant: false })
+  if (!readiness.pret) {
+    return NextResponse.json({
+      erreur: 'Avant d’accepter, termine la configuration de ton compte vendeur.',
+      criteresManquants: readiness.criteres.filter(c => !c.ok).map(c => c.libelle),
+    }, { status: 400 })
+  }
 
   const resultat = await transitionnerCollaboration(admin, {
     id,

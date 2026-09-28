@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { journaliserDecision } from '@/lib/decisions-log'
 import { plancherPrixCents, prixAutorise, type Participant } from '@/lib/collaboration-parts'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { normaliserEmail } from '@/lib/email'
 
 // Modèle de collaboration (Phase 12). Les états vivent dans beat_splits.statut ;
 // la quote-part de A (beats.quote_part_proprietaire) et le drapeau
@@ -189,6 +191,22 @@ export async function debloquerCollaborationsRefusees(
       details: { beat_id: params.beatId, titre_beat: beatInfo?.titre ?? 'Beat', pourcentage: s.pourcentage, publie_malgre_refus: true },
     })
   }
+}
+
+/** Pastille du menu (Q15) : invitations qui attendent la réponse de ce
+ * beatmaker — rattachées à son compte, ou encore à son email s'il a été
+ * invité avant de s'inscrire. Client admin : RLS ne laisse pas B lire les
+ * lignes de beat_splits d'un beat qui ne lui appartient pas. */
+export async function compterDemandesCollabEnAttente(beatmakerId: string, email: string | null): Promise<number> {
+  const admin = createAdminClient()
+  const emailNormalise = normaliserEmail(email)
+  const [{ count: parCompte }, { count: parEmail }] = await Promise.all([
+    admin.from('beat_splits').select('id', { count: 'exact', head: true }).eq('beatmaker_id', beatmakerId).eq('statut', 'invitee'),
+    emailNormalise
+      ? admin.from('beat_splits').select('id', { count: 'exact', head: true }).eq('email_invite', emailNormalise).is('beatmaker_id', null).eq('statut', 'invitee')
+      : Promise.resolve({ count: 0 }),
+  ])
+  return (parCompte ?? 0) + (parEmail ?? 0)
 }
 
 function formaterEuros(cents: number): string {

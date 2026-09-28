@@ -1,4 +1,5 @@
-import { stripe } from '@/lib/stripe'
+import { lireEtatPaiementVendeur } from '@/lib/payment-readiness'
+import { estRoleAdmin } from '@/lib/admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Checklist unique « prêt à vendre » (Phase 12 lot 2, Q7/Q7b) — vérifiée
@@ -116,33 +117,6 @@ export function evaluerPretAVendre(
   return { pret: criteres.every(c => c.ok), criteres }
 }
 
-// Revérifie une fois auprès de Stripe si la colonne stockée vaut encore
-// false — rattrape les comptes déjà connectés avant l'introduction de
-// stripe_compte_operationnel, sans script de rattrapage à faire lancer par
-// Jake. Ne fait JAMAIS d'appel Stripe si la colonne vaut déjà true (chemin
-// rapide pour tous les checkouts suivants).
-async function estCompteStripeOperationnel(
-  admin: SupabaseClient,
-  beatmakerId: string,
-  stripeAccountId: string | null,
-  flagStocke: boolean | null,
-): Promise<boolean> {
-  if (flagStocke) return true
-  if (!stripeAccountId) return false
-
-  try {
-    const account = await stripe.accounts.retrieve(stripeAccountId)
-    const operationnel = !!(account.charges_enabled && account.payouts_enabled)
-    if (operationnel) {
-      await admin.from('beatmakers').update({ stripe_compte_operationnel: true }).eq('id', beatmakerId)
-    }
-    return operationnel
-  } catch (err) {
-    console.error('[pret-a-vendre] Erreur vérification compte Stripe', stripeAccountId, ':', err instanceof Error ? err.message : err)
-    return false
-  }
-}
-
 // Calcule la checklist complète pour un beatmaker donné, avec la
 // revérification Stripe et la lecture des pages légales publiées (utile
 // seulement pour un concédant — jamais interrogé pour un simple B).
@@ -161,12 +135,7 @@ export async function calculerPretAVendre(
     return { pret: false, criteres: [] }
   }
 
-  const stripeOperationnel = await estCompteStripeOperationnel(
-    admin,
-    beatmakerId,
-    beatmaker.stripe_account_id,
-    beatmaker.stripe_compte_operationnel,
-  )
+  const { operationnel: stripeOperationnel } = await lireEtatPaiementVendeur(admin, beatmakerId, beatmaker)
 
   let cgvPubliees = true
   let mentionsLegalesPubliees = true
@@ -185,4 +154,17 @@ export async function calculerPretAVendre(
     { ...beatmaker, stripe_compte_operationnel: stripeOperationnel },
     { estConcedant: options.estConcedant, cgvPubliees, mentionsLegalesPubliees },
   )
+}
+
+// Même laisser-passer que le checkout et le gate SaaS (Q7b) : boutiques de
+// test et compte admin ne configurent pas ces critères. Utilisé par le feu
+// vert collab et par l'acceptation d'une collaboration (lot 4).
+export async function calculerPretAVendreOuExempte(
+  admin: SupabaseClient,
+  beatmakerId: string,
+  options: { estConcedant: boolean },
+): Promise<ResultatPretAVendre> {
+  const { data } = await admin.from('beatmakers').select('role, abonnement_exempte').eq('id', beatmakerId).maybeSingle()
+  if (estRoleAdmin(data?.role as string | null) || data?.abonnement_exempte) return { pret: true, criteres: [] }
+  return calculerPretAVendre(admin, beatmakerId, options)
 }

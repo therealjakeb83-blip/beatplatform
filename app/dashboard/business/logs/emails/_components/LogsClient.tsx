@@ -1,5 +1,6 @@
 'use client'
 
+import { LIBELLES_EVENEMENTS_PLATEFORME } from '@/lib/email-libelles'
 import { useState } from 'react'
 import Link from 'next/link'
 import type { EmailLogRow } from '../page'
@@ -22,6 +23,7 @@ const EVENEMENT_LABEL: Record<string, string> = {
 
 function labelEvenement(ev: string): string {
   if (EVENEMENT_LABEL[ev]) return EVENEMENT_LABEL[ev]
+  if (LIBELLES_EVENEMENTS_PLATEFORME[ev]) return LIBELLES_EVENEMENTS_PLATEFORME[ev]
   if (ev.startsWith('automatisation_')) {
     return `Automatisation — ${ev.replace('automatisation_', '').replace(/_/g, ' ')}`
   }

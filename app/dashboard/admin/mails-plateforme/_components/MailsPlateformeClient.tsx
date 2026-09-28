@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { TypeTemplatePlateforme } from '@/lib/emails'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { prevenirMiseAJourConditions } from '../_lib/actions'
 
 type Template = { titre: string; intro: string }
 
@@ -61,8 +62,64 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     type: 'collab_invitation',
     nom: 'Invitation à collaborer',
     titrePlaceholder: 'Tu es invité à collaborer sur un beat',
-    description: "Envoyé à un collaborateur (email_invite) quand un beat avec split est publié.",
-    declencheur: 'Déclencheur : création/publication d\'un beat avec collaborateur non inscrit',
+    description: "Envoyé au collaborateur invité (par email ou par son @slug) quand le propriétaire enregistre le beat.",
+    declencheur: "Déclencheur : enregistrement d'un beat avec un nouveau collaborateur → B",
+  },
+  {
+    type: 'collab_acceptation',
+    nom: 'Collab — acceptation',
+    titrePlaceholder: 'Ta collaboration a été acceptée',
+    description: 'Envoyé au propriétaire du beat quand le collaborateur accepte.',
+    declencheur: "Déclencheur : B accepte l'invitation (page Collaborations) → A",
+  },
+  {
+    type: 'collab_refus',
+    nom: 'Collab — refus',
+    titrePlaceholder: 'Ta demande de collaboration a été refusée',
+    description: 'Envoyé au propriétaire du beat quand le collaborateur refuse.',
+    declencheur: "Déclencheur : B refuse l'invitation → A",
+  },
+  {
+    type: 'collab_retrait',
+    nom: 'Collab — invitation retirée',
+    titrePlaceholder: 'Une invitation à collaborer a été retirée',
+    description: 'Envoyé au collaborateur quand le propriétaire retire une invitation encore en attente (jamais après un refus).',
+    declencheur: 'Déclencheur : A retire une invitation non répondue → B',
+  },
+  {
+    type: 'collab_depart',
+    nom: 'Collab — départ',
+    titrePlaceholder: 'Un collaborateur a quitté ton beat',
+    description: 'Envoyé au propriétaire quand un collaborateur actif quitte la collaboration.',
+    declencheur: 'Déclencheur : B quitte la collaboration → A',
+  },
+  {
+    type: 'collab_eviction',
+    nom: 'Collab — collaborateur retiré',
+    titrePlaceholder: 'Ta collaboration a pris fin',
+    description: 'Envoyé au collaborateur quand le propriétaire le retire (avec le motif).',
+    declencheur: 'Déclencheur : A retire un collaborateur actif → B',
+  },
+  {
+    type: 'collab_beat_supprime',
+    nom: 'Collab — beat supprimé',
+    titrePlaceholder: 'Un beat en collaboration a été supprimé',
+    description: 'Envoyé aux collaborateurs (actifs ou invités) quand le propriétaire supprime le beat.',
+    declencheur: 'Déclencheur : A supprime un beat en collaboration → B',
+  },
+  {
+    type: 'collab_pause',
+    nom: 'Collab — action requise (beat retiré de la vente)',
+    titrePlaceholder: 'Action requise sur un beat en collaboration',
+    description: "Envoyé à tous les vendeurs d'un beat collab quand l'un d'eux n'est plus éligible aux paiements (Stripe, mandat, TVA, adresse…). Le beat sort de la vente jusqu'à ce que ce soit réglé.",
+    declencheur: 'Déclencheur : un vendeur passe de « prêt à vendre » à « pas prêt » (réglage modifié ou webhook Stripe account.updated) → A et B',
+  },
+  {
+    type: 'conditions_mise_a_jour',
+    nom: 'Mise à jour des conditions',
+    titrePlaceholder: 'Mise à jour des conditions',
+    description: "Email d'information envoyé à tous les beatmakers 30 jours avant l'entrée en vigueur d'un texte modifié.",
+    declencheur: 'Déclencheur : bouton « Prévenir tous les beatmakers » (sous cette carte)',
   },
   {
     type: 'suspension',
@@ -260,6 +317,58 @@ function CarteTemplate({
       >
         {enregistrement ? 'Enregistrement…' : enregistre ? 'Enregistré ✓' : 'Enregistrer'}
       </button>
+
+      {carte.type === 'conditions_mise_a_jour' && <PrevenirConditions />}
+    </div>
+  )
+}
+
+function PrevenirConditions() {
+  const [texteConcerne, setTexteConcerne] = useState('')
+  const [resume, setResume] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+  const [resultat, setResultat] = useState('')
+  const [erreur, setErreur] = useState('')
+
+  async function handleEnvoyer() {
+    if (!confirm('Envoyer cet email à TOUS les beatmakers inscrits ? (tant que le verrou pré-lancement est actif, seules tes adresses le reçoivent vraiment)')) return
+    setEnvoi(true)
+    setErreur('')
+    setResultat('')
+    const r = await prevenirMiseAJourConditions(texteConcerne, resume)
+    setEnvoi(false)
+    if (r.erreur) { setErreur(r.erreur); return }
+    const date = r.dateEffet ? new Date(r.dateEffet).toLocaleDateString('fr-FR') : ''
+    setResultat(`${r.envoyes} envoyé(s), ${r.bloques} bloqué(s) par le verrou — entrée en vigueur le ${date}.`)
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gray-800 space-y-3">
+      <p className="text-xs font-semibold text-white">Prévenir tous les beatmakers</p>
+      <input
+        type="text"
+        value={texteConcerne}
+        onChange={e => setTexteConcerne(e.target.value)}
+        placeholder="Texte concerné (ex. Conditions de collaboration)"
+        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+      />
+      <textarea
+        value={resume}
+        onChange={e => setResume(e.target.value)}
+        rows={3}
+        placeholder="Ce qui change, en quelques lignes"
+        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 resize-none"
+      />
+      {erreur && <p className="text-xs text-red-400">{erreur}</p>}
+      {resultat && <p className="text-xs text-green-400">{resultat}</p>}
+      <button
+        onClick={handleEnvoyer}
+        disabled={envoi || !texteConcerne.trim() || !resume.trim()}
+        className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
+      >
+        {envoi ? 'Envoi en cours…' : 'Prévenir tous les beatmakers'}
+      </button>
+      <p className="text-[11px] text-gray-600">Entrée en vigueur automatique 30 jours après l&apos;envoi. Chaque envoi apparaît dans l&apos;onglet Logs.</p>
     </div>
   )
 }

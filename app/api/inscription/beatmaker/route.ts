@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerConfirmationEmailPlateforme } from '@/lib/emails'
+import { paysValide, PAYS_PAR_DEFAUT } from '@/lib/pays'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -16,10 +17,13 @@ export const runtime = 'nodejs'
 // par ce chantier.
 export async function POST(request: NextRequest) {
   const { origin } = new URL(request.url)
-  const { email, password, nomArtiste } = await request.json()
+  const { email, password, nomArtiste, pays } = await request.json()
 
   if (!email || !password || !nomArtiste) {
     return NextResponse.json({ erreur: 'Champs manquants.' }, { status: 400 })
+  }
+  if (pays != null && !paysValide(pays)) {
+    return NextResponse.json({ erreur: 'Pays invalide.' }, { status: 400 })
   }
 
   const emailNorm = String(email).toLowerCase().trim()
@@ -38,6 +42,14 @@ export async function POST(request: NextRequest) {
       { erreur: dejaUtilise ? 'Un compte existe déjà avec cet email.' : 'Erreur lors de la création du compte.' },
       { status: 400 },
     )
+  }
+
+  // Pays choisi à l'inscription (Phase 12 lot 4, Q6b) — la ligne beatmakers
+  // existe déjà (trigger handle_new_beatmaker synchrone, qui met 'FR' par
+  // défaut) : on la complète ici plutôt que de modifier le trigger.
+  if (pays && pays !== PAYS_PAR_DEFAUT) {
+    const { error: erreurPays } = await admin.from('beatmakers').update({ pays }).eq('id', data.user.id)
+    if (erreurPays) console.error('[inscription] Erreur enregistrement du pays:', JSON.stringify(erreurPays))
   }
 
   // Même pattern que le lien de récupération dans connecterAutomatiquementApresAbonnement

@@ -2,6 +2,9 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import CollabsClient from './_components/CollabsClient'
+import { calculerPretAVendreOuExempte } from '@/lib/pret-a-vendre'
+
+export type CritereManquant = { libelle: string; lienReglage: string }
 
 // Réécriture complète (Phase 12, lot 3) — l'ancienne version de cette page
 // (et de sa requête) datait d'avant la Phase 12 et interrogeait encore
@@ -71,5 +74,16 @@ export default async function CollabsPage() {
       return { ...s, beats: { ...beat, beatmakers } } as unknown as SplitRow
     })
 
-  return <CollabsClient splits={splits} />
+  // Lot 4 (Q7c) : B voit ce qui lui manque pour vendre AVANT d'accepter.
+  // Aussi pour ses collabs actives : s'il n'est plus éligible, elles sont
+  // retirées de la vente et il doit voir quoi régler.
+  const concerne = splits.some(s => s.statut === 'invitee' || s.statut === 'active')
+  const readiness = concerne
+    ? await calculerPretAVendreOuExempte(admin, user.id, { estConcedant: false })
+    : { pret: true, criteres: [] }
+  const criteresManquants = readiness.criteres
+    .filter(c => !c.ok)
+    .map(c => ({ libelle: c.libelle, lienReglage: c.lienReglage }))
+
+  return <CollabsClient splits={splits} criteresManquants={criteresManquants} />
 }

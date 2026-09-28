@@ -3,6 +3,7 @@
 import { estAdmin, estRoleAdmin } from '@/lib/admin'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
 import { suspendreBoutique, reactiverBoutique, type RapportSuspension } from '@/lib/admin-boutiques'
 import { MOTIFS_SUSPENSION, type MotifSuspension } from '@/lib/suspension'
 
@@ -61,6 +62,8 @@ export async function exempterGateAction(beatmakerId: string, exempte: boolean):
   const { error } = await admin.from('beatmakers').update({ abonnement_exempte: exempte }).eq('id', beatmakerId)
   if (error) return { erreur: error.message }
 
+  // L'exemption rend « prêt à vendre » d'office (Phase 12 lot 4).
+  await rafraichirPretAVendre(beatmakerId)
   return {}
 }
 
@@ -80,5 +83,6 @@ export async function corrigerBeatmakerAction(
   const { error } = await admin.from('beatmakers').update(maj).eq('id', beatmakerId)
   if (error) return { erreur: error.message }
 
+  await rafraichirPretAVendre(beatmakerId)
   return {}
 }

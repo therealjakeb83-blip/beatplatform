@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { verifierFeuVertBeat, PAIEMENT_MULTI_VENDEURS_DISPONIBLE } from '@/lib/feu-vert-collab'
 
 // Calcul de prix serveur pour un achat de beat — jamais confiance dans le
 // front. Utilisé par /api/stripe/express-checkout (page de paiement custom,
@@ -182,7 +183,7 @@ export async function calculerLignesPanier(
 
   const { data: beatsData } = await admin
     .from('beats')
-    .select('id, titre, image_url, beatmaker_id, hors_vente_collab')
+    .select('id, titre, image_url, beatmaker_id, hors_vente_collab, quote_part_proprietaire')
     .in('id', beatIds)
     .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
@@ -232,6 +233,15 @@ export async function calculerLignesPanier(
     // couvre le paiement express, la page de paiement et le panier.
     if (beat.hors_vente_collab) {
       return { ok: false, erreur: `« ${beat.titre} » n’est plus disponible pour le moment`, status: 409 }
+    }
+    // Collaborateurs actifs (lot 4) : feu vert complet vérifié ici — tous
+    // les vendeurs prêts à vendre — puis double verrou tant que le paiement
+    // réparti de la Phase 13 n'existe pas.
+    if ((beat.quote_part_proprietaire ?? 100) < 100) {
+      const feuVert = await verifierFeuVertBeat(admin, beat.id as string)
+      if (!feuVert.ok || !PAIEMENT_MULTI_VENDEURS_DISPONIBLE) {
+        return { ok: false, erreur: `« ${beat.titre} » n’est plus disponible pour le moment`, status: 409 }
+      }
     }
 
     const beatLicence = beatLicenceMap.get(`${item.beat_id}:${item.licence_id}`)

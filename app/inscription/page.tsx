@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { normaliserEmail } from '@/lib/email'
+import { PAYS, PAYS_PAR_DEFAUT, paiementsDisponiblesDans, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
 
 export default function InscriptionPage() {
   return (
@@ -20,6 +21,7 @@ function InscriptionFormulaire() {
   const [email, setEmail] = useState(emailInvite)
   const [password, setPassword] = useState('')
   const [nomArtiste, setNomArtiste] = useState('')
+  const [pays, setPays] = useState(PAYS_PAR_DEFAUT)
   const [erreur, setErreur] = useState('')
   const [chargement, setChargement] = useState(false)
   const [succes, setSucces] = useState(false)
@@ -32,7 +34,7 @@ function InscriptionFormulaire() {
     const res = await fetch('/api/inscription/beatmaker', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, nomArtiste }),
+      body: JSON.stringify({ email, password, nomArtiste, pays }),
     })
     const data = await res.json()
 
@@ -81,6 +83,24 @@ function InscriptionFormulaire() {
               placeholder="ex: Jake B"
               className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-300 mb-1">Pays</label>
+            <select
+              value={pays}
+              onChange={e => setPays(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+            >
+              {PAYS.map(p => (
+                <option key={p.code} value={p.code}>{p.nom}</option>
+              ))}
+            </select>
+            {!paiementsDisponiblesDans(pays) && (
+              <p className="text-xs text-orange-400 mt-1">
+                {MESSAGE_PAIEMENTS_INDISPONIBLES} Tu peux quand même créer ton compte.
+              </p>
+            )}
           </div>
 
           <div>
