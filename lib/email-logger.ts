@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getResend } from './resend'
 import { NOM_PLATEFORME } from './constantes'
+import { envoiAutorise, MOTIF_BLOCAGE_LISTE_BLANCHE } from './email-liste-blanche'
 
 // Les campagnes (envoi de masse) ne passent volontairement pas par ce
 // logger : leur historique détaillé par destinataire vit déjà dans
@@ -56,6 +57,14 @@ export async function envoyerEmailUnique(ctx: ContexteEnvoi & {
   text?: string
   from?: string
 }) {
+  // Bloqué = « fait comme si » pour l'appelant (sinon une automatisation
+  // réessaierait à chaque passage du cron), mais tracé en échec dans les logs.
+  if (!envoiAutorise(ctx.to)) {
+    await enregistrer(ctx, ctx.to, ctx.subject, { html: ctx.html, texte: ctx.text }, {
+      erreur: MOTIF_BLOCAGE_LISTE_BLANCHE,
+    })
+    return { data: { id: null as string | null }, error: null }
+  }
   try {
     const base = { from: ctx.from ?? FROM_DEFAUT, to: ctx.to, subject: ctx.subject }
     const { data, error } = await getResend().emails.send(
@@ -78,8 +87,26 @@ export type DestinataireLot = { to: string; subject: string; html: string }
 // Variante batch — utilisée par les campagnes (lib/mailing.ts). Ne logge
 // pas dans email_logs (voir note sur TypeEmailLog plus haut) : l'appelant
 // gère lui-même le suivi via campagne_envois.
+// Les destinataires hors liste blanche sont retirés du lot ; la réponse garde
+// l'ordre d'origine (id null pour un bloqué) car l'appelant indexe par position.
 export async function envoyerLotEmails(from: string, destinataires: DestinataireLot[]) {
-  return getResend().batch.send(
-    destinataires.map(d => ({ from, to: d.to, subject: d.subject, html: d.html })),
-  )
+  const autorises = destinataires.filter(d => envoiAutorise(d.to))
+  if (autorises.length < destinataires.length) {
+    console.warn(`[email-logger] ${destinataires.length - autorises.length} destinataire(s) de campagne — ${MOTIF_BLOCAGE_LISTE_BLANCHE}`)
+  }
+
+  let ids: (string | null)[] = []
+  if (autorises.length > 0) {
+    const { data, error } = await getResend().batch.send(
+      autorises.map(d => ({ from, to: d.to, subject: d.subject, html: d.html })),
+    )
+    if (error || !data) return { data: null, error }
+    ids = data.data.map(r => r.id)
+  }
+
+  let i = 0
+  return {
+    data: { data: destinataires.map(d => ({ id: envoiAutorise(d.to) ? (ids[i++] ?? null) : null })) },
+    error: null,
+  }
 }
