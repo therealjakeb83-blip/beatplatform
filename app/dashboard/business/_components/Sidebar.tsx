@@ -20,7 +20,7 @@ const LOCK_ICON = (
   <span className="text-[10px] opacity-60" title="Nécessite un abonnement">🔒</span>
 )
 
-export default function Sidebar({ nomArtiste, planFree }: { nomArtiste: string; planFree: boolean }) {
+export default function Sidebar({ nomArtiste, planFree, demandesCollab }: { nomArtiste: string; planFree: boolean; demandesCollab: number }) {
   const pathname = usePathname()
 
   // Plan Free (Phase 12 lot 2) — un lien hors de la matrice d'accès
@@ -97,6 +97,7 @@ export default function Sidebar({ nomArtiste, planFree }: { nomArtiste: string; 
     open: boolean,
     onToggle: () => void,
     onNavigate: () => void,
+    badgeReplie?: number,
   ) {
     const verrouille = bloque(href)
     const base = `flex items-center rounded-lg text-sm transition-colors ${
@@ -116,6 +117,11 @@ export default function Sidebar({ nomArtiste, planFree }: { nomArtiste: string; 
         >
           {label}
           {verrouille && LOCK_ICON}
+          {!open && badgeReplie != null && badgeReplie > 0 && (
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold">
+              {badgeReplie}
+            </span>
+          )}
         </Link>
         <button
           onClick={onToggle}
@@ -225,6 +231,7 @@ export default function Sidebar({ nomArtiste, planFree }: { nomArtiste: string; 
           commerceOpen,
           () => setCommerceOpen(o => !o),
           () => setCommerceOpen(true),
+          demandesCollab,
         )}
         {commerceOpen && (
           <>
@@ -236,7 +243,7 @@ export default function Sidebar({ nomArtiste, planFree }: { nomArtiste: string; 
             {subItem(`${BASE}/codes-promo`, 'Codes promo', pathname.startsWith(`${BASE}/codes-promo`))}
             {subItem(`${BASE}/reductions-lot`, 'Réductions par lot', pathname.startsWith(`${BASE}/reductions-lot`))}
             {subItem(`${BASE}/licences`,    'Licences',    pathname.startsWith(`${BASE}/licences`))}
-            {subItem(`${BASE}/collabs`,     'Collabs',     pathname.startsWith(`${BASE}/collabs`))}
+            {subItem(`${BASE}/collabs`,     'Collabs',     pathname.startsWith(`${BASE}/collabs`), demandesCollab)}
             {subItem(`${BASE}/litiges`,     'Litiges',     pathname.startsWith(`${BASE}/litiges`))}
             {subItem(`${BASE}/facturation`, 'Facturation', pathname.startsWith(`${BASE}/facturation`))}
           </>

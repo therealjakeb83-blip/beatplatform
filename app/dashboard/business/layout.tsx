@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif } from '@/lib/acces-plan'
+import { compterDemandesCollabEnAttente } from '@/lib/collaboration'
 import Sidebar from './_components/Sidebar'
 
 export default async function BusinessLayout({
@@ -30,10 +31,11 @@ export default async function BusinessLayout({
   const gateExempte = estRoleAdmin(beatmaker.role) || beatmaker.abonnement_exempte
   const abonnementActif = gateExempte || await aUnAbonnementPlateformeActif(supabase, user.id)
   const planFree = !abonnementActif
+  const demandesCollab = await compterDemandesCollabEnAttente(user.id, user.email ?? null)
 
   return (
     <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
-      <Sidebar nomArtiste={nomArtiste} planFree={planFree} />
+      <Sidebar nomArtiste={nomArtiste} planFree={planFree} demandesCollab={demandesCollab} />
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
