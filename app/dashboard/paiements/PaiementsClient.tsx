@@ -149,6 +149,8 @@ export default function PaiementsClient({
 
   const [prenom, setPrenom] = useState('')
   const [nomLegal, setNomLegal] = useState('')
+  const [contratStripeAccepte, setContratStripeAccepte] = useState(false)
+  const identiteSaisie = !!(prenom.trim() && nomLegal.trim())
   const adresseComplete = !!(adresse.ligne && adresse.codePostal && adresse.ville)
 
   // Pré-remplissage par jeton de compte (lot 4, Q7c/Q7d) : prénom, nom et
@@ -156,13 +158,17 @@ export default function PaiementsClient({
   // une plateforme française), la plateforme ne reçoit qu'un jeton opaque et
   // ne stocke jamais ces données d'identité. Facultatif : sans prénom/nom,
   // le compte est créé comme avant et tout se saisit chez Stripe.
+  // Stripe refuse un jeton qui n'atteste pas l'acceptation de son Contrat de
+  // compte connecté (tos_shown_and_accepted) — constaté au test T25 : la
+  // case est donc obligatoire pour pré-remplir.
   async function creerJetonCompte(): Promise<string | null> {
-    if (!prenom.trim() || !nomLegal.trim()) return null
+    if (!identiteSaisie || !contratStripeAccepte) return null
     try {
       const stripe = await stripePromise
       if (!stripe) return null
       const { token, error } = await stripe.createToken('account', {
         business_type: 'individual',
+        tos_shown_and_accepted: true,
         individual: {
           first_name: prenom.trim(),
           last_name: nomLegal.trim(),
@@ -396,10 +402,27 @@ export default function PaiementsClient({
                     ? <>Adresse transmise aussi : <span className="text-gray-300">{adresse.ligne}, {adresse.codePostal} {adresse.ville}</span></>
                     : <>Ajoute ton adresse dans <Link href="/dashboard/legal" className="text-indigo-400 hover:underline">Pages légales</Link> pour qu&apos;elle soit pré-remplie aussi.</>}
                 </p>
+                {identiteSaisie && (
+                  <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={contratStripeAccepte}
+                      onChange={e => setContratStripeAccepte(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      J&apos;accepte le{' '}
+                      <a href="https://stripe.com/fr/legal/connect-account" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">
+                        Contrat de compte connecté Stripe
+                      </a>
+                      {' '}(obligatoire pour pré-remplir ; sinon vide les champs et tu l&apos;accepteras directement chez Stripe).
+                    </span>
+                  </label>
+                )}
               </div>
               <button
                 onClick={connecterStripe}
-                disabled={chargementConnect}
+                disabled={chargementConnect || (identiteSaisie && !contratStripeAccepte)}
                 className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
               >
                 {chargementConnect ? 'Redirection...' : 'Connecter mon compte bancaire'}
