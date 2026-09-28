@@ -341,7 +341,7 @@ Décisions prises avant de coder (2026-09-28) : **verrou email liste blanche** p
 |---|---|---|
 | 1 — Moteur de paiement ✅ | Création des comptes `controller` (+ recréation des comptes de test), SetupIntent/copie/réservation/capture/annulation, commande + tranches, idempotence, balayage des réservations ; tests réels : compte BE, 3DS | **Codé, testé, clos le 2026-09-28** (T0-T13) |
 | 2 — Page de paiement | `/paiement/[slug]` + panier : choix du chemin, carte seule si collab, validations 3DS à l'écran ; tests réels Apple/Google Pay/Link (iPhone) | 3-5 h |
-| 3 — Après la vente | Factures par vendeur, contrat, email de confirmation client (deux vendeurs), page de téléchargement, Commandes de B, Analytics = tranches, email « Nouvelle vente » A/B | 4-6 h |
+| 3 — Après la vente | Factures par vendeur, contrat, email de confirmation client (deux vendeurs), page de téléchargement, Commandes de B, Analytics = tranches, email « Nouvelle vente » A/B ; **+ commande gratuite** (décidée le 2026-09-28 : un beat offert = licence gratuite avec contrat, obtenue UNIQUEMENT par un code promo à 100 % ou en montant ≥ prix de la licence ; aujourd'hui un panier à 0 € est refusé au paiement, solo comme collab — à cadrer avant de coder) | 5-8 h |
 | 4 — Remboursements, avoirs, litiges | Bouton de A, remboursements de B reflétés, avoirs (solo + collab), encart litige (solo + collab) ; tests réels : remboursement à solde nul, réponse à un litige | 5-9 h |
 | 5 — Ouverture et ménage | `PAIEMENT_MULTI_VENDEURS_DISPONIBLE = true`, vente collab de bout en bout, suppression de l'ancien système | 1-2 h |
 
