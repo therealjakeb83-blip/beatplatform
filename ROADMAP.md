@@ -358,8 +358,8 @@ Fait : migration `supabase/phase13_lot1_paiement_multi.sql` ; `lib/stripe-compte
 - **T7** carte refusée (4000 0000 0000 0002) : rien encaissé, aucune commande, parts « annulee/echouee »
 - **T8** une seule part échoue (script) : l'autre réservation annulée, rien encaissé
 - **T9** 3D Secure : 4000 0025 0000 3155 → une validation, vente OK ; 4000 0027 6000 3184 (toujours exiger) → message clair, tout annulé (validation à l'écran = lot 2)
-- **T10** double clic / rechargement pendant le paiement : une seule commande
-- **T11** abandon (carte validée puis page fermée) → `/api/admin/paiements-multi/balayer?age=0` → tentative « expiree », rien encaissé. Le cas « encaissé sans commande » n'est pas reproductible sans casser le serveur en plein paiement : prouvé par lecture de code (`balayerPaiementsMulti`)
+- ✅ **T10** (Claude, prouvé par le code) double clic : bouton bloqué pendant le paiement + verrou serveur `creee → en_cours` (un 2e appel reçoit « déjà en cours » ou la commande existante). **Limite trouvée, reportée au lot 2** : un rechargement pendant l'encaissement laisse le panier plein (vidé seulement à la fin) → risque de payer deux fois ; même comportement sur le chemin solo actuel — à corriger pour les deux chemins (mémoriser le paiement en cours)
+- **T11** abandon (carte validée puis page fermée) → `/api/admin/paiements-multi/balayer?age=0` → tentative « expiree », rien encaissé. ✅ 2e partie (Claude, prouvé par le code) : cas « encaissé sans commande » (non reproductible sans casser le serveur en plein paiement) — `balayerPaiementsMulti` encaisse ce qui reste réservé puis crée la commande, sinon annule tout
 - **T12** code promo 90 % sur le beat collab : total de la page = prix plancher (le message « réduction limitée » à l'écran = lot 2)
 - ✅ **T13** (Claude) : `tsc` OK, `eslint` sans nouvelle erreur (3 erreurs préexistantes inchangées), `build` OK
 
