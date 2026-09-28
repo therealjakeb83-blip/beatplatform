@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const body = await req.json().catch(() => ({}))
   const motif = typeof body?.motif === 'string' ? body.motif.trim() : ''
-  if (!motif) return NextResponse.json({ erreur: 'Indique un motif pour l’éviction.' }, { status: 400 })
+  if (!motif) return NextResponse.json({ erreur: 'Indique un motif pour le retrait.' }, { status: 400 })
 
   const admin = createAdminClient()
   const collab = await chargerCollaboration(admin, id)

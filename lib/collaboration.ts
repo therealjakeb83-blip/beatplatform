@@ -26,7 +26,7 @@ export const LIBELLES_STATUT_COLLAB: Record<StatutCollaboration, string> = {
   refusee: 'Refusée',
   retiree: 'Invitation retirée',
   quittee: 'Quittée',
-  evincee: 'Évincée',
+  evincee: 'Collaborateur retiré',
 }
 
 export function estCollaborationOuverte(statut: string): boolean {

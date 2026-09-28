@@ -29,7 +29,7 @@ const ACTION_LABEL: Record<string, string> = {
   refus:               'Refus d’une collaboration',
   retrait_invitation:  'Invitation retirée',
   depart:              'Départ d’une collaboration',
-  eviction:            'Éviction d’un collaborateur',
+  eviction:            'Retrait d’un collaborateur',
 }
 
 const LABEL_PAGE_LEGALE: Record<string, string> = Object.fromEntries(
@@ -71,7 +71,7 @@ function resumeDecision(log: DecisionLogRow, licenceNoms: Record<string, string>
     if (log.action === 'refus') return `Refus de la collaboration sur « ${titre} » par ${nom}`
     if (log.action === 'retrait_invitation') return `Invitation de ${nom} retirée sur « ${titre} »`
     if (log.action === 'depart') return `Départ de ${nom} de la collaboration sur « ${titre} »`
-    if (log.action === 'eviction') return `Éviction de ${nom} sur « ${titre} »`
+    if (log.action === 'eviction') return `Retrait de ${nom} sur « ${titre} »`
   }
   return ACTION_LABEL[log.action] ?? log.action
 }

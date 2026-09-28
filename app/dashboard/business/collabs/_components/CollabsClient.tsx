@@ -19,7 +19,7 @@ const LIBELLE_STATUT: Record<SplitRow['statut'], string> = {
   refusee: 'Refusée par toi',
   retiree: 'Invitation retirée',
   quittee: 'Quittée',
-  evincee: 'Éviction',
+  evincee: 'Retirée par le propriétaire',
 }
 
 function BeatCover({ beat }: { beat: SplitRow['beats'] }) {

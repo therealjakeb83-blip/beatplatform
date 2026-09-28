@@ -68,7 +68,7 @@ const LIBELLE_STATUT_COLLAB: Record<string, string> = {
   refusee: 'A refusé',
   retiree: 'Invitation retirée',
   quittee: 'A quitté',
-  evincee: 'Évincé',
+  evincee: 'Collaborateur retiré',
 }
 
 export type BeatFormValues = {
@@ -339,14 +339,14 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
     onHistoriqueChange([{ id: c.id, nom: nomAffiche(c), statut: 'retiree', pourcentage: c.pourcentage }, ...historique])
   }
   async function confirmerEviction(c: Collaborateur) {
-    if (!motifEviction.trim()) { setErreur('Indique un motif pour l’éviction.'); return }
+    if (!motifEviction.trim()) { setErreur('Indique un motif pour le retrait.'); return }
     setActionEnCours(c.id); setErreur('')
     const res = await fetch(`/api/business/collabs/${c.id}/evincer`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motif: motifEviction.trim() }),
     })
     setActionEnCours(null)
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) { setErreur(data.erreur ?? 'Erreur lors de l’éviction.'); return }
+    if (!res.ok) { setErreur(data.erreur ?? 'Erreur lors du retrait.'); return }
     onChange(collaborateurs.filter(x => x.id !== c.id))
     onHistoriqueChange([{ id: c.id, nom: nomAffiche(c), statut: 'evincee', motif: motifEviction.trim(), pourcentage: c.pourcentage }, ...historique])
     setEvictionOuverte(null); setMotifEviction('')
@@ -386,21 +386,21 @@ function CollaborateursSection({ collaborateurs, onChange, historique, onHistori
                   )}
                   {c.statut === 'active' && evictionOuverte !== c.id && (
                     <button type="button" onClick={() => { setEvictionOuverte(c.id); setMotifEviction(''); setErreur('') }} className="text-xs text-gray-400 hover:text-red-400 transition-colors">
-                      Évincer
+                      Retirer le collaborateur
                     </button>
                   )}
                 </div>
               </div>
               {evictionOuverte === c.id && (
                 <div className="flex flex-col gap-2 border-t border-gray-700 pt-2">
-                  <p className="text-xs text-gray-400">Motif de l’éviction (transmis à {nomAffiche(c)}) :</p>
+                  <p className="text-xs text-gray-400">Motif du retrait (transmis à {nomAffiche(c)}) :</p>
                   <input type="text" value={motifEviction} onChange={e => setMotifEviction(e.target.value)}
                     placeholder="Motif obligatoire..."
                     className="px-3 py-1.5 rounded-lg bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-red-500 text-sm" />
                   <div className="flex gap-2">
                     <button type="button" disabled={actionEnCours === c.id} onClick={() => confirmerEviction(c)}
                       className="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs transition-colors disabled:opacity-50">
-                      {actionEnCours === c.id ? 'Éviction…' : 'Confirmer l’éviction'}
+                      {actionEnCours === c.id ? 'Retrait…' : 'Confirmer le retrait'}
                     </button>
                     <button type="button" onClick={() => { setEvictionOuverte(null); setMotifEviction('') }} className="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-xs transition-colors">
                       Annuler
