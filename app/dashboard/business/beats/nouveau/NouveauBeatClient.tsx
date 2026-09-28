@@ -47,7 +47,7 @@ export default function NouveauBeatClient({ beatId, licences, categories }: { be
           <Link href="/dashboard/business/beats" className="text-gray-400 hover:text-white transition-colors text-sm">← Mes beats</Link>
           <h1 className="text-2xl font-bold">Ajouter un beat</h1>
         </div>
-        <BeatForm beatId={beatId} initialValues={initialValues} licences={licences} categories={categories} submitLabel="Enregistrer le beat" onSubmit={handleSubmit} />
+        <BeatForm beatId={beatId} initialValues={initialValues} licences={licences} categories={categories} submitLabel="Enregistrer le beat" onSubmit={handleSubmit} estNouveauBeat />
       </div>
     </main>
   )

@@ -551,6 +551,7 @@ export default function BeatForm({
   onDelete,
   lectureSeule = false,
   historiqueCollaborateurs = [],
+  estNouveauBeat = false,
 }: {
   beatId: string
   initialValues: BeatFormValues
@@ -562,6 +563,9 @@ export default function BeatForm({
   onDelete?: () => Promise<void>
   lectureSeule?: boolean
   historiqueCollaborateurs?: CollaborationHistorique[]
+  // Beat en cours de création (jamais encore enregistré) : rien n'est
+  // "déjà en vente" à protéger, quel que soit le statut choisi dans le menu.
+  estNouveauBeat?: boolean
 }) {
   const [titre, setTitre] = useState(initialValues.titre)
   const [bpm, setBpm] = useState(initialValues.bpm)
@@ -577,11 +581,15 @@ export default function BeatForm({
   const [freeDownload, setFreeDownload] = useState(initialValues.freeDownload)
   const [collaborateurs, setCollaborateurs] = useState(initialValues.collaborateurs)
   const [historiqueCollab, setHistoriqueCollab] = useState<CollaborationHistorique[]>(historiqueCollaborateurs)
-  // "En vente" tel qu'enregistré en base au chargement de la page — sert
-  // uniquement à l'avertissement Q3 (retiré de la vente si on ajoute un
-  // collaborateur maintenant), indépendant du menu "statut" si l'utilisateur
-  // le change sans avoir encore enregistré.
-  const beatEnVente = initialValues.statut !== 'masque' && initialValues.statut !== 'vendu'
+  // "Réellement en vente" tel qu'enregistré en base au chargement de la page
+  // — sert uniquement à l'avertissement Q3 (retiré de la vente si on ajoute
+  // un collaborateur maintenant), indépendant du menu "statut" si
+  // l'utilisateur le change sans avoir encore enregistré. Un beat jamais créé
+  // (estNouveauBeat) n'a rien à protéger. "Réservé aux membres" et
+  // "Programmé" ne comptent pas comme "réellement en vente" (retour de Jake,
+  // test T3 : le beat par défaut à la création est "prive", ça n'a rien de
+  // "publié") — seul "Public" compte.
+  const beatEnVente = !estNouveauBeat && initialValues.statut === 'public'
   const [licencesActives, setLicencesActives] = useState<string[]>(initialValues.licencesActives)
   const [exclusifSurDemande, setExclusifSurDemande] = useState(initialValues.exclusifSurDemande)
   const [licenceOverrides, setLicenceOverrides] = useState<Record<string, string>>(initialValues.licenceOverrides)
