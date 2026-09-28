@@ -309,11 +309,11 @@ Décisions prises avant de coder (2026-09-28) : **verrou email liste blanche** p
 - **Facture « modèle libre »** (3-5 h, juste avant la Phase 13) : choix Français / Libre dans Facturation, champ « mentions à ajouter en bas de facture », « SIRET » → « Numéro d'entreprise » (le champ base s'appelle déjà `numero_entreprise`), modèle par défaut selon le pays choisi ; `lib/facture.ts` contient aujourd'hui « SIRET » et « TVA non applicable, article 293 B du CGI ». **Prérequis déjà en place depuis le lot 4** : `beatmakers.pays` est choisi à l'inscription (`lib/pays.ts`, codes ISO, France par défaut) et modifiable sur Paiements tant que Stripe n'est pas connecté — c'est lui qui doit déterminer le modèle par défaut (FR → Français, autre → Libre). Comptes de test utiles : `nic-beat-2809-22410af7` (BE, Stripe complet, prêt à vendre) et `test-beat-2809-55713b6f` (FR).
   - **Checklist tests — codé le 2026-09-28, à tester item par item avec Jake** (choix validés avant de coder : ligne « Facture établie par My Producer… » gardée dans les deux modèles ; tableau HT/TVA/TTC gardé en Libre si TVA ; libellé du champ `/dashboard/legal` renommé « Numéro d'entreprise (SIRET en France) », texte généré des pages légales non touché). Migration `supabase/facture_modele_libre.sql` ; modèle + mentions figés sur `commandes` à l'attribution du numéro (NULL = ancienne commande = Français sans mention).
     - ✅ **T0** (2026-09-28) migration exécutée + vérifiée en base : 4 colonnes présentes, 0 donnée existante touchée, pays existants = 25 `FR` + 1 `BE` (codes propres)
-    - **T1** Facturation de `test-beat-2809` (FR) : « Français » présélectionné, « choisi automatiquement selon ton pays »
-    - **T2** Facturation de `nic-beat-2809` (BE) : « Libre » présélectionné
-    - **T3** changer de modèle, enregistrer, recharger → conservé (dans les deux sens)
-    - **T4** mentions : texte multi-lignes conservé ; limite 500 ; vider → supprimées
-    - **T5** page Facturation accessible en plan Free
+    - ✅ **T1** (2026-09-28) Facturation de `test-beat-2809` (FR) : « Français » présélectionné, « choisi automatiquement selon ton pays »
+    - ✅ **T2** (2026-09-28) Facturation de `nic-beat-2809` (BE) : « Libre » présélectionné
+    - ✅ **T3** (2026-09-28, sur `nic-beat-2809`, laissé sur Libre) changer de modèle, enregistrer, recharger → conservé (dans les deux sens)
+    - ✅ **T4** (2026-09-28, sur `nic-beat-2809`, mention finale « Mention test BE ») mentions : texte multi-lignes conservé ; limite 500 ; vider → supprimées
+    - ✅ **T5** page Facturation accessible en plan Free — prouvé par le code, non cliqué (`/dashboard/business/facturation` dans `PREFIXES_LIBRES` de `lib/acces-plan.ts`) ; logique du modèle par défaut et des mentions aussi vérifiée par script (`.scratch/facture-modele-logique.ts`, 8/8)
     - ✅ **T6** (Claude, 2026-09-28, script local `.scratch/facture-modele-test.ts`, données fictives) : 6 PDF générés sans plantage — Français sans/avec TVA, Libre sans/avec TVA (pas de 293 B), mentions longues (retour à la ligne), caractères pièges (emoji/✓/中文 retirés, œ/€/’ conservés)
     - **T7** vrai achat de licence sur `jakeb-test` (Français) : « Numéro d'entreprise », 293 B si pas de TVA, mentions présentes
     - **T8** vrai achat de licence sur `nic-beat-2809` (Libre) : pas de 293 B, mentions présentes
