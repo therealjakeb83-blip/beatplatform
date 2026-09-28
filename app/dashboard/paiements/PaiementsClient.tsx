@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE, texteMandatFulfillment } from '@/lib/fulfillment'
 import { MOYENS_PAIEMENT_TOGGLABLES, normaliserMoyensPaiement, type MoyenPaiementNiveauA } from '@/lib/moyens-paiement'
 import { validerStatementDescriptor } from '@/lib/statement-descriptor'
+import { PAYS, nomPays, paiementsDisponiblesDans, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
 
 const LABEL_MOYEN_PAIEMENT: Record<MoyenPaiementNiveauA, string> = {
   carte: 'Carte bancaire',
@@ -17,6 +18,7 @@ export default function PaiementsClient({
   mandatFulfillmentAccepteLe,
   moyensPaiementAcceptes,
   statementDescriptor,
+  pays: paysInitial,
 }: {
   stripeAccountId: string | null
   mandatFulfillmentActif: boolean
@@ -24,6 +26,7 @@ export default function PaiementsClient({
   mandatFulfillmentAccepteLe: string | null
   moyensPaiementAcceptes: string[]
   statementDescriptor: string
+  pays: string
 }) {
   const router = useRouter()
   const [chargementConnect, setChargementConnect] = useState(false)
@@ -121,12 +124,35 @@ export default function PaiementsClient({
     }
   }
 
+  const [pays, setPays] = useState(paysInitial)
+  const [erreurConnect, setErreurConnect] = useState('')
+
+  async function changerPays(nouveau: string) {
+    const precedent = pays
+    setPays(nouveau)
+    setErreurConnect('')
+    const res = await fetch('/api/stripe/pays', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pays: nouveau }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      setPays(precedent)
+      setErreurConnect(data?.erreur || 'Impossible de changer le pays.')
+    }
+  }
+
   async function connecterStripe() {
     setChargementConnect(true)
+    setErreurConnect('')
     const res = await fetch('/api/stripe/connect/creer', { method: 'POST' })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
     if (data.url) window.location.href = data.url
-    else setChargementConnect(false)
+    else {
+      setErreurConnect(data.erreur || 'Impossible de contacter Stripe, réessaie.')
+      setChargementConnect(false)
+    }
   }
 
 
@@ -264,6 +290,23 @@ export default function PaiementsClient({
             Lie ton compte bancaire pour recevoir les paiements de tes acheteurs.
           </p>
 
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-400 mb-1">Pays de ton activité</label>
+            {stripeAccountId ? (
+              <p className="text-sm text-gray-300">
+                {nomPays(pays)} <span className="text-gray-600 text-xs">(fixé à la création du compte Stripe, non modifiable)</span>
+              </p>
+            ) : (
+              <select
+                value={pays}
+                onChange={e => changerPays(e.target.value)}
+                className="w-full max-w-xs px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-indigo-500"
+              >
+                {PAYS.map(p => <option key={p.code} value={p.code}>{p.nom}</option>)}
+              </select>
+            )}
+          </div>
+
           {stripeAccountId ? (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -280,13 +323,21 @@ export default function PaiementsClient({
               </button>
             </div>
           ) : (
-            <button
-              onClick={connecterStripe}
-              disabled={chargementConnect}
-              className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
-            >
-              {chargementConnect ? 'Redirection...' : 'Connecter mon compte bancaire'}
-            </button>
+            paiementsDisponiblesDans(pays) ? (
+              <button
+                onClick={connecterStripe}
+                disabled={chargementConnect}
+                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
+              >
+                {chargementConnect ? 'Redirection...' : 'Connecter mon compte bancaire'}
+              </button>
+            ) : (
+              <p className="text-sm text-orange-400">{MESSAGE_PAIEMENTS_INDISPONIBLES}</p>
+            )
+          )}
+
+          {erreurConnect && (
+            <p className="text-red-400 text-sm mt-3">{erreurConnect}</p>
           )}
         </section>
 

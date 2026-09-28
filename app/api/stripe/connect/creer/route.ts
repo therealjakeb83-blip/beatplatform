@@ -1,6 +1,10 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { paiementsDisponiblesDans, PAYS_PAR_DEFAUT, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
+
+// Code d'activité Stripe « Digital Goods: Media, Books, Movies, Music ».
+const MCC_MUSIQUE_NUMERIQUE = '5815'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -9,31 +13,55 @@ export async function POST(request: Request) {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('stripe_account_id, email, nom_artiste, statement_descriptor')
+    .select('stripe_account_id, email, nom_artiste, slug, statement_descriptor, pays')
     .eq('id', user.id)
     .single()
 
   if (!beatmaker) return NextResponse.json({ erreur: 'Beatmaker introuvable' }, { status: 404 })
 
+  const origin = request.headers.get('origin') ?? 'http://localhost:3000'
   let accountId = beatmaker.stripe_account_id
 
   if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: 'express',
-      country: 'FR',
-      email: beatmaker.email,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-      metadata: { beatmaker_id: user.id },
-      // Repris s'il a déjà été choisi avant la connexion du compte (voir
-      // /api/stripe/statement-descriptor, qui le pousse directement sur les
-      // comptes déjà connectés — ici on couvre le cas inverse).
-      ...(beatmaker.statement_descriptor
-        ? { settings: { payments: { statement_descriptor: beatmaker.statement_descriptor } } }
-        : {}),
-    })
+    // Pays choisi par le beatmaker (Phase 12 lot 4, Q6b) — plus de 'FR' en dur.
+    const pays = beatmaker.pays || PAYS_PAR_DEFAUT
+    if (!paiementsDisponiblesDans(pays)) {
+      return NextResponse.json({ erreur: MESSAGE_PAIEMENTS_INDISPONIBLES }, { status: 400 })
+    }
+
+    // Pré-remplissage simple de l'onboarding Stripe (lot 4) : uniquement des
+    // infos de configuration, jamais d'identité (nom, adresse, date de
+    // naissance) — celles-là exigent un jeton de compte pour une plateforme
+    // française. Le beatmaker confirme ou modifie tout chez Stripe.
+    const urlBoutique = new URL(origin).hostname === 'localhost' ? undefined : `${origin}/${beatmaker.slug}`
+    let account
+    try {
+      account = await stripe.accounts.create({
+        type: 'express',
+        country: pays,
+        email: beatmaker.email,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        business_profile: {
+          name: beatmaker.nom_artiste ?? undefined,
+          mcc: MCC_MUSIQUE_NUMERIQUE,
+          product_description: 'Vente en ligne de licences de beats (musique instrumentale) sous forme de fichiers numériques.',
+          ...(urlBoutique ? { url: urlBoutique } : {}),
+        },
+        metadata: { beatmaker_id: user.id },
+        // Repris s'il a déjà été choisi avant la connexion du compte (voir
+        // /api/stripe/statement-descriptor, qui le pousse directement sur les
+        // comptes déjà connectés — ici on couvre le cas inverse).
+        ...(beatmaker.statement_descriptor
+          ? { settings: { payments: { statement_descriptor: beatmaker.statement_descriptor } } }
+          : {}),
+      })
+    } catch (err) {
+      console.error('[connect/creer] Création du compte Stripe refusée pour', pays, ':', err instanceof Error ? err.message : err)
+      return NextResponse.json({ erreur: MESSAGE_PAIEMENTS_INDISPONIBLES }, { status: 400 })
+    }
     accountId = account.id
 
     await supabase
@@ -41,8 +69,6 @@ export async function POST(request: Request) {
       .update({ stripe_account_id: accountId })
       .eq('id', user.id)
   }
-
-  const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
   // Wallets en Direct Charge (Phase 2) — l'enregistrement de domaine fait
   // sur le compte plateforme ne vaut QUE pour ce compte, jamais pour les

@@ -9,7 +9,7 @@ export default async function PaiementsPage() {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('stripe_account_id, fulfillment_mandat_version, fulfillment_mandat_accepte_at, fulfillment_mandat_revoque_at, moyens_paiement_acceptes, statement_descriptor')
+    .select('stripe_account_id, fulfillment_mandat_version, fulfillment_mandat_accepte_at, fulfillment_mandat_revoque_at, moyens_paiement_acceptes, statement_descriptor, pays')
     .eq('id', user.id)
     .single()
 
@@ -27,6 +27,7 @@ export default async function PaiementsPage() {
       mandatFulfillmentAccepteLe={beatmaker?.fulfillment_mandat_accepte_at ?? null}
       moyensPaiementAcceptes={beatmaker?.moyens_paiement_acceptes ?? ['carte']}
       statementDescriptor={beatmaker?.statement_descriptor ?? ''}
+      pays={beatmaker?.pays ?? 'FR'}
     />
   )
 }
