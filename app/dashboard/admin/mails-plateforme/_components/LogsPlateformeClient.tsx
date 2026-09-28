@@ -1,5 +1,6 @@
 'use client'
 
+import { LIBELLES_EVENEMENTS_PLATEFORME } from '@/lib/email-libelles'
 import { useState } from 'react'
 import Link from 'next/link'
 import RenvoyerLogPlateformeButton from './RenvoyerLogPlateformeButton'
@@ -21,14 +22,7 @@ export type LogPlateformeRow = {
   beatmakers: { id: string; nom_artiste: string; slug: string } | null
 }
 
-const EVENEMENT_LABEL: Record<string, string> = {
-  plateforme_confirmation_email: "Confirmation d'adresse email",
-  plateforme_bienvenue: 'Bienvenue',
-  plateforme_confirmation_essai: 'Confirmation essai',
-  plateforme_rappel_fin_essai: "Rappel fin d'essai",
-  plateforme_paiement_echoue: 'Paiement échoué',
-  plateforme_annulation: 'Annulation',
-}
+const EVENEMENT_LABEL = LIBELLES_EVENEMENTS_PLATEFORME
 
 function labelEvenement(ev: string): string {
   return EVENEMENT_LABEL[ev] ?? ev

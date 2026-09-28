@@ -227,6 +227,14 @@ export type TypeTemplatePlateforme =
   | 'paiement_echoue'
   | 'annulation'
   | 'collab_invitation'
+  | 'collab_acceptation'
+  | 'collab_refus'
+  | 'collab_retrait'
+  | 'collab_depart'
+  | 'collab_eviction'
+  | 'collab_beat_supprime'
+  | 'collab_pause'
+  | 'conditions_mise_a_jour'
   | 'suspension'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
@@ -250,6 +258,14 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   paiement_echoue: "Le paiement de ton abonnement a échoué",
   annulation: 'Ton abonnement a été annulé',
   collab_invitation: 'Tu es invité à collaborer sur un beat',
+  collab_acceptation: 'Ta collaboration a été acceptée',
+  collab_refus: 'Ta demande de collaboration a été refusée',
+  collab_retrait: 'Une invitation à collaborer a été retirée',
+  collab_depart: 'Un collaborateur a quitté ton beat',
+  collab_eviction: 'Ta collaboration a pris fin',
+  collab_beat_supprime: 'Un beat en collaboration a été supprimé',
+  collab_pause: 'Un beat en collaboration est en pause',
+  conditions_mise_a_jour: `Mise à jour des conditions ${NOM_PLATEFORME}`,
   suspension: 'Ton compte a été suspendu',
 }
 
@@ -269,6 +285,22 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return `Ton abonnement ${NOM_PLATEFORME} est maintenant annulé. Ta boutique et ton dashboard ne seront plus accessibles.`
     case 'collab_invitation':
       return `Un beatmaker t'invite à collaborer sur un de ses beats. Connecte-toi à ${NOM_PLATEFORME} (ou crée ton compte) puis accepte l'invitation depuis ton espace Collaborations. Le beat ne sera pas mis en vente tant que tu n'auras pas accepté.`
+    case 'collab_acceptation':
+      return "Bonne nouvelle : ton collaborateur a accepté la collaboration sur ton beat. Retrouve le détail dans ta liste de beats."
+    case 'collab_refus':
+      return "Ton collaborateur a refusé la collaboration sur ton beat. Le beat reste hors vente : tu peux le publier quand même depuis ta liste de beats, ou inviter quelqu'un d'autre."
+    case 'collab_retrait':
+      return "Le propriétaire du beat a retiré son invitation à collaborer. Tu n'as plus aucune action à faire."
+    case 'collab_depart':
+      return "Ton collaborateur a quitté la collaboration. Tu repasses à 100 % sur ce beat ; les ventes déjà réalisées ne changent pas."
+    case 'collab_eviction':
+      return "Le propriétaire du beat a mis fin à ta collaboration. Les ventes déjà réalisées ne changent pas, et ton nom n'apparaîtra plus sur ce beat à partir de maintenant."
+    case 'collab_beat_supprime':
+      return "Le propriétaire a supprimé un beat sur lequel tu collabores. Ton historique (ventes, factures) reste consultable. Si tu avais une invitation en attente sur ce beat, elle n'est plus valable."
+    case 'collab_pause':
+      return "Le compte de paiement d'un des vendeurs de ce beat n'est plus opérationnel. Le beat ne peut plus être vendu tant que ce n'est pas réglé (depuis la page Paiements du compte concerné)."
+    case 'conditions_mise_a_jour':
+      return `Nous mettons à jour un des textes de ${NOM_PLATEFORME}. Tu n'as rien à faire : les nouvelles conditions s'appliqueront automatiquement à la date indiquée ci-dessous, et les ventes faites avant restent sous l'ancienne version. Si tu n'es pas d'accord, tu peux quitter la plateforme ou te retirer d'une collaboration avant cette date. La répartition convenue entre collaborateurs ne change jamais.`
     case 'suspension':
       return `Ton compte ${NOM_PLATEFORME} a été suspendu par notre équipe. Ton dashboard et ta boutique publique ne sont plus accessibles tant que la situation n'est pas résolue.`
   }
@@ -311,6 +343,19 @@ function corpsInvitationCollab(nomProprietaire: string, titreBeat: string, pourc
         <td style="padding:8px 0;font-size:13px;color:#111827;">Ta part</td>
         <td style="padding:8px 0;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${pourcentage}%</td>
       </tr>
+    </table>`
+}
+
+// Tableau libellé/valeur réutilisé par les emails de collaboration (lot 4).
+function corpsLignes(lignes: [string, string][]): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+      ${lignes.map(([libelle, valeur], i) => {
+        const bordure = i < lignes.length - 1 ? 'border-bottom:1px solid #f3f4f6;' : ''
+        return `<tr>
+        <td style="padding:8px 0;${bordure}font-size:13px;color:#111827;vertical-align:top;">${echapper(libelle)}</td>
+        <td style="padding:8px 0;${bordure}font-size:13px;color:#111827;text-align:right;">${echapper(valeur).replace(/\n/g, '<br>')}</td>
+      </tr>`
+      }).join('')}
     </table>`
 }
 
@@ -519,8 +564,8 @@ export async function envoyerSuspensionPlateforme({
   })
 }
 
-// Ces 4 emails concernent les collaborations (splits) entre beatmakers —
-// migrés depuis de simples emails texte vers le système "Mails My
+// Invitation à collaborer (la suite de la collaboration est plus bas) —
+// migrée depuis un simple email texte vers le système "Mails My
 // Producer" (audit 2026-07-29, F3) : branding cohérent, titre/intro
 // éditables par l'admin, et visibilité dans l'onglet Logs admin (tout
 // evenement préfixé `plateforme_` y apparaît automatiquement). `beatmakerId`
@@ -569,35 +614,48 @@ export async function envoyerInvitationCollab({
 // l'envoi réel, données d'exemple à la place des vraies dates/prix. Ne
 // passe jamais par envoyerEmailUnique (pas d'envoi, pas de log).
 const CORPS_EXEMPLE_PLATEFORME = corpsAbonnementPlateforme('mensuel', 49.99, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString())
-// Les 5 emails ci-dessous (Phase 12, lot 3 — vie de la collaboration) restent
-// volontairement en texte simple (comme envoyerCategorieCertifiee plus haut),
-// pas encore migrés vers le système "Mails My Producer" (titre/intro éditables
-// par l'admin, template `collab_invitation` ci-dessus) — décision du
-// 2026-09-22, pour ne pas ouvrir 3 fichiers d'admin supplémentaires à ce lot.
+// Emails de la vie d'une collaboration (Phase 12) — migrés vers "Mails My
+// Producer" au lot 4 (titre/intro éditables par l'admin, logs admin).
 // `beatmakerId` est toujours celui du PROPRIÉTAIRE du beat (comme pour
 // envoyerInvitationCollab), même quand le destinataire `to` est le
 // collaborateur, pour que l'envoi apparaisse dans les logs mailing du
 // propriétaire.
+
+async function envoyerEmailCollab(p: {
+  type: TypeTemplatePlateforme
+  to: string
+  beatmakerId: string
+  corpsHtml: string
+  cta?: { texte: string; lien: string }
+}) {
+  const { titre, intro } = await chargerTemplatePlateforme(p.type)
+  await envoyerEmailUnique({
+    beatmakerId: p.beatmakerId,
+    type: 'transactionnel',
+    evenement: `plateforme_${p.type}`,
+    to: p.to,
+    subject: titre || TITRE_DEFAUT_PLATEFORME[p.type],
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre: titre || TITRE_DEFAUT_PLATEFORME[p.type],
+      intro: intro || introDefautPlateforme(p.type),
+      corpsHtml: p.corpsHtml,
+      cta: p.cta,
+    }),
+  })
+}
+
+const CTA_MES_BEATS = { texte: 'Voir mes beats', lien: `${APP_URL}/dashboard/business/beats` }
+const CTA_COLLABS = { texte: 'Voir mes collaborations', lien: `${APP_URL}/dashboard/business/collabs` }
 
 export async function envoyerCollabAcceptee({
   to, beatmakerId, nomCollaborateur, titreBeat, pourcentage,
 }: {
   to: string; beatmakerId: string; nomCollaborateur: string; titreBeat: string; pourcentage: number
 }) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'collab_acceptation',
-    to,
-    subject: `${nomCollaborateur} a accepté ta collaboration sur "${titreBeat}"`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `${nomCollaborateur} a accepté ta demande de collaboration sur le beat "${titreBeat}" (part : ${pourcentage}%).`,
-      `Retrouve le détail dans ton espace Collaborations.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
+  await envoyerEmailCollab({
+    type: 'collab_acceptation', to, beatmakerId, cta: CTA_MES_BEATS,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Collaborateur', nomCollaborateur], ['Sa part', `${pourcentage}%`]]),
   })
 }
 
@@ -606,20 +664,9 @@ export async function envoyerCollabRefusee({
 }: {
   to: string; beatmakerId: string; nomCollaborateur: string; titreBeat: string
 }) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'collab_refus',
-    to,
-    subject: `${nomCollaborateur} a refusé ta demande de collaboration sur "${titreBeat}"`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `${nomCollaborateur} a refusé ta demande de collaboration sur le beat "${titreBeat}".`,
-      `Tu peux retirer cette invitation depuis la fiche du beat pour le remettre en vente, ou inviter quelqu'un d'autre.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
+  await envoyerEmailCollab({
+    type: 'collab_refus', to, beatmakerId, cta: CTA_MES_BEATS,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Collaborateur', nomCollaborateur]]),
   })
 }
 
@@ -628,19 +675,9 @@ export async function envoyerCollabRetrait({
 }: {
   to: string; beatmakerId: string; nomProprietaire: string; titreBeat: string
 }) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'collab_retrait',
-    to,
-    subject: `${nomProprietaire} a retiré son invitation sur "${titreBeat}"`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `${nomProprietaire} a retiré son invitation à collaborer sur le beat "${titreBeat}". Tu n'as plus d'action à faire.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
+  await envoyerEmailCollab({
+    type: 'collab_retrait', to, beatmakerId,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Propriétaire', nomProprietaire]]),
   })
 }
 
@@ -649,19 +686,9 @@ export async function envoyerCollabDepart({
 }: {
   to: string; beatmakerId: string; nomCollaborateur: string; titreBeat: string
 }) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'collab_depart',
-    to,
-    subject: `${nomCollaborateur} a quitté la collaboration sur "${titreBeat}"`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `${nomCollaborateur} a quitté la collaboration sur le beat "${titreBeat}". Tu es repassé à 100% sur ce beat ; les ventes déjà réalisées ne changent pas.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
+  await envoyerEmailCollab({
+    type: 'collab_depart', to, beatmakerId, cta: CTA_MES_BEATS,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Collaborateur', nomCollaborateur]]),
   })
 }
 
@@ -670,21 +697,52 @@ export async function envoyerCollabEviction({
 }: {
   to: string; beatmakerId: string; nomProprietaire: string; titreBeat: string; motif: string
 }) {
-  await envoyerEmailUnique({
-    beatmakerId,
-    type: 'transactionnel',
-    evenement: 'collab_eviction',
-    to,
-    subject: `Ta collaboration sur "${titreBeat}" a pris fin`,
-    text: [
-      `Bonjour,`,
-      ``,
-      `${nomProprietaire} a mis fin à ta collaboration sur le beat "${titreBeat}".`,
-      `Motif indiqué : ${motif}`,
-      `Les ventes déjà réalisées ne changent pas. Ton nom n'apparaîtra plus sur ce beat à partir de maintenant.`,
-      ``,
-      `— L'équipe ${NOM_PLATEFORME}`,
-    ].join('\n'),
+  await envoyerEmailCollab({
+    type: 'collab_eviction', to, beatmakerId, cta: CTA_COLLABS,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Propriétaire', nomProprietaire], ['Motif', motif]]),
+  })
+}
+
+export async function envoyerCollabBeatSupprime({
+  to, beatmakerId, nomProprietaire, titreBeat,
+}: {
+  to: string; beatmakerId: string; nomProprietaire: string; titreBeat: string
+}) {
+  await envoyerEmailCollab({
+    type: 'collab_beat_supprime', to, beatmakerId, cta: CTA_COLLABS,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Propriétaire', nomProprietaire]]),
+  })
+}
+
+export async function envoyerCollabPause({
+  to, beatmakerId, titreBeat, nomVendeurConcerne, estLeVendeurConcerne,
+}: {
+  to: string; beatmakerId: string; titreBeat: string; nomVendeurConcerne: string; estLeVendeurConcerne: boolean
+}) {
+  await envoyerEmailCollab({
+    type: 'collab_pause', to, beatmakerId,
+    cta: estLeVendeurConcerne
+      ? { texte: 'Régler mon compte de paiement', lien: `${APP_URL}/dashboard/paiements` }
+      : CTA_COLLABS,
+    corpsHtml: corpsLignes([['Beat', titreBeat], ['Compte concerné', estLeVendeurConcerne ? 'Le tien' : nomVendeurConcerne]]),
+  })
+}
+
+// Mise à jour d'un texte de la plateforme (clause d'évolution, Q10/Q10b du
+// grill-me Phase 12) : purement informatif, préavis de 30 jours.
+// `beatmakerId` = le destinataire lui-même (pas de propriétaire ici).
+export async function envoyerConditionsMiseAJour({
+  to, beatmakerId, texteConcerne, resumeChangements, dateEffet,
+}: {
+  to: string; beatmakerId: string; texteConcerne: string; resumeChangements: string; dateEffet: string
+}) {
+  await envoyerEmailCollab({
+    type: 'conditions_mise_a_jour', to, beatmakerId,
+    corpsHtml: corpsLignes([
+      ['Texte concerné', texteConcerne],
+      ['Ce qui change', resumeChangements],
+      ['Entrée en vigueur', fmtDateEssai(dateEffet)],
+    ]),
   })
 }
 
@@ -707,6 +765,20 @@ export async function genererApercuTransactionnelPlateforme(
     paiement_echoue: { corpsHtml: '', cta: { texte: 'Mettre à jour ma carte', lien: '#' } },
     annulation: { corpsHtml: '', cta: { texte: 'Me réabonner', lien: '#' } },
     collab_invitation: { corpsHtml: CORPS_EXEMPLE_INVITATION, cta: { texte: 'Créer mon compte', lien: '#' } },
+    collab_acceptation: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Collaborateur', 'Nafaz'], ['Sa part', '30%']]), cta: { texte: CTA_MES_BEATS.texte, lien: '#' } },
+    collab_refus: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Collaborateur', 'Nafaz']]), cta: { texte: CTA_MES_BEATS.texte, lien: '#' } },
+    collab_retrait: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Propriétaire', 'Jake B']]) },
+    collab_depart: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Collaborateur', 'Nafaz']]), cta: { texte: CTA_MES_BEATS.texte, lien: '#' } },
+    collab_eviction: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Propriétaire', 'Jake B'], ['Motif', 'Exemple de motif']]), cta: { texte: CTA_COLLABS.texte, lien: '#' } },
+    collab_beat_supprime: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Propriétaire', 'Jake B']]), cta: { texte: CTA_COLLABS.texte, lien: '#' } },
+    collab_pause: { corpsHtml: corpsLignes([['Beat', 'Midnight Drive'], ['Compte concerné', 'Nafaz']]), cta: { texte: CTA_COLLABS.texte, lien: '#' } },
+    conditions_mise_a_jour: {
+      corpsHtml: corpsLignes([
+        ['Texte concerné', 'Conditions de collaboration'],
+        ['Ce qui change', 'Exemple de résumé des changements'],
+        ['Entrée en vigueur', fmtDateEssai(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())],
+      ]),
+    },
     suspension: { corpsHtml: CORPS_EXEMPLE_SUSPENSION, cta: { texte: 'Nous contacter', lien: '#' } },
   }
 

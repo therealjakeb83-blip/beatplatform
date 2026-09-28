@@ -7,7 +7,9 @@ import Link from 'next/link'
 
 const TYPES: TypeTemplatePlateforme[] = [
   'confirmation_email', 'bienvenue', 'confirmation_essai', 'rappel_fin_essai', 'paiement_echoue', 'annulation',
-  'collab_invitation',
+  'collab_invitation', 'collab_acceptation', 'collab_refus', 'collab_retrait', 'collab_depart',
+  'collab_eviction', 'collab_beat_supprime', 'collab_pause',
+  'conditions_mise_a_jour',
   'suspension',
 ]
 

@@ -7,6 +7,7 @@ import { genererNumeroFacture } from '@/lib/facturation'
 import { genererFacturePdfPourCommande } from '@/lib/facture'
 import { uploadPdfFacture } from '@/lib/livraison'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { notifierPauseCollab } from '@/lib/collaboration-pause'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -826,14 +827,27 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
 // redeviendra visible au prochain checkout (lib/pret-a-vendre.ts revérifie
 // en direct), pas besoin de le refléter en temps réel côté plateforme.
 async function traiterMajCompteOperationnel(account: Stripe.Account) {
-  if (!account.charges_enabled || !account.payouts_enabled) return
-
+  const operationnel = !!(account.charges_enabled && account.payouts_enabled)
   const supabase = createAdminClient()
+
+  const { data: avant } = await supabase
+    .from('beatmakers')
+    .select('id, stripe_compte_operationnel')
+    .eq('stripe_account_id', account.id)
+    .maybeSingle()
+  if (!avant || !!avant.stripe_compte_operationnel === operationnel) return
+
   const { error } = await supabase
     .from('beatmakers')
-    .update({ stripe_compte_operationnel: true })
-    .eq('stripe_account_id', account.id)
+    .update({ stripe_compte_operationnel: operationnel })
+    .eq('id', avant.id)
 
-  if (error) console.error('[webhook] Erreur maj stripe_compte_operationnel pour', account.id, ':', JSON.stringify(error))
+  if (error) {
+    console.error('[webhook] Erreur maj stripe_compte_operationnel pour', account.id, ':', JSON.stringify(error))
+    return
+  }
+  // Phase 12 lot 4 (Q15) : un compte qui perd son statut opérationnel met
+  // en pause les beats collab où il vend — A et B sont prévenus.
+  if (!operationnel) await notifierPauseCollab(supabase, avant.id as string)
 }
 
