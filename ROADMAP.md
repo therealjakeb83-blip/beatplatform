@@ -365,6 +365,26 @@ Fait : migration `supabase/phase13_lot1_paiement_multi.sql` ; `lib/stripe-compte
 - **LOT 1 ENTIÈREMENT TESTÉ ET CLOS le 2026-09-28** (T0-T13 100 %). **Reporté au lot 2** : (1) ~~total affiché = total serveur~~ fait dans le lot 1 ; (2) rechargement pendant l'encaissement → risque de double paiement, pour les deux chemins (T10) ; (3) validations 3D Secure supplémentaires à l'écran (T9b) + leviers pour n'en avoir qu'une ; (4) Link affiché dans le champ carte du chemin multi-vendeurs → tester la copie d'un moyen `link` ou le masquer (T9) ; (5) Apple/Google Pay sur iPhone. Code `T12PLANCHER` laissé actif sur jakeb-test (à supprimer au ménage).
 - ✅ **T13** (Claude) : `tsc` OK, `eslint` sans nouvelle erreur (3 erreurs préexistantes inchangées), `build` OK
 
+#### Checklist tests Phase 13 lot 2 (page de paiement) — codé le 2026-09-29, à tester item par item avec Jake
+Fait (aucune migration SQL) : note « paiement en cours » sur l'appareil (`app/[slug]/_lib/paiement-en-cours.ts`) + `/api/stripe/etat-paiement` (solo et collab) vérifiée par le panier au chargement (`CartContext`) — seul l'onglet d'origine peut annuler un paiement interrompu ; validations 3D Secure à l'écran pour chaque part (`lib/paiement-multi.ts` : part « à valider » renvoyée au navigateur, reprise ensuite ; `/api/stripe/paiement-multi/annuler` = annulation immédiate) ; Apple Pay / Google Pay / Link sur un panier collab (page de paiement ET panier) : moyen créé par le navigateur sur la plateforme, enregistré sans débit (`preparer` + `payment_method_id`), domaine wallets assuré sur la plateforme ; Link gardé dans le champ carte collab (décision de Jake : on essaie) ; code navigateur partagé `app/[slug]/_lib/paiement-multi-client.ts`. Le texte à afficher pendant les validations 3DS multiples : à décider en T6 si le cas se présente.
+- ⬜ **T1** solo 4242 : « Payer » puis rechargement immédiat → « paiement en cours » puis téléchargement, panier vidé, 1 commande / 1 encaissement
+- ⬜ **T2** idem collab « Ambitieux » → 1 commande, 24,50 + 24,50, 0 € plateforme
+- ⬜ **T3** carte …0002 refusée puis rechargement → pas de faux « en cours », panier intact, repayable
+- ⬜ **T4** solo …3155, fenêtre 3DS fermée puis rechargement → rien débité, panier intact, nouveau paiement = 1 encaissement
+- ⬜ **T5** collab …3155 → toujours UNE fenêtre (non-régression T9a)
+- ⬜ **T6** collab …3184 (banque stricte) → fenêtres enchaînées, commande, 2 encaissements, 0 € plateforme ; on compte les fenêtres, Jake décide du texte
+- ⬜ **T7** collab …3184, abandon à la 2e fenêtre → annulation immédiate, rien débité, panier intact
+- ⬜ **T8** collab …3184, validation ratée (« Fail ») → idem T7
+- ⬜ **T9** solo …3184 → comme avant
+- ⬜ **T10** iPhone, panier « Ambitieux » : Apple Pay visible, vrai total (49 €), 2 encaissements, commande, 0 € plateforme
+- ⬜ **T11** idem panier mixte
+- ⬜ **T12** Google Pay sur PC (Chrome) si carte enregistrée, sinon justifier
+- ⬜ **T13** si T10 échoue → wallets masqués en collab, Apple Pay solo toujours OK
+- ⬜ **T14** Link dans le champ carte, panier collab → 2 encaissements, commande, 0 € plateforme
+- ⬜ **T15** Link refusé → rien débité, panier intact
+- ⬜ **T16** si T14 échoue → Link masqué en collab seulement
+- ✅ **T17** (Claude, 2026-09-29) : `tsc` OK, `eslint` sans nouvelle erreur (68 avant = 68 après sur tout le dossier), `build` OK
+
 - **Phase 6.7 (beat cadeau)** : exclure les beats collab. **Avant lancement** : exiger l'adresse de TOUS les vendeurs ; vérifier les CGV boutique par défaut (mention collab) ; avis d'un professionnel sur les textes provisoires (aucun fiscaliste consulté : hypothèses validées par Jake seul) ; **rang 15a** cadrage plans Free/Pro + coûts (Stripe Connect par compte actif à vérifier).
 
 ## Légende

@@ -108,11 +108,23 @@ export async function POST(request: Request) {
 
   if (!beatmaker) return NextResponse.json({ erreur: 'Boutique introuvable' }, { status: 404 })
 
+  // Panier avec au moins un beat collab (Phase 13) : paiement réparti entre
+  // vendeurs, Stripe.js chargé sur la plateforme (le moyen de paiement y est
+  // seulement enregistré, jamais débité, puis copié chez chaque vendeur).
+  const { data: collabs } = await admin
+    .from('beats')
+    .select('id')
+    .in('id', beat_ids)
+    .lt('quote_part_proprietaire', 100)
+    .limit(1)
+  const multi = Boolean(collabs?.length)
+
   // L'Express Checkout Element exige que le domaine soit enregistré sur le
-  // compte qui porte réellement la charge : le compte connecté du beatmaker.
+  // compte qui porte le paiement : le compte connecté du beatmaker, ou la
+  // plateforme pour un panier collab (enregistrement du moyen de paiement).
   // Cette route est appelée avant le montage de Stripe Elements, ce qui
   // rattrape aussi les comptes connectés créés avant cette règle.
-  const stripeAccountId = beatmaker.stripe_account_id ?? undefined
+  const stripeAccountId = multi ? undefined : (beatmaker.stripe_account_id ?? undefined)
   // Ne jamais rendre le checkout entier indisponible si Stripe refuse une
   // opération de configuration : la carte classique doit rester utilisable.
   await Promise.all([
@@ -122,16 +134,6 @@ export async function POST(request: Request) {
       .catch(error => console.error('[contexte-paiement] Google Pay non assuré:', error)),
   ])
 
-  // Panier avec au moins un beat collab (Phase 13) : paiement réparti entre
-  // vendeurs, carte uniquement, Stripe.js chargé sur la plateforme (la carte y
-  // est seulement enregistrée, jamais débitée) — pas de boutons express.
-  const { data: collabs } = await admin
-    .from('beats')
-    .select('id')
-    .in('id', beat_ids)
-    .lt('quote_part_proprietaire', 100)
-    .limit(1)
-  if (collabs?.length) return NextResponse.json({ mode: 'multi', stripe_account_id: null })
-
+  if (multi) return NextResponse.json({ mode: 'multi', stripe_account_id: null })
   return NextResponse.json({ mode: 'direct', stripe_account_id: beatmaker.stripe_account_id })
 }

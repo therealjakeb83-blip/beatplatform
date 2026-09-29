@@ -5,6 +5,8 @@ import { Elements, ExpressCheckoutElement, useElements, useStripe } from '@strip
 import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutElementClickEvent, StripeExpressCheckoutElementConfirmEvent } from '@stripe/stripe-js'
 import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { appareilEstIOS, methodesExpressPourAppareil } from '../_lib/express-payments'
+import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '../_lib/paiement-en-cours'
+import { payerMultiAvecMoyen } from '../_lib/paiement-multi-client'
 import { useCart, type CartItem } from './CartContext'
 
 // Paiement express du panier — Apple Pay sur iOS, Google Pay ailleurs, jamais
@@ -25,7 +27,9 @@ type Props = {
   slug: string
   items: CartItem[]
   onStatusChange: (status: ExpressStatus) => void
-  onSuccess: (info: { paymentIntentId: string }) => void
+  // paymentIntentId : paiement solo (commande créée par le webhook).
+  // commandeId : paiement réparti collab (commande déjà créée).
+  onSuccess: (info: { paymentIntentId: string } | { commandeId: string }) => void
 }
 
 type ContextePaiement = { mode: 'direct' | 'multi'; stripe_account_id: string | null }
@@ -55,10 +59,11 @@ export default function CartExpressPay(props: Props) {
   // reste jamais bloqué en "détection" indéfiniment pour autant.
   const resolu = beatIdsKey ? contexte : null
   if (resolu === undefined) return null
-  // Panier avec un beat collab (Phase 13) : carte uniquement, pas d'express.
-  if (resolu?.mode === 'multi') return <ExpressMasque onStatusChange={props.onStatusChange} />
+  const multiVendeurs = resolu?.mode === 'multi'
 
   // Direct Charge : Stripe.js chargé avec le contexte du compte connecté.
+  // Panier collab (Phase 13) : Stripe.js de la plateforme, le moyen de
+  // paiement y est enregistré pour être débité ensuite chez chaque vendeur.
   const stripeClient = resolu?.mode === 'direct' && resolu.stripe_account_id
     ? chargerStripePourCompte(resolu.stripe_account_id)
     : stripePromise
@@ -67,19 +72,14 @@ export default function CartExpressPay(props: Props) {
     <Elements
       key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : 'plateforme'}
       stripe={stripeClient}
-      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(multiVendeurs ? { setupFutureUsage: 'off_session' as const } : {}) }}
     >
-      <ExpressButtons {...props} />
+      <ExpressButtons {...props} multiVendeurs={multiVendeurs} />
     </Elements>
   )
 }
 
-function ExpressMasque({ onStatusChange }: Pick<Props, 'onStatusChange'>) {
-  useEffect(() => { onStatusChange('hidden') }, [onStatusChange])
-  return null
-}
-
-function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
+function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs }: Props & { multiVendeurs: boolean }) {
   const stripe = useStripe()
   const elements = useElements()
   const { clear } = useCart()
@@ -177,6 +177,39 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
           enCoursRef.current = true
           setConfirmErreur(null)
           try {
+            if (multiVendeurs) {
+              const { error: erreurSaisie } = await elements.submit()
+              const { error: erreurMoyen, paymentMethod } = erreurSaisie
+                ? { error: erreurSaisie, paymentMethod: undefined }
+                : await stripe.createPaymentMethod({ elements })
+              if (erreurMoyen || !paymentMethod) {
+                setConfirmErreur(erreurMoyen?.message ?? 'Paiement refusé')
+                event.paymentFailed({ reason: 'fail', message: erreurMoyen?.message })
+                return
+              }
+              const adresse = event.billingDetails?.address
+              const resultat = await payerMultiAvecMoyen(stripe, slug, {
+                items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
+                slug,
+                email_acheteur: event.billingDetails?.email,
+                nom: event.billingDetails?.name,
+                telephone: event.billingDetails?.phone,
+                adresse: adresse?.line1,
+                code_postal: adresse?.postal_code,
+                ville: adresse?.city,
+                pays: adresse?.country,
+                source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
+              }, paymentMethod.id)
+              if (resultat.etat === 'erreur') {
+                setConfirmErreur(resultat.erreur)
+                try { event.paymentFailed({ reason: 'fail', message: resultat.erreur }) } catch {}
+                return
+              }
+              clear()
+              if (resultat.etat === 'ok') onSuccess({ commandeId: resultat.commandeId })
+              else setConfirmErreur(resultat.message)
+              return
+            }
             const res = await fetch('/api/stripe/express-checkout', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -192,6 +225,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
               return
             }
 
+            noterPaiementEnCours(slug, 'solo', idDepuisClientSecret(data.clientSecret))
             const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
               elements,
               clientSecret: data.clientSecret,
@@ -202,6 +236,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess }: Props) {
             })
 
             if (confirmError) {
+              effacerPaiementEnCours(slug)
               setConfirmErreur(confirmError.message ?? 'Paiement refusé')
               event.paymentFailed({ reason: 'fail', message: confirmError.message })
               return

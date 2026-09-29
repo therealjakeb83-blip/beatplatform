@@ -23,6 +23,8 @@ import { computeItemsPricing, computeTotal, formatPrix, type ReductionLotRule } 
 import { listePays } from '@/lib/pays-iso'
 import { detailTva } from '@/lib/prix-affiche'
 import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
+import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
+import { payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -91,7 +93,7 @@ export default function PaiementClient(props: Props) {
 }
 
 function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
-  const { items } = useCart()
+  const { items, paiementEnCours } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
 
@@ -108,6 +110,29 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tva
       .catch(() => { if (!annule) setContexte(null) })
     return () => { annule = true }
   }, [slug, beatIdsKey])
+
+  // Paiement lancé avant un rechargement : jamais de formulaire pour repayer
+  // tant que son issue n'est pas connue (voir CartContext).
+  if (paiementEnCours !== 'non') {
+    return (
+      <div className="pmt-page">
+        <div className="pmt-col">
+          <div className="pmt-body">
+            <p style={{ textAlign: 'center', color: 'rgba(10,10,12,.75)', fontSize: 14, lineHeight: 1.5 }}>
+              {paiementEnCours === 'en_cours'
+                ? 'Ton paiement est en cours de traitement… Ne ferme pas cette page.'
+                : 'Paiement reçu. Ta commande est en cours de préparation, tu vas recevoir un email de confirmation.'}
+            </p>
+            {paiementEnCours === 'recu' && (
+              <Link href={`/${slug}`} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
+                Retour à la boutique
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (items.length === 0) {
     return (
@@ -136,7 +161,9 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tva
     <Elements
       key={contexte?.mode === 'direct' ? `direct:${contexte.stripe_account_id}` : 'plateforme'}
       stripe={stripeClient}
-      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur' }}
+      // Panier collab : le moyen de paiement (Apple Pay / Google Pay / Link)
+      // est enregistré pour être débité ensuite chez chaque vendeur.
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(contexte?.mode === 'multi' ? { setupFutureUsage: 'off_session' as const } : {}) }}
     >
       <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} multiVendeurs={contexte?.mode === 'multi'} />
     </Elements>
@@ -356,37 +383,24 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   // (aucun débit), puis le serveur encaisse la part de chaque vendeur.
   async function payerMultiVendeurs(cardNumberElement: StripeCardNumberElement) {
     if (!stripe) return
-    const res = await fetch('/api/stripe/paiement-multi/preparer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: corpsPaiement(),
-    })
-    const data = await res.json() as { clientSecret?: string; erreur?: string }
-    if (!res.ok || !data.clientSecret) {
-      setErreurGlobale(data.erreur ?? 'Erreur serveur, réessaie')
-      return
-    }
+    const resultat = await payerMultiParCarte(slug, JSON.parse(corpsPaiement()), clientSecret =>
+      stripe.confirmCardSetup(clientSecret, {
+        payment_method: { card: cardNumberElement, billing_details: detailsFacturation() },
+      }),
+    )
+    apresPaiementMulti(resultat)
+  }
 
-    const { error, setupIntent } = await stripe.confirmCardSetup(data.clientSecret, {
-      payment_method: { card: cardNumberElement, billing_details: detailsFacturation() },
-    })
-    if (error || !setupIntent) {
-      setErreurGlobale(error?.message ?? 'Carte refusée')
-      return
+  function apresPaiementMulti(resultat: ResultatPaiementMultiClient) {
+    if (resultat.etat === 'ok') {
+      clear()
+      window.location.href = `/telechargement/${resultat.commandeId}`
+    } else if (resultat.etat === 'recu') {
+      clear()
+      setErreurGlobale(resultat.message)
+    } else {
+      setErreurGlobale(resultat.erreur)
     }
-
-    const resPaiement = await fetch('/api/stripe/paiement-multi/payer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ setup_intent_id: setupIntent.id }),
-    })
-    const paiement = await resPaiement.json() as { commande_id?: string; erreur?: string }
-    if (!resPaiement.ok || !paiement.commande_id) {
-      setErreurGlobale(paiement.erreur ?? 'Le paiement n’a pas pu aboutir.')
-      return
-    }
-    clear()
-    window.location.href = `/telechargement/${paiement.commande_id}`
   }
 
   async function apresSucces(paymentIntentId: string) {
@@ -396,6 +410,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       if (res.ok) {
         const data = await res.json() as { commande_id?: string }
         if (data.commande_id) {
+          effacerPaiementEnCours(slug)
           window.location.href = `/telechargement/${data.commande_id}`
           return
         }
@@ -424,6 +439,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
         return
       }
 
+      noterPaiementEnCours(slug, 'solo', idDepuisClientSecret(data.clientSecret))
       const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
         payment_method: {
           card: cardNumberElement,
@@ -432,6 +448,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       })
 
       if (error) {
+        effacerPaiementEnCours(slug)
         setErreurGlobale(error.message ?? 'Paiement refusé')
         return
       }
@@ -613,9 +630,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
             <span className="pmt-newsletter-label">Je veux recevoir les nouveaux beats et les offres par e-mail</span>
           </label>
 
-          {/* Moyens de paiement — masqués pour un panier avec un beat collab
-              (carte uniquement, Phase 13) */}
-          {!multiVendeurs && (<>
+          {/* Moyens de paiement — aussi pour un panier avec un beat collab
+              (Phase 13, lot 2 : enregistrés puis débités chez chaque vendeur) */}
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
             <ExpressButtons
@@ -628,13 +644,14 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
               numeroTva={champs.numeroTva}
               onSucces={apresSucces}
               montantSynchronise={montantSynchronise}
+              multiVendeurs={multiVendeurs}
+              onResultatMulti={apresPaiementMulti}
             />
           </div>
 
           {/* Séparateur — desktop uniquement, remplace visuellement le bouton
               "Payer par carte" (masqué au-dessus du breakpoint) */}
           <div className="pmt-carte-separator"><span>ou payer par carte</span></div>
-          </>)}
 
           {/* Payer par carte */}
           <div className="pmt-carte-accordion">
@@ -767,7 +784,7 @@ const navigateurHydrate = () => true
 const renduServeur = () => false
 
 function ExpressButtons({
-  slug, items, codePromo, newsletterOptIn, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise,
+  slug, items, codePromo, newsletterOptIn, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise, multiVendeurs, onResultatMulti,
 }: {
   slug: string
   items: { beatId: string; licenceId: string }[]
@@ -782,6 +799,10 @@ function ExpressButtons({
   // ce n'est pas le cas, le bouton reste masqué (voir le commentaire sur
   // l'effet de synchronisation dans PaiementForm).
   montantSynchronise: boolean
+  // Panier collab : Stripe.js chargé sur la plateforme, le moyen de paiement
+  // est créé ici puis confié au paiement réparti (paiement-multi-client).
+  multiVendeurs: boolean
+  onResultatMulti: (resultat: ResultatPaiementMultiClient) => void
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -827,6 +848,42 @@ function ExpressButtons({
         onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
           if (!stripe || !elements) return
           try {
+            if (multiVendeurs) {
+              const { error: erreurSaisie } = await elements.submit()
+              const { error: erreurMoyen, paymentMethod } = erreurSaisie
+                ? { error: erreurSaisie, paymentMethod: undefined }
+                : await stripe.createPaymentMethod({ elements })
+              if (erreurMoyen || !paymentMethod) {
+                setErreur(erreurMoyen?.message ?? 'Paiement refusé')
+                event.paymentFailed({ reason: 'fail', message: erreurMoyen?.message })
+                return
+              }
+              const adresse = event.billingDetails?.address
+              const resultat = await payerMultiAvecMoyen(stripe, slug, {
+                items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
+                slug,
+                code_promo: codePromo,
+                email_acheteur: event.billingDetails?.email,
+                nom: event.billingDetails?.name,
+                telephone: event.billingDetails?.phone,
+                adresse: adresse?.line1,
+                code_postal: adresse?.postal_code,
+                ville: adresse?.city,
+                pays: adresse?.country,
+                newsletter_opt_in: newsletterOptIn,
+                type_client: professionnel ? 'professionnel' : 'particulier',
+                raison_sociale: professionnel ? raisonSociale : undefined,
+                numero_tva: professionnel ? numeroTva : undefined,
+                source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
+              }, paymentMethod.id)
+              if (resultat.etat === 'erreur') {
+                setErreur(resultat.erreur)
+                try { event.paymentFailed({ reason: 'fail', message: resultat.erreur }) } catch {}
+                return
+              }
+              onResultatMulti(resultat)
+              return
+            }
             const res = await fetch('/api/stripe/express-checkout', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -846,6 +903,7 @@ function ExpressButtons({
               event.paymentFailed({ reason: 'fail', message: data.erreur })
               return
             }
+            noterPaiementEnCours(slug, 'solo', idDepuisClientSecret(data.clientSecret))
             const { error, paymentIntent } = await stripe.confirmPayment({
               elements,
               clientSecret: data.clientSecret,
@@ -853,6 +911,7 @@ function ExpressButtons({
               redirect: 'if_required',
             })
             if (error) {
+              effacerPaiementEnCours(slug)
               setErreur(error.message ?? 'Paiement refusé')
               event.paymentFailed({ reason: 'fail', message: error.message })
               return

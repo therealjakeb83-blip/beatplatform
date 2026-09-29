@@ -16,6 +16,7 @@ export async function POST(request: Request) {
   if (!setup_intent_id) return NextResponse.json({ erreur: 'Requête invalide' }, { status: 400 })
 
   const resultat = await payerTentativeMulti(setup_intent_id)
+  if (!resultat.ok && resultat.validation) return NextResponse.json({ validation: resultat.validation })
   if (!resultat.ok) return NextResponse.json({ erreur: resultat.erreur }, { status: resultat.status })
 
   const cookieStore = await cookies()

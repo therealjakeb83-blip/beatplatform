@@ -5,6 +5,7 @@ import { useCart } from './CartContext'
 import CartExpressPay, { type ExpressStatus } from './CartExpressPay'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
 import { detailTva } from '@/lib/prix-affiche'
+import { effacerPaiementEnCours } from '../_lib/paiement-en-cours'
 
 const TRASH_ICON = (
   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -39,7 +40,7 @@ export default function CartDrawer({
   // redemander à quelqu'un qui est déjà identifié.
   clientEmail?: string | null
 }) {
-  const { items, isOpen, close, removeItem } = useCart()
+  const { items, isOpen, close, removeItem, paiementEnCours } = useCart()
 
   const [codePromoOpen, setCodePromoOpen] = useState(false)
   const [codeInput, setCodeInput] = useState('')
@@ -134,13 +135,18 @@ export default function CartDrawer({
   // commande de façon asynchrone, on interroge jusqu'à ce qu'elle existe puis
   // on va directement à la page de téléchargement. PayPal (redirection
   // externe) est géré séparément au retour, dans SuccessBanner.tsx.
-  async function apresSuccesExpress({ paymentIntentId }: { paymentIntentId: string }) {
+  async function apresSuccesExpress(info: { paymentIntentId: string } | { commandeId: string }) {
     setExpressRedirection(true)
+    if ('commandeId' in info) {
+      window.location.href = `/telechargement/${info.commandeId}`
+      return
+    }
     for (let tentative = 0; tentative < 10; tentative++) {
-      const res = await fetch(`/api/telechargement/lookup?payment_intent=${paymentIntentId}`)
+      const res = await fetch(`/api/telechargement/lookup?payment_intent=${info.paymentIntentId}`)
       if (res.ok) {
         const data = await res.json() as { commande_id?: string }
         if (data.commande_id) {
+          effacerPaiementEnCours(slug)
           window.location.href = `/telechargement/${data.commande_id}`
           return
         }
@@ -159,7 +165,15 @@ export default function CartDrawer({
         </div>
 
         <div className="shop-cart-body">
-          {expressRedirection ? null : items.length === 0 ? (
+          {expressRedirection ? null : paiementEnCours !== 'non' ? (
+            // Paiement lancé avant un rechargement : jamais de bouton pour
+            // repayer tant que son issue n'est pas connue (voir CartContext).
+            <p className="shop-cart-empty">
+              {paiementEnCours === 'en_cours'
+                ? 'Ton paiement est en cours de traitement…'
+                : 'Paiement reçu. Ta commande est en cours de préparation, tu vas recevoir un email de confirmation.'}
+            </p>
+          ) : items.length === 0 ? (
             <p className="shop-cart-empty">Ton panier est vide.<br />Ajoute un beat depuis la boutique pour commencer.</p>
           ) : (
             <>
@@ -238,7 +252,7 @@ export default function CartDrawer({
           )}
         </div>
 
-        {(items.length > 0 || expressRedirection) && (
+        {((items.length > 0 && paiementEnCours === 'non') || expressRedirection) && (
           <div className="shop-cart-footer">
             {expressRedirection ? (
               <div className="shop-cart-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>

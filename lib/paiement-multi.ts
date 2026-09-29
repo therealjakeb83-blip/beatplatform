@@ -35,11 +35,17 @@ type Tentative = {
   prix: number
 }
 
+/** Validation 3D Secure exigée par la banque pour la part d'un vendeur :
+ *  affichée à l'écran avec Stripe.js chargé sur le compte de ce vendeur. */
+export type ValidationBanque = { client_secret: string; stripe_account_id: string; payment_method_id: string }
+
 export type ResultatPaiementMulti =
   | { ok: true; commandeId: string }
-  | { ok: false; erreur: string; status: number }
+  | { ok: false; erreur: string; status: number; validation?: undefined }
+  | { ok: false; validation: ValidationBanque; status: 200; erreur?: undefined }
 
 const MESSAGE_ECHEC = 'Le paiement n’a pas pu aboutir. Aucun montant n’a été débité.'
+const MESSAGE_VALIDATION_ECHOUEE = 'La validation demandée par ta banque n’a pas abouti. Aucun montant n’a été débité.'
 
 function messageErreurCarte(err: unknown): string {
   const e = err as { code?: string; decline_code?: string }
@@ -50,8 +56,6 @@ function messageErreurCarte(err: unknown): string {
         : 'Ta carte a été refusée. Aucun montant n’a été débité.'
     case 'expired_card': return 'Ta carte a expiré. Aucun montant n’a été débité.'
     case 'incorrect_cvc': return 'Le code de sécurité de ta carte est incorrect. Aucun montant n’a été débité.'
-    case 'authentication_required':
-      return 'Ta banque demande une validation supplémentaire que ce panier ne gère pas encore. Essaie avec une autre carte : aucun montant n’a été débité.'
     default: return MESSAGE_ECHEC
   }
 }
@@ -98,7 +102,9 @@ async function rembourserPart(admin: ReturnType<typeof createAdminClient>, part:
 async function toutDefaire(admin: ReturnType<typeof createAdminClient>, tentativeId: string, statutFinal: 'echouee' | 'expiree') {
   const { parts } = await lireTentative(admin, tentativeId)
   for (const part of parts) {
-    if (part.statut === 'reservee') await annulerReservation(admin, part)
+    // a_reserver avec un PaymentIntent = part en attente de validation par la
+    // banque (peut être passée « réservée » côté Stripe sans qu'on le sache).
+    if (part.statut === 'reservee' || (part.statut === 'a_reserver' && part.stripe_payment_intent_id)) await annulerReservation(admin, part)
     else if (part.statut === 'capturee') await rembourserPart(admin, part)
     else if (part.statut === 'a_reserver') await majPart(admin, part.id, { statut: 'annulee' })
   }
@@ -109,17 +115,19 @@ async function reserverPart(
   admin: ReturnType<typeof createAdminClient>,
   part: Part,
   ctx: { tentativeId: string; customerId: string; paymentMethodId: string; description: string },
-): Promise<{ ok: true } | { ok: false; erreur: string }> {
+): Promise<{ ok: true } | { ok: false; erreur: string } | { ok: false; validation: ValidationBanque }> {
+  let copieId: string | null = null
   try {
     const copie = await stripe.paymentMethods.create(
       { customer: ctx.customerId, payment_method: ctx.paymentMethodId },
       { stripeAccount: part.stripe_account_id },
     )
+    copieId = copie.id
     const paymentIntent = await stripe.paymentIntents.create({
       amount: part.montant_cents,
       currency: 'eur',
       payment_method: copie.id,
-      payment_method_types: ['card'],
+      payment_method_types: [copie.type],
       capture_method: 'manual',
       confirm: true,
       off_session: true,
@@ -136,8 +144,23 @@ async function reserverPart(
     await majPart(admin, part.id, { statut: 'reservee', erreur: null })
     return { ok: true }
   } catch (err) {
-    const e = err as { message?: string; raw?: { payment_intent?: { id?: string } } }
+    const e = err as { code?: string; message?: string; raw?: { payment_intent?: { id?: string } } }
     const piId = e.raw?.payment_intent?.id
+
+    // Banque stricte : la réservation « client absent » est refusée faute de
+    // validation — on la garde et on la fait valider à l'écran par le client.
+    if (e.code === 'authentication_required' && piId && copieId) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(piId, {}, { stripeAccount: part.stripe_account_id })
+        if (pi.client_secret) {
+          await majPart(admin, part.id, { stripe_payment_intent_id: piId, erreur: 'validation_requise' })
+          return { ok: false, validation: { client_secret: pi.client_secret, stripe_account_id: part.stripe_account_id, payment_method_id: copieId } }
+        }
+      } catch (errLecture) {
+        console.error('[paiement-multi] Lecture du paiement à valider impossible', piId, errLecture instanceof Error ? errLecture.message : errLecture)
+      }
+    }
+
     if (piId) {
       try { await stripe.paymentIntents.cancel(piId, {}, { stripeAccount: part.stripe_account_id }) } catch { /* déjà inutilisable */ }
     }
@@ -145,6 +168,21 @@ async function reserverPart(
     await majPart(admin, part.id, { statut: 'echouee', erreur: e.message ?? 'erreur inconnue', ...(piId ? { stripe_payment_intent_id: piId } : {}) })
     return { ok: false, erreur: messageErreurCarte(err) }
   }
+}
+
+/** Retour de la fenêtre de validation : la part n'est tenue que si la banque a validé. */
+async function verifierValidation(admin: ReturnType<typeof createAdminClient>, part: Part): Promise<boolean> {
+  try {
+    const pi = await stripe.paymentIntents.retrieve(part.stripe_payment_intent_id!, {}, { stripeAccount: part.stripe_account_id })
+    if (pi.status === 'requires_capture') {
+      await majPart(admin, part.id, { statut: 'reservee', erreur: null })
+      return true
+    }
+    await majPart(admin, part.id, { erreur: `validation non aboutie : ${pi.status}` })
+  } catch (err) {
+    console.error('[paiement-multi] Vérification de validation impossible', part.stripe_payment_intent_id, err instanceof Error ? err.message : err)
+  }
+  return false
 }
 
 async function capturerPart(admin: ReturnType<typeof createAdminClient>, part: Part): Promise<boolean> {
@@ -222,6 +260,9 @@ async function creerCommande(admin: ReturnType<typeof createAdminClient>, tentat
  * confirmé côté navigateur). Verrou : une seule exécution à la fois par
  * tentative (double clic, rechargement) — la seconde renvoie la commande déjà
  * créée ou « paiement déjà en cours ».
+ * Si la banque exige une validation pour une part, la tentative repasse en
+ * « creee » (seul état qui peut reprendre) et la validation est renvoyée au
+ * navigateur ; l'appel suivant reprend là où il s'était arrêté.
  */
 export async function payerTentativeMulti(setupIntentId: string): Promise<ResultatPaiementMulti> {
   const admin = createAdminClient()
@@ -256,7 +297,19 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
   const description = `Achat sur la boutique ${boutique?.nom_artiste ?? ''}`.trim()
 
   for (const part of parts) {
+    if (part.statut === 'reservee') continue
+    if (part.statut === 'a_reserver' && part.stripe_payment_intent_id) {
+      if (!(await verifierValidation(admin, part))) {
+        await toutDefaire(admin, tentativeId, 'echouee')
+        return { ok: false, erreur: MESSAGE_VALIDATION_ECHOUEE, status: 402 }
+      }
+      continue
+    }
     const r = await reserverPart(admin, part, { tentativeId, customerId, paymentMethodId, description })
+    if ('validation' in r) {
+      await admin.from('tentatives_paiement').update({ statut: 'creee' }).eq('id', tentativeId)
+      return { ok: false, validation: r.validation, status: 200 }
+    }
     if (!r.ok) {
       await toutDefaire(admin, tentativeId, 'echouee')
       return { ok: false, erreur: r.erreur, status: 402 }
@@ -278,6 +331,52 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
     return { ok: false, erreur: 'Paiement reçu — ta commande est en cours de préparation, tu recevras un email de confirmation.', status: 202 }
   }
   return { ok: true, commandeId }
+}
+
+/**
+ * Abandon d'une tentative pas encore en train d'encaisser (fenêtre de
+ * validation fermée, page rechargée) : tout ce qui a été réservé est annulé
+ * tout de suite, sans attendre le balayage. Le passage « creee → expiree » est
+ * atomique : un appel à payer arrivé en même temps ne peut plus démarrer.
+ */
+export async function abandonnerTentativeMulti(setupIntentId: string): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('tentatives_paiement').update({ statut: 'expiree' })
+    .eq('stripe_setup_intent_id', setupIntentId).eq('type', 'achat_multi').eq('statut', 'creee')
+    .select('id')
+  if (!data?.length) return false
+  await toutDefaire(admin, data[0].id as string, 'expiree')
+  return true
+}
+
+export type EtatPaiement =
+  | { etat: 'termine'; commandeId: string }
+  | { etat: 'en_cours'; paye: boolean }
+  | { etat: 'abandonne' }
+  | { etat: 'interrompu' }
+
+/**
+ * Où en est un paiement réparti après un rechargement de page. `annuler` :
+ * seul l'onglet qui a lancé le paiement peut abandonner une tentative
+ * interrompue (un autre onglet ouvert en même temps n'y touche pas).
+ */
+export async function etatTentativeMulti(setupIntentId: string, annuler: boolean): Promise<EtatPaiement> {
+  const admin = createAdminClient()
+  const { data: row } = await admin
+    .from('tentatives_paiement').select('id').eq('stripe_setup_intent_id', setupIntentId).eq('type', 'achat_multi').maybeSingle()
+  if (!row) return { etat: 'abandonne' }
+  const { tentative, parts } = await lireTentative(admin, row.id as string)
+  if (!tentative) return { etat: 'abandonne' }
+
+  if (tentative.commande_id) return { etat: 'termine', commandeId: tentative.commande_id }
+  if (tentative.statut === 'en_cours') return { etat: 'en_cours', paye: parts.some(p => p.statut === 'capturee') }
+  if (tentative.statut === 'creee') {
+    if (!annuler) return { etat: 'interrompu' }
+    if (await abandonnerTentativeMulti(setupIntentId)) return { etat: 'abandonne' }
+    return etatTentativeMulti(setupIntentId, false)
+  }
+  return { etat: 'abandonne' }
 }
 
 /**

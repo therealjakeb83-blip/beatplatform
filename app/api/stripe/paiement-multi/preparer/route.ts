@@ -13,7 +13,9 @@ export const runtime = 'nodejs'
 // Paiement réparti entre vendeurs (Phase 13, lot 1) — étape 1 : prix recalculé
 // côté serveur, répartition par vendeur, puis SetupIntent sur la plateforme
 // (enregistrement de la carte, AUCUN argent). Le navigateur confirme ce
-// SetupIntent puis appelle /api/stripe/paiement-multi/payer.
+// SetupIntent puis appelle /api/stripe/paiement-multi/payer. Apple Pay /
+// Google Pay / Link (lot 2) : le moyen déjà créé par le navigateur est
+// enregistré ici directement.
 export async function POST(request: Request) {
   const body = await request.json() as {
     items?: ItemPanier[]
@@ -32,6 +34,9 @@ export async function POST(request: Request) {
     raison_sociale?: string
     numero_tva?: string
     newsletter_opt_in?: boolean
+    // Apple Pay / Google Pay / Link (lot 2) : moyen de paiement déjà créé par
+    // le navigateur sur la plateforme — enregistré ici, jamais débité.
+    payment_method_id?: string
   }
   const { slug, code_promo, source_marketing, prenom, nom, telephone, adresse, code_postal, ville, pays, type_client, raison_sociale, numero_tva, newsletter_opt_in } = body
   const items = body.items ?? []
@@ -82,17 +87,49 @@ export async function POST(request: Request) {
   const totalCents = lignes.reduce((s, l) => s + l.prixTotalCents, 0)
   const nomComplet = [prenom, nom].filter(Boolean).join(' ') || undefined
 
+  let moyenType: 'card' | 'link' | null = null
+  if (body.payment_method_id) {
+    const pm = await stripe.paymentMethods.retrieve(body.payment_method_id).catch(() => null)
+    if (!pm || pm.customer || (pm.type !== 'card' && pm.type !== 'link')) {
+      return NextResponse.json({ erreur: 'Moyen de paiement non accepté pour ce panier.' }, { status: 400 })
+    }
+    moyenType = pm.type
+  }
+
   const customer = await stripe.customers.create({
     email: emailAcheteur ?? undefined,
     name: nomComplet,
     metadata: { boutique: slug },
   })
-  const setupIntent = await stripe.setupIntents.create({
-    customer: customer.id,
-    payment_method_types: ['card'],
-    usage: 'off_session',
-    metadata: { type: 'achat_multi', beatmaker_id: String(beatmaker.id) },
-  })
+
+  let setupIntent
+  try {
+    setupIntent = await stripe.setupIntents.create({
+      customer: customer.id,
+      payment_method_types: ['card', 'link'],
+      usage: 'off_session',
+      metadata: { type: 'achat_multi', beatmaker_id: String(beatmaker.id) },
+      ...(body.payment_method_id ? {
+        payment_method: body.payment_method_id,
+        confirm: true,
+        return_url: `${new URL(request.url).origin}/paiement/${slug}`,
+        ...(moyenType === 'link' ? {
+          mandate_data: {
+            customer_acceptance: {
+              type: 'online' as const,
+              online: {
+                ip_address: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || '0.0.0.0',
+                user_agent: request.headers.get('user-agent') ?? 'inconnu',
+              },
+            },
+          },
+        } : {}),
+      } : {}),
+    })
+  } catch (err) {
+    console.error('[paiement-multi/preparer] Enregistrement du moyen de paiement refusé:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ erreur: 'Ton moyen de paiement a été refusé. Aucun montant n’a été débité.' }, { status: 402 })
+  }
 
   const metadonnees: Record<string, string> = {
     type: 'achat_multi',
@@ -155,5 +192,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Erreur serveur, réessaie' }, { status: 500 })
   }
 
-  return NextResponse.json({ clientSecret: setupIntent.client_secret, totalCents })
+  return NextResponse.json({
+    clientSecret: setupIntent.client_secret,
+    setupIntentId: setupIntent.id,
+    statut: setupIntent.status,
+    totalCents,
+  })
 }
