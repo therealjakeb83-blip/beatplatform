@@ -81,3 +81,28 @@ export function partsDeLignes<T extends { commande_id: string; beat_id: string; 
 ): T[] {
   return lignes.map(l => partDeLigne(l, parts)).filter((l): l is T => l !== null)
 }
+
+// Flux des collaborations (demande de Jake, lot 3) — deux données, jamais
+// mélangées au CA d'un autre vendeur :
+// - recus : ma part des ventes faites sur la boutique d'un AUTRE (je suis B) ;
+// - collaborateurs : la part des ventes de MA boutique qui revient directement
+//   à mes collaborateurs (je suis A). Rien ne transite par moi : information.
+export type FluxCollab = { created_at: string; montant: number }
+
+export async function chargerFluxCollab(admin: SupabaseClient, vendeurId: string): Promise<{ recus: FluxCollab[]; collaborateurs: FluxCollab[] }> {
+  const [{ data: recus }, { data: collaborateurs }] = await Promise.all([
+    admin.from('commande_tranches')
+      .select('montant_ttc_cents, commandes!inner(beatmaker_id, statut, created_at)')
+      .eq('vendeur_id', vendeurId)
+      .neq('commandes.beatmaker_id', vendeurId)
+      .eq('commandes.statut', 'payee'),
+    admin.from('commande_tranches')
+      .select('montant_ttc_cents, commandes!inner(beatmaker_id, statut, created_at)')
+      .eq('commandes.beatmaker_id', vendeurId)
+      .eq('est_proprietaire', false)
+      .eq('commandes.statut', 'payee'),
+  ])
+  type Row = { montant_ttc_cents: number; commandes: { created_at: string } }
+  const versFlux = (rows: unknown) => ((rows ?? []) as Row[]).map(r => ({ created_at: r.commandes.created_at, montant: r.montant_ttc_cents / 100 }))
+  return { recus: versFlux(recus), collaborateurs: versFlux(collaborateurs) }
+}

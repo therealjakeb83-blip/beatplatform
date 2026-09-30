@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur, startOfMonthInTz } from '@/lib/fuseau-horaire'
-import { chargerPartsVendeur, partDeCommande, partsDeLignes } from '@/lib/analytics-parts'
+import { chargerPartsVendeur, chargerFluxCollab, partDeCommande, partsDeLignes, type FluxCollab } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   // CA = part du vendeur (Phase 13, lot 3) : tranche sur une vente collab, et
   // ventes faites sur la boutique d'un autre pour un collaborateur.
-  const parts = await chargerPartsVendeur(admin, user.id)
+  const [parts, flux] = await Promise.all([chargerPartsVendeur(admin, user.id), chargerFluxCollab(admin, user.id)])
   const [{ data: commandesAutres }, { data: lignesAutres }] = parts.autresCommandes.length
     ? await Promise.all([
         admin.from('commandes').select('id, prix_paye, reduction_montant, type_commande, created_at, source_marketing').in('id', parts.autresCommandes).eq('statut', 'payee'),
@@ -96,6 +96,11 @@ export async function GET(request: Request) {
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
   const ecoutes   = plays.length
   const free_dl   = freeDl.length
+  // Collaborations : reçu sur la boutique d'un autre / part de mes collaborateurs.
+  const sommeFlux = (f: FluxCollab[], de: string | null, a: string | null) =>
+    f.filter(x => (!de || x.created_at >= de) && (!a || x.created_at < a)).reduce((s, x) => s + x.montant, 0)
+  const recu_collab = flux.recus.filter(x => inPeriod(x.created_at, from, to)).reduce((s, x) => s + x.montant, 0)
+  const part_collaborateurs = flux.collaborateurs.filter(x => inPeriod(x.created_at, from, to)).reduce((s, x) => s + x.montant, 0)
   const favoris   = favorisInPeriod.length
 
   const mrr = (abonActifs ?? []).reduce((s, a) => {
@@ -153,6 +158,8 @@ export async function GET(request: Request) {
       ventes:       mLignes.length,
       ecoutes:      mPlays.length,
       free_dl:      mFreeDl.length,
+      recu_collab:         sommeFlux(flux.recus, slot.from, slot.to),
+      part_collaborateurs: sommeFlux(flux.collaborateurs, slot.from, slot.to),
       favoris:      mFavoris,
     }
   })
@@ -182,7 +189,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { ca: ca_brut, ca_brut, ca_net, mrr, arr, panier_moyen, beats_vendus, ecoutes, free_dl, favoris },
+    kpis: { ca: ca_brut, ca_brut, ca_net, mrr, arr, panier_moyen, beats_vendus, ecoutes, free_dl, favoris, recu_collab, part_collaborateurs },
     historique,
     top_beats,
     dernieres_licences,

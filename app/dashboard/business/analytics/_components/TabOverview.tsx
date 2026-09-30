@@ -8,14 +8,14 @@ import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDate, getGranulariteLabel, 
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Data = {
-  kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number; favoris: number }
+  kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number; favoris: number; recu_collab: number; part_collaborateurs: number }
   historique: Array<Record<string, unknown>>
   top_beats: Array<{ id: string; titre: string; couleur: string | null; ca: number; ventes: number }>
   dernieres_licences: Array<{ id: string; beat_titre: string; licence_nom: string; created_at: string; prix_paye: number; reduction_montant: number | null }>
   abonnes: { actifs: number; nouveaux: number; annules: number }
 }
 
-type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
+type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'favoris' | 'free_dl' | 'recu_collab'
 
 const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: number) => string }> = [
   { key: 'ca',          label: 'CA Brut (TTC)', color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
@@ -26,6 +26,7 @@ const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: nu
   { key: 'ecoutes',     label: 'Écoutes',        color: '#818cf8', fmt: v => fmtNum(v) },
   { key: 'favoris',     label: 'Favoris',        color: '#fbbf24', fmt: v => String(v) },
   { key: 'free_dl',     label: 'Free DL',        color: '#22d3ee', fmt: v => String(v) },
+  { key: 'recu_collab', label: 'Reçu en collab', color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
 ]
 
 export default function TabOverview({ periode, debut, fin }: Props) {
@@ -61,7 +62,7 @@ export default function TabOverview({ periode, debut, fin }: Props) {
               label={k.label}
               value={k.fmt(val)}
               color={k.color}
-              sub={k.key === 'mrr' ? `${fmtEuroDisplay(kpis.arr)}/an (ARR)` : undefined}
+              sub={k.key === 'mrr' ? `${fmtEuroDisplay(kpis.arr)}/an (ARR)` : k.key === 'recu_collab' ? `Part de tes collaborateurs : ${fmtEuroDisplay(kpis.part_collaborateurs)}` : undefined}
               active={kpiActif === k.key}
               onClick={() => setKpiActif(k.key)}
             />
@@ -77,7 +78,9 @@ export default function TabOverview({ periode, debut, fin }: Props) {
         <AnalyticsLineChart
           data={historique}
           xKey="label"
-          series={[{ key: kpiActif === 'ventes' ? 'ventes' : kpiActif, color: kpiConf.color, label: kpiConf.label }]}
+          series={kpiActif === 'recu_collab'
+            ? [{ key: 'recu_collab', color: '#38bdf8', label: 'Reçu en collab' }, { key: 'part_collaborateurs', color: '#f472b6', label: 'Part de tes collaborateurs' }]
+            : [{ key: kpiActif === 'ventes' ? 'ventes' : kpiActif, color: kpiConf.color, label: kpiConf.label }]}
           formatValue={kpiConf.fmt}
         />
       </div>

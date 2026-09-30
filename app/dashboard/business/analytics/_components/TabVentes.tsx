@@ -9,18 +9,19 @@ import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Per
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Data = {
-  kpis: { ca_brut: number; ca_net: number; panier_moyen: number; beats_vendus: number; source_top: { nom: string; ca: number; pct: number } | null }
+  kpis: { ca_brut: number; ca_net: number; panier_moyen: number; beats_vendus: number; source_top: { nom: string; ca: number; pct: number } | null; recu_collab: number; part_collaborateurs: number }
   historique: Array<Record<string, unknown>>
   commandes: Array<{ id: string; created_at: string; client_nom: string; beat_titre: string; nb_articles: number; licence_nom: string; source_marketing: string | null; prix_paye: number; reduction_montant: number | null }>
 }
 
-type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'source_top'
+type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'source_top' | 'recu_collab'
 
 const KPI_CONFIG: Array<{ key: KpiKey; histKey: string; label: string; color: string; fmt: (v: number) => string }> = [
   { key: 'ca_brut',      histKey: 'ca',          label: 'CA Brut (TTC)', color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
   { key: 'ca_net',       histKey: 'ca_net',      label: 'CA Net (HT)',   color: '#22d3ee', fmt: v => fmtEuroDisplay(v) },
   { key: 'panier_moyen', histKey: 'panier_moyen',label: 'Panier moyen',  color: '#f59e0b', fmt: v => fmtEuroDisplay(v) },
   { key: 'ventes',       histKey: 'ventes',      label: 'Beats vendus',  color: '#8b5cf6', fmt: v => String(Math.round(v)) },
+  { key: 'recu_collab',  histKey: 'recu_collab', label: 'Collaborations', color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
 ]
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -56,7 +57,9 @@ export default function TabVentes({ periode, debut, fin }: Props) {
   const showParSource = (kpiActif === 'ca_brut' && parSource) || kpiActif === 'source_top'
   const chartSeries = showParSource
     ? ALL_SOURCES.filter(s => sourcesActives.includes(s)).map(s => ({ key: s, color: SOURCE_COLORS[s], label: SOURCE_LABELS[s] }))
-    : [{ key: kpiConf?.histKey ?? 'ca', color: kpiConf?.color ?? '#4ade80', label: kpiConf?.label ?? 'CA Brut (TTC)' }]
+    : kpiActif === 'recu_collab'
+      ? [{ key: 'recu_collab', color: '#38bdf8', label: 'Reçu en collab' }, { key: 'part_collaborateurs', color: '#f472b6', label: 'Part de tes collaborateurs' }]
+      : [{ key: kpiConf?.histKey ?? 'ca', color: kpiConf?.color ?? '#4ade80', label: kpiConf?.label ?? 'CA Brut (TTC)' }]
 
   function handleKpiClick(key: KpiKey) {
     setKpiActif(key)
@@ -81,6 +84,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
         {kpis.source_top
           ? <KpiCard label={`Source #1 — ${kpis.source_top.nom}`} value={fmtEuroDisplay(kpis.source_top.ca)} sub={`${kpis.source_top.pct.toFixed(0)}% du CA`} color="#a78bfa" active={kpiActif === 'source_top'} onClick={() => handleKpiClick('source_top')} />
           : <KpiCard label="Source #1" value="—" />}
+        <KpiCard label="Reçu en collab" value={fmtEuroDisplay(kpis.recu_collab)} sub={`Part de tes collaborateurs : ${fmtEuroDisplay(kpis.part_collaborateurs)}`} color="#38bdf8" active={kpiActif === 'recu_collab'} onClick={() => handleKpiClick('recu_collab')} />
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">

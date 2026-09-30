@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { chargerPartsVendeur, partDeCommande, partsDeLignes } from '@/lib/analytics-parts'
+import { chargerPartsVendeur, chargerFluxCollab, partDeCommande, partsDeLignes, type FluxCollab } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
   // CA = part du vendeur (Phase 13, lot 3). Sur la boutique d'un autre, le
   // collaborateur ne voit jamais l'email du client ni sa fiche CRM.
-  const parts = await chargerPartsVendeur(admin, user.id)
+  const [parts, flux] = await Promise.all([chargerPartsVendeur(admin, user.id), chargerFluxCollab(admin, user.id)])
   const [{ data: commandesAutres }, { data: lignesAutres }] = parts.autresCommandes.length
     ? await Promise.all([
         admin.from('commandes').select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)').in('id', parts.autresCommandes).eq('statut', 'payee').or('type_commande.eq.LICENCE,type_commande.is.null'),
@@ -81,6 +81,11 @@ export async function GET(request: Request) {
     srcMap[src] = (srcMap[src] ?? 0) + c.prix_paye
   }
   const srcEntries = Object.entries(srcMap).sort(([, a], [, b]) => b - a)
+  // Collaborations : reçu sur la boutique d'un autre / part de mes collaborateurs.
+  const sommeFlux = (f: FluxCollab[], de: string | null, a: string | null) =>
+    f.filter(x => (!de || x.created_at >= de) && (!a || x.created_at < a)).reduce((s, x) => s + x.montant, 0)
+  const recu_collab = flux.recus.filter(x => inPeriod(x.created_at, from, to)).reduce((s, x) => s + x.montant, 0)
+  const part_collaborateurs = flux.collaborateurs.filter(x => inPeriod(x.created_at, from, to)).reduce((s, x) => s + x.montant, 0)
   const source_top = srcEntries.length
     ? { nom: SOURCE_LABELS[srcEntries[0][0]] ?? srcEntries[0][0], ca: srcEntries[0][1], pct: ca_brut > 0 ? srcEntries[0][1] / ca_brut * 100 : 0 }
     : null
@@ -99,6 +104,7 @@ export async function GET(request: Request) {
     const row: Record<string, unknown> = {
       label: slot.label, fullLabel: slot.fullLabel,
       ca: ca_mois, ca_net: ca_net_mois, ventes: ventes_mois, panier_moyen: panier_mois,
+      recu_collab: sommeFlux(flux.recus, slot.from, slot.to), part_collaborateurs: sommeFlux(flux.collaborateurs, slot.from, slot.to),
     }
     for (const src of SOURCES) {
       row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye, 0)
@@ -147,7 +153,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { ca_brut, ca_net, panier_moyen, beats_vendus, source_top },
+    kpis: { ca_brut, ca_net, panier_moyen, beats_vendus, source_top, recu_collab, part_collaborateurs },
     historique,
     commandes,
   })
