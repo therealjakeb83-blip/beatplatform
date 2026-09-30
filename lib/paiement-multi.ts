@@ -41,9 +41,24 @@ export type ValidationBanque = {
   client_secret: string
   stripe_account_id: string
   payment_method_id: string
-  // Position de cette part parmi toutes les parts (« artiste 1 sur 2 »).
-  numero?: number
-  total?: number
+  // Pour le message au client : beats collab du panier et leurs beatmakers.
+  beats?: string[]
+  beatmakers?: string[]
+}
+
+/** Beats en collaboration du panier et beatmakers qui les ont composés. */
+async function contexteCollab(admin: ReturnType<typeof createAdminClient>, parts: Part[]) {
+  const collab = parts.filter(p => p.detail_lignes.some(d => d.pourcentage < 100))
+  const beatIds = [...new Set(collab.flatMap(p => p.detail_lignes.filter(d => d.pourcentage < 100).map(d => d.beat_id)))]
+  const [{ data: beats }, { data: vendeurs }] = await Promise.all([
+    admin.from('beats').select('id, titre').in('id', beatIds),
+    admin.from('beatmakers').select('id, nom_artiste').in('id', collab.map(p => p.vendeur_id)),
+  ])
+  const nomVendeur = new Map((vendeurs ?? []).map(v => [v.id as string, v.nom_artiste as string]))
+  return {
+    beats: (beats ?? []).map(b => b.titre as string),
+    beatmakers: collab.map(p => nomVendeur.get(p.vendeur_id)).filter((n): n is string => Boolean(n)),
+  }
 }
 
 export type ResultatPaiementMulti =
@@ -312,7 +327,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
   const { data: boutique } = await admin.from('beatmakers').select('nom_artiste').eq('id', tentative.beatmaker_id).maybeSingle()
   const description = `Achat sur la boutique ${boutique?.nom_artiste ?? ''}`.trim()
 
-  for (const [index, part] of parts.entries()) {
+  for (const part of parts) {
     if (part.statut === 'reservee') continue
     if (part.statut === 'a_reserver' && part.stripe_payment_intent_id) {
       if (!(await verifierValidation(admin, part))) {
@@ -324,7 +339,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
     const r = await reserverPart(admin, part, { tentativeId, customerId, paymentMethodId, description })
     if ('validation' in r) {
       await admin.from('tentatives_paiement').update({ statut: 'creee' }).eq('id', tentativeId)
-      return { ok: false, validation: { ...r.validation, numero: index + 1, total: parts.length }, status: 200 }
+      return { ok: false, validation: { ...r.validation, ...(await contexteCollab(admin, parts)) }, status: 200 }
     }
     if (!r.ok) {
       await toutDefaire(admin, tentativeId, 'echouee')

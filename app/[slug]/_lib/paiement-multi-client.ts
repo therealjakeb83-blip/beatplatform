@@ -15,15 +15,20 @@ export type ResultatPaiementMultiClient =
   | { etat: 'recu'; message: string }
   | { etat: 'erreur'; erreur: string }
 
-type Validation = { client_secret: string; stripe_account_id: string; payment_method_id: string; numero?: number; total?: number }
+type Validation = { client_secret: string; stripe_account_id: string; payment_method_id: string; beats?: string[]; beatmakers?: string[] }
 
-/** Affiché quand la banque exige une validation par artiste (banque stricte),
- *  seul moment où on le sait avec certitude — texte validé par Jake. */
+/** Affiché quand la banque exige une validation par beatmaker (banque
+ *  stricte), seul moment où on le sait avec certitude — texte de Jake. */
 export type SurValidation = (message: string | null) => void
 
-export function messageValidationParArtiste(numero?: number, total?: number): string {
-  const position = numero && total ? ` (artiste ${numero} sur ${total})` : ''
-  return `Ta banque demande une validation pour chaque artiste de ce beat en collaboration${position}. Rien n’est débité tant que tout n’est pas validé.`
+function listeNoms(noms: string[]): string {
+  return noms.length <= 1 ? (noms[0] ?? '') : `${noms.slice(0, -1).join(', ')} et ${noms[noms.length - 1]}`
+}
+
+export function messageValidationParBeatmaker(beats: string[] = [], beatmakers: string[] = []): string {
+  const leBeat = beats.length > 1 ? `les beats ${listeNoms(beats)}` : beats.length === 1 ? `le beat ${beats[0]}` : 'ce beat'
+  const qui = beatmakers.length ? ` (${listeNoms(beatmakers)})` : ''
+  return `Ta banque demande une validation supplémentaire pour chaque beatmaker ayant composé ${leBeat}${qui}. Rien n’est débité tant que tout n’est pas validé.`
 }
 
 // Laisse le temps de lire le message avant que la fenêtre de la banque ne le recouvre.
@@ -93,7 +98,7 @@ async function finaliserParts(slug: string, setupIntentId: string, surValidation
     }
     if (res.ok && data.validation) {
       if (surValidation) {
-        surValidation(messageValidationParArtiste(data.validation.numero, data.validation.total))
+        surValidation(messageValidationParBeatmaker(data.validation.beats, data.validation.beatmakers))
         await new Promise(r => setTimeout(r, DELAI_LECTURE_MS))
       }
       if (!(await validerPart(data.validation))) {
