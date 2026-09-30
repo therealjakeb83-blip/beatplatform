@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useCart } from './CartContext'
 import CartExpressPay, { type ExpressStatus } from './CartExpressPay'
+import PaiementEnAttente from './PaiementEnAttente'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
 import { detailTva } from '@/lib/prix-affiche'
 import { effacerPaiementEnCours } from '../_lib/paiement-en-cours'
@@ -255,7 +256,10 @@ export default function CartDrawer({
         {((items.length > 0 && paiementEnCours === 'non') || expressRedirection) && (
           <div className="shop-cart-footer">
             {expressRedirection ? (
-              <div className="shop-cart-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>
+              <>
+                <div className="shop-cart-express-redirecting">Paiement confirmé — préparation de tes fichiers…</div>
+                <PaiementEnAttente message="Paiement confirmé — préparation de tes fichiers…" />
+              </>
             ) : (
               <>
                 {codeApplique ? (

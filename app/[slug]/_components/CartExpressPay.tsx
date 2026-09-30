@@ -8,6 +8,7 @@ import { appareilEstIOS, methodesExpressPourAppareil } from '../_lib/express-pay
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '../_lib/paiement-en-cours'
 import { messageErreurInattendue, payerMultiAvecMoyen } from '../_lib/paiement-multi-client'
 import { useCart, type CartItem } from './CartContext'
+import PaiementEnAttente from './PaiementEnAttente'
 
 // Paiement express du panier — Apple Pay sur iOS, Google Pay ailleurs, jamais
 // les deux ensemble, Link en plus sur la même ligne (voir _lib/express-payments
@@ -97,6 +98,12 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
   const [expiree, setExpiree] = useState(false)
   const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
   const [messageValidation, setMessageValidation] = useState<string | null>(null)
+  // Wallet validé → écran d'attente jusqu'à la redirection ; retiré en cas d'échec.
+  const [enAttente, setEnAttente] = useState(false)
+  function echouer(message: string) {
+    setEnAttente(false)
+    setConfirmErreur(message)
+  }
   const [loadError, setLoadError] = useState(false)
   const enCoursRef = useRef(false)
 
@@ -177,6 +184,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
           if (!stripe || !elements || items.length === 0 || enCoursRef.current) return
           enCoursRef.current = true
           setConfirmErreur(null)
+          setEnAttente(true)
           try {
             if (multiVendeurs) {
               const { error: erreurSaisie } = await elements.submit()
@@ -184,7 +192,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
                 ? { error: erreurSaisie, paymentMethod: undefined }
                 : await stripe.createPaymentMethod({ elements })
               if (erreurMoyen || !paymentMethod) {
-                setConfirmErreur(erreurMoyen?.message ?? 'Paiement refusé')
+                echouer(erreurMoyen?.message ?? 'Paiement refusé')
                 event.paymentFailed({ reason: 'fail', message: erreurMoyen?.message })
                 return
               }
@@ -202,13 +210,13 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
                 source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
               }, paymentMethod.id, setMessageValidation)
               if (resultat.etat === 'erreur') {
-                setConfirmErreur(resultat.erreur)
+                echouer(resultat.erreur)
                 try { event.paymentFailed({ reason: 'fail', message: resultat.erreur }) } catch {}
                 return
               }
               clear()
               if (resultat.etat === 'ok') onSuccess({ commandeId: resultat.commandeId })
-              else setConfirmErreur(resultat.message)
+              else echouer(resultat.message)
               return
             }
             const res = await fetch('/api/stripe/express-checkout', {
@@ -221,7 +229,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }
             if (!res.ok || !data.clientSecret) {
-              setConfirmErreur(data.erreur ?? 'Erreur serveur, réessaie')
+              echouer(data.erreur ?? 'Erreur serveur, réessaie')
               event.paymentFailed({ reason: 'fail', message: data.erreur })
               return
             }
@@ -238,7 +246,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
 
             if (confirmError) {
               effacerPaiementEnCours(slug)
-              setConfirmErreur(confirmError.message ?? 'Paiement refusé')
+              echouer(confirmError.message ?? 'Paiement refusé')
               event.paymentFailed({ reason: 'fail', message: confirmError.message })
               return
             }
@@ -253,7 +261,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
               onSuccess({ paymentIntentId: paymentIntent.id })
             }
           } catch (err) {
-            setConfirmErreur(messageErreurInattendue(err))
+            echouer(messageErreurInattendue(err))
             event.paymentFailed({ reason: 'fail' })
           } finally {
             enCoursRef.current = false
@@ -262,6 +270,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
       />
       {confirmErreur && <div className="shop-cart-express-error">{confirmErreur}</div>}
       {messageValidation && <div className="shop-cart-express-error" role="status" style={{ color: 'inherit' }}>{messageValidation}</div>}
+      {enAttente && <PaiementEnAttente message={messageValidation} />}
     </div>
   )
 }

@@ -24,6 +24,7 @@ import { listePays } from '@/lib/pays-iso'
 import { detailTva } from '@/lib/prix-affiche'
 import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
+import PaiementEnAttente from '@/app/[slug]/_components/PaiementEnAttente'
 import { messageErreurInattendue, payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
 
 const MONTANT_DETECTION_CENTS = 1000
@@ -757,6 +758,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 
                 {(erreurGlobale || erreurPrix) && <p className="pmt-error-global">{erreurGlobale ?? erreurPrix}</p>}
                 {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
+                {/* Même écran d'attente que pour Apple/Google Pay (les fenêtres 3D Secure de Stripe passent au-dessus) */}
+                {submitting && <PaiementEnAttente message={messageValidation} />}
 
                 <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk || !montantSynchronise}>
                   {submitting ? 'Traitement…' : montantSynchronise ? `Payer ${formatPrix(totalAffiche)}` : 'Calcul du prix…'}
@@ -821,6 +824,13 @@ function ExpressButtons({
   const [loadError, setLoadError] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
   const [messageValidation, setMessageValidation] = useState<string | null>(null)
+  // Fenêtre du wallet validée → écran d'attente jusqu'à la page de
+  // téléchargement ; retiré seulement en cas d'échec (message visible).
+  const [enAttente, setEnAttente] = useState(false)
+  function echouer(message: string) {
+    setEnAttente(false)
+    setErreur(message)
+  }
 
   useEffect(() => {
     if (pret) return
@@ -855,6 +865,8 @@ function ExpressButtons({
         onLoadError={() => setLoadError(true)}
         onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
           if (!stripe || !elements) return
+          setErreur(null)
+          setEnAttente(true)
           try {
             if (multiVendeurs) {
               const { error: erreurSaisie } = await elements.submit()
@@ -862,7 +874,7 @@ function ExpressButtons({
                 ? { error: erreurSaisie, paymentMethod: undefined }
                 : await stripe.createPaymentMethod({ elements })
               if (erreurMoyen || !paymentMethod) {
-                setErreur(erreurMoyen?.message ?? 'Paiement refusé')
+                echouer(erreurMoyen?.message ?? 'Paiement refusé')
                 event.paymentFailed({ reason: 'fail', message: erreurMoyen?.message })
                 return
               }
@@ -885,10 +897,11 @@ function ExpressButtons({
                 source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
               }, paymentMethod.id, setMessageValidation)
               if (resultat.etat === 'erreur') {
-                setErreur(resultat.erreur)
+                echouer(resultat.erreur)
                 try { event.paymentFailed({ reason: 'fail', message: resultat.erreur }) } catch {}
                 return
               }
+              if (resultat.etat === 'recu') setEnAttente(false)
               onResultatMulti(resultat)
               return
             }
@@ -907,7 +920,7 @@ function ExpressButtons({
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }
             if (!res.ok || !data.clientSecret) {
-              setErreur(data.erreur ?? 'Erreur serveur, réessaie')
+              echouer(data.erreur ?? 'Erreur serveur, réessaie')
               event.paymentFailed({ reason: 'fail', message: data.erreur })
               return
             }
@@ -920,19 +933,20 @@ function ExpressButtons({
             })
             if (error) {
               effacerPaiementEnCours(slug)
-              setErreur(error.message ?? 'Paiement refusé')
+              echouer(error.message ?? 'Paiement refusé')
               event.paymentFailed({ reason: 'fail', message: error.message })
               return
             }
             if (paymentIntent) onSucces(paymentIntent.id)
           } catch (err) {
-            setErreur(messageErreurInattendue(err))
+            echouer(messageErreurInattendue(err))
             event.paymentFailed({ reason: 'fail' })
           }
         }}
       />
       {erreur && <p className="pmt-field-error">{erreur}</p>}
       {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
+      {enAttente && <PaiementEnAttente message={messageValidation} />}
     </div>
   )
 }
