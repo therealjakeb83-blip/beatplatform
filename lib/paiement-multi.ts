@@ -151,10 +151,19 @@ async function reserverPart(
     // validation — on la garde et on la fait valider à l'écran par le client.
     if (e.code === 'authentication_required' && piId && copieId) {
       try {
-        const pi = await stripe.paymentIntents.retrieve(piId, {}, { stripeAccount: part.stripe_account_id })
+        // La copie vient d'être consommée par la tentative « client absent »
+        // (usage unique, refusée ensuite par Stripe — vu en T6) : nouvelle
+        // copie pour la validation à l'écran.
+        const [pi, copieValidation] = await Promise.all([
+          stripe.paymentIntents.retrieve(piId, {}, { stripeAccount: part.stripe_account_id }),
+          stripe.paymentMethods.create(
+            { customer: ctx.customerId, payment_method: ctx.paymentMethodId },
+            { stripeAccount: part.stripe_account_id },
+          ),
+        ])
         if (pi.client_secret) {
           await majPart(admin, part.id, { stripe_payment_intent_id: piId, erreur: 'validation_requise' })
-          return { ok: false, validation: { client_secret: pi.client_secret, stripe_account_id: part.stripe_account_id, payment_method_id: copieId } }
+          return { ok: false, validation: { client_secret: pi.client_secret, stripe_account_id: part.stripe_account_id, payment_method_id: copieValidation.id } }
         }
       } catch (errLecture) {
         console.error('[paiement-multi] Lecture du paiement à valider impossible', piId, errLecture instanceof Error ? errLecture.message : errLecture)
