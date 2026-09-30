@@ -24,7 +24,7 @@ import { listePays } from '@/lib/pays-iso'
 import { detailTva } from '@/lib/prix-affiche'
 import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
-import { payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
+import { messageErreurInattendue, payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -163,7 +163,10 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tva
       stripe={stripeClient}
       // Panier collab : le moyen de paiement (Apple Pay / Google Pay / Link)
       // est enregistré pour être débité ensuite chez chaque vendeur.
-      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(contexte?.mode === 'multi' ? { setupFutureUsage: 'off_session' as const } : {}) }}
+      // paymentMethodCreation 'manual' : exigé par Stripe pour
+      // stripe.createPaymentMethod({ elements }) — sans lui l'appel échoue
+      // dans le navigateur (vu en T10, Apple Pay sur iPhone).
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(contexte?.mode === 'multi' ? { setupFutureUsage: 'off_session' as const, paymentMethodCreation: 'manual' as const } : {}) }}
     >
       <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} multiVendeurs={contexte?.mode === 'multi'} />
     </Elements>
@@ -456,8 +459,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
         return
       }
       if (paymentIntent) await apresSucces(paymentIntent.id)
-    } catch {
-      setErreurGlobale('Erreur réseau, réessaie')
+    } catch (err) {
+      setErreurGlobale(messageErreurInattendue(err))
     } finally {
       setSubmitting(false)
     }
@@ -922,8 +925,8 @@ function ExpressButtons({
               return
             }
             if (paymentIntent) onSucces(paymentIntent.id)
-          } catch {
-            setErreur('Erreur réseau, réessaie')
+          } catch (err) {
+            setErreur(messageErreurInattendue(err))
             event.paymentFailed({ reason: 'fail' })
           }
         }}

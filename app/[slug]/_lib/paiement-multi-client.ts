@@ -21,6 +21,13 @@ type Validation = { client_secret: string; stripe_account_id: string; payment_me
  *  stricte), seul moment où on le sait avec certitude — texte de Jake. */
 export type SurValidation = (message: string | null) => void
 
+/** Erreur imprévue (exception) pendant un paiement : message lisible + détail
+ *  technique entre parenthèses, pour savoir où ça coince (vu en T10). */
+export function messageErreurInattendue(err: unknown): string {
+  const detail = err instanceof Error ? err.message : typeof err === 'string' ? err : ''
+  return `Le paiement n’a pas pu aboutir, aucun montant n’a été débité${detail ? ` (${detail.slice(0, 160)})` : ''}.`
+}
+
 function listeNoms(noms: string[]): string {
   return noms.length <= 1 ? (noms[0] ?? '') : `${noms.slice(0, -1).join(', ')} et ${noms[noms.length - 1]}`
 }

@@ -6,7 +6,7 @@ import type { StripeExpressCheckoutElementReadyEvent, StripeExpressCheckoutEleme
 import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { appareilEstIOS, methodesExpressPourAppareil } from '../_lib/express-payments'
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '../_lib/paiement-en-cours'
-import { payerMultiAvecMoyen } from '../_lib/paiement-multi-client'
+import { messageErreurInattendue, payerMultiAvecMoyen } from '../_lib/paiement-multi-client'
 import { useCart, type CartItem } from './CartContext'
 
 // Paiement express du panier — Apple Pay sur iOS, Google Pay ailleurs, jamais
@@ -72,7 +72,7 @@ export default function CartExpressPay(props: Props) {
     <Elements
       key={resolu?.mode === 'direct' ? `direct:${resolu.stripe_account_id}` : 'plateforme'}
       stripe={stripeClient}
-      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(multiVendeurs ? { setupFutureUsage: 'off_session' as const } : {}) }}
+      options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(multiVendeurs ? { setupFutureUsage: 'off_session' as const, paymentMethodCreation: 'manual' as const } : {}) }}
     >
       <ExpressButtons {...props} multiVendeurs={multiVendeurs} />
     </Elements>
@@ -252,8 +252,8 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
               clear()
               onSuccess({ paymentIntentId: paymentIntent.id })
             }
-          } catch {
-            setConfirmErreur('Erreur réseau, réessaie')
+          } catch (err) {
+            setConfirmErreur(messageErreurInattendue(err))
             event.paymentFailed({ reason: 'fail' })
           } finally {
             enCoursRef.current = false
