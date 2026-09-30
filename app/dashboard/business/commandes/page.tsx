@@ -7,7 +7,7 @@ export type CommandeRow = {
   id: string
   created_at: string
   prix_paye: number
-  statut: 'en_attente' | 'payee' | 'remboursee' | 'litige' | 'creee' | 'expiree' | 'echouee'
+  statut: 'en_attente' | 'payee' | 'remboursee' | 'litige' | 'creee' | 'expiree' | 'echouee' | 'annulee' | 'remboursement_incomplet' | 'remboursee_partielle'
   code_promo: string | null
   reduction_montant: number | null
   fichiers_livres: boolean | null

@@ -10,6 +10,7 @@ import VerificationGate from './_components/VerificationGate'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { normaliserEmail } from '@/lib/email'
 import { cookieAccesTelechargement } from '@/lib/telechargement-acces'
+import { urlPdfAvoir } from '@/lib/avoirs'
 
 export const runtime = 'nodejs'
 
@@ -31,7 +32,7 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url, methode_paiement')
+    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url, methode_paiement, licence_annulee_at, licence_annulee_motif')
     .eq('id', commandeId)
     .single()
 
@@ -90,9 +91,14 @@ export default async function TelechargerPage({
   const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
   const licenceMap = new Map((licencesData ?? []).map(l => [l.id, l]))
 
+  // Licence tombée (remboursement, annulation, litige perdu — Phase 13, lot
+  // 4) : plus aucun fichier ni contrat ; factures et avoirs restent
+  // disponibles (le client en a besoin pour sa comptabilité).
+  const licenceAnnulee = !!commande.licence_annulee_at
+
   const lignesDispo: LigneDispo[] = []
 
-  for (const ligne of lignes) {
+  for (const ligne of licenceAnnulee ? [] : lignes) {
     const beat = beatMap.get(ligne.beat_id)
     const licence = licenceMap.get(ligne.licence_id)
     if (!beat || !licence) continue
@@ -183,21 +189,49 @@ export default async function TelechargerPage({
     if (signee) facturesTranches.push({ id: t.id, numero: t.facture_numero, vendeur: t.vendeur_nom, url: signee })
   }
 
-  const titrePage = lignesDispo.length > 1
-    ? `${lignesDispo.length} beats`
-    : `${lignesDispo[0]?.titre} — ${lignesDispo[0]?.licenceNom}`
+  const { data: avoirsRows } = await supabase
+    .from('avoirs')
+    .select('id, commande_id, numero, pdf_url, vendeur_id')
+    .eq('commande_id', commandeId)
+    .not('numero', 'like', 'reserve-%')
+    .order('created_at', { ascending: true })
+  const nomVendeur = new Map((tranches ?? []).map(t => [t.vendeur_id as string, t.vendeur_nom as string]))
+  const avoirs: { id: string; numero: string; vendeur: string | null; url: string }[] = []
+  for (const a of avoirsRows ?? []) {
+    const url = await urlPdfAvoir(supabase, a)
+    const signee = url ? await genererUrlSigneePdf(url, `Avoir ${a.numero}.pdf`).catch(() => null) : null
+    if (signee) avoirs.push({ id: a.id, numero: a.numero, vendeur: (tranches ?? []).length > 1 ? nomVendeur.get(a.vendeur_id) ?? null : null, url: signee })
+  }
+
+  const titres = lignes.map(l => ({ titre: beatMap.get(l.beat_id)?.titre ?? 'Beat', licence: licenceMap.get(l.licence_id)?.nom ?? '' }))
+  const titrePage = titres.length > 1
+    ? `${titres.length} beats`
+    : `${titres[0]?.titre} — ${titres[0]?.licence}`
+  const texteAnnulation = commande.licence_annulee_motif === 'annulation'
+    ? 'Cette commande a été annulée.'
+    : 'Cette commande a été remboursée.'
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4 py-12">
       <div className="max-w-lg w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-black mb-1">{commande.methode_paiement === 'gratuit' ? 'Commande confirmée' : 'Paiement confirmé'}</h1>
+          {licenceAnnulee ? (
+            <div className="w-14 h-14 rounded-full bg-gray-700/40 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          )}
+          <h1 className="text-2xl font-black mb-1">
+            {licenceAnnulee ? texteAnnulation : commande.methode_paiement === 'gratuit' ? 'Commande confirmée' : 'Paiement confirmé'}
+          </h1>
           <p className="text-gray-400 text-sm">{titrePage}</p>
           {commande.acheteur_email && (
             <p className="text-gray-600 text-xs mt-1">{commande.acheteur_email}</p>
@@ -207,7 +241,9 @@ export default async function TelechargerPage({
         {/* Lien permanent */}
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 mb-6 text-center">
           <p className="text-gray-400 text-xs">
-            Tu peux revenir sur cette page à tout moment pour télécharger tes fichiers.
+            {licenceAnnulee
+              ? "L'accès aux fichiers est fermé et la licence n'est plus valable. Tes factures et avoirs restent disponibles ci-dessous."
+              : 'Tu peux revenir sur cette page à tout moment pour télécharger tes fichiers.'}
           </p>
         </div>
 
@@ -252,6 +288,17 @@ export default async function TelechargerPage({
             <div className="flex flex-col gap-3">
               {facturesTranches.map(f => (
                 <TelechargerBouton key={f.id} label={`Facture ${f.numero} — ${f.vendeur}`} url={f.url} icon="pdf" commandeId={commandeId} ligneId="facture" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {avoirs.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
+            <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">{avoirs.length > 1 ? "Factures d'avoir" : "Facture d'avoir"}</h2>
+            <div className="flex flex-col gap-3">
+              {avoirs.map(a => (
+                <TelechargerBouton key={a.id} label={`Avoir ${a.numero}${a.vendeur ? ` — ${a.vendeur}` : ''}`} url={a.url} icon="pdf" commandeId={commandeId} ligneId="facture" />
               ))}
             </div>
           </div>

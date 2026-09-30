@@ -56,6 +56,8 @@ export type TypeTemplateTransactionnel =
   | 'confirmation_compte_artiste'
   | 'telechargement_gratuit'
   | 'beat_cadeau_fidelite'
+  | 'remboursement_commande'
+  | 'annulation_commande'
 
 type BrandingTransactionnel = {
   nom_artiste: string
@@ -103,6 +105,8 @@ const TITRE_DEFAUT: Record<TypeTemplateTransactionnel, string> = {
   confirmation_compte_artiste: 'Ton compte est prêt !',
   telechargement_gratuit: 'Ton free download est prêt !',
   beat_cadeau_fidelite: 'Un cadeau pour toi 🎁',
+  remboursement_commande: 'Ta commande a été remboursée',
+  annulation_commande: 'Ta commande a été annulée',
 }
 
 function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): string {
@@ -121,6 +125,10 @@ function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): stri
       return 'Voici ton téléchargement gratuit. Le lien expire dans 1 heure, télécharge-le rapidement !'
     case 'beat_cadeau_fidelite':
       return 'Merci pour ta fidélité ! Voici un code pour un beat gratuit.'
+    case 'remboursement_commande':
+      return `Ta commande sur la boutique ${nomArtiste} a été remboursée. L'accès aux fichiers est fermé et la licence n'est plus valable.`
+    case 'annulation_commande':
+      return `Ta commande sur la boutique ${nomArtiste} a été annulée. L'accès aux fichiers est fermé et la licence n'est plus valable.`
   }
 }
 
@@ -237,6 +245,8 @@ export type TypeTemplatePlateforme =
   | 'conditions_mise_a_jour'
   | 'suspension'
   | 'nouvelle_vente'
+  | 'remboursement_vente'
+  | 'remboursement_incomplet'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
   nom_artiste: NOM_PLATEFORME,
@@ -269,6 +279,8 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   conditions_mise_a_jour: `Mise à jour des conditions ${NOM_PLATEFORME}`,
   suspension: 'Ton compte a été suspendu',
   nouvelle_vente: 'Nouvelle vente !',
+  remboursement_vente: 'Une vente a été remboursée',
+  remboursement_incomplet: 'Remboursement incomplet',
 }
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
@@ -307,6 +319,10 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return `Ton compte ${NOM_PLATEFORME} a été suspendu par notre équipe. Ton dashboard et ta boutique publique ne sont plus accessibles tant que la situation n'est pas résolue.`
     case 'nouvelle_vente':
       return 'Bonne nouvelle : tu viens de réaliser une vente. Voici le détail.'
+    case 'remboursement_vente':
+      return "Une vente en collaboration a été remboursée par le propriétaire du beat. Ta part a été rendue au client depuis ton compte Stripe et une facture d'avoir a été émise automatiquement. Les frais Stripe de la vente ne sont pas rendus par Stripe."
+    case 'remboursement_incomplet':
+      return "Le remboursement d'une vente n'a pas pu être fait en entier : une part n'a pas pu être rendue au client. Les autres parts restent remboursées. Le propriétaire peut réessayer depuis la fiche de la commande."
   }
 }
 
@@ -796,6 +812,24 @@ export async function genererApercuTransactionnelPlateforme(
       ]),
       cta: { texte: 'Voir la commande', lien: '#' },
     },
+    remboursement_vente: {
+      corpsHtml: corpsLignes([
+        ['Boutique', 'Jake B (vente en collaboration)'],
+        ['Beat', 'Midnight Drive — Licence MP3'],
+        ['Ta part remboursée', '24.50€'],
+        ['Frais Stripe non rendus', '0.62€'],
+        ["Facture d'avoir", 'n° NAFAZ-00121026'],
+      ]),
+      cta: { texte: 'Voir la commande', lien: '#' },
+    },
+    remboursement_incomplet: {
+      corpsHtml: corpsLignes([
+        ['Commande', 'Midnight Drive — Licence MP3'],
+        ['Part non remboursée', 'Nafaz — 24.50€'],
+        ['Raison', 'Compte Stripe fermé'],
+      ]),
+      cta: { texte: 'Voir la commande', lien: '#' },
+    },
   }
 
   return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })
@@ -1273,6 +1307,8 @@ export async function genererApercuTransactionnel(
       cta: { texte: 'Télécharger Midnight Drive', lien: '#' },
     },
     beat_cadeau_fidelite: { corpsHtml: '' },
+    remboursement_commande: { corpsHtml: corpsLignes([['Commande', 'Midnight Drive — Licence MP3'], ['Montant remboursé', '29.99€']]) },
+    annulation_commande: { corpsHtml: corpsLignes([['Commande', 'Midnight Drive — Licence MP3']]) },
   }
 
   return rendreEmailTransactionnel({
@@ -1330,4 +1366,151 @@ export async function alerteProblemeLivraison({
       </div>
     `,
   })
+}
+
+// ============================================================
+// Remboursement / annulation (Phase 13, lot 4a)
+// ============================================================
+
+async function destinataireClient(commandeId: string) {
+  const admin = createAdminClient()
+  const { data: commande } = await admin
+    .from('commandes')
+    .select('id, beatmaker_id, client_id, acheteur_email, clients(email)')
+    .eq('id', commandeId)
+    .maybeSingle()
+  if (!commande) return null
+  const client = commande.clients as unknown as { email: string | null } | null
+  const email = commande.acheteur_email ?? client?.email ?? null
+  const { data: lignes } = await admin
+    .from('commande_lignes')
+    .select('licence_nom, beats(titre)')
+    .eq('commande_id', commandeId)
+  type LigneRow = { licence_nom: string | null; beats: { titre: string } | null }
+  const libelle = ((lignes ?? []) as unknown as LigneRow[])
+    .map(l => `${l.beats?.titre ?? 'Beat'} — Licence ${l.licence_nom ?? ''}`.trim())
+    .join('\n')
+  return { email, beatmakerId: commande.beatmaker_id as string, clientId: commande.client_id as string | null, libelle }
+}
+
+// Au client, quand de l'argent lui est rendu (bouton de A, ou part rendue
+// par un vendeur depuis Stripe). Une part qui n'a pas pu être rendue est
+// expliquée : elle relève du vendeur concerné (décision L4-Q3).
+export async function envoyerRemboursementClient({ commandeId, montantCents, nonRembourses }: {
+  commandeId: string
+  montantCents: number
+  nonRembourses: { vendeurNom: string; montantCents: number }[]
+}) {
+  const dest = await destinataireClient(commandeId)
+  if (!dest?.email) return
+  const { branding, titre, intro } = await chargerBrandingEtTemplate(dest.beatmakerId, 'remboursement_commande')
+  if (!branding) return
+  const lignes: [string, string][] = [
+    ['Commande', dest.libelle],
+    ['Montant remboursé', fmtEuros(montantCents)],
+    ...nonRembourses.map(n => [`Part non remboursée (${n.vendeurNom})`, fmtEuros(n.montantCents)] as [string, string]),
+  ]
+  const blocNonRembourse = nonRembourses.length
+    ? `<p style="font-size:13px;color:#374151;margin:12px 0 0;">${nonRembourses.map(n => `La part de ${echapper(n.vendeurNom)} n'a pas pu t'être remboursée : elle relève de ${echapper(n.vendeurNom)}, dont les coordonnées figurent sur sa facture.`).join('<br>')}</p>`
+    : ''
+  await envoyerEmailUnique({
+    beatmakerId: dest.beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    type: 'transactionnel',
+    evenement: 'remboursement_commande',
+    to: dest.email,
+    clientId: dest.clientId,
+    commandeId,
+    subject: titre || TITRE_DEFAUT.remboursement_commande,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: titre || TITRE_DEFAUT.remboursement_commande,
+      intro: intro || introDefaut('remboursement_commande', branding.nom_artiste),
+      corpsHtml: corpsLignes(lignes) + blocNonRembourse,
+    }),
+  })
+}
+
+export async function envoyerAnnulationClient({ commandeId }: { commandeId: string }) {
+  const dest = await destinataireClient(commandeId)
+  if (!dest?.email) return
+  const { branding, titre, intro } = await chargerBrandingEtTemplate(dest.beatmakerId, 'annulation_commande')
+  if (!branding) return
+  await envoyerEmailUnique({
+    beatmakerId: dest.beatmakerId,
+    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    type: 'transactionnel',
+    evenement: 'annulation_commande',
+    to: dest.email,
+    clientId: dest.clientId,
+    commandeId,
+    subject: titre || TITRE_DEFAUT.annulation_commande,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: titre || TITRE_DEFAUT.annulation_commande,
+      intro: intro || introDefaut('annulation_commande', branding.nom_artiste),
+      corpsHtml: corpsLignes([['Commande', dest.libelle]]),
+    }),
+  })
+}
+
+// À un collaborateur dont la part vient d'être rendue au client par le
+// bouton de A : montant, frais Stripe non rendus, numéro de son avoir.
+export async function envoyerRemboursementVente({ commandeId, trancheId }: { commandeId: string; trancheId: string }) {
+  const admin = createAdminClient()
+  const [{ data: tranche }, { data: commande }, { data: avoir }] = await Promise.all([
+    admin.from('commande_tranches').select('vendeur_id, montant_ttc_cents, frais_stripe_cents').eq('id', trancheId).maybeSingle(),
+    admin.from('commandes').select('beatmaker_id').eq('id', commandeId).maybeSingle(),
+    admin.from('avoirs').select('numero').eq('tranche_id', trancheId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+  ])
+  if (!tranche?.vendeur_id || !commande) return
+  const [{ data: vendeur }, { data: boutique }, dest] = await Promise.all([
+    admin.from('beatmakers').select('email').eq('id', tranche.vendeur_id).maybeSingle(),
+    admin.from('beatmakers').select('nom_artiste').eq('id', commande.beatmaker_id).maybeSingle(),
+    destinataireClient(commandeId),
+  ])
+  if (!vendeur?.email) return
+  await envoyerEmailCollab({
+    type: 'remboursement_vente',
+    to: vendeur.email,
+    beatmakerId: commande.beatmaker_id,
+    corpsHtml: corpsLignes([
+      ['Boutique', `${boutique?.nom_artiste ?? ''} (vente en collaboration)`],
+      ['Beat', dest?.libelle ?? ''],
+      ['Ta part remboursée', fmtEuros(tranche.montant_ttc_cents)],
+      ...(tranche.frais_stripe_cents != null ? [['Frais Stripe non rendus', fmtEuros(tranche.frais_stripe_cents)] as [string, string]] : []),
+      ...(avoir?.numero && !avoir.numero.startsWith('reserve-') ? [["Facture d'avoir", `n° ${avoir.numero}`] as [string, string]] : []),
+    ]),
+    cta: { texte: 'Voir la commande', lien: `${APP_URL}/dashboard/business/commandes/${commandeId}` },
+  })
+}
+
+// À A et à chaque vendeur dont la part n'a pas pu être rendue.
+export async function envoyerRemboursementIncomplet({ commandeId }: { commandeId: string }) {
+  const admin = createAdminClient()
+  const [{ data: commande }, { data: tranches }, dest] = await Promise.all([
+    admin.from('commandes').select('beatmaker_id').eq('id', commandeId).maybeSingle(),
+    admin.from('commande_tranches').select('vendeur_id, vendeur_nom, montant_ttc_cents, montant_rembourse_cents, remboursement_erreur, statut').eq('commande_id', commandeId),
+    destinataireClient(commandeId),
+  ])
+  if (!commande) return
+  const enEchec = (tranches ?? []).filter(t => t.statut === 'remboursement_echoue')
+  if (!enEchec.length) return
+  const ids = [...new Set([commande.beatmaker_id as string, ...enEchec.map(t => t.vendeur_id).filter((v): v is string => !!v)])]
+  const { data: vendeurs } = await admin.from('beatmakers').select('id, email').in('id', ids)
+  const corps = corpsLignes([
+    ['Commande', dest?.libelle ?? ''],
+    ...enEchec.map(t => ['Part non remboursée', `${t.vendeur_nom} — ${fmtEuros(t.montant_ttc_cents - t.montant_rembourse_cents)}`] as [string, string]),
+    ...enEchec.filter(t => t.remboursement_erreur).map(t => [`Raison (${t.vendeur_nom})`, t.remboursement_erreur as string] as [string, string]),
+  ])
+  for (const v of vendeurs ?? []) {
+    if (!v.email) continue
+    await envoyerEmailCollab({
+      type: 'remboursement_incomplet',
+      to: v.email,
+      beatmakerId: commande.beatmaker_id,
+      corpsHtml: corps,
+      cta: { texte: 'Voir la commande', lien: `${APP_URL}/dashboard/business/commandes/${commandeId}` },
+    }).catch(err => console.error('[emails] Erreur envoi remboursement incomplet à', v.id, ':', err))
+  }
 }

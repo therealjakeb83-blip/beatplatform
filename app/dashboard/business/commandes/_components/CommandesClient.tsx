@@ -14,7 +14,17 @@ const STATUT = {
   creee:      { label: 'Panier en cours',  cls: 'bg-blue-500/15   text-blue-400   border border-blue-500/20' },
   expiree:    { label: 'Abandonnée',       cls: 'bg-gray-600/15   text-gray-400   border border-gray-600/20' },
   echouee:    { label: 'Échouée',          cls: 'bg-rose-500/15   text-rose-400   border border-rose-500/20' },
+  annulee:    { label: 'Annulée',          cls: 'bg-gray-700/40   text-gray-300   border border-gray-600' },
+  remboursement_incomplet: { label: 'Remboursement incomplet', cls: 'bg-red-500/15 text-red-300 border border-red-500/30' },
+  remboursee_partielle:    { label: 'Remboursée en partie',   cls: 'bg-orange-500/15 text-orange-300 border border-orange-500/20' },
 } as const
+
+// Onglet « Remboursée » : toutes les commandes où de l'argent a été rendu
+// (Phase 13, lot 4a), en entier ou en partie, plus les commandes annulées.
+const STATUTS_ONGLET: Record<string, string[]> = {
+  remboursee: ['remboursee', 'remboursee_partielle', 'remboursement_incomplet', 'annulee'],
+}
+const dansOnglet = (statut: string, onglet: string) => (STATUTS_ONGLET[onglet] ?? [onglet]).includes(statut)
 
 const TYPE_COMMANDE_LABEL: Record<string, string> = {
   CREATION_ABONNEMENT: 'Création abonnement',
@@ -30,7 +40,7 @@ const TABS = [
   { label: 'Toutes',           value: '' },
   { label: 'En attente',       value: 'en_attente' },
   { label: 'Payée',            value: 'payee' },
-  { label: 'Remboursée',       value: 'remboursee' },
+  { label: 'Remboursée / annulée', value: 'remboursee' },
   { label: 'Litige',           value: 'litige' },
   { label: 'Panier en cours',  value: 'creee' },
   { label: 'Abandonnée',       value: 'expiree' },
@@ -236,7 +246,7 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
       '':           base.length,
       en_attente:   base.filter(c => c.statut === 'en_attente').length,
       payee:        base.filter(c => c.statut === 'payee').length,
-      remboursee:   base.filter(c => c.statut === 'remboursee').length,
+      remboursee:   base.filter(c => dansOnglet(c.statut, 'remboursee')).length,
       litige:       base.filter(c => c.statut === 'litige').length,
       creee:        base.filter(c => c.statut === 'creee').length,
       expiree:      base.filter(c => c.statut === 'expiree').length,
@@ -249,7 +259,7 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
     let list = commandes
 
     if (filtreClientId) list = list.filter(c => c.clients?.id === filtreClientId)
-    if (activeTab)      list = list.filter(c => c.statut === activeTab)
+    if (activeTab)      list = list.filter(c => dansOnglet(c.statut, activeTab))
     if (filtreSource)   list = list.filter(c => c.source_marketing === filtreSource)
     if (filtreType)     list = list.filter(c => c.type_transaction === filtreType)
     if (filtrePeriode) {

@@ -90,6 +90,19 @@ export async function uploadPdfFactureTranche(commandeId: string, trancheId: str
   return `${PUBLIC_URL}/${key}`
 }
 
+// Facture d'avoir (Phase 13, lot 4) — une par remboursement d'un vendeur,
+// rangée à côté des factures de la commande.
+export async function uploadPdfAvoir(commandeId: string, avoirId: string, pdfBytes: Uint8Array): Promise<string> {
+  const key = `commandes/${commandeId}/avoir-${avoirId}.pdf`
+  await r2.send(new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    Body: Buffer.from(pdfBytes),
+    ContentType: 'application/pdf',
+  }))
+  return `${PUBLIC_URL}/${key}`
+}
+
 export async function genererUrlSigneePdf(pdfUrl: string, filename = 'contrat.pdf'): Promise<string> {
   const key = pdfUrl.replace(PUBLIC_URL + '/', '')
   return getSignedUrl(

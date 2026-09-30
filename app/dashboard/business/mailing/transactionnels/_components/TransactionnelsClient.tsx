@@ -70,6 +70,18 @@ const CARTES: { type: TypeTemplateTransactionnel; titrePlaceholder: string; desc
     description: 'Envoyé automatiquement avec le lien de téléchargement après un free download.',
     declencheur: 'Déclencheur : demande de téléchargement gratuit',
   },
+  {
+    type: 'remboursement_commande',
+    titrePlaceholder: 'Ta commande a été remboursée',
+    description: "Envoyé au client quand une commande est remboursée (en entier ou en partie). L'accès aux fichiers est fermé et la licence n'est plus valable.",
+    declencheur: 'Déclencheur : remboursement depuis la fiche commande, ou part rendue par un vendeur depuis Stripe',
+  },
+  {
+    type: 'annulation_commande',
+    titrePlaceholder: 'Ta commande a été annulée',
+    description: "Envoyé au client quand une commande gratuite (beat offert) est annulée. L'accès aux fichiers est fermé et la licence n'est plus valable.",
+    declencheur: 'Déclencheur : « Annuler la commande » sur une commande à 0 €',
+  },
 ]
 
 const NOMS_CARTES: Record<TypeTemplateTransactionnel, string> = {
@@ -80,6 +92,8 @@ const NOMS_CARTES: Record<TypeTemplateTransactionnel, string> = {
   confirmation_compte_artiste: 'Confirmation de compte',
   telechargement_gratuit: 'Free download',
   beat_cadeau_fidelite: 'Beat cadeau de fidélité',
+  remboursement_commande: 'Remboursement de commande',
+  annulation_commande: 'Annulation de commande',
 }
 
 type SectionId = 'branding' | 'footer' | TypeTemplateTransactionnel

@@ -28,7 +28,12 @@ type Props = {
     netCents: number | null
     factureNumero: string | null
     facturePdfUrl: string | null
+    montantRembourseCents: number
+    rembourseAt: string | null
+    remboursementErreur: string | null
   }
+  avoirs: { id: string; numero: string; url: string | null }[]
+  licenceAnnuleeAt: string | null
   lignes: LigneVueCollaborateur[]
   tz: string
 }
@@ -77,6 +82,15 @@ export default function VueCollaborateur(p: Props) {
               <div className="flex justify-between font-semibold"><span className="text-gray-300">Total</span><span className="text-white">{euros(p.tranche.montantTtcCents)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Frais Stripe</span><span className="text-gray-300">{p.tranche.fraisCents == null ? '—' : `−${euros(p.tranche.fraisCents)}`}</span></div>
               <div className="flex justify-between border-t border-gray-800 pt-2"><span className="text-gray-300">Net</span><span className="text-green-400 font-semibold">{euros(p.tranche.netCents)}</span></div>
+              {p.tranche.montantRembourseCents > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Remboursé au client{p.tranche.rembourseAt ? ` le ${formatDateTz(p.tranche.rembourseAt, p.tz, { day: '2-digit', month: 'long', year: 'numeric' })}` : ''}</span>
+                  <span className="text-red-400">−{euros(p.tranche.montantRembourseCents)}</span>
+                </div>
+              )}
+              {p.tranche.remboursementErreur && (
+                <p className="text-xs text-red-400">Ta part n&apos;a pas pu être remboursée : {p.tranche.remboursementErreur}</p>
+              )}
               {p.codePromo && (
                 <div className="flex justify-between pt-2"><span className="text-gray-500">Code promo</span><span className="font-mono text-indigo-400">{p.codePromo}</span></div>
               )}
@@ -105,6 +119,16 @@ export default function VueCollaborateur(p: Props) {
           ) : (
             <p className="text-sm text-gray-500">
               {p.tranche.montantTtcCents === 0 ? 'Aucune facture : ce beat a été offert (0 €).' : 'Facture pas encore disponible.'}
+            </p>
+          )}
+          {p.avoirs.filter(a => a.url).map(a => (
+            <a key={a.id} href={a.url!} target="_blank" rel="noopener noreferrer" className="block text-sm text-indigo-400 hover:text-indigo-300 mt-2">
+              Facture d&apos;avoir n° {a.numero} — ouvrir le PDF
+            </a>
+          ))}
+          {p.licenceAnnuleeAt && (
+            <p className="text-xs text-gray-400 mt-3">
+              Licence annulée le {formatDateTz(p.licenceAnnuleeAt, p.tz, { day: '2-digit', month: 'long', year: 'numeric' })} : l&apos;acheteur n&apos;a plus accès aux fichiers.
             </p>
           )}
           <p className="text-xs text-gray-600 mt-3">Cette vente est gérée par {p.boutique} (remboursements, litiges, renvoi des fichiers).</p>

@@ -63,6 +63,9 @@ export interface FactureInput {
   // supabase/facture_modele_libre.sql) — jamais la valeur live du beatmaker.
   modele: ModeleFacture
   mentions: string | null
+  // Facture d'avoir (Phase 13, lot 4) : même mise en page, montants en
+  // négatif, référence à la facture qu'il annule (ou rectifie en partie).
+  avoir?: { factureNumero: string; factureDate: Date; total: boolean }
 }
 
 const PAGE_W = 595
@@ -72,6 +75,10 @@ const MARGIN_TOP = 70
 
 function formaterEuros(montant: number): string {
   return `${montant.toFixed(2).replace('.', ',')} €`
+}
+
+function formaterDateFacture(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function adresseVendeur(v: InfosLegalesConcedant): string | null {
@@ -118,6 +125,8 @@ function decouperEnLignes(texte: string, font: PDFFont, taille: number, largeurM
 }
 
 export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array> {
+  const signe = input.avoir ? -1 : 1
+  const euros = (montant: number) => formaterEuros(signe * montant)
   const doc = await PDFDocument.create()
   const fontRegular = await doc.embedFont(StandardFonts.Helvetica)
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold)
@@ -155,7 +164,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   // principe que lib/contrat.ts (voir commentaire équivalent là-bas).
   ligneTexte(input.vendeur.nom_artiste, { font: fontBold, size: 14, color: [0.1, 0.1, 0.1] })
   y -= 18
-  ligneTexte('FACTURE', { font: fontBold, size: 11, color: [0.4, 0.4, 0.75] })
+  ligneTexte(input.avoir ? "FACTURE D'AVOIR" : 'FACTURE', { font: fontBold, size: 11, color: [0.4, 0.4, 0.75] })
   y -= 30
 
   // Bloc vendeur / acheteur côte à côte
@@ -194,9 +203,14 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   y = Math.min(y, yBlocStart - 14 - lignesVendeur.length * 13) - 20
 
   // Numéro et date
-  ligneTexte(`Facture n° ${input.numeroFacture}`, { font: fontBold, size: 9.5 })
+  ligneTexte(`${input.avoir ? 'Avoir' : 'Facture'} n° ${input.numeroFacture}`, { font: fontBold, size: 9.5 })
   y -= 14
   ligneTexte(`Date d'émission : ${input.dateEmission.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}`, { size: 9 })
+  if (input.avoir) {
+    y -= 14
+    const reference = `la facture n° ${input.avoir.factureNumero} du ${formaterDateFacture(input.avoir.factureDate)}`
+    ligneTexte(input.avoir.total ? `Annule ${reference}` : `Rectifie ${reference} (remboursement partiel)`, { font: fontBold, size: 9 })
+  }
   y -= 28
 
   // Une facture en franchise de TVA (non assujetti) ne doit comporter ni
@@ -239,11 +253,11 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
 
     page.drawText(nettoyerTexte(ligne.designation), { x: colDesignationX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
     if (assujettiTva) {
-      page.drawText(formaterEuros(ht), { x: colHTX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+      page.drawText(euros(ht), { x: colHTX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
       page.drawText(ligne.tauxTva > 0 ? `${ligne.tauxTva}%` : '—', { x: colTvaX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
-      page.drawText(formaterEuros(ligne.prixTTC), { x: colTTCX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+      page.drawText(euros(ligne.prixTTC), { x: colTTCX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
     } else {
-      page.drawText(formaterEuros(ligne.prixTTC), { x: colPrixX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
+      page.drawText(euros(ligne.prixTTC), { x: colPrixX, y, font: fontRegular, size: 9, color: rgb(0.2, 0.2, 0.2) })
     }
     y -= 18
   }
@@ -255,11 +269,11 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
   const totalTTC = totalHT + totalTVA
   const totaux: [string, string][] = assujettiTva
     ? [
-        ['Total HT', formaterEuros(totalHT)],
-        ['Total TVA', formaterEuros(totalTVA)],
-        ['Total TTC', formaterEuros(totalTTC)],
+        ['Total HT', euros(totalHT)],
+        ['Total TVA', euros(totalTVA)],
+        ['Total TTC', euros(totalTTC)],
       ]
-    : [['Total', formaterEuros(totalPrix)]]
+    : [['Total', euros(totalPrix)]]
   for (const [label, montant] of totaux) {
     const estDernier = label === 'Total TTC' || label === 'Total'
     page.drawText(label, { x: colTvaX, y, font: estDernier ? fontBold : fontRegular, size: 9.5, color: rgb(0.1, 0.1, 0.1) })
@@ -300,7 +314,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
     y -= 4
   }
 
-  const texteMandat = nettoyerTexte(`Facture établie par ${NOM_PLATEFORME} au nom et pour le compte de ${input.vendeur.nom_artiste}.`)
+  const texteMandat = nettoyerTexte(`${input.avoir ? "Facture d'avoir établie" : 'Facture établie'} par ${NOM_PLATEFORME} au nom et pour le compte de ${input.vendeur.nom_artiste}.`)
   page.drawText(texteMandat, { x: centrer(texteMandat, 7.5, fontRegular), y, font: fontRegular, size: 7.5, color: rgb(0.55, 0.55, 0.55) })
 
   return doc.save()
@@ -316,6 +330,13 @@ export async function genererFacturePdfPourCommande(
   admin: ReturnType<typeof createAdminClient>,
   commandeId: string
 ): Promise<Uint8Array> {
+  return genererFacturePdf(await chargerFactureCommande(admin, commandeId))
+}
+
+async function chargerFactureCommande(
+  admin: ReturnType<typeof createAdminClient>,
+  commandeId: string
+): Promise<FactureInput> {
   const { data: commande } = await admin
     .from('commandes')
     .select('id, beatmaker_id, client_id, numero_facture, mandat_facturation_version, tva_taux, tva_numero, facture_modele, facture_mentions, acheteur_nom, acheteur_email, acheteur_adresse, acheteur_raison_sociale, acheteur_numero_tva, created_at, prix_paye, type_commande')
@@ -377,7 +398,7 @@ export async function genererFacturePdfPourCommande(
 
   const logoPng = await chargerLogoPourFacture(beatmaker.logo_url, beatmaker.logo_inverser_fond_clair)
 
-  return genererFacturePdf({
+  return {
     numeroFacture: commande.numero_facture,
     dateEmission: new Date(commande.created_at),
     vendeur: beatmaker,
@@ -396,7 +417,7 @@ export async function genererFacturePdfPourCommande(
     // mention, exactement la facture d'avant.
     modele: commande.facture_modele === 'libre' ? 'libre' : 'francais',
     mentions: commande.facture_mentions ?? null,
-  })
+  }
 }
 
 // Facture d'un vendeur pour SA tranche d'une commande à plusieurs vendeurs
@@ -408,6 +429,13 @@ export async function genererFacturePdfPourTranche(
   admin: ReturnType<typeof createAdminClient>,
   trancheId: string
 ): Promise<Uint8Array> {
+  return genererFacturePdf(await chargerFactureTranche(admin, trancheId))
+}
+
+async function chargerFactureTranche(
+  admin: ReturnType<typeof createAdminClient>,
+  trancheId: string
+): Promise<FactureInput> {
   const { data: tranche } = await admin
     .from('commande_tranches')
     .select('id, commande_id, vendeur_id, facture_numero, facture_modele, facture_mentions, mandat_facturation_version, tva_taux, tva_numero, detail_lignes')
@@ -440,7 +468,7 @@ export async function genererFacturePdfPourTranche(
 
   const logoPng = await chargerLogoPourFacture(vendeur.logo_url, vendeur.logo_inverser_fond_clair)
 
-  return genererFacturePdf({
+  return {
     numeroFacture: tranche.facture_numero,
     dateEmission: new Date(commande.created_at),
     vendeur,
@@ -457,6 +485,38 @@ export async function genererFacturePdfPourTranche(
     logoPng,
     modele: tranche.facture_modele === 'libre' ? 'libre' : 'francais',
     mentions: tranche.facture_mentions ?? null,
-  })
+  }
 }
 
+// Facture d'avoir (Phase 13, lot 4) — reprend la facture qu'elle annule
+// (vendeur, acheteur, TVA, modèle et mentions figés à la vente), avec son
+// propre numéro et sa date. Avoir total : mêmes lignes que la facture ;
+// remboursement d'une partie seulement : une ligne unique du montant rendu.
+export async function genererAvoirPdf(
+  admin: ReturnType<typeof createAdminClient>,
+  avoirId: string
+): Promise<Uint8Array> {
+  const { data: avoir } = await admin
+    .from('avoirs')
+    .select('id, commande_id, tranche_id, numero, facture_numero_annulee, facture_date, montant_cents, total, created_at')
+    .eq('id', avoirId)
+    .single()
+  if (!avoir) throw new Error(`Avoir introuvable: ${avoirId}`)
+
+  const base = avoir.tranche_id
+    ? await chargerFactureTranche(admin, avoir.tranche_id)
+    : await chargerFactureCommande(admin, avoir.commande_id)
+
+  const tauxTva = base.lignes.find(l => l.prixTTC > 0)?.tauxTva ?? base.lignes[0]?.tauxTva ?? 0
+  const lignes: LigneFacture[] = avoir.total
+    ? base.lignes
+    : [{ designation: `Remboursement partiel — facture n° ${avoir.facture_numero_annulee}`, prixTTC: avoir.montant_cents / 100, tauxTva }]
+
+  return genererFacturePdf({
+    ...base,
+    numeroFacture: avoir.numero,
+    dateEmission: new Date(avoir.created_at),
+    lignes,
+    avoir: { factureNumero: avoir.facture_numero_annulee, factureDate: new Date(avoir.facture_date), total: avoir.total },
+  })
+}

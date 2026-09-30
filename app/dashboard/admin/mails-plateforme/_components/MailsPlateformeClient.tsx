@@ -135,6 +135,20 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     description: "Envoyé au beatmaker à chaque vente de licence (payée ou offerte par code promo) et à chaque nouvel abonnement. En collaboration, chaque vendeur le reçoit avec sa part — jamais les coordonnées du client pour un collaborateur.",
     declencheur: 'Déclencheur : commande de licence créée, ou nouvel abonnement boutique → propriétaire (+ collaborateurs vendeurs). Jamais pour un renouvellement ni un free download',
   },
+  {
+    type: 'remboursement_vente',
+    nom: "Remboursement d'une vente (collaborateur)",
+    titrePlaceholder: 'Une vente a été remboursée',
+    description: "Envoyé à un collaborateur quand le propriétaire rembourse une vente : sa part rendue, les frais Stripe non rendus et le numéro de son avoir.",
+    declencheur: 'Déclencheur : A rembourse une vente en collaboration → chaque collaborateur remboursé',
+  },
+  {
+    type: 'remboursement_incomplet',
+    nom: 'Remboursement incomplet',
+    titrePlaceholder: 'Remboursement incomplet',
+    description: "Envoyé quand une part n'a pas pu être rendue au client (compte Stripe fermé, refus de Stripe…). Les autres parts restent remboursées ; le propriétaire peut réessayer.",
+    declencheur: "Déclencheur : échec d'une part pendant un remboursement → propriétaire + vendeur concerné",
+  },
 ]
 
 export default function MailsPlateformeClient({ templates, sauvegarderTemplate, genererApercu }: Props) {

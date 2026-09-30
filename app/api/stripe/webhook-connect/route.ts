@@ -2,6 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { traiterPaiementExpress, marquerLitige, resoudreLitige } from '@/lib/webhook-paiement'
 import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
+import { traiterRemboursementStripe } from '@/lib/remboursement'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -87,6 +88,14 @@ export async function POST(request: Request) {
     // plateforme. Event à cocher sur cet endpoint (.scratch/phase13-abonner-account-updated.mjs).
     if (event.type === 'account.updated') {
       await traiterMajCompteOperationnel(event.data.object as Stripe.Account)
+    }
+
+    // Remboursements (Phase 13, lot 4a) : ceux faits par un vendeur depuis son
+    // espace Stripe font tomber la licence (avoir, fichiers fermés) ; ceux
+    // lancés par la plateforme ne sont suivis que s'ils échouent après coup.
+    // Events à cocher sur cet endpoint (.scratch/phase13-lot4-abonner-refunds.mjs).
+    if (event.type === 'refund.created' || event.type === 'refund.updated' || event.type === 'refund.failed') {
+      await traiterRemboursementStripe(event.data.object as Stripe.Refund, stripeAccountId)
     }
 
     if (event.type === 'charge.dispute.created') {

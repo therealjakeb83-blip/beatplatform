@@ -27,6 +27,8 @@ export default async function TransactionnelsPage() {
     'confirmation_compte_artiste',
     'telechargement_gratuit',
     'beat_cadeau_fidelite',
+    'remboursement_commande',
+    'annulation_commande',
   ]
   const templates = Object.fromEntries(
     TYPES.map(type => [type, {

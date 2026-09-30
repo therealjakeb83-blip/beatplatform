@@ -422,6 +422,36 @@ Décisions du cadrage (L3-Q1 à Q5) : `memory/project_phase13_grillme_decisions_
 - ✅ **T22** (Claude, 2026-09-30) `tsc` OK, `eslint` sans nouvelle erreur (6 erreurs préexistantes, mêmes règles, vérifiées sur HEAD), `build` OK
 - **LOT 3 ENTIÈREMENT TESTÉ ET CLOS le 2026-09-30** (T0-T28, dont T23-T28 ajoutés en cours de route). **Trouvé et corrigé en testant** : (1) code promo du panier ignoré par Apple/Google Pay du panier et la page de paiement (débit plein tarif vs prix réduit affiché) ; (2) TVA affichée avec le taux de A sur le total entier (panier, paiement, fenêtre de licence, fiche) + « TVA (20%) » en dur dans la fiche commande et l'aperçu de la liste, même pour un non-assujetti (préexistant) ; (3) montant de TVA provisoire visible ~1 s (retour de Jake) ; (4) page de téléchargement pouvant s'ouvrir avant la fin de la création d'une commande solo de plusieurs beats (préexistant). **Ajouts demandés par Jake** : colonne TVA par vendeur dans la répartition ; tuile « Reçu en collab » + « Part de tes collaborateurs ». **Décidé en testant** : B voit le code promo sur sa fiche ; jakeb-test laissé à 20 % de TVA, nic-beat-2809 à 21 % (comptes de test) ; affichage « dont TVA : X € » sans pourcentage quand les taux diffèrent (conforme : seul le prix TTC est obligatoire à l'affichage). **À supprimer au lot 5** : codes `LOT3CENT`, `LOT3FIXE`, `LOT3OFFERT`, `LOT3UNEFOIS`, `LOT3PERSO`, `LOT3NOUVEAU` (et `T12PLANCHER`). **Pas corrigé (noté refonte UX/UI)** : un code refusé laisse le bouton sur « Calcul du prix… » jusqu'au retrait du code.
 
+#### Checklist tests Phase 13 lot 4 (remboursements, avoirs, litiges) — cadré le 2026-09-30, découpé en 4a puis 4b
+Cadrage complet (grill-me L4-Q1 à Q6) : `memory/project_phase13_grillme_decisions_2026_09_28.md`, section « Cadrage LOT 4 ». Règles clés : s'il y a de l'argent on rembourse (commande entière ou rien), sinon « Annuler la commande » ; bouton disponible même après téléchargement (avertissement) ; dès qu'UNE part revient au client (bouton de A, litige perdu, B qui rembourse dans Stripe) la licence tombe → fichiers fermés + Exclusive remise en vente automatiquement, A garde sa part ; avoir par vendeur qui avait une facture ; emails client (remboursement, annulation) ; conditions de collaboration v2 ; litige : email à A + rappel 3 j, A envoie la réponse ou accepte, rien d'automatique. **Faisabilité litige prouvée le 2026-09-30** (brouillon `disputes.update` accepté par Stripe sur les comptes de A et de B, `.scratch/phase13-lot4-verif-litige.mjs`).
+
+**Lot 4a — remboursements, avoirs, annulation, conditions v2**
+- **T0** migration exécutée et vérifiée en base ; webhook des comptes connectés abonné aux remboursements (Jake + script)
+- **T1** nouvelle invitation collab → conditions v2 ; collab déjà acceptée → inchangée (Jake)
+- **T2** remboursement solo : Stripe, statut « Remboursée », avoir PDF lu ligne à ligne, email client, page de téléchargement fermée, « Mes factures » (Claude + script)
+- **T3** solo après téléchargement : bouton présent, avertissement daté (Claude)
+- **T4** solo Exclusive remboursée → beat de retour en boutique (Claude)
+- **T5** remboursement collab : 2 remboursements sur 2 comptes, 2 avoirs (chacun sa suite), frais Stripe affichés, B voit « Remboursée » + son avoir, emails A/B/client (Claude + script)
+- **T6** remboursement sur un compte à solde nul (Jake, script)
+- **T7** part en échec (simulée) : « Remboursement incomplet », emails A/B, email client expliquant la part non remboursée, fichiers fermés, « Réessayer » ciblé (Jake + Claude)
+- **T8** compte de B inutilisable avant le clic → avertissement (Claude)
+- **T9** panier payant + beat collab offert → client remboursé à 100 %, part de B à 0 € marquée remboursée sans Stripe ni avoir (Claude + script)
+- **T10** commande à 0 € → « Annuler la commande » : fichiers fermés, email client, Exclusive offerte remise en vente, B voit « Annulée » (Claude)
+- **T11** B rembourse sa part dans Stripe : licence annulée, fichiers fermés, avoir de B, info chez A, A garde sa part ; puis bouton de A → seule sa part (Jake + Claude)
+
+**Lot 4b — litiges**
+- **T12** litige solo détecté : encart, date limite, email à A
+- **T13** litige collab détecté : 2 parts, B voit l'état, emails A et B
+- **T14** réponse de A (preuves auto + texte + fichier) envoyée sur les 2 comptes (script)
+- **T15** litige gagné → « Payée », fichiers ouverts
+- **T16** litige perdu → « Remboursée », avoirs A et B, fichiers fermés, Exclusive remise en vente
+- **T17** litige mixte (B répond lui-même) → A voit « B a déjà répondu » ; A gagne / B perd → licence annulée, avoir B, A garde sa part
+- **T18** « Accepter le litige » → perdu, mêmes conséquences que T16
+- **T19** rappel 3 jours avant la limite (date forcée)
+- **T20** historique de téléchargement visible chez B
+
+**Fin du lot 4** : **T21** Analytics A et B (remboursements/litiges par part) ; **T22** emails éditables (admin + transactionnels boutique) ; **T23** `tsc` + `lint`.
+
 - **Phase 6.7 (beat cadeau)** : exclure les beats collab. **Avant lancement** : exiger l'adresse de TOUS les vendeurs ; vérifier les CGV boutique par défaut (mention collab) ; avis d'un professionnel sur les textes provisoires (aucun fiscaliste consulté : hypothèses validées par Jake seul) — **dont, depuis le lot 3 : aucune facture pour une commande entièrement gratuite (hors champ TVA, art. 256 CGI) et ligne « part du vendeur : X % » sans autre mention collab sur les factures** ; **rang 15a** cadrage plans Free/Pro + coûts (Stripe Connect par compte actif à vérifier).
 
 ## Légende

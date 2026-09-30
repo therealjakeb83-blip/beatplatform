@@ -1,84 +1,46 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { stripe } from '@/lib/stripe'
 import { journaliserDecision } from '@/lib/decisions-log'
+import { apercuRemboursement, rembourserCommande } from '@/lib/remboursement'
 
-// Remboursement réel (Phase 3, refonte 9 bis) — scopé aux ventes solo Direct
-// Charge uniquement (stripe_account_id renseigné). Deux autres cas existent
-// en base mais sont volontairement hors périmètre ici, pas juste "pas encore
-// codés par oubli" :
-// - stripe_transfer_group renseigné (vente collab) : l'argent a déjà été
-//   distribué en Transfers séparés à chaque collaborateur au moment de la
-//   vente (voir distribuerSplitsArticle() dans lib/webhook-paiement.ts) — un
-//   simple refund ne récupère rien chez eux. Mécanique de clawback gelée
-//   jusqu'au choix du processeur collab (Phase 13, voir
-//   project_grillme_9bis_synthese).
-// - stripe_account_id vide sans collab (ancien destination charge, avant la
-//   bascule du 2026-08-27) : aucune vraie commande de ce type ne peut être
-//   générée à nouveau (bascule totale et immédiate) — pas codé plutôt que de
-//   maintenir un chemin mort pour des données de test qui seront effacées au
-//   lancement.
+// Remboursement d'une commande par son propriétaire (A) — Phase 13, lot 4a.
+// Commande entière seulement, solo comme collab (chaque vendeur rend SA part
+// depuis son compte). Voir lib/remboursement.ts pour les règles.
+// GET = aperçu pour la fenêtre de confirmation ; POST = remboursement (sert
+// aussi à « Réessayer » : seules les parts encore dues sont relancées).
+
+async function commandeDuProprietaire(commandeId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { user: null, ok: false }
+  const admin = createAdminClient()
+  const { data } = await admin.from('commandes').select('id').eq('id', commandeId).eq('beatmaker_id', user.id).maybeSingle()
+  return { user, ok: !!data }
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: commandeId } = await params
+  const { user, ok } = await commandeDuProprietaire(commandeId)
+  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (!ok) return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
+  return NextResponse.json(await apercuRemboursement(createAdminClient(), commandeId))
+}
+
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: commandeId } = await params
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, ok } = await commandeDuProprietaire(commandeId)
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  if (!ok) return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
 
-  const admin = createAdminClient()
-
-  const { data: commande } = await admin
-    .from('commandes')
-    .select('id, statut, beatmaker_id, prix_paye, stripe_payment_id, stripe_account_id, stripe_transfer_group, paiement_multi_vendeurs')
-    .eq('id', commandeId)
-    .eq('beatmaker_id', user.id)
-    .single()
-
-  if (!commande) return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
-  if (commande.statut !== 'payee') {
-    return NextResponse.json({ error: 'Seules les commandes payées peuvent être remboursées' }, { status: 400 })
-  }
-
-  if (commande.paiement_multi_vendeurs) {
-    return NextResponse.json({
-      error: 'Le remboursement des ventes en collaboration arrive bientôt (un remboursement par vendeur).',
-    }, { status: 400 })
-  }
-
-  if (commande.stripe_transfer_group) {
-    return NextResponse.json({
-      error: 'Remboursement des ventes avec collaborateur(s) pas encore automatisé — à traiter manuellement pour le moment.',
-    }, { status: 400 })
-  }
-
-  if (!commande.stripe_account_id || !commande.stripe_payment_id) {
-    return NextResponse.json({
-      error: 'Cette commande est hors périmètre du remboursement automatique (vente antérieure au passage en Direct Charge).',
-    }, { status: 400 })
-  }
-
-  try {
-    await stripe.refunds.create(
-      { payment_intent: commande.stripe_payment_id },
-      { stripeAccount: commande.stripe_account_id }
-    )
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur Stripe inconnue'
-    console.error('[rembourser] Erreur stripe.refunds.create:', message)
-    return NextResponse.json({ error: `Erreur Stripe : ${message}` }, { status: 500 })
-  }
-
-  const { error } = await admin
-    .from('commandes')
-    .update({ statut: 'remboursee', montant_rembourse: commande.prix_paye })
-    .eq('id', commandeId)
-    .eq('beatmaker_id', user.id)
-
-  if (error) return NextResponse.json({ error: 'Remboursement Stripe effectué mais erreur de mise à jour du statut — vérifier manuellement' }, { status: 500 })
+  const resultat = await rembourserCommande(createAdminClient(), commandeId)
+  if (resultat.erreur) return NextResponse.json({ error: resultat.erreur }, { status: 400 })
 
   await journaliserDecision({
     beatmakerId: user.id,
@@ -87,8 +49,8 @@ export async function POST(
     entityType: 'commande',
     entityId: commandeId,
     action: 'remboursement',
-    details: { montant: commande.prix_paye },
+    details: { statut: resultat.statut, echecs: resultat.echecs },
   })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json(resultat)
 }

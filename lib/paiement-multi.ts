@@ -116,7 +116,9 @@ async function annulerReservation(admin: ReturnType<typeof createAdminClient>, p
 async function rembourserPart(admin: ReturnType<typeof createAdminClient>, part: Part) {
   if (!part.stripe_payment_intent_id) return
   try {
-    await stripe.refunds.create({ payment_intent: part.stripe_payment_intent_id }, { stripeAccount: part.stripe_account_id })
+    // Origine « my_producer » : le webhook ne doit pas y voir un
+    // remboursement fait par le vendeur depuis Stripe.
+    await stripe.refunds.create({ payment_intent: part.stripe_payment_intent_id, metadata: { origine: 'my_producer' } }, { stripeAccount: part.stripe_account_id })
     await majPart(admin, part.id, { statut: 'remboursee' })
   } catch (err) {
     console.error('[paiement-multi] Remboursement impossible', part.stripe_payment_intent_id, err instanceof Error ? err.message : err)

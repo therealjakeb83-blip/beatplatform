@@ -28,7 +28,7 @@ export async function POST(
   const { data: commande } = await admin
     .from('commandes')
     .select(`
-      id, acheteur_email, acheteur_nom, beatmaker_id, client_id,
+      id, acheteur_email, acheteur_nom, beatmaker_id, client_id, licence_annulee_at,
       clients (email, prenom, nom)
     `)
     .eq('id', commandeId)
@@ -37,6 +37,10 @@ export async function POST(
 
   if (!commande) {
     return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 })
+  }
+
+  if (commande.licence_annulee_at) {
+    return NextResponse.json({ error: "Licence annulée (commande remboursée ou annulée) : les fichiers ne sont plus accessibles." }, { status: 400 })
   }
 
   const { data: lignes } = await admin

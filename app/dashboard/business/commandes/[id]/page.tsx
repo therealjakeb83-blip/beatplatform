@@ -5,6 +5,8 @@ import Link from 'next/link'
 import RenvoyerButton from './_components/RenvoyerButton'
 import CopyButton from './_components/CopyButton'
 import RemboursementButton from './_components/RemboursementButton'
+import AnnulerCommandeButton from './_components/AnnulerCommandeButton'
+import { STATUTS_REMBOURSABLES } from '@/lib/remboursement'
 import ReprendreLivraisonButton from './_components/ReprendreLivraisonButton'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { fuseauSur, formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
@@ -50,7 +52,11 @@ type CommandeDetail = {
   id: string
   created_at: string
   prix_paye: number
-  statut: 'en_attente' | 'payee' | 'remboursee' | 'litige'
+  statut: 'en_attente' | 'payee' | 'remboursee' | 'litige' | 'annulee' | 'remboursement_incomplet' | 'remboursee_partielle'
+  licence_annulee_at: string | null
+  licence_annulee_motif: string | null
+  montant_rembourse_cents: number
+  rembourse_at: string | null
   methode_paiement: string | null
   code_promo: string | null
   reduction_montant: number | null
@@ -96,6 +102,21 @@ type TrancheDetail = {
   facture_numero: string | null
   facture_pdf_url: string | null
   detail_lignes: { beat_id: string; licence_id: string; pourcentage: number; montant_cents: number }[] | null
+  montant_rembourse_cents: number
+  statut: string
+  rembourse_par: string | null
+  rembourse_at: string | null
+  remboursement_erreur: string | null
+}
+
+type AvoirDetail = {
+  id: string
+  tranche_id: string | null
+  vendeur_id: string | null
+  numero: string
+  montant_cents: number
+  pdf_url: string | null
+  created_at: string
 }
 
 type HistoriqueCommande = {
@@ -112,7 +133,19 @@ const STATUT = {
   payee:      { label: 'Payée',      cls: 'bg-green-500/15  text-green-400  border border-green-500/20' },
   remboursee: { label: 'Remboursée', cls: 'bg-red-500/15    text-red-400    border border-red-500/20' },
   litige:     { label: 'Litige',     cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
+  annulee:    { label: 'Annulée',    cls: 'bg-gray-700/40   text-gray-300   border border-gray-600' },
+  remboursement_incomplet: { label: 'Remboursement incomplet', cls: 'bg-red-500/15 text-red-300 border border-red-500/30' },
+  remboursee_partielle:    { label: 'Remboursée en partie',   cls: 'bg-orange-500/15 text-orange-300 border border-orange-500/20' },
 } as const
+
+const MOTIF_LICENCE_ANNULEE: Record<string, string> = {
+  remboursement: 'commande remboursée',
+  annulation: 'commande annulée',
+  remboursement_vendeur: 'une part a été rendue au client depuis Stripe',
+  litige_perdu: 'litige perdu',
+}
+
+const TYPES_ABONNEMENT = new Set(['CREATION_ABONNEMENT', 'RENOUVELLEMENT'])
 
 const STATUT_LIVRAISON = {
   en_cours: { label: 'En cours',           cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
@@ -184,6 +217,7 @@ export default async function CommandeDetailPage({
       acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone,
       acheteur_raison_sociale, acheteur_numero_tva,
       notes, client_id, stripe_transfer_group, tva_taux,
+      licence_annulee_at, licence_annulee_motif, montant_rembourse_cents, rembourse_at,
       clients (id, prenom, nom, email, pays),
       commande_lignes (
         id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
@@ -201,10 +235,18 @@ export default async function CommandeDetailPage({
 
   const { data: tranchesRaw } = await admin
     .from('commande_tranches')
-    .select('id, vendeur_id, vendeur_nom, est_proprietaire, quote_part_pct, montant_ttc_cents, montant_ht_cents, montant_tva_cents, tva_taux, frais_stripe_cents, net_cents, facture_numero, facture_pdf_url, detail_lignes')
+    .select('id, vendeur_id, vendeur_nom, est_proprietaire, quote_part_pct, montant_ttc_cents, montant_ht_cents, montant_tva_cents, tva_taux, frais_stripe_cents, net_cents, facture_numero, facture_pdf_url, detail_lignes, montant_rembourse_cents, statut, rembourse_par, rembourse_at, remboursement_erreur')
     .eq('commande_id', id)
     .order('est_proprietaire', { ascending: false })
   const tranches = (tranchesRaw ?? []) as TrancheDetail[]
+
+  const { data: avoirsRaw } = await admin
+    .from('avoirs')
+    .select('id, tranche_id, vendeur_id, numero, montant_cents, pdf_url, created_at')
+    .eq('commande_id', id)
+    .not('numero', 'like', 'reserve-%')
+    .order('created_at', { ascending: true })
+  const avoirs = (avoirsRaw ?? []) as AvoirDetail[]
 
   // Vente en collaboration sur la boutique d'un autre (Phase 13, lot 3) : vue
   // limitée du collaborateur, identifiée par le numéro de SA facture.
@@ -235,7 +277,12 @@ export default async function CommandeDetailPage({
           netCents: maTranche.net_cents,
           factureNumero: maTranche.facture_numero,
           facturePdfUrl: maTranche.facture_pdf_url,
+          montantRembourseCents: maTranche.montant_rembourse_cents,
+          rembourseAt: maTranche.rembourse_at,
+          remboursementErreur: maTranche.statut === 'remboursement_echoue' ? maTranche.remboursement_erreur : null,
         }}
+        avoirs={avoirs.filter(a => a.tranche_id === maTranche.id).map(a => ({ id: a.id, numero: a.numero, url: a.pdf_url }))}
+        licenceAnnuleeAt={c.licence_annulee_at}
         lignes={(maTranche.detail_lignes ?? []).map(d => ({
           ...(libelleLigne.get(`${d.beat_id}:${d.licence_id}`) ?? { titre: 'Beat', licence: '' }),
           pourcentage: d.pourcentage,
@@ -382,6 +429,17 @@ export default async function CommandeDetailPage({
   timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   const aTelechargé = downloads.filter(d => d.fichier !== 'email_renvoi').length > 0
+
+  const estAbonnement = TYPES_ABONNEMENT.has(c.type_commande ?? '')
+  const resteARembourserCents = tranches.length
+    ? tranches.reduce((s, t) => s + Math.max(t.montant_ttc_cents - t.montant_rembourse_cents, 0), 0)
+    : Math.round(prixTTC * 100) - (c.montant_rembourse_cents ?? 0)
+  const tranchesEnEchec = tranches.filter(t => t.statut === 'remboursement_echoue')
+  const tranchesRembourseesParVendeur = tranches.filter(t => t.rembourse_par === 'vendeur_stripe' && t.montant_rembourse_cents > 0)
+  const nomVendeurAvoir = new Map(tranches.map(t => [t.id, t.vendeur_nom]))
+  const montantRembourseCents = tranches.length
+    ? tranches.reduce((s, t) => s + t.montant_rembourse_cents, 0)
+    : c.montant_rembourse_cents ?? 0
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -644,6 +702,12 @@ export default async function CommandeDetailPage({
                 <span className="text-gray-500">Payé</span>
                 <span className="text-green-400 w-24 text-right font-semibold">€{prixTTC.toFixed(2)}</span>
               </div>
+              {montantRembourseCents > 0 && (
+                <div className="flex items-center gap-8 text-sm">
+                  <span className="text-gray-500">Remboursé</span>
+                  <span className="text-red-400 w-24 text-right font-semibold">−€{(montantRembourseCents / 100).toFixed(2)}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -651,14 +715,47 @@ export default async function CommandeDetailPage({
               Vente avec collaborateur(s) : badge à la place, remboursement
               Stripe pas encore automatisé (clawback des parts déjà transférées
               gelé jusqu'au choix du processeur collab, Phase 13). */}
-          {c.statut === 'payee' && !aTelechargé && c.stripe_transfer_group && (
+          {c.statut === 'payee' && c.stripe_transfer_group && !tranches.length && (
             <div className="px-5 py-3 border-t border-gray-800">
-              <span className="text-xs text-amber-400">Vente avec collaborateur(s) — remboursement à traiter manuellement pour le moment.</span>
+              <span className="text-xs text-amber-400">Vente avec collaborateur(s) (ancien système) — remboursement à traiter manuellement.</span>
             </div>
           )}
-          {c.statut === 'payee' && !aTelechargé && !c.stripe_transfer_group && (
+          {/* Remboursement (Phase 13, lot 4a) : tant qu'il reste de l'argent
+              au vendeur, même après téléchargement (A décide, la fenêtre de
+              confirmation le prévient). Commande à 0 € : annulation. */}
+          {!estAbonnement && prixTTC === 0 && c.statut === 'payee' && (
             <div className="px-5 py-3 border-t border-gray-800">
-              <RemboursementButton commandeId={id} montant={prixTTC} />
+              <AnnulerCommandeButton commandeId={id} />
+            </div>
+          )}
+          {!estAbonnement && prixTTC > 0 && STATUTS_REMBOURSABLES.has(c.statut) && resteARembourserCents > 0 && !(c.stripe_transfer_group && !tranches.length) && (
+            <div className="px-5 py-3 border-t border-gray-800">
+              <RemboursementButton
+                commandeId={id}
+                tz={tz}
+                libelle={c.statut === 'remboursement_incomplet' ? 'Réessayer le remboursement' : c.statut === 'remboursee_partielle' ? 'Rembourser le reste' : 'Remboursement'}
+              />
+            </div>
+          )}
+          {(c.licence_annulee_at || tranchesEnEchec.length > 0 || tranchesRembourseesParVendeur.length > 0) && (
+            <div className="px-5 py-3 border-t border-gray-800 space-y-1">
+              {tranchesEnEchec.map(t => (
+                <p key={t.id} className="text-xs text-red-400">
+                  La part de {t.vendeur_nom} (€{((t.montant_ttc_cents - t.montant_rembourse_cents) / 100).toFixed(2)}) n&apos;a pas pu être remboursée
+                  {t.remboursement_erreur ? ` : ${t.remboursement_erreur}` : ''}.
+                </p>
+              ))}
+              {tranchesRembourseesParVendeur.map(t => (
+                <p key={t.id} className="text-xs text-orange-300">
+                  {t.est_proprietaire ? 'Tu as' : `${t.vendeur_nom} a`} remboursé {t.est_proprietaire ? 'ta' : 'sa'} part (€{(t.montant_rembourse_cents / 100).toFixed(2)}) directement depuis Stripe
+                  {t.rembourse_at ? ` le ${fmtDate(t.rembourse_at, tz)}` : ''}.
+                </p>
+              ))}
+              {c.licence_annulee_at && (
+                <p className="text-xs text-gray-400">
+                  Licence annulée le {fmtDate(c.licence_annulee_at, tz)} ({MOTIF_LICENCE_ANNULEE[c.licence_annulee_motif ?? ''] ?? 'annulée'}) : l&apos;accès aux fichiers est fermé.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -678,6 +775,7 @@ export default async function CommandeDetailPage({
                   <th className="text-right pb-2">TVA</th>
                   <th className="text-right pb-2">Frais Stripe</th>
                   <th className="text-right pb-2">Net</th>
+                  <th className="text-right pb-2">Remboursé</th>
                   <th className="text-right pb-2">Facture</th>
                 </tr>
               </thead>
@@ -694,6 +792,13 @@ export default async function CommandeDetailPage({
                     </td>
                     <td className="py-2 text-right text-gray-400">{t.frais_stripe_cents != null ? `−€${(t.frais_stripe_cents / 100).toFixed(2)}` : '—'}</td>
                     <td className="py-2 text-right text-green-400">{t.net_cents != null ? `€${(t.net_cents / 100).toFixed(2)}` : '—'}</td>
+                    <td className="py-2 text-right">
+                      {t.statut === 'remboursement_echoue'
+                        ? <span className="text-xs text-red-400">échec</span>
+                        : t.montant_rembourse_cents > 0
+                          ? <span className="text-red-400">−€{(t.montant_rembourse_cents / 100).toFixed(2)}</span>
+                          : <span className="text-gray-600">—</span>}
+                    </td>
                     <td className="py-2 text-right">
                       {t.facture_pdf_url ? (
                         <a href={t.facture_pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300">n° {t.facture_numero}</a>
@@ -713,12 +818,12 @@ export default async function CommandeDetailPage({
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">Historique des téléchargements</p>
             {aTelechargé ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium bg-red-500/10 text-red-400 border-red-500/20">
-                Non remboursable — produit téléchargé
+              <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium bg-amber-500/10 text-amber-400 border-amber-500/20">
+                Téléchargé — remboursement plus obligatoire
               </span>
             ) : (
               <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium bg-green-500/10 text-green-400 border-green-500/20">
-                Remboursable — jamais téléchargé
+                Jamais téléchargé
               </span>
             )}
           </div>
@@ -808,6 +913,27 @@ export default async function CommandeDetailPage({
                     Ouvrir
                   </a>
                   <CopyButton text={t.facture_pdf_url!} />
+                </div>
+              </div>
+            ))}
+            {avoirs.filter(a => a.pdf_url).map(a => (
+              <div key={a.id} className="flex items-center justify-between gap-4 bg-gray-800/40 rounded-lg px-4 py-2.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[10px] font-medium text-gray-400 w-36 shrink-0">
+                    Avoir n° {a.numero}{a.tranche_id && nomVendeurAvoir.get(a.tranche_id) ? ` (${nomVendeurAvoir.get(a.tranche_id)})` : ''} · −€{(a.montant_cents / 100).toFixed(2)}
+                  </span>
+                  <span className="text-xs font-mono text-gray-600 truncate">{a.pdf_url}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={a.pdf_url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Ouvrir
+                  </a>
+                  <CopyButton text={a.pdf_url!} />
                 </div>
               </div>
             ))}

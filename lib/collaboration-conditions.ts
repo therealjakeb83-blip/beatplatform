@@ -11,7 +11,7 @@
 // ⚠️ TEXTE PROVISOIRE : hypothèses de produit validées par Jake seul, aucun
 // avis juridique professionnel à ce jour. À faire relire avant le lancement.
 
-export const CONDITIONS_COLLAB_VERSION_ACTUELLE = 1
+export const CONDITIONS_COLLAB_VERSION_ACTUELLE = 2
 
 type ConditionsCollab = {
   // Les points clés, toujours visibles à côté de la case à cocher.
@@ -90,6 +90,29 @@ export const CONDITIONS_COLLAB_TEXTES: Record<number, ConditionsCollab> = {
       },
     ],
   },
+}
+
+// Version 2 (Phase 13, lot 4 — validée par Jake le 2026-09-30) : le
+// propriétaire gère les remboursements ET les litiges. Le ton informe sans
+// interdire : Stripe laisse techniquement au collaborateur un bouton de
+// remboursement et l'accès à ses litiges, on explique les conséquences.
+// Seuls le point 3 du résumé et l'article 4 changent.
+const V1 = CONDITIONS_COLLAB_TEXTES[1]
+CONDITIONS_COLLAB_TEXTES[2] = {
+  resume: V1.resume.map((ligne, i) => i === 2
+    ? 'Tu donnes mandat au propriétaire du beat pour gérer la vente : prix, promotions, publication, remboursements et litiges. Tu peux quitter la collaboration à tout moment.'
+    : ligne),
+  complet: V1.complet.map(section => section.titre.startsWith('4.')
+    ? {
+        titre: '4. Remboursements et litiges',
+        paragraphes: [
+          'Le propriétaire gère les remboursements et les annulations. S’il rembourse une vente, chaque part est remboursée en entier depuis le compte de son vendeur, et une facture d’avoir est émise automatiquement pour ta part.',
+          'Ton espace Stripe affiche aussi un bouton de remboursement. Il est déconseillé de t’en servir de toi-même : rembourser ta part rend au client une partie du prix de la licence, la licence n’est alors plus payée en entier et elle est annulée pour toute la vente. Une facture d’avoir est émise automatiquement pour ta part.',
+          'En cas de litige (contestation de paiement par l’acheteur auprès de sa banque), c’est le propriétaire qui s’en occupe : il répond pour toutes les parts, preuves à l’appui, et la plateforme envoie sa réponse sur ton compte. Tu vois l’état du litige et l’historique de téléchargement dans ta fiche commande. Ton espace Stripe te permet aussi de répondre, mais il est déconseillé de gérer le litige seul : une réponse est définitive, et si tu réponds avant le propriétaire, sa réponse ne pourra plus être envoyée pour ta part.',
+          'Si un litige est perdu sur ta part, elle est reprise sur ton compte Stripe avec les frais de litige que Stripe facture sur ta part, et une facture d’avoir est émise pour toi. Si la licence n’est plus payée en entier, elle est annulée pour toute la vente. Tu restes redevable de ta part d’un remboursement ou d’un litige même si ton solde Stripe est insuffisant à ce moment.',
+        ],
+      }
+    : section),
 }
 
 export function conditionsCollab(version: number): ConditionsCollab {

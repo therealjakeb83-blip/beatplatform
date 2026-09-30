@@ -12,6 +12,7 @@ const TYPES: TypeTemplatePlateforme[] = [
   'conditions_mise_a_jour',
   'suspension',
   'nouvelle_vente',
+  'remboursement_vente', 'remboursement_incomplet',
 ]
 
 const PAGE_SIZE = 50

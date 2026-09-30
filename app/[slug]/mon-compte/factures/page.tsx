@@ -93,6 +93,18 @@ export default async function FacturesBoutiquePage({
         .order('est_proprietaire', { ascending: false })
     : { data: [] }
 
+  // Factures d'avoir (Phase 13, lot 4) : rangées juste après la facture
+  // qu'elles annulent, montant en négatif.
+  const { data: avoirs } = commandes.length
+    ? await admin
+        .from('avoirs')
+        .select('id, commande_id, tranche_id, numero, montant_cents, pdf_url, created_at')
+        .in('commande_id', commandes.map(c => c.id))
+        .not('pdf_url', 'is', null)
+        .order('created_at', { ascending: true })
+    : { data: [] }
+  const nomVendeurTranche = new Map((tranches ?? []).map(t => [t.id as string, t.vendeur_nom as string]))
+
   const factures: FactureRow[] = commandes.flatMap(cmd => [
     ...(cmd.facture_pdf_url ? [{
       cle: cmd.id,
@@ -109,6 +121,14 @@ export default async function FacturesBoutiquePage({
       montant: (t.montant_ttc_cents as number) / 100,
       date: cmd.created_at,
       url: t.facture_pdf_url as string,
+    })),
+    ...(avoirs ?? []).filter(a => a.commande_id === cmd.id).map(a => ({
+      cle: a.id as string,
+      libelle: `Facture d'avoir${a.tranche_id && nomVendeurTranche.get(a.tranche_id) ? ` — ${nomVendeurTranche.get(a.tranche_id)}` : ''}`,
+      numero: a.numero as string,
+      montant: -(a.montant_cents as number) / 100,
+      date: a.created_at as string,
+      url: a.pdf_url as string,
     })),
   ])
 
