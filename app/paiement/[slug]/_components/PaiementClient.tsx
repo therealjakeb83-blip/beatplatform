@@ -436,7 +436,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
   async function apresSucces(paymentIntentId: string) {
     clear()
     oublierCodePromoPanier(slug)
-    for (let tentative = 0; tentative < 10; tentative++) {
+    for (let tentative = 0; tentative < 45; tentative++) {
       const res = await fetch(`/api/telechargement/lookup?payment_intent=${paymentIntentId}`)
       if (res.ok) {
         const data = await res.json() as { commande_id?: string }

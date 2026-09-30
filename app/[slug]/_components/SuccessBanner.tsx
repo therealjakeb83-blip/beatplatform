@@ -35,7 +35,7 @@ export default function SuccessBanner() {
     let tentative = 0
 
     async function poll() {
-      while (!annule && tentative < 10) {
+      while (!annule && tentative < 45) {
         const res = await fetch(`/api/telechargement/lookup?payment_intent=${expressPi}`)
         if (res.ok) {
           const data = await res.json() as { commande_id?: string }

@@ -143,7 +143,7 @@ export default function CartDrawer({
       window.location.href = `/telechargement/${info.commandeId}`
       return
     }
-    for (let tentative = 0; tentative < 10; tentative++) {
+    for (let tentative = 0; tentative < 45; tentative++) {
       const res = await fetch(`/api/telechargement/lookup?payment_intent=${info.paymentIntentId}`)
       if (res.ok) {
         const data = await res.json() as { commande_id?: string }

@@ -38,7 +38,14 @@ export async function POST(request: Request) {
 async function etatPaiementSolo(paymentIntentId: string, annuler: boolean): Promise<EtatPaiement> {
   const admin = createAdminClient()
   const { data: commande } = await admin.from('commandes').select('id').eq('stripe_payment_id', paymentIntentId).maybeSingle()
-  if (commande) return { etat: 'termine', commandeId: commande.id as string }
+  if (commande) {
+    // Terminée seulement quand tous les beats et contrats sont prêts (voir
+    // /api/telechargement/lookup) ; sinon encore « en cours ».
+    const { data: terminee } = await admin
+      .from('tentatives_paiement').select('id')
+      .eq('commande_id', commande.id).eq('statut', 'complete').limit(1).maybeSingle()
+    return terminee ? { etat: 'termine', commandeId: commande.id as string } : { etat: 'en_cours', paye: true }
+  }
 
   const { data: tentative } = await admin
     .from('tentatives_paiement').select('beatmaker_id')
