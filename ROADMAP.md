@@ -399,7 +399,7 @@ Décisions du cadrage (L3-Q1 à Q5) : `memory/project_phase13_grillme_decisions_
 - ✅ **T5** (Jake, 2026-09-30, email de T1) « vendue conjointement par 2 artistes », Jake B 24,50 € / nic beat 2809 24,50 €, 2 liens de facture qui s'ouvrent — email de confirmation client : 2 vendeurs, montants, 2 factures
 - 🟡 **T6** partie page de téléchargement ✅ (Claude, T1 : contrat + 2 factures + phrase « vendue conjointement ») ; « Mes factures » à voir connecté — page de téléchargement (contrat + 2 factures) et « Mes factures » (les 2)
 - ✅ **T7** (Jake, 2026-09-30) Commandes de nic-beat-2809 : badge « Vendue par Jake B », numéro de SA facture
-- ⬜ **T8** fiche vue par B : nom/adresse client, sa part/frais/net/facture, code promo ; ni email, ni téléphone, ni historique, aucun bouton ; commande d'un autre → introuvable
+- ✅ **T8** (Jake, 2026-09-30 ; vente payée, vente offerte avec `LOT3CENT`, commande solo `3812968f` → 404) fiche vue par B : nom/adresse client, sa part/frais/net/facture, code promo ; ni email, ni téléphone, ni historique, aucun bouton ; commande d'un autre → introuvable
 - ⬜ **T9** fiche de A : encart « Répartition » correct, actions habituelles OK
 - ⬜ **T10** CA de A = sa part (24,50 € pour Ambitieux) dans Vue d'ensemble, Ventes, Revenus, Beats, Codes promo
 - ⬜ **T11** CA de B = ses tranches ; tuile « Ventes collab » absente
