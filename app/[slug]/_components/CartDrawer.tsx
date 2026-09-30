@@ -6,7 +6,6 @@ import CartExpressPay, { type ExpressStatus } from './CartExpressPay'
 import { memoriserCodePromoPanier } from '../_lib/code-promo-panier'
 import PaiementEnAttente from './PaiementEnAttente'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
-import { detailTva } from '@/lib/prix-affiche'
 import type { TvaPanier } from '@/lib/tva-panier'
 import { effacerPaiementEnCours } from '../_lib/paiement-en-cours'
 
@@ -30,8 +29,6 @@ const CHECK_ICON = (
 export default function CartDrawer({
   slug,
   reglesLot = [],
-  tvaActive = false,
-  tvaTaux = null,
   clientEmail = null,
 }: {
   slug: string
@@ -328,10 +325,9 @@ export default function CartDrawer({
                   </p>
                 )}
                 {(() => {
-                  // TVA du serveur (part par part sur un beat collab) dès qu'elle est connue.
-                  const tva = serveurAJour
-                    ? (serveurAJour.tva ? { montant: serveurAJour.tva.montantCents / 100, taux: serveurAJour.tva.taux } : null)
-                    : detailTva(totalAffiche, { tvaActive, tvaTaux })
+                  // TVA du serveur uniquement (part par part sur un beat collab) :
+                  // rien tant que le montant exact n'est pas connu.
+                  const tva = serveurAJour?.tva ? { montant: serveurAJour.tva.montantCents / 100, taux: serveurAJour.tva.taux } : null
                   return tva ? (
                     <div className="shop-cart-tva-note">TTC · dont TVA{tva.taux != null ? ` (${tva.taux}%)` : ''} : {formatPrix(tva.montant)}</div>
                   ) : null

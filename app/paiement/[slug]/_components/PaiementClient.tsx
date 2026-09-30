@@ -21,7 +21,6 @@ import { stripePromise, chargerStripePourCompte } from '@/lib/stripe-client'
 import { CartProvider, useCart } from '@/app/[slug]/_components/CartContext'
 import { computeItemsPricing, computeTotal, formatPrix, type ReductionLotRule } from '@/app/[slug]/_lib/reductions-lot'
 import { listePays } from '@/lib/pays-iso'
-import { detailTva } from '@/lib/prix-affiche'
 import type { TvaPanier } from '@/lib/tva-panier'
 import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
@@ -204,7 +203,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail, multiVendeurs }: PropsForm) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, multiVendeurs }: PropsForm) {
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
@@ -257,13 +256,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const [beatsRemiseLimitee, setBeatsRemiseLimitee] = useState<string[]>([])
   const [erreurPrix, setErreurPrix] = useState<string | null>(null)
   const totalAffiche = totalServeurCents !== null ? totalServeurCents / 100 : totalApresCode
-  // TVA calculée par le serveur, part par part (beat collab) ; calcul local
-  // seulement en attendant sa réponse.
-  const [tvaServeur, setTvaServeur] = useState<TvaPanier | null | undefined>(undefined)
-  const tvaLocale = detailTva(totalAffiche, { tvaActive, tvaTaux })
-  const tva = tvaServeur !== undefined
-    ? (tvaServeur ? { montant: tvaServeur.montantCents / 100, taux: tvaServeur.taux } : null)
-    : tvaLocale
+  // TVA calculée par le serveur, part par part (beat collab) — rien tant que
+  // le montant exact n'est pas connu (jamais de calcul provisoire au taux de A).
+  const [tvaServeur, setTvaServeur] = useState<TvaPanier | null>(null)
+  const tva = montantSynchronise && tvaServeur ? { montant: tvaServeur.montantCents / 100, taux: tvaServeur.taux } : null
   useEffect(() => {
     if (!elements || items.length === 0) return
     let annule = false
