@@ -400,7 +400,7 @@ Décisions du cadrage (L3-Q1 à Q5) : `memory/project_phase13_grillme_decisions_
 - 🟡 **T6** partie page de téléchargement ✅ (Claude, T1 : contrat + 2 factures + phrase « vendue conjointement ») ; « Mes factures » à voir connecté — page de téléchargement (contrat + 2 factures) et « Mes factures » (les 2)
 - ✅ **T7** (Jake, 2026-09-30) Commandes de nic-beat-2809 : badge « Vendue par Jake B », numéro de SA facture
 - ✅ **T8** (Jake, 2026-09-30 ; vente payée, vente offerte avec `LOT3CENT`, commande solo `3812968f` → 404) fiche vue par B : nom/adresse client, sa part/frais/net/facture, code promo ; ni email, ni téléphone, ni historique, aucun bouton ; commande d'un autre → introuvable
-- ⬜ **T9** fiche de A : encart « Répartition » correct, actions habituelles OK
+- ✅ **T9** (Jake, 2026-09-30, commande T25 `6a0fee7e` : TVA 4,25 € = part de B à 21 %, répartition 2 × 24,50 € / frais 1,02 € / net 23,48 € / 2 factures) + **ajout demandé par Jake : colonne TVA par vendeur** dans la répartition (commit `1a14f9c`, à revoir d'un coup d'œil). Bouton « Remboursement » visible sur une vente collab : refus serveur jusqu'au lot 4 (prévu) — fiche de A : encart « Répartition » correct, actions habituelles OK
 - ⬜ **T10** CA de A = sa part (24,50 € pour Ambitieux) dans Vue d'ensemble, Ventes, Revenus, Beats, Codes promo
 - ⬜ **T11** CA de B = ses tranches ; tuile « Ventes collab » absente
 - ⬜ **T12** « Nouvelle vente » collab à A et B (sa part € et %, lien), sans coordonnées client pour B
