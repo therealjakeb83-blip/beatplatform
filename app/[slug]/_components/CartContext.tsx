@@ -57,6 +57,7 @@ export function CartProvider({ children, slug: slugProp }: { children: React.Rea
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [paiementEnCours, setPaiementEnCours] = useState<'non' | 'en_cours' | 'recu'>('non')
 
   // Charge le panier de cette boutique depuis localStorage au montage / changement de boutique
   useEffect(() => {
@@ -67,8 +68,11 @@ export function CartProvider({ children, slug: slugProp }: { children: React.Rea
     } catch {
       setItems([])
     }
+    // Même rendu que le panier : le formulaire de paiement ne doit jamais
+    // réapparaître, même un instant, avant la réponse du serveur (vu en T1).
+    if (slug && lirePaiementEnCours(slug)) setPaiementEnCours('en_cours')
     setHydrated(true)
-  }, [storageKey])
+  }, [storageKey, slug])
 
   // Persiste à chaque changement (jamais avant l'hydratation, pour ne pas écraser
   // le panier stocké par un tableau vide le temps du premier rendu)
@@ -81,7 +85,6 @@ export function CartProvider({ children, slug: slugProp }: { children: React.Rea
 
   // Paiement lancé puis page rechargée (Phase 13, lot 2) : on demande au
   // serveur où il en est avant de laisser repayer le même panier.
-  const [paiementEnCours, setPaiementEnCours] = useState<'non' | 'en_cours' | 'recu'>('non')
   useEffect(() => {
     if (!hydrated || !slug) return
     const marqueur = lirePaiementEnCours(slug)
