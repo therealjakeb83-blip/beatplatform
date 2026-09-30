@@ -427,14 +427,14 @@ Cadrage complet (grill-me L4-Q1 à Q6) : `memory/project_phase13_grillme_decisio
 
 **Lot 4a — remboursements, avoirs, annulation, conditions v2**
 - ✅ **T0** (Jake, 2026-09-30) migration `phase13_lot4a_remboursements.sql` exécutée et vérifiée en base (statuts, 6 + 4 colonnes, table `avoirs` vide avec ses droits, types d'emails) ; webhook `we_1U8zyvEYW3lZFlAeRMzB9H8l` abonné à `refund.created/updated/failed` (`.scratch/phase13-lot4-abonner-refunds.mjs --appliquer`)
-- **T1** nouvelle invitation collab → conditions v2 ; collab déjà acceptée → inchangée (Jake)
+- ✅ **T1** (prouvé par le code, 2026-09-30, accord de Jake) nouvelle invitation collab → conditions v2 ; collab déjà acceptée → inchangée — la page Collaborations affiche `CONDITIONS_COLLAB_TEXTES[CONDITIONS_COLLAB_VERSION_ACTUELLE]` (= 2) ; exécuté : résumé 3 « … remboursements et litiges », article « 4. Remboursements et litiges » (4 paragraphes), autres articles identiques à la v1, v1 intacte ; `beat_splits.conditions_version` n'est écrit QUE par la route d'acceptation (au moment de cocher), la migration n'y touche pas
 - **T2** remboursement solo : Stripe, statut « Remboursée », avoir PDF lu ligne à ligne, email client, page de téléchargement fermée, « Mes factures » (Claude + script)
 - **T3** solo après téléchargement : bouton présent, avertissement daté (Claude)
 - **T4** solo Exclusive remboursée → beat de retour en boutique (Claude)
 - **T5** remboursement collab : 2 remboursements sur 2 comptes, 2 avoirs (chacun sa suite), frais Stripe affichés, B voit « Remboursée » + son avoir, emails A/B/client (Claude + script)
 - **T6** remboursement sur un compte à solde nul (Jake, script)
 - **T7** part en échec (simulée) : « Remboursement incomplet », emails A/B, email client expliquant la part non remboursée, fichiers fermés, « Réessayer » ciblé (Jake + Claude)
-- **T8** compte de B inutilisable avant le clic → avertissement (Claude)
+- ✅ **T8** (prouvé par le code, 2026-09-30, accord de Jake) compte de B inutilisable avant le clic → avertissement — `apercuRemboursement` lit `beatmakers.stripe_compte_operationnel` (même indicateur que « prêt à vendre », testé en réel en Phase 12 lot 4) et la fenêtre affiche l'avertissement pour chaque part dont le compte n'est pas opérationnel ; test réel écarté : il faudrait bloquer nic-beat-2809 (Ambitieux sortirait de la boutique)
 - **T9** panier payant + beat collab offert → client remboursé à 100 %, part de B à 0 € marquée remboursée sans Stripe ni avoir (Claude + script)
 - **T10** commande à 0 € → « Annuler la commande » : fichiers fermés, email client, Exclusive offerte remise en vente, B voit « Annulée » (Claude)
 - **T11** B rembourse sa part dans Stripe : licence annulée, fichiers fermés, avoir de B, info chez A, A garde sa part ; puis bouton de A → seule sa part (Jake + Claude)
