@@ -91,6 +91,27 @@ export async function resoudreRemiseAbonne(
   return 0
 }
 
+/** Commandes payées (ou offertes) d'une personne dans une boutique — par son
+ *  compte client ou par son email, sans doublon. Deux requêtes séparées
+ *  plutôt qu'un filtre « or » construit avec l'email saisi. */
+async function commandesDeLaPersonne(
+  admin: SupabaseClient,
+  beatmakerId: string,
+  userId: string | null,
+  email: string,
+): Promise<{ id: string; code_promo: string | null }[]> {
+  const { data: client } = await admin.from('clients').select('id').eq('email', email).maybeSingle()
+  const clientIds = [...new Set([userId, client?.id as string | undefined].filter((v): v is string => Boolean(v)))]
+  const base = () => admin.from('commandes').select('id, code_promo').eq('beatmaker_id', beatmakerId).eq('statut', 'payee')
+  const [parEmail, parClient] = await Promise.all([
+    base().eq('acheteur_email', email),
+    clientIds.length ? base().in('client_id', clientIds) : Promise.resolve({ data: [] as { id: string; code_promo: string | null }[] }),
+  ])
+  const parId = new Map<string, { id: string; code_promo: string | null }>()
+  for (const c of [...(parEmail.data ?? []), ...(parClient.data ?? [])]) parId.set(c.id, c)
+  return [...parId.values()]
+}
+
 /** Valide intégralement un code promo (dates, restrictions email, limites d'utilisation). */
 export async function validerCodePromo(
   admin: SupabaseClient,
@@ -101,7 +122,7 @@ export async function validerCodePromo(
 ): Promise<ResultatPrix<{ promo: Record<string, unknown>; codePromoValide: string } | null>> {
   if (!codePromo) return { ok: true, value: null }
 
-  const emailEffectif = user?.email ?? emailAcheteur ?? null
+  const emailEffectif = (user?.email ?? emailAcheteur ?? '').toLowerCase().trim() || null
 
   const { data: promoData } = await admin
     .from('codes_promo')
@@ -126,38 +147,30 @@ export async function validerCodePromo(
   if (promoData.limite_par_code !== null && promoData.utilisations >= promoData.limite_par_code) {
     return { ok: false, erreur: "Ce code a atteint sa limite d'utilisation", status: 400 }
   }
-  if (promoData.emails_autorises?.length > 0) {
-    if (!emailEffectif || !promoData.emails_autorises.includes(emailEffectif)) {
+  const emailsAutorises = ((promoData.emails_autorises ?? []) as string[]).map(e => e.toLowerCase().trim())
+  const emailsExclus = ((promoData.emails_exclus ?? []) as string[]).map(e => e.toLowerCase().trim())
+  if (emailsAutorises.length > 0) {
+    if (!emailEffectif || !emailsAutorises.includes(emailEffectif)) {
       return { ok: false, erreur: 'Code non autorisé pour cette adresse email', status: 400 }
     }
   }
-  if (emailEffectif && promoData.emails_exclus?.includes(emailEffectif)) {
+  if (emailEffectif && emailsExclus.includes(emailEffectif)) {
     return { ok: false, erreur: 'Code non autorisé pour cette adresse email', status: 400 }
   }
-  if (user?.email && promoData.premiere_commande) {
-    const { data: commandeExistante } = await admin
-      .from('commandes')
-      .select('id')
-      .eq('beatmaker_id', beatmaker.id)
-      .eq('statut', 'payee')
-      .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
-      .limit(1)
-      .maybeSingle()
-    if (commandeExistante) {
+
+  // « Première commande » et « déjà utilisé par cette personne » : vérifiés
+  // avec le compte connecté ou, à défaut, avec l'email saisi au paiement
+  // (avant le lot 3 de la Phase 13, un acheteur non connecté y échappait).
+  const limiteParPersonne = promoData.limite_par_utilisateur ?? (promoData.utilisation_individuelle ? 1 : null)
+  if (emailEffectif && (promoData.premiere_commande || limiteParPersonne !== null)) {
+    const commandesPersonne = await commandesDeLaPersonne(admin, beatmaker.id, user?.id ?? null, emailEffectif)
+    if (promoData.premiere_commande && commandesPersonne.length > 0) {
       return { ok: false, erreur: 'Ce code est réservé aux nouveaux clients', status: 400 }
     }
-  }
-  if (user?.email) {
-    const limiteParUser = promoData.limite_par_utilisateur ?? (promoData.utilisation_individuelle ? 1 : null)
-    if (limiteParUser !== null) {
-      const { count } = await admin
-        .from('commandes')
-        .select('id', { count: 'exact', head: true })
-        .eq('beatmaker_id', beatmaker.id)
-        .eq('code_promo', codePromo.toUpperCase().trim())
-        .eq('statut', 'payee')
-        .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
-      if ((count ?? 0) >= limiteParUser) {
+    if (limiteParPersonne !== null) {
+      const code = codePromo.toUpperCase().trim()
+      const utilisations = commandesPersonne.filter(c => c.code_promo === code).length
+      if (utilisations >= limiteParPersonne) {
         return { ok: false, erreur: 'Vous avez déjà utilisé ce code', status: 400 }
       }
     }

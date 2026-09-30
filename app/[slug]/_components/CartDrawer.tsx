@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useCart } from './CartContext'
 import CartExpressPay, { type ExpressStatus } from './CartExpressPay'
+import { memoriserCodePromoPanier } from '../_lib/code-promo-panier'
 import PaiementEnAttente from './PaiementEnAttente'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
 import { detailTva } from '@/lib/prix-affiche'
@@ -110,6 +111,7 @@ export default function CartDrawer({
       const data = await res.json()
       if (data.valide) {
         setCodeApplique({ code, type_valeur: data.type_valeur, valeur: data.valeur })
+        memoriserCodePromoPanier(slug, code)
         setCodeNecessiteEmail(Boolean(data.a_restriction_email))
         setCodeInput('')
       } else {
@@ -138,6 +140,7 @@ export default function CartDrawer({
   // externe) est géré séparément au retour, dans SuccessBanner.tsx.
   async function apresSuccesExpress(info: { paymentIntentId: string } | { commandeId: string }) {
     setExpressRedirection(true)
+    memoriserCodePromoPanier(slug, null)
     if ('commandeId' in info) {
       window.location.href = `/telechargement/${info.commandeId}`
       return
@@ -265,7 +268,7 @@ export default function CartDrawer({
                 {codeApplique ? (
                   <div className="shop-cart-promo-applied">
                     <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
-                    <button onClick={() => { setCodeApplique(null); setCodeNecessiteEmail(false) }} className="shop-cart-promo-remove">Supprimer</button>
+                    <button onClick={() => { setCodeApplique(null); setCodeNecessiteEmail(false); memoriserCodePromoPanier(slug, null) }} className="shop-cart-promo-remove">Supprimer</button>
                   </div>
                 ) : codePromoOpen ? (
                   <div>
@@ -330,12 +333,17 @@ export default function CartDrawer({
                   ) : null
                 })()}
 
-                <CartExpressPay
-                  slug={slug}
-                  items={items}
-                  onStatusChange={setExpressStatus}
-                  onSuccess={apresSuccesExpress}
-                />
+                {/* Total à 0 € (beat offert par code promo) : rien à payer, la
+                    commande se valide sur la page suivante. */}
+                {serveurAJour?.totalCents !== 0 && (
+                  <CartExpressPay
+                    slug={slug}
+                    items={items}
+                    codePromo={codeApplique?.code ?? null}
+                    onStatusChange={setExpressStatus}
+                    onSuccess={apresSuccesExpress}
+                  />
+                )}
 
                 <button
                   onClick={passerCommande}

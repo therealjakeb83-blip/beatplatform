@@ -8,20 +8,19 @@ import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDate, getGranulariteLabel, 
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Data = {
-  kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; collab_ca: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number; favoris: number }
+  kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number; favoris: number }
   historique: Array<Record<string, unknown>>
   top_beats: Array<{ id: string; titre: string; couleur: string | null; ca: number; ventes: number }>
   dernieres_licences: Array<{ id: string; beat_titre: string; licence_nom: string; created_at: string; prix_paye: number; reduction_montant: number | null }>
   abonnes: { actifs: number; nouveaux: number; annules: number }
 }
 
-type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'collab_ca' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
+type KpiKey = 'ca' | 'ca_net' | 'mrr' | 'panier_moyen' | 'ventes' | 'ecoutes' | 'favoris' | 'free_dl'
 
 const KPI_CONFIG: Array<{ key: KpiKey; label: string; color: string; fmt: (v: number) => string }> = [
   { key: 'ca',          label: 'CA Brut (TTC)', color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
   { key: 'ca_net',      label: 'CA Net (HT)',    color: '#22d3ee', fmt: v => fmtEuroDisplay(v) },
   { key: 'mrr',         label: 'MRR / ARR',      color: '#6366f1', fmt: v => fmtEuroDisplay(v) },
-  { key: 'collab_ca',   label: 'Ventes collab',  color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
   { key: 'panier_moyen',label: 'Panier moyen',   color: '#f59e0b', fmt: v => fmtEuroDisplay(v) },
   { key: 'ventes',      label: 'Beats vendus',   color: '#8b5cf6', fmt: v => String(v) },
   { key: 'ecoutes',     label: 'Écoutes',        color: '#818cf8', fmt: v => fmtNum(v) },

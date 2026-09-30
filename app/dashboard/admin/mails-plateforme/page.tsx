@@ -11,6 +11,7 @@ const TYPES: TypeTemplatePlateforme[] = [
   'collab_eviction', 'collab_beat_supprime', 'collab_pause',
   'conditions_mise_a_jour',
   'suspension',
+  'nouvelle_vente',
 ]
 
 const PAGE_SIZE = 50

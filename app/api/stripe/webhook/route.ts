@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { confirmationAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
+import { confirmationAbonnement, envoyerNouvelAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
 import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiementExpress } from '@/lib/webhook-paiement'
 import { genererNumeroFacture, modeleFactureEffectif } from '@/lib/facturation'
@@ -423,6 +423,11 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
       clientId,
     }).catch(err => console.error('[webhook] Erreur envoi email confirmation abonnement:', err))
   }
+
+  // « Nouvelle vente » au beatmaker (Phase 13, lot 3) — nouvel abonnement
+  // seulement, jamais un renouvellement (traiterPaiementAbonnement).
+  await envoyerNouvelAbonnement({ beatmakerId: meta.beatmaker_id, periode: 'mensuel', prixCents: Number(beatmaker?.abo_prix ?? 0) })
+    .catch(err => console.error('[webhook] Erreur envoi email nouvel abonnement:', err))
 
   if (await automatisationActive(meta.beatmaker_id, 'bienvenue_abonnement')) {
     const { error: evenementError } = await supabase.from('automatisation_evenements').insert({

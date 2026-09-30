@@ -73,8 +73,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Ce panier se paie avec le paiement habituel.' }, { status: 400 })
   }
 
-  const tranches = repartirPanier(lignes, String(beatmaker.id)).filter(t => t.montant_cents > 0)
-  if (tranches.some(t => t.montant_cents < 50)) {
+  // Une part à 0 € (beat collab offert) est gardée : jamais encaissée, mais le
+  // vendeur doit retrouver la vente (tranche, Commandes, email).
+  const tranches = repartirPanier(lignes, String(beatmaker.id))
+  if (tranches.some(t => t.montant_cents > 0 && t.montant_cents < 50)) {
     return NextResponse.json({ erreur: 'Montant trop faible pour ce panier.' }, { status: 400 })
   }
 
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
   }
 
   const totalCents = lignes.reduce((s, l) => s + l.prixTotalCents, 0)
+  if (totalCents === 0) return NextResponse.json({ erreur: 'Cette commande est gratuite : valide-la sans paiement.' }, { status: 409 })
   const nomComplet = [prenom, nom].filter(Boolean).join(' ') || undefined
 
   // Carte seulement (Apple Pay / Google Pay en sont) : Stripe refuse de copier

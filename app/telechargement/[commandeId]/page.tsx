@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
-import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat, uploadPdfFacture } from '@/lib/livraison'
+import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat, uploadPdfFacture, uploadPdfFactureTranche } from '@/lib/livraison'
 import { genererContratPdfPourVente } from '@/lib/contrat'
-import { genererFacturePdfPourCommande } from '@/lib/facture'
+import { genererFacturePdfPourCommande, genererFacturePdfPourTranche } from '@/lib/facture'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import TelechargerBouton from './_components/TelechargerBouton'
@@ -31,12 +31,19 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url')
+    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url, methode_paiement')
     .eq('id', commandeId)
     .single()
 
   if (commandeError) console.error('[telechargement] Erreur query commande:', JSON.stringify(commandeError))
   if (!commande) notFound()
+
+  // Vente à plusieurs vendeurs (Phase 13) : une facture par vendeur.
+  const { data: tranches } = await supabase
+    .from('commande_tranches')
+    .select('id, vendeur_id, vendeur_nom, facture_numero, facture_pdf_url, est_proprietaire')
+    .eq('commande_id', commandeId)
+    .order('est_proprietaire', { ascending: false })
 
   // Accès (Phase 11, 9 bis) — l'UUID de commande reste la vraie protection ;
   // ceci n'est qu'une confirmation légère, pas un vrai système d'auth (voir
@@ -53,6 +60,7 @@ export default async function TelechargerPage({
     if (user) {
       accesAutorise =
         user.id === commande.beatmaker_id ||
+        (tranches ?? []).some(t => t.vendeur_id === user.id) ||
         user.id === commande.client_id ||
         normaliserEmail(user.email) === normaliserEmail(commande.acheteur_email)
     }
@@ -158,6 +166,23 @@ export default async function TelechargerPage({
   }
   const factureSigneeUrl = factureUrl ? await genererUrlSigneePdf(factureUrl, `Facture ${commande.numero_facture}.pdf`).catch(() => null) : null
 
+  const facturesTranches: { id: string; numero: string; vendeur: string; url: string }[] = []
+  for (const t of tranches ?? []) {
+    if (!t.facture_numero) continue
+    let url = t.facture_pdf_url
+    if (!url) {
+      try {
+        const pdfBytes = await genererFacturePdfPourTranche(supabase, t.id)
+        url = await uploadPdfFactureTranche(commandeId, t.id, pdfBytes)
+        await supabase.from('commande_tranches').update({ facture_pdf_url: url }).eq('id', t.id)
+      } catch (err) {
+        console.error('[telechargement] Erreur régénération facture PDF de la tranche', t.id, ':', err)
+      }
+    }
+    const signee = url ? await genererUrlSigneePdf(url, `Facture ${t.facture_numero}.pdf`).catch(() => null) : null
+    if (signee) facturesTranches.push({ id: t.id, numero: t.facture_numero, vendeur: t.vendeur_nom, url: signee })
+  }
+
   const titrePage = lignesDispo.length > 1
     ? `${lignesDispo.length} beats`
     : `${lignesDispo[0]?.titre} — ${lignesDispo[0]?.licenceNom}`
@@ -172,7 +197,7 @@ export default async function TelechargerPage({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-black mb-1">Paiement confirmé</h1>
+          <h1 className="text-2xl font-black mb-1">{commande.methode_paiement === 'gratuit' ? 'Commande confirmée' : 'Paiement confirmé'}</h1>
           <p className="text-gray-400 text-sm">{titrePage}</p>
           {commande.acheteur_email && (
             <p className="text-gray-600 text-xs mt-1">{commande.acheteur_email}</p>
@@ -215,6 +240,20 @@ export default async function TelechargerPage({
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
             <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Facture</h2>
             <TelechargerBouton label={`Facture ${commande.numero_facture}`} url={factureSigneeUrl} icon="pdf" commandeId={commandeId} ligneId="facture" />
+          </div>
+        )}
+
+        {facturesTranches.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
+            <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-2">{facturesTranches.length > 1 ? 'Factures' : 'Facture'}</h2>
+            {facturesTranches.length > 1 && (
+              <p className="text-gray-500 text-xs mb-4">Cette commande est vendue conjointement : chaque artiste t&apos;envoie sa facture pour sa part.</p>
+            )}
+            <div className="flex flex-col gap-3">
+              {facturesTranches.map(f => (
+                <TelechargerBouton key={f.id} label={`Facture ${f.numero} — ${f.vendeur}`} url={f.url} icon="pdf" commandeId={commandeId} ligneId="facture" />
+              ))}
+            </div>
           </div>
         )}
 

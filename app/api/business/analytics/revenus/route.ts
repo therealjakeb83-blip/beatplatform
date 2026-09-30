@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur, dayKeyInTz } from '@/lib/fuseau-horaire'
+import { chargerPartsVendeur, partDeCommande } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const [{ data: allCommandes }, { data: beatmaker }, { data: remboursees }, { data: litigesEnCours }] = await Promise.all([
+  const [{ data: commandesBoutique }, { data: beatmaker }, { data: remboursees }, { data: litigesEnCours }] = await Promise.all([
     admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant')
       .eq('beatmaker_id', user.id)
@@ -39,6 +40,15 @@ export async function GET(request: Request) {
       .eq('beatmaker_id', user.id)
       .eq('statut', 'en_cours'),
   ])
+
+  // CA = part du vendeur (Phase 13, lot 3) — voir lib/analytics-parts.ts.
+  const parts = await chargerPartsVendeur(admin, user.id)
+  const { data: commandesAutres } = parts.autresCommandes.length
+    ? await admin.from('commandes').select('id, created_at, prix_paye, reduction_montant').in('id', parts.autresCommandes).eq('statut', 'payee')
+    : { data: [] }
+  const allCommandes = [...(commandesBoutique ?? []), ...(commandesAutres ?? [])]
+    .map(c => partDeCommande(c, parts))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)

@@ -8,6 +8,7 @@ import RemboursementButton from './_components/RemboursementButton'
 import ReprendreLivraisonButton from './_components/ReprendreLivraisonButton'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { fuseauSur, formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
+import VueCollaborateur from './_components/VueCollaborateur'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -77,6 +78,23 @@ type CommandeDetail = {
     pays: string | null
   } | null
   commande_lignes: LigneDetail[]
+}
+
+type TrancheDetail = {
+  id: string
+  vendeur_id: string | null
+  vendeur_nom: string
+  est_proprietaire: boolean
+  quote_part_pct: number | null
+  montant_ttc_cents: number
+  montant_ht_cents: number | null
+  montant_tva_cents: number | null
+  tva_taux: number | null
+  frais_stripe_cents: number | null
+  net_cents: number | null
+  facture_numero: string | null
+  facture_pdf_url: string | null
+  detail_lignes: { beat_id: string; licence_id: string; pourcentage: number; montant_cents: number }[] | null
 }
 
 type HistoriqueCommande = {
@@ -158,7 +176,7 @@ export default async function CommandeDetailPage({
   const { data: commande } = await admin
     .from('commandes')
     .select(`
-      id, created_at, prix_paye, statut,
+      id, created_at, prix_paye, statut, beatmaker_id,
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, statut_livraison, facture_pdf_url, numero_facture,
       source_marketing, type_commande, plateforme_source,
@@ -174,12 +192,58 @@ export default async function CommandeDetailPage({
       )
     `)
     .eq('id', id)
-    .eq('beatmaker_id', user.id)
     .single()
 
   if (!commande) notFound()
 
-  const c = commande as unknown as CommandeDetail
+  const c = commande as unknown as CommandeDetail & { beatmaker_id: string }
+
+  const { data: tranchesRaw } = await admin
+    .from('commande_tranches')
+    .select('id, vendeur_id, vendeur_nom, est_proprietaire, quote_part_pct, montant_ttc_cents, montant_ht_cents, montant_tva_cents, tva_taux, frais_stripe_cents, net_cents, facture_numero, facture_pdf_url, detail_lignes')
+    .eq('commande_id', id)
+    .order('est_proprietaire', { ascending: false })
+  const tranches = (tranchesRaw ?? []) as TrancheDetail[]
+
+  // Vente en collaboration sur la boutique d'un autre (Phase 13, lot 3) : vue
+  // limitée du collaborateur, identifiée par le numéro de SA facture.
+  if (c.beatmaker_id !== user.id) {
+    const maTranche = tranches.find(t => t.vendeur_id === user.id)
+    if (!maTranche) notFound()
+    const { data: boutique } = await admin.from('beatmakers').select('nom_artiste').eq('id', c.beatmaker_id).maybeSingle()
+    const libelleLigne = new Map((c.commande_lignes ?? []).map(l => [
+      `${l.beat_id}:${l.licence_id}`,
+      { titre: l.beats?.titre ?? 'Beat', licence: l.licence_nom ?? l.licences?.nom ?? '' },
+    ]))
+    const statut = STATUT[c.statut] ?? { label: c.statut, cls: 'bg-gray-700 text-gray-300 border border-gray-600' }
+    return (
+      <VueCollaborateur
+        commandeId={c.id}
+        createdAt={c.created_at}
+        statutLabel={statut.label}
+        statutCls={statut.cls}
+        boutique={boutique?.nom_artiste ?? 'la boutique'}
+        codePromo={c.code_promo}
+        acheteur={{ nom: c.acheteur_nom, adresse: c.acheteur_adresse, raisonSociale: c.acheteur_raison_sociale, numeroTva: c.acheteur_numero_tva }}
+        tranche={{
+          montantTtcCents: maTranche.montant_ttc_cents,
+          montantHtCents: maTranche.montant_ht_cents,
+          montantTvaCents: maTranche.montant_tva_cents,
+          tvaTaux: maTranche.tva_taux,
+          fraisCents: maTranche.frais_stripe_cents,
+          netCents: maTranche.net_cents,
+          factureNumero: maTranche.facture_numero,
+          facturePdfUrl: maTranche.facture_pdf_url,
+        }}
+        lignes={(maTranche.detail_lignes ?? []).map(d => ({
+          ...(libelleLigne.get(`${d.beat_id}:${d.licence_id}`) ?? { titre: 'Beat', licence: '' }),
+          pourcentage: d.pourcentage,
+          montantCents: d.montant_cents,
+        }))}
+        tz={tz}
+      />
+    )
+  }
 
   /* Historique client */
   let historiqueClient: HistoriqueCommande[] = []
@@ -576,6 +640,45 @@ export default async function CommandeDetailPage({
           )}
         </div>
 
+        {/* RÉPARTITION — vente à plusieurs vendeurs (Phase 13) : un encaissement
+            et une facture par vendeur, frais Stripe et net lus sur chaque
+            encaissement. */}
+        {tranches.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-4">Répartition</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wider text-gray-600">
+                  <th className="text-left pb-2">Vendeur</th>
+                  <th className="text-right pb-2">Part</th>
+                  <th className="text-right pb-2">Montant</th>
+                  <th className="text-right pb-2">Frais Stripe</th>
+                  <th className="text-right pb-2">Net</th>
+                  <th className="text-right pb-2">Facture</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800/60">
+                {tranches.map(t => (
+                  <tr key={t.id}>
+                    <td className="py-2 text-gray-200">{t.vendeur_nom}{t.est_proprietaire && <span className="text-gray-600 text-xs"> (toi)</span>}</td>
+                    <td className="py-2 text-right text-gray-400">{t.quote_part_pct != null ? `${t.quote_part_pct} %` : 'mixte'}</td>
+                    <td className="py-2 text-right text-gray-300">€{(t.montant_ttc_cents / 100).toFixed(2)}</td>
+                    <td className="py-2 text-right text-gray-400">{t.frais_stripe_cents != null ? `−€${(t.frais_stripe_cents / 100).toFixed(2)}` : '—'}</td>
+                    <td className="py-2 text-right text-green-400">{t.net_cents != null ? `€${(t.net_cents / 100).toFixed(2)}` : '—'}</td>
+                    <td className="py-2 text-right">
+                      {t.facture_pdf_url ? (
+                        <a href={t.facture_pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300">n° {t.facture_numero}</a>
+                      ) : (
+                        <span className="text-xs text-gray-600">{t.montant_ttc_cents === 0 ? 'offert' : '—'}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* HISTORIQUE DES TÉLÉCHARGEMENTS */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
@@ -658,6 +761,27 @@ export default async function CommandeDetailPage({
                 <CopyButton text={f.url} />
               </div>
             ) : null)}
+            {tranches.filter(t => t.facture_pdf_url).map(t => (
+              <div key={t.id} className="flex items-center justify-between gap-4 bg-gray-800/40 rounded-lg px-4 py-2.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[10px] font-medium text-gray-400 w-36 shrink-0">
+                    Facture n° {t.facture_numero} ({t.vendeur_nom})
+                  </span>
+                  <span className="text-xs font-mono text-gray-600 truncate">{t.facture_pdf_url}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={t.facture_pdf_url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Ouvrir
+                  </a>
+                  <CopyButton text={t.facture_pdf_url!} />
+                </div>
+              </div>
+            ))}
             {c.facture_pdf_url && (
               <div className="flex items-center justify-between gap-4 bg-gray-800/40 rounded-lg px-4 py-2.5">
                 <div className="flex items-center gap-3 min-w-0">

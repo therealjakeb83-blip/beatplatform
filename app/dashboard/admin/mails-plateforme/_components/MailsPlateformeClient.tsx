@@ -128,6 +128,13 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     description: "Envoyé quand l'admin suspend une boutique, en plus du message affiché à la prochaine tentative de connexion.",
     declencheur: 'Déclencheur : suspension manuelle depuis /dashboard/admin/boutiques/[id]',
   },
+  {
+    type: 'nouvelle_vente',
+    nom: 'Nouvelle vente',
+    titrePlaceholder: 'Nouvelle vente !',
+    description: "Envoyé au beatmaker à chaque vente de licence (payée ou offerte par code promo) et à chaque nouvel abonnement. En collaboration, chaque vendeur le reçoit avec sa part — jamais les coordonnées du client pour un collaborateur.",
+    declencheur: 'Déclencheur : commande de licence créée, ou nouvel abonnement boutique → propriétaire (+ collaborateurs vendeurs). Jamais pour un renouvellement ni un free download',
+  },
 ]
 
 export default function MailsPlateformeClient({ templates, sauvegarderTemplate, genererApercu }: Props) {

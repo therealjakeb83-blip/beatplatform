@@ -28,9 +28,8 @@ async function chargerLogoPourFacture(logoUrl: string | null, inverser: boolean)
 // chantier 9 bis. Voir memory/project_grillme_9bis_synthese.md (section
 // Facturation) et memory/project_phase8_numerotation_facture.md.
 //
-// Portée V1 : ventes solo uniquement (une facture par commande). Les ventes
-// collaboratives (une facture par collaborateur pour sa quote-part) sont
-// renvoyées à la Phase 13 (processeur collab non tranché) — voir le mémo.
+// Vente solo : une facture par commande. Vente à plusieurs vendeurs (Phase
+// 13) : une facture par vendeur pour sa tranche (genererFacturePdfPourTranche).
 
 export interface LigneFacture {
   designation: string // ex. "Nom du beat — Licence MP3"
@@ -399,3 +398,65 @@ export async function genererFacturePdfPourCommande(
     mentions: commande.facture_mentions ?? null,
   })
 }
+
+// Facture d'un vendeur pour SA tranche d'une commande à plusieurs vendeurs
+// (Phase 13, lot 3) — même mise en page qu'une facture solo, émise au nom de
+// ce vendeur (identité, numérotation, TVA, modèle figés sur la tranche). Une
+// ligne de beat collab précise la part facturée (désignation exacte : le
+// vendeur ne facture pas la licence entière).
+export async function genererFacturePdfPourTranche(
+  admin: ReturnType<typeof createAdminClient>,
+  trancheId: string
+): Promise<Uint8Array> {
+  const { data: tranche } = await admin
+    .from('commande_tranches')
+    .select('id, commande_id, vendeur_id, facture_numero, facture_modele, facture_mentions, mandat_facturation_version, tva_taux, tva_numero, detail_lignes')
+    .eq('id', trancheId)
+    .single()
+  if (!tranche || !tranche.facture_numero || !tranche.vendeur_id) {
+    throw new Error(`Tranche sans numéro de facture attribué: ${trancheId}`)
+  }
+
+  type Detail = { beat_id: string; licence_id: string; pourcentage: number; montant_cents: number }
+  const details = (tranche.detail_lignes ?? []) as Detail[]
+
+  const [{ data: commande }, { data: vendeur }, { data: beats }, { data: licences }] = await Promise.all([
+    admin.from('commandes').select('created_at, acheteur_nom, acheteur_email, acheteur_adresse, acheteur_raison_sociale, acheteur_numero_tva').eq('id', tranche.commande_id).single(),
+    admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public, logo_url, logo_inverser_fond_clair').eq('id', tranche.vendeur_id).single(),
+    admin.from('beats').select('id, titre').in('id', details.map(d => d.beat_id)),
+    admin.from('licences').select('id, nom').in('id', details.map(d => d.licence_id)),
+  ])
+  if (!commande || !vendeur) throw new Error(`Commande ou vendeur introuvable pour la tranche: ${trancheId}`)
+
+  const titreBeat = new Map((beats ?? []).map(b => [b.id as string, b.titre as string]))
+  const nomLicence = new Map((licences ?? []).map(l => [l.id as string, l.nom as string]))
+  const tauxTva = Number(tranche.tva_taux ?? 0)
+
+  const lignesFacture: LigneFacture[] = details.map(d => ({
+    designation: `${titreBeat.get(d.beat_id) ?? 'Beat'} — Licence ${nomLicence.get(d.licence_id) ?? ''}${d.pourcentage < 100 ? ` — part du vendeur : ${d.pourcentage} %` : ''}`,
+    prixTTC: d.montant_cents / 100,
+    tauxTva,
+  }))
+
+  const logoPng = await chargerLogoPourFacture(vendeur.logo_url, vendeur.logo_inverser_fond_clair)
+
+  return genererFacturePdf({
+    numeroFacture: tranche.facture_numero,
+    dateEmission: new Date(commande.created_at),
+    vendeur,
+    acheteur: {
+      nom: commande.acheteur_nom,
+      email: commande.acheteur_email,
+      adresse: commande.acheteur_adresse,
+      raisonSociale: commande.acheteur_raison_sociale,
+      numeroTva: commande.acheteur_numero_tva,
+    },
+    lignes: lignesFacture,
+    mandatFacturationVersion: tranche.mandat_facturation_version ?? 1,
+    tvaNumero: tranche.tva_numero ?? null,
+    logoPng,
+    modele: tranche.facture_modele === 'libre' ? 'libre' : 'francais',
+    mentions: tranche.facture_mentions ?? null,
+  })
+}
+

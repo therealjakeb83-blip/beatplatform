@@ -260,7 +260,7 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
     const q = search.trim().toLowerCase()
     if (q) {
       list = list.filter(c => {
-        const id8    = c.id.slice(0, 8).toUpperCase()
+        const id8    = `${c.id.slice(0, 8)} ${c.numeroFactureVendeur ?? ''}`.toUpperCase()
         const email  = (c.clients?.email ?? c.acheteur_email ?? '').toLowerCase()
         const client = nomClient(c).toLowerCase()
         const beat   = (c.tousBeatsTitres?.length ? c.tousBeatsTitres.join(' ') : (c.beats?.titre ?? '')).toLowerCase()
@@ -466,12 +466,17 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
                                 <span className="font-medium text-white">{nom}</span>
                               )}
                               <div>
+                                {c.venduePar && (
+                                  <span className="mr-2 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                                    Vendue par {c.venduePar}
+                                  </span>
+                                )}
                                 {c._type === 'commande' ? (
                                   <Link
                                     href={`/dashboard/business/commandes/${c.id}`}
                                     className="font-mono text-xs text-gray-500 hover:text-indigo-400 transition-colors"
                                   >
-                                    #{c.id.slice(0, 8).toUpperCase()}
+                                    {c.venduePar && c.numeroFactureVendeur ? c.numeroFactureVendeur : `#${c.id.slice(0, 8).toUpperCase()}`}
                                   </Link>
                                 ) : (
                                   <span className="font-mono text-xs text-gray-600">

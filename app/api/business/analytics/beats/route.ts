@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { chargerPartsVendeur, partsDeLignes } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
 
   const [
     { data: allBeats },
-    { data: allCommandes },
+    { data: lignesBoutique },
     { data: allPlays },
     { data: allFreeDl },
     { data: beatmaker },
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false }),
     // Niveau article — un panier de plusieurs beats donne plusieurs lignes, chacune attribuée à son beat
     admin.from('commande_lignes')
-      .select('beat_id, prix_paye, created_at, commandes!inner(beatmaker_id, statut)')
+      .select('commande_id, beat_id, licence_id, prix_paye, created_at, commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
       .eq('commandes.statut', 'payee'),
     admin.from('beat_plays')
@@ -37,6 +38,9 @@ export async function GET(request: Request) {
       .eq('beatmaker_id', user.id),
     admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single(),
   ])
+
+  // CA d'un beat collab = part du propriétaire (Phase 13, lot 3).
+  const allCommandes = partsDeLignes(lignesBoutique ?? [], await chargerPartsVendeur(admin, user.id))
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)

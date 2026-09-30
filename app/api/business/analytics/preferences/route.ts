@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots, type HistoriqueSlot } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { chargerPartsVendeur, partsDeLignes } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
 
   const [
-    { data: allCommandes },
+    { data: lignesBoutique },
     { data: allPlays },
     { data: allFreeDl },
     { data: allFavoris },
@@ -116,7 +117,7 @@ export async function GET(request: Request) {
     // Niveau article (commande_lignes) — un panier de plusieurs beats donne
     // plusieurs lignes ici, chacune avec ses propres styles/licence.
     admin.from('commande_lignes')
-      .select('prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
+      .select('commande_id, beat_id, licence_id, prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
       .eq('commandes.statut', 'payee'),
     admin.from('beat_plays')
@@ -134,7 +135,8 @@ export async function GET(request: Request) {
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
 
-  const allCmds    = (allCommandes ?? []) as RawCmd[]
+  // CA d'un beat collab = part du propriétaire (Phase 13, lot 3).
+  const allCmds    = partsDeLignes(lignesBoutique ?? [], await chargerPartsVendeur(admin, user.id)) as unknown as RawCmd[]
   const allPlaysN  = (allPlays   ?? []).map(p => ({ created_at: p.played_at,     beats: p.beats })) as RawEvt[]
   const allFreeDlN = (allFreeDl  ?? []).map(f => ({ created_at: f.downloaded_at, beats: f.beats })) as RawEvt[]
   const allFavN    = (allFavoris ?? []) as unknown as RawEvt[]

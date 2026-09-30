@@ -1,10 +1,12 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { genererContratPdfPourVente } from '@/lib/contrat'
-import { genererFacturePdfPourCommande } from '@/lib/facture'
+import { genererFacturePdfPourCommande, genererFacturePdfPourTranche } from '@/lib/facture'
 import { genererNumeroFacture, modeleFactureEffectif } from '@/lib/facturation'
-import { uploadPdfContrat, uploadPdfFacture } from '@/lib/livraison'
-import { confirmationCommande, alerteProblemeLivraison } from '@/lib/emails'
+import { uploadPdfContrat, uploadPdfFacture, uploadPdfFactureTranche } from '@/lib/livraison'
+import { confirmationCommande, alerteProblemeLivraison, envoyerNouvelleVente } from '@/lib/emails'
+import { decomposerTva } from '@/lib/collaboration-parts'
+import type { DetailLigneTranche } from '@/lib/paiement-multi-repartition'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
@@ -186,9 +188,21 @@ export async function traiterPaiementExpress(paymentIntent: Stripe.PaymentIntent
   })
 }
 
+// Part d'un vendeur dans une commande à plusieurs vendeurs (Phase 13) —
+// montant à 0 € possible (beat collab offert) : pas d'encaissement ni de
+// facture, mais le vendeur voit la vente.
+export type TrancheACreer = {
+  vendeur_id: string
+  est_proprietaire: boolean
+  montant_cents: number
+  detail_lignes: DetailLigneTranche[]
+  stripe_account_id: string | null
+  stripe_payment_intent_id: string | null
+}
+
 type ContextePaiement = {
   meta: Stripe.Metadata
-  tentativeColonne: 'stripe_session_id' | 'stripe_payment_intent_id' | 'stripe_setup_intent_id'
+  tentativeColonne: 'stripe_session_id' | 'stripe_payment_intent_id' | 'stripe_setup_intent_id' | 'id'
   tentativeValeur: string
   acheteurEmail: string | null
   acheteurNom: string | null
@@ -206,9 +220,112 @@ type ContextePaiement = {
   // connecté sur lequel vit réellement le PaymentIntent (Direct Charge).
   stripeAccountId: string | null
   // Paiement réparti entre vendeurs (Phase 13) : un encaissement par vendeur,
-  // suivi dans commande_tranches — pas de facture unique au nom de A (les
-  // factures par vendeur arrivent au lot 3).
+  // suivi dans commande_tranches — une facture par vendeur (tranche), jamais
+  // une facture unique au nom de A.
   paiementMulti?: boolean
+  tranches?: TrancheACreer[]
+  // Commande gratuite (Phase 13, lot 3) : beat offert par code promo, aucun
+  // paiement, aucune facture.
+  methodePaiement?: 'stripe' | 'gratuit'
+  // La place sur le code promo a déjà été prise avant la commande (commande
+  // gratuite) : ne pas la compter une deuxième fois.
+  placeCodePromoPrise?: boolean
+}
+
+type TrancheCreee = { id: string; facture_numero: string | null; stripe_account_id: string | null; stripe_payment_intent_id: string | null; montant_ttc_cents: number }
+
+// Tranches d'une commande à plusieurs vendeurs — numéro de facture pris dans
+// la suite de CHAQUE vendeur (jamais celle de A pour B), modèle/mentions/TVA
+// figés sur la tranche au moment de la vente. Pas de facture pour une part à
+// 0 € (beat offert : aucune opération à facturer) ni sans mandat accepté.
+async function creerTranches(
+  supabase: ReturnType<typeof createAdminClient>,
+  commandeId: string,
+  tranches: TrancheACreer[],
+  dateVente: Date,
+): Promise<TrancheCreee[]> {
+  const { data: vendeurs } = await supabase
+    .from('beatmakers')
+    .select('id, nom_artiste, slug, tva_active, tva_taux, tva_numero, mandat_facturation_version, facturation_format, fuseau_horaire, pays, facture_modele, facture_mentions')
+    .in('id', tranches.map(t => t.vendeur_id))
+  const vendeurMap = new Map((vendeurs ?? []).map(v => [v.id as string, v]))
+
+  const lignes = []
+  for (const t of tranches) {
+    const v = vendeurMap.get(t.vendeur_id)
+    const taux = v?.tva_active && v?.tva_taux ? Number(v.tva_taux) : 0
+    const { htCents, tvaCents } = decomposerTva(t.montant_cents, taux)
+    const pcts = new Set(t.detail_lignes.map(d => d.pourcentage))
+
+    let facture: Record<string, unknown> = {}
+    if (v?.mandat_facturation_version && t.montant_cents > 0) {
+      try {
+        const numero = await genererNumeroFacture(supabase, {
+          beatmakerId: t.vendeur_id,
+          slug: v.slug,
+          format: v.facturation_format ?? null,
+          dateVente,
+          fuseauHoraire: fuseauSur(v.fuseau_horaire),
+        })
+        facture = {
+          facture_numero: numero,
+          mandat_facturation_version: v.mandat_facturation_version,
+          facture_modele: modeleFactureEffectif(v.facture_modele, v.pays),
+          facture_mentions: v.facture_mentions ?? null,
+          tva_numero: taux > 0 ? (v.tva_numero ?? null) : null,
+        }
+      } catch (err) {
+        console.error('[webhook-paiement] Erreur attribution numéro de facture (tranche) pour', t.vendeur_id, ':', err)
+      }
+    }
+
+    lignes.push({
+      commande_id: commandeId,
+      vendeur_id: t.vendeur_id,
+      vendeur_nom: v?.nom_artiste ?? 'Vendeur',
+      est_proprietaire: t.est_proprietaire,
+      quote_part_pct: pcts.size === 1 ? [...pcts][0] : null,
+      montant_ttc_cents: t.montant_cents,
+      tva_taux: taux,
+      montant_tva_cents: tvaCents,
+      montant_ht_cents: htCents,
+      stripe_account_id: t.stripe_account_id,
+      stripe_payment_intent_id: t.stripe_payment_intent_id,
+      statut: 'payee',
+      detail_lignes: t.detail_lignes,
+      ...(t.stripe_payment_intent_id ? {} : { frais_stripe_cents: 0, net_cents: t.montant_cents }),
+      ...facture,
+    })
+  }
+
+  const { data, error } = await supabase
+    .from('commande_tranches')
+    .insert(lignes)
+    .select('id, facture_numero, stripe_account_id, stripe_payment_intent_id, montant_ttc_cents')
+  if (error) console.error('[webhook-paiement] Erreur insert commande_tranches pour', commandeId, JSON.stringify(error))
+  return (data ?? []) as TrancheCreee[]
+}
+
+// Frais Stripe réellement prélevés sur l'encaissement de chaque vendeur, et
+// son net — lus sur le compte du vendeur juste après la capture. Jamais
+// bloquant : une tranche sans frais connus reste affichée sans eux.
+async function remplirFraisTranches(supabase: ReturnType<typeof createAdminClient>, tranches: TrancheCreee[]) {
+  for (const t of tranches) {
+    if (!t.stripe_payment_intent_id || !t.stripe_account_id) continue
+    try {
+      const pi = await stripe.paymentIntents.retrieve(
+        t.stripe_payment_intent_id,
+        { expand: ['latest_charge.balance_transaction'] },
+        { stripeAccount: t.stripe_account_id },
+      )
+      const charge = pi.latest_charge as Stripe.Charge | null
+      const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null
+      if (!bt || typeof bt === 'string') continue
+      await supabase.from('commande_tranches').update({ frais_stripe_cents: bt.fee, net_cents: t.montant_ttc_cents - bt.fee }).eq('id', t.id)
+    } catch (err) {
+      console.error('[webhook-paiement] Frais Stripe illisibles pour la tranche', t.id, ':', err instanceof Error ? err.message : err)
+    }
+  }
 }
 
 // Cœur commun aux deux chemins de paiement (panier classique via Checkout
@@ -323,7 +440,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     acheteur_raison_sociale: acheteurRaisonSociale,
     acheteur_numero_tva: acheteurNumeroTva,
     prix_paye: prixPayeTotal,
-    methode_paiement: 'stripe',
+    methode_paiement: ctx.methodePaiement ?? 'stripe',
     stripe_payment_id: stripePaymentId,
     stripe_session_id: ctx.stripeSessionId,
     // Snapshot minimal (tâche 2.8) — null en destination charge (le
@@ -365,8 +482,10 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
   // et le raisonnement complet sur le format). Aucune facture générée tant
   // que le beatmaker n'a pas explicitement accepté le mandat de facturation
   // (pas de préselection silencieuse, même principe que les pages légales).
+  // Commande entièrement gratuite (beat offert) : aucune facture — pas
+  // d'opération à titre onéreux (décision Phase 13 lot 3, Q1).
   let numeroFactureAttribue = false
-  if (beatmaker?.mandat_facturation_version && !ctx.paiementMulti) {
+  if (beatmaker?.mandat_facturation_version && !ctx.paiementMulti && ctx.totalCents > 0) {
     try {
       const numeroFacture = await genererNumeroFacture(supabase, {
         beatmakerId: meta.beatmaker_id,
@@ -386,6 +505,10 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
       console.error('[webhook-paiement] Erreur attribution numéro de facture:', err)
     }
   }
+
+  const tranchesCreees = ctx.tranches?.length
+    ? await creerTranches(supabase, commande.id, ctx.tranches, new Date())
+    : []
 
   // 2. Une commande_ligne par article : splits, transferts, contrat PDF
   let contratsOk = 0
@@ -510,6 +633,17 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     }
   }
 
+  for (const t of tranchesCreees.filter(t => t.facture_numero)) {
+    try {
+      const pdfBytes = await genererFacturePdfPourTranche(supabase, t.id)
+      const pdfUrl = await uploadPdfFactureTranche(commande.id, t.id, pdfBytes)
+      await supabase.from('commande_tranches').update({ facture_pdf_url: pdfUrl }).eq('id', t.id)
+    } catch (err) {
+      console.error('[webhook-paiement] Erreur génération facture PDF de la tranche', t.id, ':', err)
+    }
+  }
+  await remplirFraisTranches(supabase, tranchesCreees)
+
   // Statut de livraison réel (Phase 5) — recalculé depuis l'état effectif
   // des contrats/transferts, jamais déduit d'un simple compteur local (un
   // échec de transfert Stripe ne fait pas échouer contratsOk, par exemple).
@@ -545,6 +679,11 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
       clientId,
     }).catch(err => console.error('[webhook-paiement] Erreur envoi email confirmation commande:', err))
   }
+
+  // « Nouvelle vente » (Phase 13, lot 3) — au propriétaire de la boutique et à
+  // chaque collaborateur vendeur, payée ou offerte.
+  await envoyerNouvelleVente({ commandeId: commande.id })
+    .catch(err => console.error('[webhook-paiement] Erreur envoi email nouvelle vente:', err))
 
   // 4. "Remerciement achat" par palier — évalué une seule fois par session
   // (pas par article), sinon l'automation se déclencherait N fois pour un
@@ -589,19 +728,19 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
   }
 
   // Incrémenter le compteur d'utilisations du code promo — une fois par commande,
-  // même si le code s'est appliqué à plusieurs articles du panier
-  if (promoCode) {
+  // même si le code s'est appliqué à plusieurs articles du panier. En une seule
+  // opération en base (deux ventes simultanées ne se marchent plus dessus) ;
+  // vente déjà payée : toujours comptée, jamais refusée.
+  if (promoCode && !ctx.placeCodePromoPrise) {
     const { data: codePromoData } = await supabase
       .from('codes_promo')
-      .select('id, utilisations')
+      .select('id')
       .eq('beatmaker_id', meta.beatmaker_id)
       .eq('code', promoCode)
       .maybeSingle()
     if (codePromoData) {
-      await supabase
-        .from('codes_promo')
-        .update({ utilisations: codePromoData.utilisations + 1 })
-        .eq('id', codePromoData.id)
+      const { error: placeError } = await supabase.rpc('code_promo_prendre_place', { p_code_id: codePromoData.id, p_forcer: true })
+      if (placeError) console.error('[webhook-paiement] Erreur compteur code promo:', JSON.stringify(placeError))
     }
   }
 

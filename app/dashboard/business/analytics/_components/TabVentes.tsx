@@ -9,19 +9,18 @@ import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Per
 type Props = { periode: Periode; debut: string; fin: string }
 
 type Data = {
-  kpis: { ca_brut: number; ca_net: number; panier_moyen: number; beats_vendus: number; collab_ca: number; source_top: { nom: string; ca: number; pct: number } | null }
+  kpis: { ca_brut: number; ca_net: number; panier_moyen: number; beats_vendus: number; source_top: { nom: string; ca: number; pct: number } | null }
   historique: Array<Record<string, unknown>>
   commandes: Array<{ id: string; created_at: string; client_nom: string; beat_titre: string; nb_articles: number; licence_nom: string; source_marketing: string | null; prix_paye: number; reduction_montant: number | null }>
 }
 
-type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'collab_ca' | 'source_top'
+type KpiKey = 'ca_brut' | 'ca_net' | 'panier_moyen' | 'ventes' | 'source_top'
 
 const KPI_CONFIG: Array<{ key: KpiKey; histKey: string; label: string; color: string; fmt: (v: number) => string }> = [
   { key: 'ca_brut',      histKey: 'ca',          label: 'CA Brut (TTC)', color: '#4ade80', fmt: v => fmtEuroDisplay(v) },
   { key: 'ca_net',       histKey: 'ca_net',      label: 'CA Net (HT)',   color: '#22d3ee', fmt: v => fmtEuroDisplay(v) },
   { key: 'panier_moyen', histKey: 'panier_moyen',label: 'Panier moyen',  color: '#f59e0b', fmt: v => fmtEuroDisplay(v) },
   { key: 'ventes',       histKey: 'ventes',      label: 'Beats vendus',  color: '#8b5cf6', fmt: v => String(Math.round(v)) },
-  { key: 'collab_ca',    histKey: 'collab_ca',   label: 'Ventes collab', color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
 ]
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -79,7 +78,6 @@ export default function TabVentes({ periode, debut, fin }: Props) {
         <KpiCard label="CA Net (HT)"   value={fmtEuroDisplay(kpis.ca_net)}       color="#22d3ee" active={kpiActif === 'ca_net'}       onClick={() => handleKpiClick('ca_net')} />
         <KpiCard label="Panier moyen"  value={fmtEuroDisplay(kpis.panier_moyen)} color="#f59e0b" active={kpiActif === 'panier_moyen'} onClick={() => handleKpiClick('panier_moyen')} />
         <KpiCard label="Beats vendus"  value={String(kpis.beats_vendus)}         color="#8b5cf6" active={kpiActif === 'ventes'}       onClick={() => handleKpiClick('ventes')} />
-        <KpiCard label="Ventes collab" value={fmtEuroDisplay(kpis.collab_ca)}    color="#38bdf8" active={kpiActif === 'collab_ca'}    onClick={() => handleKpiClick('collab_ca')} />
         {kpis.source_top
           ? <KpiCard label={`Source #1 — ${kpis.source_top.nom}`} value={fmtEuroDisplay(kpis.source_top.ca)} sub={`${kpis.source_top.pct.toFixed(0)}% du CA`} color="#a78bfa" active={kpiActif === 'source_top'} onClick={() => handleKpiClick('source_top')} />
           : <KpiCard label="Source #1" value="—" />}

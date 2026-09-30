@@ -31,6 +31,9 @@ type Props = {
   // paymentIntentId : paiement solo (commande créée par le webhook).
   // commandeId : paiement réparti collab (commande déjà créée).
   onSuccess: (info: { paymentIntentId: string } | { commandeId: string }) => void
+  // Code promo appliqué dans le panier : le montant débité doit être celui
+  // affiché par le panier (avant le lot 3 de la Phase 13, il était ignoré ici).
+  codePromo?: string | null
 }
 
 type ContextePaiement = { mode: 'direct' | 'multi'; stripe_account_id: string | null }
@@ -80,7 +83,7 @@ export default function CartExpressPay(props: Props) {
   )
 }
 
-function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs }: Props & { multiVendeurs: boolean }) {
+function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs, codePromo }: Props & { multiVendeurs: boolean }) {
   const stripe = useStripe()
   const elements = useElements()
   const { clear } = useCart()
@@ -124,12 +127,13 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
     fetch('/api/stripe/prix-panier', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug, items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })) }),
+      body: JSON.stringify({ slug, items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })), code_promo: codePromo ?? undefined }),
     })
       .then(r => r.json())
       .then((data: { totalCents?: number }) => {
         if (annule) return
-        if (typeof data.totalCents === 'number') {
+        // 0 € = commande gratuite : pas de paiement express (masqué par le panier).
+        if (typeof data.totalCents === 'number' && data.totalCents > 0) {
           elements.update({ amount: data.totalCents })
           setMontantSynchronise(true)
         }
@@ -137,7 +141,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
       .catch(() => {})
     return () => { annule = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elements, slug, itemsKey, items.length])
+  }, [elements, slug, itemsKey, items.length, codePromo])
 
   useEffect(() => {
     if (pret) return
@@ -200,6 +204,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
               const resultat = await payerMultiAvecMoyen(stripe, slug, {
                 items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
                 slug,
+                code_promo: codePromo ?? undefined,
                 email_acheteur: event.billingDetails?.email,
                 nom: event.billingDetails?.name,
                 telephone: event.billingDetails?.phone,
@@ -225,6 +230,8 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
               body: JSON.stringify({
                 items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
                 slug,
+                code_promo: codePromo ?? undefined,
+                email_acheteur: event.billingDetails?.email,
               }),
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }

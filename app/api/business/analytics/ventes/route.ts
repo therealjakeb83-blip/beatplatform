@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { chargerPartsVendeur, partDeCommande, partsDeLignes } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -19,9 +20,8 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
 
   const [
-    { data: allCommandes },
-    { data: allLignes },
-    { data: allCollabs },
+    { data: commandesBoutique },
+    { data: lignesBoutique },
     { data: beatmaker },
   ] = await Promise.all([
     admin.from('commandes')
@@ -32,26 +32,37 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false }),
     // Niveau article — pour le KPI "beats vendus" (compte les articles, pas les paniers)
     admin.from('commande_lignes')
-      .select('id, commande_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)')
+      .select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
       .eq('commandes.statut', 'payee')
       .order('created_at', { ascending: false }),
-    admin.from('split_payments')
-      .select('montant, created_at')
-      .eq('beatmaker_id', user.id)
-      .eq('statut', 'transfere'),
     admin.from('beatmakers')
       .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
       .single(),
   ])
 
+  // CA = part du vendeur (Phase 13, lot 3). Sur la boutique d'un autre, le
+  // collaborateur ne voit jamais l'email du client ni sa fiche CRM.
+  const parts = await chargerPartsVendeur(admin, user.id)
+  const [{ data: commandesAutres }, { data: lignesAutres }] = parts.autresCommandes.length
+    ? await Promise.all([
+        admin.from('commandes').select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)').in('id', parts.autresCommandes).eq('statut', 'payee').or('type_commande.eq.LICENCE,type_commande.is.null'),
+        admin.from('commande_lignes').select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)').in('commande_id', parts.autresCommandes).eq('commandes.statut', 'payee'),
+      ])
+    : [{ data: [] }, { data: [] }]
+  const parDateDesc = (a: { created_at: string }, b: { created_at: string }) => b.created_at.localeCompare(a.created_at)
+  const allCommandes = [
+    ...(commandesBoutique ?? []),
+    ...(commandesAutres ?? []).map(c => ({ ...c, acheteur_email: null, clients: null })),
+  ].map(c => partDeCommande(c, parts)).sort(parDateDesc)
+  const allLignes = partsDeLignes([...(lignesBoutique ?? []), ...(lignesAutres ?? [])], parts).sort(parDateDesc)
+
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
 
   const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at, from, to))
   const lignes  = (allLignes    ?? []).filter(l => inPeriod(l.created_at, from, to))
-  const collabs = (allCollabs   ?? []).filter(c => inPeriod(c.created_at, from, to))
 
   const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
   // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
@@ -62,7 +73,6 @@ export async function GET(request: Request) {
   const ca_net     = netHt(ca_brut - remises)
   const beats_vendus = lignes.length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
-  const collab_ca  = collabs.reduce((s, c) => s + c.montant, 0) / 100
 
   // Source top
   const srcMap: Record<string, number> = {}
@@ -80,17 +90,15 @@ export async function GET(request: Request) {
   const historique = slots.map(slot => {
     const mCmds    = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const mLignes  = (allLignes    ?? []).filter(l => l.created_at >= slot.from && l.created_at < slot.to)
-    const mCollabs = (allCollabs   ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
 
     const ca_mois     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const ca_net_mois = netHt(mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0))
     const ventes_mois = mLignes.length
     const panier_mois = mCmds.length ? ca_mois / mCmds.length : 0
-    const collab_mois = mCollabs.reduce((s, c) => s + c.montant, 0) / 100
 
     const row: Record<string, unknown> = {
       label: slot.label, fullLabel: slot.fullLabel,
-      ca: ca_mois, ca_net: ca_net_mois, ventes: ventes_mois, panier_moyen: panier_mois, collab_ca: collab_mois,
+      ca: ca_mois, ca_net: ca_net_mois, ventes: ventes_mois, panier_moyen: panier_mois,
     }
     for (const src of SOURCES) {
       row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye, 0)
@@ -139,7 +147,7 @@ export async function GET(request: Request) {
   })
 
   return NextResponse.json({
-    kpis: { ca_brut, ca_net, panier_moyen, beats_vendus, collab_ca, source_top },
+    kpis: { ca_brut, ca_net, panier_moyen, beats_vendus, source_top },
     historique,
     commandes,
   })

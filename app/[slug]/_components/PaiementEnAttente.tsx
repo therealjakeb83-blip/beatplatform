@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom'
 // voyait — le client pouvait croire que le paiement avait échoué.
 // Rendu dans <body> : le panneau du panier est transformé, un `fixed` à
 // l'intérieur serait limité au panneau.
-export default function PaiementEnAttente({ message }: { message?: string | null }) {
+export default function PaiementEnAttente({ message, titre }: { message?: string | null; titre?: string }) {
   if (typeof document === 'undefined') return null
   return createPortal(
     <div role="status" aria-live="polite" style={{
@@ -26,7 +26,7 @@ export default function PaiementEnAttente({ message }: { message?: string | null
         width: 34, height: 34, borderRadius: '50%',
         border: '3px solid rgba(10,10,12,.15)', borderTopColor: '#0A0A0C',
       }} />
-      <strong style={{ fontSize: 17 }}>Paiement en cours…</strong>
+      <strong style={{ fontSize: 17 }}>{titre ?? 'Paiement en cours…'}</strong>
       <span style={{ fontSize: 14, color: 'rgba(10,10,12,.7)', maxWidth: 360, lineHeight: 1.45 }}>
         {message ?? 'Ne ferme pas cette page, ça peut prendre quelques secondes.'}
       </span>

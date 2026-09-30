@@ -26,6 +26,7 @@ import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/e
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
 import PaiementEnAttente from '@/app/[slug]/_components/PaiementEnAttente'
 import { messageErreurInattendue, payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
+import { lireCodePromoPanier, oublierCodePromoPanier } from '@/app/[slug]/_lib/code-promo-panier'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -274,7 +275,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       .then((data: { totalCents?: number; beatsRemiseLimitee?: string[]; erreur?: string }) => {
         if (annule) return
         if (typeof data.totalCents === 'number') {
-          elements.update({ amount: data.totalCents })
+          // Stripe refuse un montant nul : à 0 € (commande gratuite) les
+          // moyens de paiement sont masqués de toute façon.
+          if (data.totalCents > 0) elements.update({ amount: data.totalCents })
           setTotalServeurCents(data.totalCents)
           setBeatsRemiseLimitee(data.beatsRemiseLimitee ?? [])
           setErreurPrix(null)
@@ -288,8 +291,19 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements, slug, items.map(i => `${i.beatId}:${i.licenceId}`).join(','), codeApplique?.code])
 
-  async function validerCode() {
-    const code = codeInput.trim().toUpperCase()
+  // Commande gratuite (Phase 13, lot 3) : un code promo fait tomber tout le
+  // panier à 0 € — pas de paiement, bouton « Valider la commande ».
+  const gratuit = montantSynchronise && totalServeurCents === 0
+
+  // Code déjà appliqué dans le panier : repris ici, sans le retaper.
+  useEffect(() => {
+    const code = lireCodePromoPanier(slug)
+    if (code) validerCode(code)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
+
+  async function validerCode(codeDuPanier?: string) {
+    const code = (codeDuPanier ?? codeInput).trim().toUpperCase()
     if (!code) return
     setChargementCode(true)
     setErreurCode(null)
@@ -306,6 +320,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
         setCodeInput('')
       } else {
         if (data.a_restriction_email) setCodeNecessiteEmail(true)
+        if (codeDuPanier) {
+          setCodePromoOpen(true)
+          setCodeInput(code)
+        }
         setErreurCode(data.erreur ?? 'Code invalide')
       }
     } catch {
@@ -401,6 +419,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   function apresPaiementMulti(resultat: ResultatPaiementMultiClient) {
     if (resultat.etat === 'ok') {
       clear()
+      oublierCodePromoPanier(slug)
       window.location.href = `/telechargement/${resultat.commandeId}`
     } else if (resultat.etat === 'recu') {
       clear()
@@ -412,6 +431,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 
   async function apresSucces(paymentIntentId: string) {
     clear()
+    oublierCodePromoPanier(slug)
     for (let tentative = 0; tentative < 10; tentative++) {
       const res = await fetch(`/api/telechargement/lookup?payment_intent=${paymentIntentId}`)
       if (res.ok) {
@@ -425,6 +445,31 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       await new Promise(r => setTimeout(r, 1000))
     }
     window.location.href = `/${slug}`
+  }
+
+  async function validerCommandeGratuite() {
+    if (submitting || !validerFormulaire()) return
+    setSubmitting(true)
+    setErreurGlobale(null)
+    try {
+      const res = await fetch('/api/commande-gratuite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: corpsPaiement(),
+      })
+      const data = await res.json() as { commande_id?: string; erreur?: string }
+      if (!data.commande_id) {
+        setErreurGlobale(data.erreur ?? 'Erreur serveur, réessaie')
+        return
+      }
+      clear()
+      oublierCodePromoPanier(slug)
+      window.location.href = `/telechargement/${data.commande_id}`
+    } catch (err) {
+      setErreurGlobale(messageErreurInattendue(err))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function payerParCarte() {
@@ -553,7 +598,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 {codeApplique ? (
                   <div className="pmt-promo-applied">
                     <span>Code <strong>{codeApplique.code}</strong> appliqué</span>
-                    <button className="pmt-promo-remove" onClick={() => { setCodeApplique(null); setCodeNecessiteEmail(false) }}>Supprimer</button>
+                    <button className="pmt-promo-remove" onClick={() => { setCodeApplique(null); setCodeNecessiteEmail(false); oublierCodePromoPanier(slug) }}>Supprimer</button>
                   </div>
                 ) : codePromoOpen ? (
                   <div className="pmt-promo-row">
@@ -566,7 +611,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                       onKeyDown={e => e.key === 'Enter' && validerCode()}
                       placeholder="Code promo"
                     />
-                    <button className="pmt-promo-apply" onClick={validerCode} disabled={!codeInput.trim() || chargementCode}>
+                    <button className="pmt-promo-apply" onClick={() => validerCode()} disabled={!codeInput.trim() || chargementCode}>
                       {chargementCode ? '...' : 'OK'}
                     </button>
                   </div>
@@ -620,7 +665,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           <div className="pmt-form-desktop">
           <div className="pmt-desktop-title">
             <h1>Finaliser ma commande</h1>
-            <p>Tes fichiers et licences PDF sont envoyés par e-mail juste après le paiement.</p>
+            <p>Tes fichiers et licences PDF sont envoyés par e-mail juste après {gratuit ? 'la validation' : 'le paiement'}.</p>
           </div>
 
           {/* Opt-in positif : ne jamais interpréter l'absence de coche comme une désinscription. */}
@@ -639,6 +684,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 
           {/* Moyens de paiement — aussi pour un panier avec un beat collab
               (Phase 13, lot 2 : enregistrés puis débités chez chaque vendeur) */}
+          {!gratuit && (<>
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
             <ExpressButtons
@@ -659,15 +705,16 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
           {/* Séparateur — desktop uniquement, remplace visuellement le bouton
               "Payer par carte" (masqué au-dessus du breakpoint) */}
           <div className="pmt-carte-separator"><span>ou payer par carte</span></div>
+          </>)}
 
           {/* Payer par carte */}
           <div className="pmt-carte-accordion">
-            <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen}>
+            <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen || gratuit}>
               <span className="pmt-carte-head-icon">{CARD_ICON}</span>
-              <span className="pmt-carte-head-label">Payer par carte</span>
-              <span className={`pmt-carte-chevron${carteOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
+              <span className="pmt-carte-head-label">{gratuit ? 'Mes informations' : 'Payer par carte'}</span>
+              <span className={`pmt-carte-chevron${carteOpen || gratuit ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
             </button>
-            <div className={`pmt-carte-content${carteOpen ? ' is-open' : ''}`}>
+            <div className={`pmt-carte-content${carteOpen || gratuit ? ' is-open' : ''}`}>
               <div className="pmt-carte-inner">
                 {/* Informations de facturation — toujours visibles dès l'ouverture
                     de l'accordéon "Payer par carte" (plus de sous-accordéon
@@ -731,7 +778,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                   <p className="pmt-field-help">La facture sera émise au nom de la société.</p>
                 </div>
 
-                {/* Informations bancaires */}
+                {/* Informations bancaires — aucune pour une commande gratuite */}
+                {!gratuit && (<>
                 <div className="pmt-cb-heading">
                   <span className="pmt-cb-heading-icon">{CARD_ICON}</span>
                   <span>Informations bancaires</span>
@@ -756,17 +804,24 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                     <CardCvcElement className="StripeElement" options={{ style: cardElementStyle }} onChange={e => setCardComplete(c => ({ ...c, cvc: e.complete }))} />
                   </div>
                 </div>
+                </>)}
 
                 {(erreurGlobale || erreurPrix) && <p className="pmt-error-global">{erreurGlobale ?? erreurPrix}</p>}
                 {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
                 {/* Même écran d'attente que pour Apple/Google Pay (les fenêtres 3D Secure de Stripe passent au-dessus) */}
-                {submitting && <PaiementEnAttente message={messageValidation} />}
+                {submitting && <PaiementEnAttente message={messageValidation} titre={gratuit ? 'Validation en cours…' : undefined} />}
 
-                <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk || !montantSynchronise}>
-                  {submitting ? 'Traitement…' : montantSynchronise ? `Payer ${formatPrix(totalAffiche)}` : 'Calcul du prix…'}
-                </button>
+                {gratuit ? (
+                  <button className="pmt-cta" onClick={validerCommandeGratuite} disabled={submitting || !facturationOk}>
+                    {submitting ? 'Traitement…' : 'Valider la commande'}
+                  </button>
+                ) : (
+                  <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk || !montantSynchronise}>
+                    {submitting ? 'Traitement…' : montantSynchronise ? `Payer ${formatPrix(totalAffiche)}` : 'Calcul du prix…'}
+                  </button>
+                )}
                 <p className="pmt-legal">
-                  En payant, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
+                  En {gratuit ? 'validant' : 'payant'}, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
                 </p>
               </div>
             </div>

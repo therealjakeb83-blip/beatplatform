@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { chargerPartsVendeur, partsDeLignes } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -45,7 +46,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!beat) return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
 
   const [
-    { data: allCommandes },
+    { data: lignesBoutique },
     { data: allPlays },
     { data: allFreeDl },
     { data: allSplits },
@@ -55,7 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // (commande_id) reste celui de la commande, pour le lien vers sa fiche détail.
     admin.from('commande_lignes')
       .select(`
-        commande_id, created_at, prix_paye, reduction_montant, licences(nom),
+        commande_id, beat_id, licence_id, created_at, prix_paye, reduction_montant, licences(nom),
         commandes!inner(beatmaker_id, statut, source_marketing, client_id, clients(id, prenom, nom))
       `)
       .eq('beat_id', id)
@@ -80,6 +81,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq('beat_id', id)
       .order('created_at', { ascending: false }),
   ])
+
+  // CA d'un beat collab = part du propriétaire (Phase 13, lot 3).
+  const allCommandes = partsDeLignes(lignesBoutique ?? [], await chargerPartsVendeur(admin, user.id))
 
   // Filtrer par période
   const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at,    from, to))

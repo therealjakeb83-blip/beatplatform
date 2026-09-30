@@ -236,6 +236,7 @@ export type TypeTemplatePlateforme =
   | 'collab_pause'
   | 'conditions_mise_a_jour'
   | 'suspension'
+  | 'nouvelle_vente'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
   nom_artiste: NOM_PLATEFORME,
@@ -267,6 +268,7 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   collab_pause: 'Action requise sur un beat en collaboration',
   conditions_mise_a_jour: `Mise à jour des conditions ${NOM_PLATEFORME}`,
   suspension: 'Ton compte a été suspendu',
+  nouvelle_vente: 'Nouvelle vente !',
 }
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
@@ -303,6 +305,8 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return `Nous mettons à jour un des textes de ${NOM_PLATEFORME}. Tu n'as rien à faire : les nouvelles conditions s'appliqueront automatiquement à la date indiquée ci-dessous, et les ventes faites avant restent sous l'ancienne version. Si tu n'es pas d'accord, tu peux quitter la plateforme ou te retirer d'une collaboration avant cette date. La répartition convenue entre collaborateurs ne change jamais.`
     case 'suspension':
       return `Ton compte ${NOM_PLATEFORME} a été suspendu par notre équipe. Ton dashboard et ta boutique publique ne sont plus accessibles tant que la situation n'est pas résolue.`
+    case 'nouvelle_vente':
+      return 'Bonne nouvelle : tu viens de réaliser une vente. Voici le détail.'
   }
 }
 
@@ -783,9 +787,98 @@ export async function genererApercuTransactionnelPlateforme(
       ]),
     },
     suspension: { corpsHtml: CORPS_EXEMPLE_SUSPENSION, cta: { texte: 'Nous contacter', lien: '#' } },
+    nouvelle_vente: {
+      corpsHtml: corpsLignes([
+        ['Boutique', 'Jake B (vente en collaboration)'],
+        ['Beat', 'Midnight Drive — Licence MP3'],
+        ['Montant payé', '49.00€'],
+        ['Ta part', '24.50€ (50 %)'],
+      ]),
+      cta: { texte: 'Voir la commande', lien: '#' },
+    },
   }
 
   return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })
+}
+
+// « Nouvelle vente » (Phase 13, lot 3 — Mails My Producer) : au propriétaire
+// de la boutique et à chaque collaborateur vendeur, à chaque vente de licence
+// (payée ou offerte : même email, seule la facture manque) et à chaque NOUVEL
+// abonnement boutique. Jamais pour un renouvellement ni un free download.
+// Un collaborateur ne voit jamais l'email ni le téléphone du client.
+const fmtEuros = (cents: number) => `${(cents / 100).toFixed(2)}€`
+
+export async function envoyerNouvelleVente({ commandeId }: { commandeId: string }) {
+  const admin = createAdminClient()
+  const { data: commande } = await admin
+    .from('commandes')
+    .select('id, beatmaker_id, prix_paye')
+    .eq('id', commandeId)
+    .maybeSingle()
+  if (!commande) return
+
+  const [{ data: lignes }, { data: tranches }] = await Promise.all([
+    admin.from('commande_lignes').select('beat_id, licence_id, licence_nom, beats(titre)').eq('commande_id', commandeId),
+    admin.from('commande_tranches').select('vendeur_id, montant_ttc_cents, detail_lignes, est_proprietaire').eq('commande_id', commandeId),
+  ])
+
+  type LigneRow = { beat_id: string; licence_id: string; licence_nom: string | null; beats: { titre: string } | null }
+  const libelle = new Map(((lignes ?? []) as unknown as LigneRow[]).map(l => [
+    `${l.beat_id}:${l.licence_id}`,
+    `${l.beats?.titre ?? 'Beat'} — Licence ${l.licence_nom ?? ''}`.trim(),
+  ]))
+  const toutesLesLignes = [...libelle.values()].join('\n')
+  const totalCents = Math.round(Number(commande.prix_paye) * 100)
+
+  type Detail = { beat_id: string; licence_id: string; pourcentage: number; montant_cents: number }
+  const destinataires = (tranches ?? []).length
+    ? (tranches ?? []).map(t => ({ vendeurId: t.vendeur_id as string, proprietaire: t.est_proprietaire as boolean, partCents: t.montant_ttc_cents as number, details: (t.detail_lignes ?? []) as Detail[] }))
+    : [{ vendeurId: commande.beatmaker_id as string, proprietaire: true, partCents: totalCents, details: [] as Detail[] }]
+  const collab = (tranches ?? []).length > 1
+
+  const { data: vendeurs } = await admin
+    .from('beatmakers')
+    .select('id, nom_artiste, email')
+    .in('id', [...new Set([commande.beatmaker_id as string, ...destinataires.map(d => d.vendeurId)])])
+  const vendeurMap = new Map((vendeurs ?? []).map(v => [v.id as string, v]))
+  const boutique = vendeurMap.get(commande.beatmaker_id as string)?.nom_artiste ?? ''
+
+  for (const d of destinataires) {
+    const email = vendeurMap.get(d.vendeurId)?.email
+    if (!email) continue
+    const pcts = [...new Set(d.details.map(x => x.pourcentage))]
+    const partLibelle = `${fmtEuros(d.partCents)}${pcts.length === 1 && pcts[0] < 100 ? ` (${pcts[0]} %)` : ''}`
+    const corps: [string, string][] = d.proprietaire
+      ? [
+          ['Beats', toutesLesLignes],
+          ['Montant payé', fmtEuros(totalCents)],
+          ...(collab ? [['Ta part', partLibelle] as [string, string]] : []),
+        ]
+      : [
+          ['Boutique', `${boutique} (vente en collaboration)`],
+          ['Beat', d.details.map(x => libelle.get(`${x.beat_id}:${x.licence_id}`) ?? 'Beat').join('\n')],
+          ['Ta part', partLibelle],
+        ]
+    await envoyerEmailCollab({
+      type: 'nouvelle_vente',
+      to: email,
+      beatmakerId: commande.beatmaker_id as string,
+      corpsHtml: corpsLignes(corps),
+      cta: { texte: 'Voir la commande', lien: `${APP_URL}/dashboard/business/commandes/${commandeId}` },
+    }).catch(err => console.error('[emails] Erreur envoi nouvelle vente à', d.vendeurId, ':', err))
+  }
+}
+
+export async function envoyerNouvelAbonnement({ beatmakerId, periode, prixCents }: { beatmakerId: string; periode: string; prixCents: number }) {
+  const { data: beatmaker } = await createAdminClient().from('beatmakers').select('email').eq('id', beatmakerId).maybeSingle()
+  if (!beatmaker?.email) return
+  await envoyerEmailCollab({
+    type: 'nouvelle_vente',
+    to: beatmaker.email,
+    beatmakerId,
+    corpsHtml: corpsLignes([['Nouvel abonnement', `Abonnement ${periode}`], ['Montant', fmtEuros(prixCents)]]),
+    cta: { texte: 'Voir mes abonnés', lien: `${APP_URL}/dashboard/business/abonnements` },
+  })
 }
 
 export async function confirmationCommande({
@@ -799,7 +892,7 @@ export async function confirmationCommande({
   commandeId: string
   clientId?: string | null
 }) {
-  const [{ branding, titre, intro }, { data: lignes }, { data: commande }] = await Promise.all([
+  const [{ branding, titre, intro }, { data: lignes }, { data: commande }, { data: tranches }] = await Promise.all([
     chargerBrandingEtTemplate(beatmakerId, 'confirmation_commande'),
     createAdminClient()
       .from('commande_lignes')
@@ -810,8 +903,34 @@ export async function confirmationCommande({
       .select('numero_facture, facture_pdf_url')
       .eq('id', commandeId)
       .maybeSingle(),
+    // Vente à plusieurs vendeurs (Phase 13) : le client paie chaque vendeur
+    // séparément (une ligne par vendeur sur son relevé) et reçoit une facture
+    // de chacun — l'email le dit explicitement.
+    createAdminClient()
+      .from('commande_tranches')
+      .select('vendeur_nom, montant_ttc_cents, facture_numero, facture_pdf_url, est_proprietaire')
+      .eq('commande_id', commandeId)
+      .order('est_proprietaire', { ascending: false }),
   ])
   if (!branding) return
+
+  const tranchesPayees = (tranches ?? []).filter(t => t.montant_ttc_cents > 0)
+  const blocVendeurs = tranchesPayees.length > 1
+    ? `<p style="margin:16px 0 6px;font-size:13px;color:#374151;">Cette commande est vendue conjointement par ${tranchesPayees.length} artistes : tu es débité une fois par artiste et chacun t'envoie sa facture.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+        ${tranchesPayees.map(t => `
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;">${echapper(t.vendeur_nom)}</td>
+            <td style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#111827;text-align:right;white-space:nowrap;">${(t.montant_ttc_cents / 100).toFixed(2)}€</td>
+          </tr>`).join('')}
+      </table>`
+    : ''
+  const liensFacturesTranches = (tranches ?? []).filter(t => t.facture_pdf_url).map(t => `
+        <p style="margin:8px 0 0;font-size:13px;">
+          <a href="${t.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
+            Télécharger la facture de ${echapper(t.vendeur_nom)}${t.facture_numero ? ` (n° ${echapper(t.facture_numero)})` : ''}
+          </a>
+        </p>`).join('')
 
   type LigneRow = { prix_paye: number; beats: { titre: string } | null; licences: { nom: string } | null }
   const items = (lignes ?? []) as unknown as LigneRow[]
@@ -828,12 +947,13 @@ export async function confirmationCommande({
             </td>
           </tr>`).join('')}
       </table>
+      ${blocVendeurs}
       ${commande?.facture_pdf_url ? `
         <p style="margin:12px 0 0;font-size:13px;">
           <a href="${commande.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
             Télécharger ta facture${commande.numero_facture ? ` (n° ${echapper(commande.numero_facture)})` : ''}
           </a>
-        </p>` : ''}`
+        </p>` : ''}${liensFacturesTranches}`
     : ''
 
   await envoyerEmailUnique({

@@ -13,6 +13,17 @@ type CmdRow = {
   facture_pdf_url: string | null
 }
 
+// Une ligne = une facture : celle de la commande (vente solo) ou celle de
+// chaque vendeur d'une vente à plusieurs vendeurs (Phase 13).
+type FactureRow = {
+  cle: string
+  libelle: string
+  numero: string | null
+  montant: number
+  date: string
+  url: string
+}
+
 const LABEL_TYPE_COMMANDE: Record<string, string> = {
   LICENCE: 'Achat de licence',
   CREATION_ABONNEMENT: 'Abonnement — souscription',
@@ -61,7 +72,6 @@ export default async function FacturesBoutiquePage({
       .select('id, created_at, prix_paye, type_commande, numero_facture, facture_pdf_url')
       .eq('beatmaker_id', beatmaker.id)
       .or(`client_id.eq.${clientId},acheteur_email.eq.${emailIdentifie}`)
-      .not('facture_pdf_url', 'is', null)
       .order('created_at', { ascending: false })
     commandes = (data as unknown as CmdRow[]) ?? []
   } else {
@@ -70,10 +80,37 @@ export default async function FacturesBoutiquePage({
       .select('id, created_at, prix_paye, type_commande, numero_facture, facture_pdf_url')
       .eq('beatmaker_id', beatmaker.id)
       .eq('acheteur_email', emailIdentifie)
-      .not('facture_pdf_url', 'is', null)
       .order('created_at', { ascending: false })
     commandes = (data as unknown as CmdRow[]) ?? []
   }
+
+  const { data: tranches } = commandes.length
+    ? await admin
+        .from('commande_tranches')
+        .select('id, commande_id, vendeur_nom, montant_ttc_cents, facture_numero, facture_pdf_url, est_proprietaire')
+        .in('commande_id', commandes.map(c => c.id))
+        .not('facture_pdf_url', 'is', null)
+        .order('est_proprietaire', { ascending: false })
+    : { data: [] }
+
+  const factures: FactureRow[] = commandes.flatMap(cmd => [
+    ...(cmd.facture_pdf_url ? [{
+      cle: cmd.id,
+      libelle: LABEL_TYPE_COMMANDE[cmd.type_commande ?? ''] ?? 'Facture',
+      numero: cmd.numero_facture,
+      montant: Number(cmd.prix_paye),
+      date: cmd.created_at,
+      url: cmd.facture_pdf_url,
+    }] : []),
+    ...(tranches ?? []).filter(t => t.commande_id === cmd.id).map(t => ({
+      cle: t.id as string,
+      libelle: `${LABEL_TYPE_COMMANDE[cmd.type_commande ?? ''] ?? 'Facture'} — ${t.vendeur_nom}`,
+      numero: t.facture_numero as string | null,
+      montant: (t.montant_ttc_cents as number) / 100,
+      date: cmd.created_at,
+      url: t.facture_pdf_url as string,
+    })),
+  ])
 
   return (
     <div className="min-h-screen bg-black px-6 py-16">
@@ -83,30 +120,30 @@ export default async function FacturesBoutiquePage({
         </Link>
 
         <h1 className="text-2xl font-black text-white mb-6">
-          Mes factures ({commandes.length})
+          Mes factures ({factures.length})
         </h1>
 
-        {commandes.length === 0 ? (
+        {factures.length === 0 ? (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center">
             <p className="text-gray-500 text-sm">Aucune facture disponible pour l&apos;instant.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {commandes.map(cmd => (
-              <div key={cmd.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
+            {factures.map(f => (
+              <div key={f.cle} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-500 text-base">
                   🧾
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-medium text-sm truncate">
-                    {LABEL_TYPE_COMMANDE[cmd.type_commande ?? ''] ?? 'Facture'}
+                    {f.libelle}
                   </p>
                   <p className="text-gray-500 text-xs">
-                    {cmd.numero_facture ? `${cmd.numero_facture} · ` : ''}{Number(cmd.prix_paye).toFixed(2)}€ · {new Date(cmd.created_at).toLocaleDateString('fr-FR')}
+                    {f.numero ? `${f.numero} · ` : ''}{f.montant.toFixed(2)}€ · {new Date(f.date).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
                 <a
-                  href={cmd.facture_pdf_url!}
+                  href={f.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors flex-shrink-0"

@@ -2,7 +2,6 @@ import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { finaliserCommandePayee } from '@/lib/webhook-paiement'
-import { decomposerTva } from '@/lib/collaboration-parts'
 import type { DetailLigneTranche } from '@/lib/paiement-multi-repartition'
 
 // Moteur du paiement réparti entre vendeurs (Phase 13, lot 1).
@@ -12,6 +11,8 @@ import type { DetailLigneTranche } from '@/lib/paiement-multi-repartition'
 // est d'abord RÉSERVÉE (capture manuelle), et n'est encaissée que si toutes
 // les parts sont réservées — sinon toutes les réservations sont annulées.
 // Une copie de carte est à usage unique : elle est refaite à chaque tentative.
+// Une part à 0 € (beat collab offert dans un panier payant, lot 3) n'est
+// jamais encaissée : elle ne sert qu'à créer la tranche du vendeur.
 
 type Part = {
   id: string
@@ -48,7 +49,7 @@ export type ValidationBanque = {
 
 /** Beats en collaboration du panier et beatmakers qui les ont composés. */
 async function contexteCollab(admin: ReturnType<typeof createAdminClient>, parts: Part[]) {
-  const collab = parts.filter(p => p.detail_lignes.some(d => d.pourcentage < 100))
+  const collab = parts.filter(p => p.montant_cents > 0 && p.detail_lignes.some(d => d.pourcentage < 100))
   const beatIds = [...new Set(collab.flatMap(p => p.detail_lignes.filter(d => d.pourcentage < 100).map(d => d.beat_id)))]
   const [{ data: beats }, { data: vendeurs }] = await Promise.all([
     admin.from('beats').select('id, titre').in('id', beatIds),
@@ -229,8 +230,10 @@ async function capturerPart(admin: ReturnType<typeof createAdminClient>, part: P
   }
 }
 
+const aEncaisser = (p: Part) => p.montant_cents > 0
+
 /** Crée la commande et ses tranches une fois TOUTES les parts encaissées. */
-async function creerCommande(admin: ReturnType<typeof createAdminClient>, tentative: Tentative, parts: Part[]): Promise<string | null> {
+async function creerCommande(tentative: Tentative, parts: Part[]): Promise<string | null> {
   if (tentative.commande_id) return tentative.commande_id
 
   const setupIntent = await stripe.setupIntents.retrieve(tentative.stripe_setup_intent_id, { expand: ['payment_method'] })
@@ -252,39 +255,15 @@ async function creerCommande(admin: ReturnType<typeof createAdminClient>, tentat
     stripeSessionId: null,
     stripeAccountId: null,
     paiementMulti: true,
-  })
-  if (!commandeId) return null
-
-  const { data: vendeurs } = await admin
-    .from('beatmakers')
-    .select('id, nom_artiste, tva_active, tva_taux')
-    .in('id', parts.map(p => p.vendeur_id))
-  const vendeurMap = new Map((vendeurs ?? []).map(v => [v.id as string, v]))
-
-  const tranches = parts.map(p => {
-    const v = vendeurMap.get(p.vendeur_id)
-    const taux = v?.tva_active && v?.tva_taux ? Number(v.tva_taux) : 0
-    const { htCents, tvaCents } = decomposerTva(p.montant_cents, taux)
-    const pcts = new Set(p.detail_lignes.map(d => d.pourcentage))
-    return {
-      commande_id: commandeId,
+    tranches: parts.map(p => ({
       vendeur_id: p.vendeur_id,
-      vendeur_nom: v?.nom_artiste ?? 'Vendeur',
       est_proprietaire: p.est_proprietaire,
-      quote_part_pct: pcts.size === 1 ? [...pcts][0] : null,
-      montant_ttc_cents: p.montant_cents,
-      tva_taux: taux,
-      montant_tva_cents: tvaCents,
-      montant_ht_cents: htCents,
-      stripe_account_id: p.stripe_account_id,
-      stripe_payment_intent_id: p.stripe_payment_intent_id,
-      statut: 'payee',
+      montant_cents: p.montant_cents,
       detail_lignes: p.detail_lignes,
-    }
+      stripe_account_id: p.stripe_account_id,
+      stripe_payment_intent_id: aEncaisser(p) ? p.stripe_payment_intent_id : null,
+    })),
   })
-  const { error } = await admin.from('commande_tranches').insert(tranches)
-  if (error) console.error('[paiement-multi] Erreur insert commande_tranches pour', commandeId, JSON.stringify(error))
-
   return commandeId
 }
 
@@ -330,7 +309,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
   const description = `Achat sur la boutique ${boutique?.nom_artiste ?? ''}`.trim()
 
   for (const part of parts) {
-    if (part.statut === 'reservee') continue
+    if (part.statut === 'reservee' || !aEncaisser(part)) continue
     if (part.statut === 'a_reserver' && part.stripe_payment_intent_id) {
       if (!(await verifierValidation(admin, part))) {
         await toutDefaire(admin, tentativeId, 'echouee')
@@ -350,7 +329,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
   }
 
   const { parts: reservees } = await lireTentative(admin, tentativeId)
-  for (const part of reservees) {
+  for (const part of reservees.filter(aEncaisser)) {
     if (!(await capturerPart(admin, part))) {
       await toutDefaire(admin, tentativeId, 'echouee')
       return { ok: false, erreur: MESSAGE_ECHEC, status: 402 }
@@ -358,7 +337,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
   }
 
   const { parts: capturees } = await lireTentative(admin, tentativeId)
-  const commandeId = await creerCommande(admin, tentative, capturees)
+  const commandeId = await creerCommande(tentative, capturees)
   if (!commandeId) {
     // Argent encaissé mais commande non créée : le balayage réessaiera.
     return { ok: false, erreur: 'Paiement reçu — ta commande est en cours de préparation, tu recevras un email de confirmation.', status: 202 }
@@ -430,7 +409,8 @@ export async function balayerPaiementsMulti(ageMinutes = 30): Promise<{ terminee
   for (const t of enPlan ?? []) {
     const { tentative, parts } = await lireTentative(admin, t.id as string)
     if (!tentative) continue
-    const toutesTenues = parts.length > 0 && parts.every(p => p.statut === 'reservee' || p.statut === 'capturee')
+    const payantes = parts.filter(aEncaisser)
+    const toutesTenues = payantes.length > 0 && payantes.every(p => p.statut === 'reservee' || p.statut === 'capturee')
     const uneEncaissee = parts.some(p => p.statut === 'capturee')
 
     if (toutesTenues && uneEncaissee) {
@@ -438,7 +418,7 @@ export async function balayerPaiementsMulti(ageMinutes = 30): Promise<{ terminee
       for (const p of parts.filter(p => p.statut === 'reservee')) ok = (await capturerPart(admin, p)) && ok
       if (ok) {
         const { parts: capturees } = await lireTentative(admin, tentative.id)
-        if (await creerCommande(admin, tentative, capturees)) { terminees++; continue }
+        if (await creerCommande(tentative, capturees)) { terminees++; continue }
       }
       console.error('[paiement-multi] Balayage : vente non terminée pour la tentative', tentative.id, '— à vérifier')
       continue
