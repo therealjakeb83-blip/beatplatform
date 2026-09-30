@@ -367,15 +367,16 @@ Fait : migration `supabase/phase13_lot1_paiement_multi.sql` ; `lib/stripe-compte
 
 #### Checklist tests Phase 13 lot 2 (page de paiement) — codé le 2026-09-29, à tester item par item avec Jake
 Fait (aucune migration SQL) : note « paiement en cours » sur l'appareil (`app/[slug]/_lib/paiement-en-cours.ts`) + `/api/stripe/etat-paiement` (solo et collab) vérifiée par le panier au chargement (`CartContext`) — seul l'onglet d'origine peut annuler un paiement interrompu ; validations 3D Secure à l'écran pour chaque part (`lib/paiement-multi.ts` : part « à valider » renvoyée au navigateur, reprise ensuite ; `/api/stripe/paiement-multi/annuler` = annulation immédiate) ; Apple Pay / Google Pay / Link sur un panier collab (page de paiement ET panier) : moyen créé par le navigateur sur la plateforme, enregistré sans débit (`preparer` + `payment_method_id`), domaine wallets assuré sur la plateforme ; Link gardé dans le champ carte collab (décision de Jake : on essaie) ; code navigateur partagé `app/[slug]/_lib/paiement-multi-client.ts`. Le texte à afficher pendant les validations 3DS multiples : à décider en T6 si le cas se présente.
-- ⬜ **T1** solo 4242 : « Payer » puis rechargement immédiat → « paiement en cours » puis téléchargement, panier vidé, 1 commande / 1 encaissement
-- ⬜ **T2** idem collab « Ambitieux » → 1 commande, 24,50 + 24,50, 0 € plateforme
-- ⬜ **T3** carte …0002 refusée puis rechargement → pas de faux « en cours », panier intact, repayable
-- ⬜ **T4** solo …3155, fenêtre 3DS fermée puis rechargement → rien débité, panier intact, nouveau paiement = 1 encaissement
-- ⬜ **T5** collab …3155 → toujours UNE fenêtre (non-régression T9a)
-- ⬜ **T6** collab …3184 (banque stricte) → fenêtres enchaînées, commande, 2 encaissements, 0 € plateforme ; on compte les fenêtres, Jake décide du texte
-- ⬜ **T7** collab …3184, abandon à la 2e fenêtre → annulation immédiate, rien débité, panier intact
-- ⬜ **T8** collab …3184, validation ratée (« Fail ») → idem T7
-- ⬜ **T9** solo …3184 → comme avant
+- ✅ **T1** (Claude, navigateur automatisé, 2026-09-30) solo 4242 : « Payer » puis rechargement immédiat → « paiement en cours » puis téléchargement, panier vidé, 1 commande / 1 encaissement
+- ✅ **T2** (Claude) idem collab « Ambitieux » → 1 commande, 24,50 + 24,50, 0 € plateforme
+- ✅ **T3** (Claude) carte …0002 refusée puis rechargement → pas de faux « en cours », panier intact, repayable
+- ✅ **T4** (Claude, fait avec rechargement PENDANT la fenêtre 3DS, cas le plus dur) solo …3155, fenêtre 3DS fermée puis rechargement → rien débité, panier intact, nouveau paiement = 1 encaissement
+- ✅ **T5** (Claude) collab …3155 → toujours UNE fenêtre (non-régression T9a)
+- ✅ **T6** (Claude, après correctif) collab …3184 (banque stricte) → fenêtres enchaînées, commande, 2 encaissements, 0 € plateforme ; on compte les fenêtres, Jake décide du texte
+- ✅ **T7** (Claude, bouton « Annuler » de la fenêtre) + **T7b** abandon à la 3e fenêtre alors que la part de A est RÉSERVÉE → réservation annulée collab …3184, abandon à la 2e fenêtre → annulation immédiate, rien débité, panier intact
+- ✅ **T8** (Claude) collab …3184, validation ratée (« Fail ») → idem T7
+- ✅ **T9** (Claude) solo …3184 → comme avant
+- **Bilan T1-T9 (script `.scratch/phase13-lot2-bilan.mjs`, lancé par Jake le 2026-09-30) : TOUT EST PROPRE** — 8 commandes = 8 encaissements, collab 24,50 + 24,50 à chaque fois, aucun double débit, aucun encaissement sans commande, toutes les réservations abandonnées annulées (dont celle de A déjà réservée en T7b), 0 € plateforme. **2 problèmes trouvés et corrigés en testant** : (1) T1 : le formulaire se réaffichait ~0,6 s après le rechargement avant l'écran « en cours » (commit `dc030d4`) ; (2) **vrai bug T6** : la validation 3DS à l'écran échouait toujours — la copie de carte chez le vendeur est à usage unique et venait d'être consommée par la réservation « client absent » → nouvelle copie pour la validation (commit `80a07f2`). Banque stricte = **3 fenêtres** (enregistrement + une par vendeur). **Avant lancement (étape 17)** : Stripe.js signale que Link (et PayPal/Klarna/Bancontact/Amazon Pay) n'est pas activé en mode live sur le compte PLATEFORME → Link serait masqué sur les paniers collab en production : l'activer dans les réglages des moyens de paiement de la plateforme.
 - ⬜ **T10** iPhone, panier « Ambitieux » : Apple Pay visible, vrai total (49 €), 2 encaissements, commande, 0 € plateforme
 - ⬜ **T11** idem panier mixte
 - ⬜ **T12** Google Pay sur PC (Chrome) si carte enregistrée, sinon justifier
