@@ -167,7 +167,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
         options={{
           buttonHeight: 46,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesExpressPourAppareil(estIOS),
+          paymentMethods: methodesExpressPourAppareil(estIOS, multiVendeurs),
           emailRequired: true,
           // Adresse obligatoire (contrat de licence — voir lib/contrat.ts),
           // téléphone facultatif (jamais utilisé dans le contrat, juste

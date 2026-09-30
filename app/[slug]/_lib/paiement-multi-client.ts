@@ -145,7 +145,7 @@ export async function payerMultiParCarte(
   return finaliser(slug, prep.setupIntentId, surValidation)
 }
 
-/** Apple Pay / Google Pay / Link : moyen déjà créé par le navigateur (stripe.createPaymentMethod). */
+/** Apple Pay / Google Pay (jamais Link, refusé par Stripe en collab) : moyen déjà créé par le navigateur (stripe.createPaymentMethod). */
 export async function payerMultiAvecMoyen(
   stripe: Stripe,
   slug: string,

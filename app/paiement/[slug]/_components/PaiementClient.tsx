@@ -739,7 +739,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 <div className={`pmt-card-box${erreurGlobale ? '' : ''}`}>
                   <CardNumberElement
                     className="StripeElement"
-                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte' }}
+                    // Link masqué sur un panier collab : Stripe refuse de copier un moyen Link chez un vendeur (T14).
+                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte', disableLink: multiVendeurs }}
                     onChange={(e: StripeCardNumberElementChangeEvent) => setCardComplete(c => ({ ...c, number: e.complete }))}
                   />
                   <div className="pmt-card-brands">
@@ -854,7 +855,7 @@ function ExpressButtons({
         options={{
           buttonHeight: 50,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesExpressPourAppareil(estIOS),
+          paymentMethods: methodesExpressPourAppareil(estIOS, multiVendeurs),
           emailRequired: true,
           // Adresse obligatoire (contrat de licence — voir lib/contrat.ts),
           // téléphone facultatif (jamais utilisé dans le contrat, juste

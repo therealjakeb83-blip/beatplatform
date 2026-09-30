@@ -27,17 +27,20 @@ export type MethodesExpressAppareil = {
   applePay: 'always' | 'never'
   googlePay: 'always' | 'never'
   paypal: 'never'
-  link: 'auto'
+  link: 'auto' | 'never'
   amazonPay: 'never'
   klarna: 'never'
 }
 
-export function methodesExpressPourAppareil(estIOS: boolean): MethodesExpressAppareil {
+// multiVendeurs : panier avec un beat collab (Phase 13) — Link masqué, Stripe
+// refuse de copier un moyen Link chez un vendeur (« PaymentMethods of type
+// `link` cannot be shared to a sub-account », vu en T14 du lot 2).
+export function methodesExpressPourAppareil(estIOS: boolean, multiVendeurs = false): MethodesExpressAppareil {
   return {
     applePay: estIOS ? 'always' : 'never',
     googlePay: estIOS ? 'never' : 'always',
     paypal: 'never',
-    link: 'auto',
+    link: multiVendeurs ? 'never' : 'auto',
     amazonPay: 'never',
     klarna: 'never',
   }

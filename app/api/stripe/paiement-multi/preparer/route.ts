@@ -14,8 +14,8 @@ export const runtime = 'nodejs'
 // côté serveur, répartition par vendeur, puis SetupIntent sur la plateforme
 // (enregistrement de la carte, AUCUN argent). Le navigateur confirme ce
 // SetupIntent puis appelle /api/stripe/paiement-multi/payer. Apple Pay /
-// Google Pay / Link (lot 2) : le moyen déjà créé par le navigateur est
-// enregistré ici directement.
+// Google Pay (lot 2) : le moyen déjà créé par le navigateur est enregistré
+// ici directement. Jamais Link : Stripe refuse de le copier chez un vendeur.
 export async function POST(request: Request) {
   const body = await request.json() as {
     items?: ItemPanier[]
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     raison_sociale?: string
     numero_tva?: string
     newsletter_opt_in?: boolean
-    // Apple Pay / Google Pay / Link (lot 2) : moyen de paiement déjà créé par
+    // Apple Pay / Google Pay (lot 2) : moyen de paiement déjà créé par
     // le navigateur sur la plateforme — enregistré ici, jamais débité.
     payment_method_id?: string
   }
@@ -87,13 +87,13 @@ export async function POST(request: Request) {
   const totalCents = lignes.reduce((s, l) => s + l.prixTotalCents, 0)
   const nomComplet = [prenom, nom].filter(Boolean).join(' ') || undefined
 
-  let moyenType: 'card' | 'link' | null = null
+  // Carte seulement (Apple Pay / Google Pay en sont) : Stripe refuse de copier
+  // un moyen Link chez un vendeur (« cannot be shared to a sub-account », T14).
   if (body.payment_method_id) {
     const pm = await stripe.paymentMethods.retrieve(body.payment_method_id).catch(() => null)
-    if (!pm || pm.customer || (pm.type !== 'card' && pm.type !== 'link')) {
-      return NextResponse.json({ erreur: 'Moyen de paiement non accepté pour ce panier.' }, { status: 400 })
+    if (!pm || pm.customer || pm.type !== 'card') {
+      return NextResponse.json({ erreur: 'Ce moyen de paiement n’est pas accepté pour un beat en collaboration : utilise une carte, Apple Pay ou Google Pay.' }, { status: 400 })
     }
-    moyenType = pm.type
   }
 
   const customer = await stripe.customers.create({
@@ -106,24 +106,13 @@ export async function POST(request: Request) {
   try {
     setupIntent = await stripe.setupIntents.create({
       customer: customer.id,
-      payment_method_types: ['card', 'link'],
+      payment_method_types: ['card'],
       usage: 'off_session',
       metadata: { type: 'achat_multi', beatmaker_id: String(beatmaker.id) },
       ...(body.payment_method_id ? {
         payment_method: body.payment_method_id,
         confirm: true,
         return_url: `${new URL(request.url).origin}/paiement/${slug}`,
-        ...(moyenType === 'link' ? {
-          mandate_data: {
-            customer_acceptance: {
-              type: 'online' as const,
-              online: {
-                ip_address: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || '0.0.0.0',
-                user_agent: request.headers.get('user-agent') ?? 'inconnu',
-              },
-            },
-          },
-        } : {}),
       } : {}),
     })
   } catch (err) {
