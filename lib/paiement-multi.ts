@@ -89,7 +89,9 @@ async function lireTentative(admin: ReturnType<typeof createAdminClient>, tentat
       .eq('id', tentativeId).eq('type', 'achat_multi').maybeSingle(),
     admin.from('tentatives_paiement_parts')
       .select('id, vendeur_id, est_proprietaire, stripe_account_id, montant_cents, detail_lignes, stripe_payment_intent_id, statut')
-      .eq('tentative_id', tentativeId).order('est_proprietaire', { ascending: false }),
+      // Ordre stable (propriétaire d'abord) : même ordre de traitement et de
+      // noms affichés d'un appel à l'autre (vu en T2b, 3 beatmakers).
+      .eq('tentative_id', tentativeId).order('est_proprietaire', { ascending: false }).order('vendeur_id'),
   ])
   return { tentative: tentative as Tentative | null, parts: (parts ?? []) as Part[] }
 }
