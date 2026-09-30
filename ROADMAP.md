@@ -439,6 +439,8 @@ Cadrage complet (grill-me L4-Q1 à Q6) : `memory/project_phase13_grillme_decisio
 - **T10** commande à 0 € → « Annuler la commande » : fichiers fermés, email client, Exclusive offerte remise en vente, B voit « Annulée » (Claude)
 - **T11** B rembourse sa part dans Stripe : licence annulée, fichiers fermés, avoir de B, info chez A, A garde sa part ; puis bouton de A → seule sa part (Jake + Claude)
 
+- **Commandes de test préparées par Claude (2026-09-30, sans compte, dev-browser)** : P1 `1f0dd879` Memories MP3 49 € solo + MP3 téléchargé (T2+T3) ; P2 `785889e3` Mirage **Exclusive** 3 000 € solo, Mirage sorti de la boutique (T4) ; P3 `8f0882df` Ambitieux 49 € collab, 2 factures (T5) ; P5 `eb55e1ef` Gyro **Exclusive** + Ambitieux offerts (`LOT3CENT`, 0 €), Gyro sorti de la boutique (T10). T9 : `LOT3CENT` offre tout le panier → il faut un code 100 % « produit » sur Ambitieux seul. Non-régression : page de téléchargement d'une commande normale inchangée ; routes `rembourser` (GET/POST) et `annuler` → 401 sans session, webhook sans signature → 400.
+
 **Lot 4b — litiges**
 - **T12** litige solo détecté : encart, date limite, email à A
 - **T13** litige collab détecté : 2 parts, B voit l'état, emails A et B
