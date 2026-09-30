@@ -96,6 +96,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
   const [pret, setPret] = useState(false)
   const [expiree, setExpiree] = useState(false)
   const [confirmErreur, setConfirmErreur] = useState<string | null>(null)
+  const [messageValidation, setMessageValidation] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const enCoursRef = useRef(false)
 
@@ -199,7 +200,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
                 ville: adresse?.city,
                 pays: adresse?.country,
                 source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
-              }, paymentMethod.id)
+              }, paymentMethod.id, setMessageValidation)
               if (resultat.etat === 'erreur') {
                 setConfirmErreur(resultat.erreur)
                 try { event.paymentFailed({ reason: 'fail', message: resultat.erreur }) } catch {}
@@ -260,6 +261,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs 
         }}
       />
       {confirmErreur && <div className="shop-cart-express-error">{confirmErreur}</div>}
+      {messageValidation && <div className="shop-cart-express-error" role="status" style={{ color: 'inherit' }}>{messageValidation}</div>}
     </div>
   )
 }

@@ -37,7 +37,14 @@ type Tentative = {
 
 /** Validation 3D Secure exigée par la banque pour la part d'un vendeur :
  *  affichée à l'écran avec Stripe.js chargé sur le compte de ce vendeur. */
-export type ValidationBanque = { client_secret: string; stripe_account_id: string; payment_method_id: string }
+export type ValidationBanque = {
+  client_secret: string
+  stripe_account_id: string
+  payment_method_id: string
+  // Position de cette part parmi toutes les parts (« artiste 1 sur 2 »).
+  numero?: number
+  total?: number
+}
 
 export type ResultatPaiementMulti =
   | { ok: true; commandeId: string }
@@ -305,7 +312,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
   const { data: boutique } = await admin.from('beatmakers').select('nom_artiste').eq('id', tentative.beatmaker_id).maybeSingle()
   const description = `Achat sur la boutique ${boutique?.nom_artiste ?? ''}`.trim()
 
-  for (const part of parts) {
+  for (const [index, part] of parts.entries()) {
     if (part.statut === 'reservee') continue
     if (part.statut === 'a_reserver' && part.stripe_payment_intent_id) {
       if (!(await verifierValidation(admin, part))) {
@@ -317,7 +324,7 @@ export async function payerTentativeMulti(setupIntentId: string): Promise<Result
     const r = await reserverPart(admin, part, { tentativeId, customerId, paymentMethodId, description })
     if ('validation' in r) {
       await admin.from('tentatives_paiement').update({ statut: 'creee' }).eq('id', tentativeId)
-      return { ok: false, validation: r.validation, status: 200 }
+      return { ok: false, validation: { ...r.validation, numero: index + 1, total: parts.length }, status: 200 }
     }
     if (!r.ok) {
       await toutDefaire(admin, tentativeId, 'echouee')

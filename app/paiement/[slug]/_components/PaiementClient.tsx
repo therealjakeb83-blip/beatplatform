@@ -220,6 +220,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 
   const [submitting, setSubmitting] = useState(false)
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
+  // Banque stricte sur un panier collab : une validation par artiste.
+  const [messageValidation, setMessageValidation] = useState<string | null>(null)
   const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false })
   const [carteOpen, setCarteOpen] = useState(false)
   const [newsletterOptIn, setNewsletterOptIn] = useState(false)
@@ -387,6 +389,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       stripe.confirmCardSetup(clientSecret, {
         payment_method: { card: cardNumberElement, billing_details: detailsFacturation() },
       }),
+      setMessageValidation,
     )
     apresPaiementMulti(resultat)
   }
@@ -750,6 +753,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 </div>
 
                 {(erreurGlobale || erreurPrix) && <p className="pmt-error-global">{erreurGlobale ?? erreurPrix}</p>}
+                {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
 
                 <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk || !montantSynchronise}>
                   {submitting ? 'Traitement…' : montantSynchronise ? `Payer ${formatPrix(totalAffiche)}` : 'Calcul du prix…'}
@@ -813,6 +817,7 @@ function ExpressButtons({
   const [expiree, setExpiree] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
+  const [messageValidation, setMessageValidation] = useState<string | null>(null)
 
   useEffect(() => {
     if (pret) return
@@ -875,7 +880,7 @@ function ExpressButtons({
                 raison_sociale: professionnel ? raisonSociale : undefined,
                 numero_tva: professionnel ? numeroTva : undefined,
                 source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
-              }, paymentMethod.id)
+              }, paymentMethod.id, setMessageValidation)
               if (resultat.etat === 'erreur') {
                 setErreur(resultat.erreur)
                 try { event.paymentFailed({ reason: 'fail', message: resultat.erreur }) } catch {}
@@ -924,6 +929,7 @@ function ExpressButtons({
         }}
       />
       {erreur && <p className="pmt-field-error">{erreur}</p>}
+      {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
     </div>
   )
 }

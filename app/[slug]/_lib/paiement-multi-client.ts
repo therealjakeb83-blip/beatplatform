@@ -15,7 +15,19 @@ export type ResultatPaiementMultiClient =
   | { etat: 'recu'; message: string }
   | { etat: 'erreur'; erreur: string }
 
-type Validation = { client_secret: string; stripe_account_id: string; payment_method_id: string }
+type Validation = { client_secret: string; stripe_account_id: string; payment_method_id: string; numero?: number; total?: number }
+
+/** Affiché quand la banque exige une validation par artiste (banque stricte),
+ *  seul moment où on le sait avec certitude — texte validé par Jake. */
+export type SurValidation = (message: string | null) => void
+
+export function messageValidationParArtiste(numero?: number, total?: number): string {
+  const position = numero && total ? ` (artiste ${numero} sur ${total})` : ''
+  return `Ta banque demande une validation pour chaque artiste de ce beat en collaboration${position}. Rien n’est débité tant que tout n’est pas validé.`
+}
+
+// Laisse le temps de lire le message avant que la fenêtre de la banque ne le recouvre.
+const DELAI_LECTURE_MS = 2000
 
 const MESSAGE_VALIDATION_ECHOUEE = 'La validation demandée par ta banque n’a pas abouti. Aucun montant n’a été débité.'
 
@@ -49,7 +61,15 @@ async function validerPart(validation: Validation): Promise<boolean> {
   return !error && paymentIntent?.status === 'requires_capture'
 }
 
-async function finaliser(slug: string, setupIntentId: string): Promise<ResultatPaiementMultiClient> {
+async function finaliser(slug: string, setupIntentId: string, surValidation?: SurValidation): Promise<ResultatPaiementMultiClient> {
+  try {
+    return await finaliserParts(slug, setupIntentId, surValidation)
+  } finally {
+    surValidation?.(null)
+  }
+}
+
+async function finaliserParts(slug: string, setupIntentId: string, surValidation?: SurValidation): Promise<ResultatPaiementMultiClient> {
   // Une validation par vendeur au maximum, plus une marge.
   for (let etape = 0; etape < 12; etape++) {
     let res: Response
@@ -72,6 +92,10 @@ async function finaliser(slug: string, setupIntentId: string): Promise<ResultatP
       return { etat: 'ok', commandeId: data.commande_id }
     }
     if (res.ok && data.validation) {
+      if (surValidation) {
+        surValidation(messageValidationParArtiste(data.validation.numero, data.validation.total))
+        await new Promise(r => setTimeout(r, DELAI_LECTURE_MS))
+      }
       if (!(await validerPart(data.validation))) {
         await annuler(setupIntentId)
         effacerPaiementEnCours(slug)
@@ -94,6 +118,7 @@ export async function payerMultiParCarte(
   slug: string,
   corps: Record<string, unknown>,
   confirmerCarte: (clientSecret: string) => Promise<{ error?: { message?: string } }>,
+  surValidation?: SurValidation,
 ): Promise<ResultatPaiementMultiClient> {
   const prep = await preparer(corps)
   if ('erreur' in prep) return { etat: 'erreur', erreur: prep.erreur! }
@@ -105,7 +130,7 @@ export async function payerMultiParCarte(
     effacerPaiementEnCours(slug)
     return { etat: 'erreur', erreur: error.message ?? 'Carte refusée' }
   }
-  return finaliser(slug, prep.setupIntentId)
+  return finaliser(slug, prep.setupIntentId, surValidation)
 }
 
 /** Apple Pay / Google Pay / Link : moyen déjà créé par le navigateur (stripe.createPaymentMethod). */
@@ -114,6 +139,7 @@ export async function payerMultiAvecMoyen(
   slug: string,
   corps: Record<string, unknown>,
   paymentMethodId: string,
+  surValidation?: SurValidation,
 ): Promise<ResultatPaiementMultiClient> {
   const prep = await preparer({ ...corps, payment_method_id: paymentMethodId })
   if ('erreur' in prep) return { etat: 'erreur', erreur: prep.erreur! }
@@ -131,5 +157,5 @@ export async function payerMultiAvecMoyen(
     effacerPaiementEnCours(slug)
     return { etat: 'erreur', erreur: 'Ton moyen de paiement a été refusé. Aucun montant n’a été débité.' }
   }
-  return finaliser(slug, prep.setupIntentId)
+  return finaliser(slug, prep.setupIntentId, surValidation)
 }
