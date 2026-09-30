@@ -38,6 +38,10 @@ export type CommandeRow = {
    *  cette boutique, et numéro de MA facture comme identifiant. */
   venduePar?: string | null
   numeroFactureVendeur?: string | null
+  /** TVA contenue dans le montant affiché (aperçu) — part par part sur une
+   *  vente collab, jamais 20 % en dur. libelleTva = « TVA (x%) » ou « TVA ». */
+  tvaMontant?: number
+  libelleTva?: string
 }
 
 export default async function CommandesPage({
@@ -62,7 +66,7 @@ export default async function CommandesPage({
       `id, created_at, prix_paye, statut,
        code_promo, reduction_montant, fichiers_livres,
        source_marketing, type_commande, plateforme_source,
-       acheteur_email, acheteur_nom, methode_paiement,
+       acheteur_email, acheteur_nom, methode_paiement, tva_taux, paiement_multi_vendeurs,
        clients (id, prenom, nom, email, pays),
        commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele))`
     )
@@ -106,6 +110,8 @@ export default async function CommandesPage({
     acheteur_email: string | null
     acheteur_nom: string | null
     methode_paiement: string | null
+    tva_taux: number | null
+    paiement_multi_vendeurs: boolean | null
     clients: CommandeRow['clients']
     commande_lignes: LigneJointe[]
   }
@@ -135,9 +141,27 @@ export default async function CommandesPage({
     }
   }
 
+  // TVA d'une vente collab = somme des TVA de chaque part (taux de chaque vendeur).
+  const idsMulti = ((data ?? []) as unknown as CommandeRawRow[]).filter(c => c.paiement_multi_vendeurs).map(c => c.id)
+  const { data: tvaParts } = idsMulti.length
+    ? await admin.from('commande_tranches').select('commande_id, montant_ttc_cents, montant_tva_cents, tva_taux').in('commande_id', idsMulti)
+    : { data: [] }
+  const tvaMulti = new Map<string, { cents: number; taux: Set<number> }>()
+  for (const t of tvaParts ?? []) {
+    const e = tvaMulti.get(t.commande_id) ?? { cents: 0, taux: new Set<number>() }
+    e.cents += t.montant_tva_cents ?? 0
+    if (t.montant_ttc_cents > 0) e.taux.add(Number(t.tva_taux ?? 0))
+    tvaMulti.set(t.commande_id, e)
+  }
+
   const commandes: CommandeRow[] = ((data ?? []) as unknown as CommandeRawRow[]).map(c => {
-    const { commande_lignes, ...rest } = c
-    return { ...rest, ...resumeLignes(commande_lignes ?? []), _type: 'commande' as const }
+    const { commande_lignes, tva_taux, paiement_multi_vendeurs, ...rest } = c
+    const multi = paiement_multi_vendeurs ? tvaMulti.get(c.id) : undefined
+    const taux = tva_taux ?? 20
+    const tva = multi
+      ? { tvaMontant: multi.cents / 100, libelleTva: multi.taux.size === 1 ? `TVA (${[...multi.taux][0]}%)` : 'TVA' }
+      : { tvaMontant: c.prix_paye - c.prix_paye / (1 + taux / 100), libelleTva: `TVA (${taux}%)` }
+    return { ...rest, ...resumeLignes(commande_lignes ?? []), ...tva, _type: 'commande' as const }
   })
 
   const tentativesRows: CommandeRow[] = ((tentatives ?? []) as unknown as TentativeRow[]).map(t => ({
@@ -164,7 +188,7 @@ export default async function CommandesPage({
   // source marketing ; le code promo reste visible (il explique une part à 0 €).
   const { data: mesTranches } = await admin
     .from('commande_tranches')
-    .select(`montant_ttc_cents, facture_numero,
+    .select(`montant_ttc_cents, montant_tva_cents, tva_taux, facture_numero,
       commandes!inner (id, created_at, statut, code_promo, beatmaker_id, type_commande, acheteur_nom,
         beatmakers (nom_artiste),
         commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele)))`)
@@ -174,6 +198,8 @@ export default async function CommandesPage({
 
   type TrancheJointe = {
     montant_ttc_cents: number
+    montant_tva_cents: number | null
+    tva_taux: number | null
     facture_numero: string | null
     commandes: {
       id: string
@@ -204,6 +230,8 @@ export default async function CommandesPage({
     clients: null,
     ...resumeLignes(t.commandes.commande_lignes ?? []),
     _type: 'commande' as const,
+    tvaMontant: (t.montant_tva_cents ?? 0) / 100,
+    libelleTva: `TVA (${Number(t.tva_taux ?? 0)}%)`,
     venduePar: t.commandes.beatmakers?.nom_artiste ?? null,
     numeroFactureVendeur: t.facture_numero,
   }))

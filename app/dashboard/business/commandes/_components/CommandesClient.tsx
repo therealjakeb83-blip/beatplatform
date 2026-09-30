@@ -80,8 +80,8 @@ function FlagImg({ pays }: { pays: string | null | undefined }) {
 /* ─── preview modal ──────────────────────────────────────────────── */
 
 function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
-  const ht  = c.prix_paye / 1.2
-  const tva = c.prix_paye - ht
+  const tva = c.tvaMontant ?? c.prix_paye - c.prix_paye / 1.2
+  const ht  = c.prix_paye - tva
   const remise = c.reduction_montant ?? 0
   const sousTotal = c.prix_paye + remise
 
@@ -195,7 +195,7 @@ function PreviewModal({ c, onClose }: { c: CommandeRow; onClose: () => void }) {
               <span>{ht.toFixed(2)}€</span>
             </div>
             <div className="flex justify-between text-xs text-gray-400">
-              <span>TVA (20%)</span>
+              <span>{c.libelleTva ?? 'TVA (20%)'}</span>
               <span>{tva.toFixed(2)}€</span>
             </div>
             <div className="flex justify-between text-sm font-semibold text-white pt-2 border-t border-gray-700">

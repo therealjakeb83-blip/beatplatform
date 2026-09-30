@@ -7,6 +7,7 @@ import { memoriserCodePromoPanier } from '../_lib/code-promo-panier'
 import PaiementEnAttente from './PaiementEnAttente'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
 import { detailTva } from '@/lib/prix-affiche'
+import type { TvaPanier } from '@/lib/tva-panier'
 import { effacerPaiementEnCours } from '../_lib/paiement-en-cours'
 
 const TRASH_ICON = (
@@ -56,7 +57,7 @@ export default function CartDrawer({
   // Total affiché = celui calculé par le serveur, exactement celui qui sera
   // débité (prix plancher des beats collab, restrictions de code promo par
   // beat/licence) — le calcul local ne sert qu'en attendant la réponse.
-  const [prixServeur, setPrixServeur] = useState<{ cle: string; totalCents: number; beatsRemiseLimitee: string[] } | null>(null)
+  const [prixServeur, setPrixServeur] = useState<{ cle: string; totalCents: number; beatsRemiseLimitee: string[]; tva: TvaPanier | null } | null>(null)
   const clePrix = `${items.map(i => `${i.beatId}:${i.licenceId}`).join(',')}|${codeApplique?.code ?? ''}`
 
   useEffect(() => {
@@ -73,9 +74,9 @@ export default function CartDrawer({
       }),
     })
       .then(r => r.json())
-      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[] }) => {
+      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[]; tva?: TvaPanier | null }) => {
         if (!annule && typeof data.totalCents === 'number') {
-          setPrixServeur({ cle: clePrix, totalCents: data.totalCents, beatsRemiseLimitee: data.beatsRemiseLimitee ?? [] })
+          setPrixServeur({ cle: clePrix, totalCents: data.totalCents, beatsRemiseLimitee: data.beatsRemiseLimitee ?? [], tva: data.tva ?? null })
         }
       })
       .catch(() => {})
@@ -327,9 +328,12 @@ export default function CartDrawer({
                   </p>
                 )}
                 {(() => {
-                  const tva = detailTva(totalAffiche, { tvaActive, tvaTaux })
+                  // TVA du serveur (part par part sur un beat collab) dès qu'elle est connue.
+                  const tva = serveurAJour
+                    ? (serveurAJour.tva ? { montant: serveurAJour.tva.montantCents / 100, taux: serveurAJour.tva.taux } : null)
+                    : detailTva(totalAffiche, { tvaActive, tvaTaux })
                   return tva ? (
-                    <div className="shop-cart-tva-note">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</div>
+                    <div className="shop-cart-tva-note">TTC · dont TVA{tva.taux != null ? ` (${tva.taux}%)` : ''} : {formatPrix(tva.montant)}</div>
                   ) : null
                 })()}
 

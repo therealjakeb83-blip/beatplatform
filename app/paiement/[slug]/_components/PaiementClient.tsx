@@ -22,6 +22,7 @@ import { CartProvider, useCart } from '@/app/[slug]/_components/CartContext'
 import { computeItemsPricing, computeTotal, formatPrix, type ReductionLotRule } from '@/app/[slug]/_lib/reductions-lot'
 import { listePays } from '@/lib/pays-iso'
 import { detailTva } from '@/lib/prix-affiche'
+import type { TvaPanier } from '@/lib/tva-panier'
 import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
 import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
 import PaiementEnAttente from '@/app/[slug]/_components/PaiementEnAttente'
@@ -256,7 +257,13 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
   const [beatsRemiseLimitee, setBeatsRemiseLimitee] = useState<string[]>([])
   const [erreurPrix, setErreurPrix] = useState<string | null>(null)
   const totalAffiche = totalServeurCents !== null ? totalServeurCents / 100 : totalApresCode
-  const tva = detailTva(totalAffiche, { tvaActive, tvaTaux })
+  // TVA calculée par le serveur, part par part (beat collab) ; calcul local
+  // seulement en attendant sa réponse.
+  const [tvaServeur, setTvaServeur] = useState<TvaPanier | null | undefined>(undefined)
+  const tvaLocale = detailTva(totalAffiche, { tvaActive, tvaTaux })
+  const tva = tvaServeur !== undefined
+    ? (tvaServeur ? { montant: tvaServeur.montantCents / 100, taux: tvaServeur.taux } : null)
+    : tvaLocale
   useEffect(() => {
     if (!elements || items.length === 0) return
     let annule = false
@@ -272,13 +279,14 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
       }),
     })
       .then(r => r.json())
-      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[]; erreur?: string }) => {
+      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[]; tva?: TvaPanier | null; erreur?: string }) => {
         if (annule) return
         if (typeof data.totalCents === 'number') {
           // Stripe refuse un montant nul : à 0 € (commande gratuite) les
           // moyens de paiement sont masqués de toute façon.
           if (data.totalCents > 0) elements.update({ amount: data.totalCents })
           setTotalServeurCents(data.totalCents)
+          setTvaServeur(data.tva ?? null)
           setBeatsRemiseLimitee(data.beatsRemiseLimitee ?? [])
           setErreurPrix(null)
           setMontantSynchronise(true)
@@ -570,7 +578,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
                 <span className="pmt-recap-label">{items.length} beat{items.length > 1 ? 's' : ''}</span>
                 <span className="pmt-recap-total-col">
                   <span className="pmt-recap-total">{formatPrix(totalAffiche)}</span>
-                  {tva && <span className="pmt-recap-tva">dont {tva.taux} % TVA</span>}
+                  {tva && <span className="pmt-recap-tva">{tva.taux != null ? `dont ${tva.taux} % TVA` : `dont ${formatPrix(tva.montant)} de TVA`}</span>}
                 </span>
                 <span className={`pmt-recap-chevron${recapOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
               </span>
@@ -638,7 +646,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaA
 
                 <div className="pmt-hr" />
                 <div className="pmt-row pmt-row-sub"><span>Sous-total</span><span>{formatPrix(total)}</span></div>
-                {tva && <div className="pmt-row pmt-row-sub"><span>TVA ({tva.taux} %)</span><span>{formatPrix(tva.montant)}</span></div>}
+                {tva && <div className="pmt-row pmt-row-sub"><span>{tva.taux != null ? `TVA (${tva.taux} %)` : 'TVA'}</span><span>{formatPrix(tva.montant)}</span></div>}
                 <div className="pmt-row pmt-row-total"><span>{tva ? 'Total TTC' : 'Total'}</span><span>{formatPrix(totalAffiche)}</span></div>
                 {beatsRemiseLimitee.length > 0 && (
                   <p className="pmt-remise-limitee">

@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, type ItemPanier } from '@/lib/pricing'
+import { calculerTvaPanier } from '@/lib/tva-panier'
 import { NextResponse } from 'next/server'
 
 // Prévisualisation du montant réel (TVA/remises/code promo déjà inclus) —
@@ -56,5 +57,9 @@ export async function POST(request: Request) {
   // le montant exact qui sera débité.
   const beatsRemiseLimitee = lignesResult.value.filter(l => l.remiseLimitee).map(l => l.titre)
 
-  return NextResponse.json({ totalCents, beatsRemiseLimitee })
+  // TVA contenue, part par part (beat collab : chaque vendeur sa TVA) — seule
+  // source de la mention « dont TVA » affichée au client.
+  const tva = await calculerTvaPanier(admin, lignesResult.value, beatmaker)
+
+  return NextResponse.json({ totalCents, beatsRemiseLimitee, tva })
 }

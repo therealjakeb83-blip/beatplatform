@@ -9,6 +9,7 @@ import ReprendreLivraisonButton from './_components/ReprendreLivraisonButton'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { fuseauSur, formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
 import VueCollaborateur from './_components/VueCollaborateur'
+import { decomposerTva } from '@/lib/collaboration-parts'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -336,9 +337,30 @@ export default async function CommandeDetailPage({
   const prixTTC      = c.prix_paye
   const tauxTva      = c.tva_taux ?? 20
   const diviseurTva  = 1 + tauxTva / 100
-  const prixHT       = prixTTC / diviseurTva
-  const tva          = prixTTC - prixHT
-  const remiseHT     = remiseTTC / diviseurTva
+
+  /* Vente à plusieurs vendeurs (Phase 13, lot 3) : chaque vendeur applique SA
+     TVA à SA part (un non-assujetti aucune) — même calcul que les factures,
+     jamais le taux de A sur le total. */
+  const tvaParLigneCents = new Map<string, number>()
+  for (const t of tranches) {
+    for (const d of t.detail_lignes ?? []) {
+      const cle = `${d.beat_id}:${d.licence_id}`
+      tvaParLigneCents.set(cle, (tvaParLigneCents.get(cle) ?? 0) + decomposerTva(d.montant_cents, Number(t.tva_taux ?? 0)).tvaCents)
+    }
+  }
+  const tauxDesParts = [...new Set(tranches.filter(t => t.montant_ttc_cents > 0).map(t => Number(t.tva_taux ?? 0)))]
+  const libelleTva = tranches.length
+    ? (tauxDesParts.length === 1 ? `TVA (${tauxDesParts[0]}%)` : 'TVA')
+    : `TVA (${tauxTva}%)`
+  const tvaDeLigne = (l: LigneDetail) => tranches.length
+    ? (tvaParLigneCents.get(`${l.beat_id}:${l.licence_id}`) ?? 0) / 100
+    : l.prix_paye - l.prix_paye / diviseurTva
+
+  const tva          = tranches.length
+    ? tranches.reduce((s, t) => s + (t.montant_tva_cents ?? 0), 0) / 100
+    : prixTTC - prixTTC / diviseurTva
+  const prixHT       = prixTTC - tva
+  const remiseHT     = prixTTC > 0 ? remiseTTC * (prixHT / prixTTC) : remiseTTC / diviseurTva
   const htAvantRemise = prixHT + remiseHT
 
   /* URL permanente de téléchargement */
@@ -550,15 +572,16 @@ export default async function CommandeDetailPage({
                 <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Prix HT</th>
                 <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Qté</th>
                 <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">Total HT</th>
-                <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">TVA (20%)</th>
+                <th className="text-right px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">{libelleTva}</th>
               </tr>
             </thead>
             <tbody>
               {lignes.map(l => {
                 const ligneTTC       = l.prix_paye
                 const ligneRemiseTTC = l.reduction_montant ?? 0
-                const ligneHT        = ligneTTC / 1.2
-                const ligneRemiseHT  = ligneRemiseTTC / 1.2
+                const ligneTva       = tvaDeLigne(l)
+                const ligneHT        = ligneTTC - ligneTva
+                const ligneRemiseHT  = ligneTTC > 0 ? ligneRemiseTTC * (ligneHT / ligneTTC) : ligneRemiseTTC / diviseurTva
                 const ligneHtAvantRemise = ligneHT + ligneRemiseHT
                 const produitLabel = l.beats && l.licences
                   ? `${l.beats.titre} — Licence ${l.licences.modele}`
@@ -579,7 +602,7 @@ export default async function CommandeDetailPage({
                         <p className="text-xs text-green-400 mt-0.5">remise de €{ligneRemiseHT.toFixed(2)}</p>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-right text-sm text-gray-400">€{(ligneHtAvantRemise * 0.2).toFixed(2)}</td>
+                    <td className="px-5 py-4 text-right text-sm text-gray-400">€{ligneTva.toFixed(2)}</td>
                   </tr>
                 )
               })}
@@ -610,7 +633,7 @@ export default async function CommandeDetailPage({
                 </div>
               )}
               <div className="flex items-center gap-8 text-sm">
-                <span className="text-gray-500">TVA (20%)</span>
+                <span className="text-gray-500">{libelleTva}</span>
                 <span className="text-gray-300 w-24 text-right">€{tva.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-8 text-sm font-semibold border-t border-gray-800 pt-1.5 mt-0.5">

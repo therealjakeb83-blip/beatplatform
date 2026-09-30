@@ -8,6 +8,7 @@ import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
 import { detailTva } from '@/lib/prix-affiche'
+import type { TvaPanier } from '@/lib/tva-panier'
 
 const BULLET_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -71,6 +72,26 @@ export default function LicenceSelectorModal({
   useEffect(() => {
     if (open) setSelectedId(null)
   }, [open, beat?.id])
+
+  // TVA contenue dans le prix, calculée par le serveur (beat collab : chaque
+  // vendeur applique sa TVA à sa seule part — Phase 13, lot 3).
+  const [tvaServeur, setTvaServeur] = useState<{ cle: string; tva: TvaPanier | null } | null>(null)
+  useEffect(() => {
+    if (!open || !beat || !selectedId) return
+    let annule = false
+    const cle = `${beat.id}:${selectedId}`
+    fetch('/api/stripe/prix-panier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, beat_id: beat.id, licence_id: selectedId }),
+    })
+      .then(r => r.json())
+      .then((data: { totalCents?: number; tva?: TvaPanier | null }) => {
+        if (!annule && typeof data.totalCents === 'number') setTvaServeur({ cle, tva: data.tva ?? null })
+      })
+      .catch(() => {})
+    return () => { annule = true }
+  }, [open, beat, selectedId, slug])
 
   useEffect(() => {
     if (!open) return
@@ -215,9 +236,12 @@ export default function LicenceSelectorModal({
                 <span className="shop-lc-total-label">Total</span>
                 <span className="shop-lc-total-value">{selectedPourPaiement ? formatPrix(selectedPourPaiement.prix) : '—'}</span>
                 {selectedPourPaiement && (() => {
-                  const tva = detailTva(selectedPourPaiement.prix, { tvaActive, tvaTaux })
+                  const serveur = tvaServeur?.cle === `${beat.id}:${selectedPourPaiement.id}` ? tvaServeur : null
+                  const tva = serveur
+                    ? (serveur.tva ? { montant: serveur.tva.montantCents / 100, taux: serveur.tva.taux } : null)
+                    : detailTva(selectedPourPaiement.prix, { tvaActive, tvaTaux })
                   return tva ? (
-                    <span className="shop-lc-total-tva">TTC · dont TVA ({tva.taux}%) : {formatPrix(tva.montant)}</span>
+                    <span className="shop-lc-total-tva">TTC · dont TVA{tva.taux != null ? ` (${tva.taux}%)` : ''} : {formatPrix(tva.montant)}</span>
                   ) : null
                 })()}
               </div>
