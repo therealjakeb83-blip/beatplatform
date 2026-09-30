@@ -675,6 +675,7 @@ export default async function CommandeDetailPage({
                   <th className="text-left pb-2">Vendeur</th>
                   <th className="text-right pb-2">Part</th>
                   <th className="text-right pb-2">Montant</th>
+                  <th className="text-right pb-2">TVA</th>
                   <th className="text-right pb-2">Frais Stripe</th>
                   <th className="text-right pb-2">Net</th>
                   <th className="text-right pb-2">Facture</th>
@@ -686,6 +687,11 @@ export default async function CommandeDetailPage({
                     <td className="py-2 text-gray-200">{t.vendeur_nom}{t.est_proprietaire && <span className="text-gray-600 text-xs"> (toi)</span>}</td>
                     <td className="py-2 text-right text-gray-400">{t.quote_part_pct != null ? `${t.quote_part_pct} %` : 'mixte'}</td>
                     <td className="py-2 text-right text-gray-300">€{(t.montant_ttc_cents / 100).toFixed(2)}</td>
+                    <td className="py-2 text-right text-gray-400">
+                      {t.tva_taux && Number(t.tva_taux) > 0
+                        ? <>€{((t.montant_tva_cents ?? 0) / 100).toFixed(2)} <span className="text-gray-600 text-xs">({Number(t.tva_taux)} %)</span></>
+                        : '—'}
+                    </td>
                     <td className="py-2 text-right text-gray-400">{t.frais_stripe_cents != null ? `−€${(t.frais_stripe_cents / 100).toFixed(2)}` : '—'}</td>
                     <td className="py-2 text-right text-green-400">{t.net_cents != null ? `€${(t.net_cents / 100).toFixed(2)}` : '—'}</td>
                     <td className="py-2 text-right">
