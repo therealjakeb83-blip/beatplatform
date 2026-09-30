@@ -407,12 +407,12 @@ Décisions du cadrage (L3-Q1 à Q5) : `memory/project_phase13_grillme_decisions_
 - ⬜ **T13** « Nouvelle vente » sur vente solo, puis sur nouvel abonnement boutique
 - ✅ **T14** (prouvé par le code) « Nouvelle vente » n'est envoyé que par `finaliserCommandePayee` (achat de licence : solo, collab, gratuit), jamais appelé par `/api/free-download` ; l'email abonnement n'est branché que dans `traiterAbonnementCree` (souscription), jamais dans `traiterPaiementAbonnement` (renouvellements) — aucun email sur renouvellement ni free download
 - ⬜ **T15** titre/intro modifiables dans l'admin Mails My Producer
-- ⬜ **T16** solo, code 100 % : « Valider la commande », champs de facturation, pas de carte, commande 0 €, contrat, pas de facture, email, rien chez Stripe
-- ⬜ **T17** code en montant fixe ≥ prix : idem
-- ⬜ **T18** beat collab offert : tranches 0 € A et B, pas de facture, vente visible chez B, « Nouvelle vente » à A et B
-- ⬜ **T19** panier payant + beat offert : paiement normal, ligne à 0,00 € sur la facture
-- ⬜ **T20** code limité à 1 utilisation : 2e commande refusée ; 2 validations simultanées → 1 seule commande
-- ⬜ **T21** « 1 fois par personne » et « première commande » sans être connecté : refus par l'email
+- ✅ **T16** (Claude, commande `38f93f49`, code `LOT3CENT`) bouton « Valider la commande », pas de carte ni d'express, « Commande confirmée », MP3 + contrat, aucune facture ; aucun appel Stripe (prouvé par le code de `/api/commande-gratuite`) ; email → T5 — solo, code 100 % : « Valider la commande », champs de facturation, pas de carte, commande 0 €, contrat, pas de facture, email, rien chez Stripe
+- ✅ **T17** (Claude, commande `87642458`, `LOT3FIXE` 60 € sur Mélancholia 49 €) idem T16 — code en montant fixe ≥ prix : idem
+- 🟡 **T18** partie écran ✅ (Claude, commande `c1334dec`, `LOT3CENT` sur Ambitieux : commande gratuite, contrat, pas de facture) ; tranches 0 € (script) et vue de B (connecté) à faire — beat collab offert : tranches 0 € A et B, pas de facture, vente visible chez B, « Nouvelle vente » à A et B
+- ✅ **T19** (Claude, commande `7a8ff007`, `LOT3OFFERT`) paiement carte 49 €, facture `jakeb-test-64730926` : Memories 0,00 € + Mélancholia 49,00 € — panier payant + beat offert : paiement normal, ligne à 0,00 € sur la facture
+- ✅ **T20** (Claude, `LOT3UNEFOIS`) 1re commande gratuite `e4df30c9` ; 2e : code refusé dès la saisie « Ce code a atteint sa limite d'utilisation » (le script a ensuite payé 49 € plein tarif, commande `ec68595b`) ; simultané prouvé par le code (une seule instruction SQL conditionnelle) — code limité à 1 utilisation : 2e commande refusée ; 2 validations simultanées → 1 seule commande
+- ✅ **T21** (Claude, visiteur non connecté) `LOT3PERSO` : 1re commande `20fd7b24`, 2e même email → « Vous avez déjà utilisé ce code » ; `LOT3NOUVEAU` avec l'email de T1 → « Ce code est réservé aux nouveaux clients » — « 1 fois par personne » et « première commande » sans être connecté : refus par l'email
 - ✅ **T22** (Claude, 2026-09-30) `tsc` OK, `eslint` sans nouvelle erreur (6 erreurs préexistantes, mêmes règles, vérifiées sur HEAD), `build` OK
 
 - **Phase 6.7 (beat cadeau)** : exclure les beats collab. **Avant lancement** : exiger l'adresse de TOUS les vendeurs ; vérifier les CGV boutique par défaut (mention collab) ; avis d'un professionnel sur les textes provisoires (aucun fiscaliste consulté : hypothèses validées par Jake seul) ; **rang 15a** cadrage plans Free/Pro + coûts (Stripe Connect par compte actif à vérifier).
