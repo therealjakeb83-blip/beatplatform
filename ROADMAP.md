@@ -392,12 +392,12 @@ Fait (aucune migration SQL) : note « paiement en cours » sur l'appareil (`app/
 #### Checklist tests Phase 13 lot 3 (après la vente) — cadré et codé le 2026-09-30, à tester item par item avec Jake
 Décisions du cadrage (L3-Q1 à Q5) : `memory/project_phase13_grillme_decisions_2026_09_28.md`. Fait : migration `supabase/phase13_lot3_apres_vente.sql` (facture figée sur la tranche, part à 0 € possible, type `commande_gratuite`, `methode_paiement = 'gratuit'`, email `nouvelle_vente`, prise de place atomique sur un code promo) ; `finaliserCommandePayee` crée les tranches (numéro dans la suite de CHAQUE vendeur, PDF par tranche `genererFacturePdfPourTranche`, frais Stripe/net lus sur chaque encaissement) ; ligne collab « — part du vendeur : X % » ; pas de facture pour une commande à 0 € ; part à 0 € d'un beat collab offert gardée (jamais encaissée) ; email client avec vendeurs + factures ; page de téléchargement + « Mes factures » avec toutes les factures ; Commandes de B (liste « Vendue par », fiche limitée `VueCollaborateur`) ; encart « Répartition » chez A ; Analytics = parts (`lib/analytics-parts.ts`, 7 routes), tuile « Ventes collab » retirée ; email « Nouvelle vente » (vente payée/offerte + nouvel abonnement) ; route `/api/commande-gratuite` + bouton « Valider la commande » ; codes promo vérifiés par email hors connexion + compteur atomique ; **correctif trouvé en codant** : le code saisi dans le PANIER n'était transmis ni à Apple/Google Pay du panier (débit plein tarif alors que le panier affichait le prix réduit) ni à la page de paiement → transmis (`app/[slug]/_lib/code-promo-panier.ts`). **Écart assumé** : B voit le code promo sur sa fiche (L3-Q2 de Jake : c'est lui qui explique une part à 0 €), contrairement à la règle Phase 12 Q19.
 - ✅ **T0** (2026-09-30) migration exécutée par Jake ; vérifiée en base : 4 colonnes, contrainte `montant_cents = 0 OR >= 50`, type `commande_gratuite`, UNE seule contrainte `methode_paiement` (avec `gratuit`), `nouvelle_vente`, 2 fonctions
-- ⬜ **T1** vente collab « Ambitieux » 49 € : 2 factures (suite jakeb-test / suite nic-beat-2809), « part du vendeur : 50 % », 24,50 € chacune, identité et modèle de chaque vendeur
-- ⬜ **T2** panier mixte Mélancholia + Ambitieux : facture A 73,50 € (2 lignes), facture B 24,50 €
+- ✅ **T1** (Claude, 2026-09-30, commande `e52a2a1f`) factures lues : A `jakeb-test-64700926` (modèle Français, 293 B) et B `nic-beat-2809-22410af7-72820926` (modèle Libre + « Mention test BE »), ligne « Ambitieux — Licence MP3 — part du vendeur : 50 % » 24,50 € chacune — vente collab « Ambitieux » 49 € : 2 factures (suite jakeb-test / suite nic-beat-2809), « part du vendeur : 50 % », 24,50 € chacune, identité et modèle de chaque vendeur
+- ✅ **T2** (Claude, commande `477570b9`) A `…64710926` : Mélancholia 49 € + Ambitieux part 50 % 24,50 € = 73,50 € ; B `…72830926` : 24,50 € ; numéros consécutifs dans chaque suite — panier mixte Mélancholia + Ambitieux : facture A 73,50 € (2 lignes), facture B 24,50 €
 - ⬜ **T3** frais Stripe et net remplis sur chaque tranche = ceux de Stripe
-- ⬜ **T4** vente solo : facture identique à avant (non-régression)
+- ✅ **T4** (Claude, commande `3812968f`) facture `jakeb-test-64720926` identique à avant (même suite que les parts collab de A) — vente solo : facture identique à avant (non-régression)
 - ⬜ **T5** email de confirmation client : 2 vendeurs, montants, 2 factures
-- ⬜ **T6** page de téléchargement (contrat + 2 factures) et « Mes factures » (les 2)
+- 🟡 **T6** partie page de téléchargement ✅ (Claude, T1 : contrat + 2 factures + phrase « vendue conjointement ») ; « Mes factures » à voir connecté — page de téléchargement (contrat + 2 factures) et « Mes factures » (les 2)
 - ⬜ **T7** Commandes de nic-beat-2809 : badge « Vendue par Jake B », numéro de SA facture
 - ⬜ **T8** fiche vue par B : nom/adresse client, sa part/frais/net/facture, code promo ; ni email, ni téléphone, ni historique, aucun bouton ; commande d'un autre → introuvable
 - ⬜ **T9** fiche de A : encart « Répartition » correct, actions habituelles OK
@@ -405,7 +405,7 @@ Décisions du cadrage (L3-Q1 à Q5) : `memory/project_phase13_grillme_decisions_
 - ⬜ **T11** CA de B = ses tranches ; tuile « Ventes collab » absente
 - ⬜ **T12** « Nouvelle vente » collab à A et B (sa part € et %, lien), sans coordonnées client pour B
 - ⬜ **T13** « Nouvelle vente » sur vente solo, puis sur nouvel abonnement boutique
-- ⬜ **T14** aucun email sur renouvellement ni free download
+- ✅ **T14** (prouvé par le code) « Nouvelle vente » n'est envoyé que par `finaliserCommandePayee` (achat de licence : solo, collab, gratuit), jamais appelé par `/api/free-download` ; l'email abonnement n'est branché que dans `traiterAbonnementCree` (souscription), jamais dans `traiterPaiementAbonnement` (renouvellements) — aucun email sur renouvellement ni free download
 - ⬜ **T15** titre/intro modifiables dans l'admin Mails My Producer
 - ⬜ **T16** solo, code 100 % : « Valider la commande », champs de facturation, pas de carte, commande 0 €, contrat, pas de facture, email, rien chez Stripe
 - ⬜ **T17** code en montant fixe ≥ prix : idem
