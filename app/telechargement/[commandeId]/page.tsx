@@ -32,7 +32,7 @@ export default async function TelechargerPage({
 
   const { data: commande, error: commandeError } = await supabase
     .from('commandes')
-    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url, methode_paiement, licence_annulee_at, licence_annulee_motif')
+    .select('id, beatmaker_id, client_id, acheteur_email, acheteur_nom, acheteur_adresse, numero_facture, facture_pdf_url, methode_paiement, licence_annulee_at, licence_annulee_motif, statut')
     .eq('id', commandeId)
     .single()
 
@@ -207,9 +207,14 @@ export default async function TelechargerPage({
   const titrePage = titres.length > 1
     ? `${titres.length} beats`
     : `${titres[0]?.titre} — ${titres[0]?.licence}`
+  // Une seule part rendue (litige perdu sur une part, vendeur qui rembourse
+  // depuis Stripe) : la licence tombe mais la commande n'est pas remboursée
+  // en entier — on ne l'annonce pas comme telle.
   const texteAnnulation = commande.licence_annulee_motif === 'annulation'
     ? 'Cette commande a été annulée.'
-    : 'Cette commande a été remboursée.'
+    : commande.statut === 'remboursee'
+      ? 'Cette commande a été remboursée.'
+      : 'Cette commande a été remboursée en partie.'
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4 py-12">
