@@ -73,35 +73,64 @@ export async function emettreAvoir(admin: Admin, p: {
   // Déjà émis (ou en cours d'émission) pour ce remboursement : rien à refaire.
   if (errReserve || !ligne) return null
 
-  const { data: vendeur } = await admin
-    .from('beatmakers')
-    .select('slug, facturation_format, fuseau_horaire')
-    .eq('id', vendeurId)
+  await terminerAvoir(admin, ligne.id)
+  return ligne.id
+}
+
+// Numéro puis PDF d'un avoir déjà réservé — appelé à l'émission et par la
+// réparation automatique (lib/completion-commande.ts). Le numéro n'est pris
+// que si la ligne porte encore sa réservation, et écrit à cette seule
+// condition : jamais deux numéros pour un même avoir. Un échec marque la
+// commande « à compléter » (tâche de nuit), sans rien bloquer.
+export async function terminerAvoir(admin: Admin, avoirId: string): Promise<boolean> {
+  const { data: avoir } = await admin
+    .from('avoirs')
+    .select('id, commande_id, vendeur_id, numero, pdf_url')
+    .eq('id', avoirId)
     .single()
-  try {
-    const numero = await genererNumeroFacture(admin, {
-      beatmakerId: vendeurId,
-      slug: vendeur?.slug ?? '',
-      format: vendeur?.facturation_format ?? null,
-      dateVente: new Date(),
-      fuseauHoraire: fuseauSur(vendeur?.fuseau_horaire),
-    })
-    await admin.from('avoirs').update({ numero }).eq('id', ligne.id)
-  } catch (err) {
-    console.error('[avoirs] Numéro d\'avoir impossible pour', ligne.id, ':', err)
-    return ligne.id
+  if (!avoir) return false
+
+  let numero = avoir.numero as string
+  if (numero.startsWith('reserve-')) {
+    const { data: vendeur } = await admin
+      .from('beatmakers')
+      .select('slug, facturation_format, fuseau_horaire')
+      .eq('id', avoir.vendeur_id)
+      .single()
+    try {
+      const nouveau = await genererNumeroFacture(admin, {
+        beatmakerId: avoir.vendeur_id,
+        slug: vendeur?.slug ?? '',
+        format: vendeur?.facturation_format ?? null,
+        dateVente: new Date(),
+        fuseauHoraire: fuseauSur(vendeur?.fuseau_horaire),
+      })
+      const { data: ecrit } = await admin.from('avoirs').update({ numero: nouveau }).eq('id', avoir.id).eq('numero', numero).select('id')
+      if (!ecrit?.length) return false
+      numero = nouveau
+    } catch (err) {
+      console.error("[avoirs] Numéro d'avoir impossible pour", avoir.id, ':', err)
+      await marquerACompleter(admin, avoir.commande_id)
+      return false
+    }
   }
 
+  if (avoir.pdf_url) return true
   try {
-    const pdf = await genererAvoirPdf(admin, ligne.id)
-    const url = await uploadPdfAvoir(p.commandeId, ligne.id, pdf)
-    await admin.from('avoirs').update({ pdf_url: url }).eq('id', ligne.id)
+    const pdf = await genererAvoirPdf(admin, avoir.id)
+    const url = await uploadPdfAvoir(avoir.commande_id, avoir.id, pdf)
+    await admin.from('avoirs').update({ pdf_url: url }).eq('id', avoir.id)
+    return true
   } catch (err) {
-    // Le numéro est attribué : le PDF sera régénéré à la demande (page de
-    // téléchargement) — jamais un nouveau numéro.
-    console.error('[avoirs] PDF d\'avoir impossible pour', ligne.id, ':', err)
+    // Le numéro est attribué : le PDF sera refait avec ce même numéro.
+    console.error("[avoirs] PDF d'avoir impossible pour", avoir.id, ':', err)
+    await marquerACompleter(admin, avoir.commande_id)
+    return false
   }
-  return ligne.id
+}
+
+async function marquerACompleter(admin: Admin, commandeId: string) {
+  await admin.from('commandes').update({ statut_livraison: 'probleme' }).eq('id', commandeId)
 }
 
 // PDF manquant (échec ponctuel à l'émission) : régénéré avec le numéro déjà

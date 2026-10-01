@@ -11,6 +11,8 @@ import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
+import { calculerStatutLivraison } from '@/lib/livraison-statut'
+import { completerCommande } from '@/lib/completion-commande'
 
 export const runtime = 'nodejs'
 
@@ -735,6 +737,13 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
       await supabase.from('commandes').update({ facture_pdf_url: pdfUrl }).eq('id', commandeAbo.id)
     } catch (err) {
       console.error('[webhook] Erreur génération facture pour commande abo:', err)
+    }
+    // Facture ratée : la commande passe « à compléter » (2e essai tout de
+    // suite, puis la tâche de nuit) au lieu de rester « livrée » d'office.
+    const { statut: statutLivraison } = await calculerStatutLivraison(commandeAbo.id)
+    if (statutLivraison === 'probleme') {
+      await supabase.from('commandes').update({ statut_livraison: 'probleme' }).eq('id', commandeAbo.id)
+      await completerCommande(commandeAbo.id).catch(err => console.error('[webhook] 2e essai de complétion en échec:', err))
     }
   }
 

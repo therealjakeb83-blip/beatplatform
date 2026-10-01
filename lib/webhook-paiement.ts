@@ -4,13 +4,14 @@ import { genererContratPdfPourVente } from '@/lib/contrat'
 import { genererFacturePdfPourCommande, genererFacturePdfPourTranche } from '@/lib/facture'
 import { genererNumeroFacture, modeleFactureEffectif } from '@/lib/facturation'
 import { uploadPdfContrat, uploadPdfFacture, uploadPdfFactureTranche } from '@/lib/livraison'
-import { confirmationCommande, alerteProblemeLivraison, envoyerNouvelleVente } from '@/lib/emails'
+import { confirmationCommande, envoyerNouvelleVente } from '@/lib/emails'
 import { decomposerTva } from '@/lib/collaboration-parts'
 import type { DetailLigneTranche } from '@/lib/paiement-multi-repartition'
 import { enregistrerConversionParClic } from '@/lib/mailing'
 import { automatisationActive, type TypeAutomatisation } from '@/lib/automatisations'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
+import { completerCommande, remplirFraisTranches } from '@/lib/completion-commande'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import type Stripe from 'stripe'
 
@@ -306,28 +307,6 @@ async function creerTranches(
   return (data ?? []) as TrancheCreee[]
 }
 
-// Frais Stripe réellement prélevés sur l'encaissement de chaque vendeur, et
-// son net — lus sur le compte du vendeur juste après la capture. Jamais
-// bloquant : une tranche sans frais connus reste affichée sans eux.
-async function remplirFraisTranches(supabase: ReturnType<typeof createAdminClient>, tranches: TrancheCreee[]) {
-  for (const t of tranches) {
-    if (!t.stripe_payment_intent_id || !t.stripe_account_id) continue
-    try {
-      const pi = await stripe.paymentIntents.retrieve(
-        t.stripe_payment_intent_id,
-        { expand: ['latest_charge.balance_transaction'] },
-        { stripeAccount: t.stripe_account_id },
-      )
-      const charge = pi.latest_charge as Stripe.Charge | null
-      const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null
-      if (!bt || typeof bt === 'string') continue
-      await supabase.from('commande_tranches').update({ frais_stripe_cents: bt.fee, net_cents: t.montant_ttc_cents - bt.fee }).eq('id', t.id)
-    } catch (err) {
-      console.error('[webhook-paiement] Frais Stripe illisibles pour la tranche', t.id, ':', err instanceof Error ? err.message : err)
-    }
-  }
-}
-
 // Cœur commun aux deux chemins de paiement (panier classique via Checkout
 // Session, et achat express via PaymentIntent) : lecture du panier déjà
 // calculé côté serveur, création commande + commande_lignes, splits Connect,
@@ -459,7 +438,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     code_promo: promoCode,
     reduction_montant: reductionTotal,
     // Statut de livraison réel (Phase 5) — calculé après coup une fois les
-    // contrats/transferts tentés, jamais figé ici. fichiers_livres reste
+    // contrats/factures tentés, jamais figé ici. fichiers_livres reste
     // écrit pour compatibilité tant que la colonne existe (voir migration
     // phase5_statut_livraison.sql), sera retiré dans un nettoyage séparé.
     fichiers_livres: false,
@@ -510,7 +489,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     ? await creerTranches(supabase, commande.id, ctx.tranches, new Date())
     : []
 
-  // 2. Une commande_ligne par article : splits, transferts, contrat PDF
+  // 2. Une commande_ligne par article : splits, contrat PDF
   let contratsOk = 0
 
   for (const tLigne of tentativeLignes) {
@@ -644,24 +623,17 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
   }
   await remplirFraisTranches(supabase, tranchesCreees)
 
-  // Statut de livraison réel (Phase 5) — recalculé depuis l'état effectif
-  // des contrats/transferts, jamais déduit d'un simple compteur local (un
-  // échec de transfert Stripe ne fait pas échouer contratsOk, par exemple).
+  // Statut de livraison réel, recalculé depuis ce qui existe vraiment. S'il
+  // manque une pièce (contrat, facture, frais) : 2e essai tout de suite, puis
+  // la tâche de nuit reprend jusqu'à ce que la commande soit complète
+  // (lib/completion-commande.ts) — aucune alerte immédiate au beatmaker.
   const { statut: statutLivraison } = await calculerStatutLivraison(commande.id)
   await supabase.from('commandes').update({
     fichiers_livres: contratsOk === tentativeLignes.length,
     statut_livraison: statutLivraison,
   }).eq('id', commande.id)
-
-  // Alerte au beatmaker (Phase 5) — jamais fire-and-forget dans un webhook
-  // (voir lib/emails.ts::alerteProblemeLivraison), envoyée une seule fois ici,
-  // pas à chaque reprise (voir app/api/business/commandes/[id]/reprendre-livraison).
-  if (statutLivraison === 'probleme' && beatmaker?.email) {
-    await alerteProblemeLivraison({
-      to: beatmaker.email,
-      beatmakerId: meta.beatmaker_id,
-      commandeId: commande.id,
-    }).catch(err => console.error('[webhook-paiement] Erreur envoi alerte problème livraison:', err))
+  if (statutLivraison === 'probleme') {
+    await completerCommande(commande.id).catch(err => console.error('[webhook-paiement] 2e essai de complétion en échec:', err))
   }
 
   // 3. Marquer la tentative de paiement correspondante comme complète

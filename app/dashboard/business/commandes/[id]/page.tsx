@@ -14,6 +14,7 @@ import VueCollaborateur from './_components/VueCollaborateur'
 import EncartLitige from './_components/EncartLitige'
 import { litigesDeLaCommande } from '@/lib/litiges'
 import { decomposerTva } from '@/lib/collaboration-parts'
+import { totalDepense } from '@/app/dashboard/business/_lib/ltv'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -77,7 +78,6 @@ type CommandeDetail = {
   acheteur_numero_tva: string | null
   notes: Note[] | null
   client_id: string | null
-  stripe_transfer_group: string | null
   tva_taux: number | null
   clients: {
     id: string
@@ -126,6 +126,7 @@ type HistoriqueCommande = {
   created_at: string
   prix_paye: number
   statut: string
+  montant_rembourse_cents: number
 }
 
 /* ─── constants ─────────────────────────────────────────────────── */
@@ -152,7 +153,7 @@ const TYPES_ABONNEMENT = new Set(['CREATION_ABONNEMENT', 'RENOUVELLEMENT'])
 const STATUT_LIVRAISON = {
   en_cours: { label: 'En cours',           cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
   livree:   { label: 'Livrée',             cls: 'bg-green-500/15 text-green-400 border border-green-500/20' },
-  probleme: { label: 'Problème détecté',   cls: 'bg-red-500/15   text-red-400   border border-red-500/20' },
+  probleme: { label: 'Réparation automatique en cours', cls: 'bg-red-500/15   text-red-400   border border-red-500/20' },
 } as const
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -222,7 +223,7 @@ export default async function CommandeDetailPage({
       source_marketing, type_commande, plateforme_source,
       acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone,
       acheteur_raison_sociale, acheteur_numero_tva,
-      notes, client_id, stripe_transfer_group, tva_taux,
+      notes, client_id, tva_taux,
       licence_annulee_at, licence_annulee_motif, montant_rembourse_cents, rembourse_at,
       clients (id, prenom, nom, email, pays),
       commande_lignes (
@@ -317,37 +318,34 @@ export default async function CommandeDetailPage({
   if (c.client_id) {
     const { data } = await admin
       .from('commandes')
-      .select('id, created_at, prix_paye, statut')
+      .select('id, created_at, prix_paye, statut, montant_rembourse_cents')
       .eq('beatmaker_id', user.id)
       .eq('client_id', c.client_id)
       .order('created_at', { ascending: false })
     historiqueClient = (data ?? []) as HistoriqueCommande[]
   }
 
-  const ltv = historiqueClient
-    .filter(h => h.statut === 'payee')
-    .reduce((sum, h) => sum + (h.prix_paye ?? 0), 0)
+  const ltv = totalDepense(historiqueClient)
 
   const lignes = c.commande_lignes ?? []
   const multiArticles = lignes.length > 1
 
-  /* Détail des problèmes de livraison (Phase 5) — recalculé depuis l'état
+  /* Détail de ce qui manque (Phase 13 lot 5) — recalculé depuis l'état
      réel, jamais depuis un texte figé, pour ne jamais afficher un problème
-     déjà réparé entre-temps sans que le statut n'ait été relu. */
+     déjà réparé entre-temps (réparation automatique chaque nuit). */
   const { problemes: problemesLivraison } = c.statut_livraison === 'probleme'
     ? await calculerStatutLivraison(id)
     : { problemes: [] }
-  const { data: splitsDetail } = problemesLivraison.some(p => p.type === 'transfert_echoue')
-    ? await admin.from('split_payments').select('id, beatmakers(nom_artiste)').eq('commande_id', id)
-    : { data: null }
   const beatParLigneId = new Map(lignes.map(l => [l.id, l.beats?.titre ?? 'Beat']))
-  const nomParSplitId = new Map(((splitsDetail ?? []) as unknown as { id: string; beatmakers: { nom_artiste: string } | null }[])
-    .map(sp => [sp.id, sp.beatmakers?.nom_artiste ?? 'un collaborateur']))
-  const problemesTextes = problemesLivraison.map(p =>
-    p.type === 'contrat_manquant'
-      ? `Contrat PDF manquant — ${beatParLigneId.get(p.commandeLigneId) ?? 'un article'}`
-      : `Transfert échoué vers ${nomParSplitId.get(p.splitPaymentId) ?? 'un collaborateur'}`
-  )
+  const problemesTextes = problemesLivraison.map(p => {
+    switch (p.type) {
+      case 'contrat_manquant': return `Contrat PDF manquant — ${beatParLigneId.get(p.commandeLigneId) ?? 'un article'}`
+      case 'facture_manquante': return `Facture PDF manquante${p.vendeurNom ? ` — ${p.vendeurNom}` : ''}`
+      case 'frais_manquants': return `Frais Stripe pas encore récupérés${p.vendeurNom ? ` — ${p.vendeurNom}` : ''}`
+      case 'avoir_incomplet': return p.numero.startsWith('reserve-') ? 'Avoir sans numéro' : `Avoir PDF manquant — n° ${p.numero}`
+      case 'lignes_manquantes': return 'Articles de la commande absents (vente interrompue)'
+    }
+  })
 
   /* Fichiers disponibles par article (licence + fichiers audio + contrat) */
   const lignesDispo = lignes.map(l => {
@@ -742,15 +740,6 @@ export default async function CommandeDetailPage({
             </div>
           </div>
 
-          {/* Bouton remboursement — caché si produit déjà téléchargé.
-              Vente avec collaborateur(s) : badge à la place, remboursement
-              Stripe pas encore automatisé (clawback des parts déjà transférées
-              gelé jusqu'au choix du processeur collab, Phase 13). */}
-          {c.statut === 'payee' && c.stripe_transfer_group && !tranches.length && (
-            <div className="px-5 py-3 border-t border-gray-800">
-              <span className="text-xs text-amber-400">Vente avec collaborateur(s) (ancien système) — remboursement à traiter manuellement.</span>
-            </div>
-          )}
           {/* Remboursement (Phase 13, lot 4a) : tant qu'il reste de l'argent
               au vendeur, même après téléchargement (A décide, la fenêtre de
               confirmation le prévient). Commande à 0 € : annulation. */}
@@ -759,7 +748,7 @@ export default async function CommandeDetailPage({
               <AnnulerCommandeButton commandeId={id} />
             </div>
           )}
-          {!estAbonnement && prixTTC > 0 && STATUTS_REMBOURSABLES.has(c.statut) && resteARembourserCents > 0 && !(c.stripe_transfer_group && !tranches.length) && (
+          {!estAbonnement && prixTTC > 0 && STATUTS_REMBOURSABLES.has(c.statut) && resteARembourserCents > 0 && (
             <div className="px-5 py-3 border-t border-gray-800">
               <RemboursementButton
                 commandeId={id}

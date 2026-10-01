@@ -6,13 +6,9 @@ import { calculerPretAVendreOuExempte } from '@/lib/pret-a-vendre'
 
 export type CritereManquant = { libelle: string; lienReglage: string }
 
-// Réécriture complète (Phase 12, lot 3) — l'ancienne version de cette page
-// (et de sa requête) datait d'avant la Phase 12 et interrogeait encore
-// split_payments (fonds retenus) avec les anciens statuts 'actif'/'en_attente'/
-// 'refuse', supprimés par la migration du lot 1 (CHECK constraint). Ici : le
-// nouveau modèle d'états (invitee/active/refusee/retiree/quittee/evincee,
-// lib/collaboration.ts), aucune donnée d'argent (Phase 13 alimentera
-// commande_tranches, pas encore consultable ici).
+// Modèle d'états de la Phase 12 (invitee/active/refusee/retiree/quittee/
+// evincee, lib/collaboration.ts) ; aucune donnée d'argent ici (les parts
+// vendues vivent dans commande_tranches).
 
 export type SplitRow = {
   id: string

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import ContactsClient, { ContactRow } from './_components/ContactsClient'
 import type { LeadRow } from './_components/LeadsView'
 import type { NewsletterRow } from './_components/NewsletterView'
+import { totalDepense, panierMoyenLicences } from '@/app/dashboard/business/_lib/ltv'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -124,7 +125,7 @@ export default async function ContactsPage({
   const [commandesRes, aboRes, listesRes] = await Promise.all([
     supabase
       .from('commandes')
-      .select('client_id, created_at, prix_paye, statut, type_commande, commande_lignes(beat_id, licence_id)')
+      .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
       .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
     supabase
@@ -348,12 +349,11 @@ export default async function ContactsPage({
     const dernierContactISO  = events.length ? events[events.length - 1].date.toISOString() : c.created_at
     const typeDerniereAction = events[events.length - 1]?.type ?? 'Inscription'
 
-    const ltv = cmds.filter(cmd => cmd.statut === 'payee').reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
+    const ltv = totalDepense(cmds)
     const dernier_achat_iso = licenceCmds.length
       ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
       : null
-    const licenceLtv   = licenceCmds.reduce((sum, cmd) => sum + (cmd.prix_paye ?? 0), 0)
-    const panier_moyen = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
+    const panier_moyen = panierMoyenLicences(licenceCmds)
 
     const stylesArr: string[] = []
     const typeBeatArr: string[] = []

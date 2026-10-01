@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import FusionWizard from './_components/FusionWizard'
 import type { RaisonData } from '../_components/DoublonsView'
+import { montantDepense } from '@/app/dashboard/business/_lib/ltv'
 
 export default async function FusionnerPage({
   searchParams,
@@ -43,7 +44,7 @@ export default async function FusionnerPage({
       .select('id, prenom, nom, email, pays, telephone, instagram, spotify, youtube, tiktok, notes, nom_artiste')
       .in('id', [id_conserve, id_archive]),
     supabase.from('commandes')
-      .select('client_id, prix_paye, statut, type_commande')
+      .select('client_id, prix_paye, statut, montant_rembourse_cents, type_commande')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', [id_conserve, id_archive]),
   ])
@@ -61,7 +62,7 @@ export default async function FusionnerPage({
   const achatsMap = new Map<string, number>()
   for (const cmd of commandes) {
     const id = cmd.client_id as string
-    if (cmd.statut === 'payee') ltvMap.set(id, (ltvMap.get(id) ?? 0) + (cmd.prix_paye ?? 0))
+    ltvMap.set(id, (ltvMap.get(id) ?? 0) + montantDepense(cmd))
     if (cmd.type_commande === 'LICENCE') achatsMap.set(id, (achatsMap.get(id) ?? 0) + 1)
   }
 

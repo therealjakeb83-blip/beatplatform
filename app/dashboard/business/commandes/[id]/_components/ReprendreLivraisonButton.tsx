@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 export default function ReprendreLivraisonButton({ commandeId }: { commandeId: string }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
-  const [resultat, setResultat] = useState<{ statut: string; contratsRegeneres: number; transfertsReussis: number; echecs: string[] } | null>(null)
+  const [resultat, setResultat] = useState<{ statut: string; repares: number; echecs: string[] } | null>(null)
   const router = useRouter()
 
   async function handleClick() {
@@ -27,9 +27,8 @@ export default function ReprendreLivraisonButton({ commandeId }: { commandeId: s
     return (
       <div className="text-xs">
         <p className="text-green-400">
-          {resultat.contratsRegeneres > 0 && `${resultat.contratsRegeneres} contrat(s) régénéré(s). `}
-          {resultat.transfertsReussis > 0 && `${resultat.transfertsReussis} transfert(s) réussi(s). `}
-          {resultat.contratsRegeneres === 0 && resultat.transfertsReussis === 0 && 'Rien de neuf à réparer.'}
+          {resultat.repares > 0 ? `${resultat.repares} élément(s) réparé(s).` : 'Rien de neuf à réparer.'}
+          {resultat.statut === 'livree' && ' Commande complète.'}
         </p>
         {resultat.echecs.length > 0 && (
           <ul className="mt-1 space-y-0.5">

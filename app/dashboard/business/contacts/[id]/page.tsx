@@ -6,6 +6,7 @@ import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import IdentiteSaveButton from './_components/IdentiteSaveButton'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { totalDepense, panierMoyenLicences } from '@/app/dashboard/business/_lib/ltv'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -185,7 +186,7 @@ export default async function FicheClientPage({
     supabase
       .from('commandes')
       .select(`
-        id, created_at, prix_paye, statut, plateforme_source, type_commande,
+        id, created_at, prix_paye, statut, montant_rembourse_cents, plateforme_source, type_commande,
         commande_lignes(
           beat_id, prix_paye,
           beats(titre, image_url, styles, type_beat, ambiances, instruments),
@@ -271,9 +272,8 @@ export default async function FicheClientPage({
   const achats         = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT')
   const licencesPayees = payees.filter(c => c.type_commande === 'LICENCE')
   const nbAchats       = licencesPayees.length
-  const ltv            = payees.reduce((s, c) => s + c.prix_paye, 0)
-  const licenceLtv     = licencesPayees.reduce((s, c) => s + c.prix_paye, 0)
-  const panierMoyen    = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
+  const ltv            = totalDepense(commandes)
+  const panierMoyen    = panierMoyenLicences(commandes.filter(c => c.type_commande === 'LICENCE'))
   const derniereCmd    = licencesPayees.map(c => c.created_at).sort().at(-1) ?? null
   const moisAboCommandes = commandes.filter(
     c => c.type_commande === 'RENOUVELLEMENT' || c.type_commande === 'CREATION_ABONNEMENT'
@@ -599,6 +599,7 @@ export default async function FicheClientPage({
             <div>
               <p className="text-xs text-gray-500 mb-1">LTV</p>
               <p className="text-2xl font-black">{fmt(ltv)}</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">Total dépensé par le client</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Achats</p>

@@ -4,6 +4,7 @@ import {
   computeScoreRF, computeScoreChaleur,
   type ContactFiltre, type CatalogOptions,
 } from './segments'
+import { totalDepense, panierMoyenLicences } from '@/app/dashboard/business/_lib/ltv'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
@@ -68,7 +69,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   const [commandesRes, aboRes, beatsAllRes, licencesAllRes] = await Promise.all([
     supabase
       .from('commandes')
-      .select('client_id, created_at, prix_paye, statut, type_commande, commande_lignes(beat_id, licence_id)')
+      .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
       .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
     supabase
@@ -176,10 +177,8 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
 
       const licenceCmds = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
       const nbAchats    = licenceCmds.length
-      const payees      = cmds.filter(cmd => cmd.statut === 'payee')
-      const ltv         = payees.reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
-      const licenceLtv  = licenceCmds.filter(c => c.statut === 'payee').reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
-      const panierMoyen = nbAchats > 0 ? Math.round(licenceLtv / nbAchats) : null
+      const ltv         = totalDepense(cmds)
+      const panierMoyen = panierMoyenLicences(licenceCmds)
       const dernierAchat = licenceCmds.length
         ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
         : null

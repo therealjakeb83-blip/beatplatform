@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DoublonsView, { DoublonPairData, ClientData, RaisonData } from './_components/DoublonsView'
+import { montantDepense } from '@/app/dashboard/business/_lib/ltv'
 
 // ── Algorithme de détection ────────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ export default async function DoublonsPage() {
       .select('id, prenom, nom, email, pays, telephone')
       .in('id', clientIds),
     supabase.from('commandes')
-      .select('client_id, prix_paye, statut, type_commande')
+      .select('client_id, prix_paye, statut, montant_rembourse_cents, type_commande')
       .eq('beatmaker_id', beatmakerId)
       .not('client_id', 'is', null),
     supabase.from('abonnements_boutique')
@@ -160,7 +161,7 @@ export default async function DoublonsPage() {
   const achatsMap = new Map<string, number>()
   for (const cmd of commandes) {
     const id = cmd.client_id as string
-    if (cmd.statut === 'payee') ltvMap.set(id, (ltvMap.get(id) ?? 0) + (cmd.prix_paye ?? 0))
+    ltvMap.set(id, (ltvMap.get(id) ?? 0) + montantDepense(cmd))
     if (cmd.type_commande === 'LICENCE') achatsMap.set(id, (achatsMap.get(id) ?? 0) + 1)
   }
 
