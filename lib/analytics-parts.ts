@@ -6,48 +6,94 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // sa part de ses propres commandes ; un collaborateur (B) retrouve en plus
 // les ventes faites sur la boutique de A, pour sa part seulement.
 
+// Phase 13, lot 4 (T21) — remboursements et litiges PAR PART : une commande
+// compte tant que le vendeur garde au moins une partie de SA part. Ce qu'il a
+// rendu au client (bouton de A, remboursement depuis Stripe, litige perdu)
+// sort de son CA ; une part sous litige en cours est retirée le temps du
+// litige (l'argent est bloqué, il apparaît dans « Litiges en cours ») ; les
+// autres parts de la même commande ne bougent pas.
+export const STATUTS_ANALYTICS = ['payee', 'litige', 'remboursee_partielle', 'remboursement_incomplet']
+
 type PartCommande = {
+  /** Ce que le vendeur garde (centimes), après remboursement. */
   partCents: number
   totalCents: number
-  // `${beat_id}:${licence_id}` → part du vendeur sur cette ligne (centimes)
-  parLigne: Map<string, number>
+  // `${beat_id}:${licence_id}` → part du vendeur sur cette ligne (centimes,
+  // avant remboursement) ; null = vente solo, toutes les lignes sont à lui.
+  parLigne: Map<string, number> | null
+  /** Fraction de sa part que le vendeur garde (0 = la commande ne compte plus pour lui). */
+  facteur: number
 }
 
 export type PartsVendeur = {
   parCommande: Map<string, PartCommande>
-  /** Commandes payées où le vendeur a une tranche sur la boutique d'un autre. */
+  /** Commandes où le vendeur a une tranche sur la boutique d'un autre. */
   autresCommandes: string[]
+  /** Argent rendu au client sur SA part (remboursements + litiges perdus), par commande. */
+  rembourseParCommande: Map<string, number>
 }
 
 export async function chargerPartsVendeur(admin: SupabaseClient, vendeurId: string): Promise<PartsVendeur> {
-  const { data } = await admin
-    .from('commande_tranches')
-    .select('commande_id, montant_ttc_cents, detail_lignes, commandes!inner(beatmaker_id, prix_paye, statut)')
-    .eq('vendeur_id', vendeurId)
+  const [{ data }, { data: litiges }, { data: solos }] = await Promise.all([
+    admin
+      .from('commande_tranches')
+      .select('id, commande_id, montant_ttc_cents, montant_rembourse_cents, detail_lignes, commandes!inner(beatmaker_id, prix_paye, statut)')
+      .eq('vendeur_id', vendeurId),
+    admin.from('litiges').select('commande_id, tranche_id').eq('beatmaker_id', vendeurId).eq('statut', 'en_cours'),
+    // Ventes solo touchées par un remboursement ou un litige (les autres
+    // comptent telles quelles, sans entrée ici).
+    admin
+      .from('commandes')
+      .select('id, prix_paye, montant_rembourse_cents, statut')
+      .eq('beatmaker_id', vendeurId)
+      .in('statut', ['litige', 'remboursee', 'remboursee_partielle', 'remboursement_incomplet']),
+  ])
+
+  const sousLitige = new Set((litiges ?? []).map(l => l.tranche_id ?? `solo:${l.commande_id}`))
 
   type Row = {
+    id: string
     commande_id: string
     montant_ttc_cents: number
+    montant_rembourse_cents: number | null
     detail_lignes: { beat_id: string; licence_id: string; montant_cents: number }[] | null
     commandes: { beatmaker_id: string; prix_paye: number; statut: string }
   }
   const parCommande = new Map<string, PartCommande>()
+  const rembourseParCommande = new Map<string, number>()
   const autresCommandes: string[] = []
   for (const r of (data ?? []) as unknown as Row[]) {
+    const rembourse = Math.min(r.montant_rembourse_cents ?? 0, r.montant_ttc_cents)
+    const garde = sousLitige.has(r.id) ? 0 : r.montant_ttc_cents - rembourse
+    const facteur = sousLitige.has(r.id) ? 0 : r.montant_ttc_cents > 0 ? garde / r.montant_ttc_cents : 1
     parCommande.set(r.commande_id, {
-      partCents: r.montant_ttc_cents,
+      partCents: garde,
       totalCents: Math.round(Number(r.commandes.prix_paye) * 100),
       parLigne: new Map((r.detail_lignes ?? []).map(d => [`${d.beat_id}:${d.licence_id}`, d.montant_cents])),
+      facteur,
     })
-    if (r.commandes.beatmaker_id !== vendeurId && r.commandes.statut === 'payee') autresCommandes.push(r.commande_id)
+    if (rembourse > 0) rembourseParCommande.set(r.commande_id, rembourse)
+    if (r.commandes.beatmaker_id !== vendeurId && STATUTS_ANALYTICS.includes(r.commandes.statut)) autresCommandes.push(r.commande_id)
   }
-  return { parCommande, autresCommandes }
+
+  for (const c of (solos ?? []) as { id: string; prix_paye: number; montant_rembourse_cents: number | null; statut: string }[]) {
+    if (parCommande.has(c.id)) continue
+    const total = Math.round(Number(c.prix_paye) * 100)
+    const rembourse = c.statut === 'remboursee' ? total : Math.min(c.montant_rembourse_cents ?? 0, total)
+    const enLitige = sousLitige.has(`solo:${c.id}`)
+    const garde = enLitige ? 0 : total - rembourse
+    parCommande.set(c.id, { partCents: garde, totalCents: total, parLigne: null, facteur: total > 0 ? garde / total : 1 })
+    if (rembourse > 0) rembourseParCommande.set(c.id, rembourse)
+  }
+  return { parCommande, autresCommandes, rembourseParCommande }
 }
 
-/** Montant d'une commande ramené à la part du vendeur (inchangé en solo). */
-export function partDeCommande<T extends { id: string; prix_paye: number; reduction_montant?: number | null }>(c: T, parts: PartsVendeur): T {
+/** Montant d'une commande ramené à ce que le vendeur garde (null si plus
+ *  rien : part rendue au client ou sous litige en cours). */
+export function partDeCommande<T extends { id: string; prix_paye: number; reduction_montant?: number | null }>(c: T, parts: PartsVendeur): T | null {
   const p = parts.parCommande.get(c.id)
   if (!p) return c
+  if (p.facteur === 0) return null
   const ratio = p.totalCents > 0 ? p.partCents / p.totalCents : 0
   return {
     ...c,
@@ -56,17 +102,23 @@ export function partDeCommande<T extends { id: string; prix_paye: number; reduct
   }
 }
 
-/** Montant d'une ligne de commande ramené à la part du vendeur (null si le
- *  vendeur n'a aucune part sur cette ligne). */
+export function partsDeCommandes<T extends { id: string; prix_paye: number; reduction_montant?: number | null }>(commandes: T[], parts: PartsVendeur): T[] {
+  return commandes.map(c => partDeCommande(c, parts)).filter((c): c is T => c !== null)
+}
+
+/** Montant d'une ligne de commande ramené à ce que le vendeur garde (null si
+ *  le vendeur n'a aucune part sur cette ligne ou n'en garde plus rien). */
 export function partDeLigne<T extends { commande_id: string; beat_id: string; licence_id: string; prix_paye: number; reduction_montant?: number | null }>(
   l: T,
   parts: PartsVendeur,
 ): T | null {
   const p = parts.parCommande.get(l.commande_id)
   if (!p) return l
-  const partCents = p.parLigne.get(`${l.beat_id}:${l.licence_id}`)
-  if (partCents == null) return null
+  if (p.facteur === 0) return null
   const prixLigneCents = Math.round(Number(l.prix_paye) * 100)
+  const avant = p.parLigne ? p.parLigne.get(`${l.beat_id}:${l.licence_id}`) : prixLigneCents
+  if (avant == null) return null
+  const partCents = Math.round(avant * p.facteur)
   const ratio = prixLigneCents > 0 ? partCents / prixLigneCents : 0
   return {
     ...l,
@@ -90,19 +142,31 @@ export function partsDeLignes<T extends { commande_id: string; beat_id: string; 
 export type FluxCollab = { created_at: string; montant: number }
 
 export async function chargerFluxCollab(admin: SupabaseClient, vendeurId: string): Promise<{ recus: FluxCollab[]; collaborateurs: FluxCollab[] }> {
+  const select = 'id, montant_ttc_cents, montant_rembourse_cents, commandes!inner(beatmaker_id, statut, created_at)'
   const [{ data: recus }, { data: collaborateurs }] = await Promise.all([
     admin.from('commande_tranches')
-      .select('montant_ttc_cents, commandes!inner(beatmaker_id, statut, created_at)')
+      .select(select)
       .eq('vendeur_id', vendeurId)
       .neq('commandes.beatmaker_id', vendeurId)
-      .eq('commandes.statut', 'payee'),
+      .in('commandes.statut', STATUTS_ANALYTICS),
     admin.from('commande_tranches')
-      .select('montant_ttc_cents, commandes!inner(beatmaker_id, statut, created_at)')
+      .select(select)
       .eq('commandes.beatmaker_id', vendeurId)
       .eq('est_proprietaire', false)
-      .eq('commandes.statut', 'payee'),
+      .in('commandes.statut', STATUTS_ANALYTICS),
   ])
-  type Row = { montant_ttc_cents: number; commandes: { created_at: string } }
-  const versFlux = (rows: unknown) => ((rows ?? []) as Row[]).map(r => ({ created_at: r.commandes.created_at, montant: r.montant_ttc_cents / 100 }))
+  type Row = { id: string; montant_ttc_cents: number; montant_rembourse_cents: number | null; commandes: { created_at: string } }
+  const lignes = [...((recus ?? []) as unknown as Row[]), ...((collaborateurs ?? []) as unknown as Row[])]
+  const { data: litiges } = lignes.length
+    ? await admin.from('litiges').select('tranche_id').eq('statut', 'en_cours').in('tranche_id', lignes.map(r => r.id))
+    : { data: [] }
+  const sousLitige = new Set((litiges ?? []).map(l => l.tranche_id as string))
+  // Même règle que le CA : ce qui a été rendu au client, ou est bloqué par un
+  // litige en cours, ne compte pas.
+  const versFlux = (rows: unknown) => ((rows ?? []) as Row[])
+    .filter(r => !sousLitige.has(r.id))
+    .map(r => ({ created_at: r.commandes.created_at, montant: Math.max(r.montant_ttc_cents - (r.montant_rembourse_cents ?? 0), 0) / 100, ttc: r.montant_ttc_cents }))
+    .filter(f => f.montant > 0 || f.ttc === 0)
+    .map(({ created_at, montant }) => ({ created_at, montant }))
   return { recus: versFlux(recus), collaborateurs: versFlux(collaborateurs) }
 }

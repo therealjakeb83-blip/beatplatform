@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur, startOfMonthInTz } from '@/lib/fuseau-horaire'
-import { chargerPartsVendeur, chargerFluxCollab, partDeCommande, partsDeLignes, type FluxCollab } from '@/lib/analytics-parts'
+import { chargerPartsVendeur, chargerFluxCollab, partsDeCommandes, partsDeLignes, type FluxCollab, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     admin.from('commandes')
       .select('id, prix_paye, reduction_montant, type_commande, created_at, source_marketing')
       .eq('beatmaker_id', user.id)
-      .eq('statut', 'payee')
+      .in('statut', STATUTS_ANALYTICS)
       .order('created_at', { ascending: false }),
     // Niveau article — un panier de plusieurs beats donne plusieurs lignes ici,
     // c'est la source pour tout ce qui compte des BEATS (pas des commandes) :
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     admin.from('commande_lignes')
       .select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(id, titre, couleur), licences(nom), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
-      .eq('commandes.statut', 'payee')
+      .in('commandes.statut', STATUTS_ANALYTICS)
       .order('created_at', { ascending: false }),
     admin.from('beat_plays')
       .select('played_at, beat_id')
@@ -64,12 +64,12 @@ export async function GET(request: Request) {
   const [parts, flux] = await Promise.all([chargerPartsVendeur(admin, user.id), chargerFluxCollab(admin, user.id)])
   const [{ data: commandesAutres }, { data: lignesAutres }] = parts.autresCommandes.length
     ? await Promise.all([
-        admin.from('commandes').select('id, prix_paye, reduction_montant, type_commande, created_at, source_marketing').in('id', parts.autresCommandes).eq('statut', 'payee'),
-        admin.from('commande_lignes').select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(id, titre, couleur), licences(nom), commandes!inner(beatmaker_id, statut)').in('commande_id', parts.autresCommandes).eq('commandes.statut', 'payee'),
+        admin.from('commandes').select('id, prix_paye, reduction_montant, type_commande, created_at, source_marketing').in('id', parts.autresCommandes).in('statut', STATUTS_ANALYTICS),
+        admin.from('commande_lignes').select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(id, titre, couleur), licences(nom), commandes!inner(beatmaker_id, statut)').in('commande_id', parts.autresCommandes).in('commandes.statut', STATUTS_ANALYTICS),
       ])
     : [{ data: [] }, { data: [] }]
   const parDateDesc = (a: { created_at: string }, b: { created_at: string }) => b.created_at.localeCompare(a.created_at)
-  const allCommandes = [...(commandesBoutique ?? []), ...(commandesAutres ?? [])].map(c => partDeCommande(c, parts)).sort(parDateDesc)
+  const allCommandes = partsDeCommandes([...(commandesBoutique ?? []), ...(commandesAutres ?? [])], parts).sort(parDateDesc)
   const allLignes = partsDeLignes([...(lignesBoutique ?? []), ...(lignesAutres ?? [])], parts).sort(parDateDesc)
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)

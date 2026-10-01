@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots, type HistoriqueSlot } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { chargerPartsVendeur, partsDeLignes } from '@/lib/analytics-parts'
+import { chargerPartsVendeur, partsDeLignes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -119,7 +119,7 @@ export async function GET(request: Request) {
     admin.from('commande_lignes')
       .select('commande_id, beat_id, licence_id, prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
-      .eq('commandes.statut', 'payee'),
+      .in('commandes.statut', STATUTS_ANALYTICS),
     admin.from('beat_plays')
       .select('played_at, beats(styles, ambiances, instruments, type_beat)')
       .eq('beatmaker_id', user.id),

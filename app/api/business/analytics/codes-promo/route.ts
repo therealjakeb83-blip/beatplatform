@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { chargerPartsVendeur, partDeCommande } from '@/lib/analytics-parts'
+import { chargerPartsVendeur, partsDeCommandes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
 
@@ -22,13 +22,13 @@ export async function GET(request: Request) {
     admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant, code_promo')
       .eq('beatmaker_id', user.id)
-      .eq('statut', 'payee')
+      .in('statut', STATUTS_ANALYTICS)
       .not('code_promo', 'is', null),
     admin.from('beatmakers').select('tva_active, tva_taux, fuseau_horaire').eq('id', user.id).single(),
     chargerPartsVendeur(admin, user.id),
   ])
   // CA généré = part du vendeur sur une vente collab (Phase 13, lot 3).
-  const allCommandes = (commandesBoutique ?? []).map(c => partDeCommande(c, parts))
+  const allCommandes = partsDeCommandes(commandesBoutique ?? [], parts)
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
