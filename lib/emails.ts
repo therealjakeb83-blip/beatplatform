@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
 import { NOM_PLATEFORME } from './constantes'
+import { libelleMotifLitige } from './litiges-libelles'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
 const COULEUR_DEFAUT = '#4f46e5'
@@ -247,6 +248,9 @@ export type TypeTemplatePlateforme =
   | 'nouvelle_vente'
   | 'remboursement_vente'
   | 'remboursement_incomplet'
+  | 'litige_ouvert'
+  | 'litige_rappel'
+  | 'litige_collaborateur'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
   nom_artiste: NOM_PLATEFORME,
@@ -281,6 +285,9 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   nouvelle_vente: 'Nouvelle vente !',
   remboursement_vente: 'Une vente a été remboursée',
   remboursement_incomplet: 'Remboursement incomplet',
+  litige_ouvert: 'Un litige a été ouvert sur une vente',
+  litige_rappel: 'Litige : plus que 3 jours pour répondre',
+  litige_collaborateur: 'Un litige a été ouvert sur une vente en collaboration',
 }
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
@@ -323,6 +330,12 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return "Une vente en collaboration a été remboursée par le propriétaire du beat. Ta part a été rendue au client depuis ton compte Stripe et une facture d'avoir a été émise automatiquement. Les frais Stripe de la vente ne sont pas rendus par Stripe."
     case 'remboursement_incomplet':
       return "Le remboursement d'une vente n'a pas pu être fait en entier : une part n'a pas pu être rendue au client. Les autres parts restent remboursées. Le propriétaire peut réessayer depuis la fiche de la commande."
+    case 'litige_ouvert':
+      return "Un client a contesté un paiement auprès de sa banque. Stripe bloque le montant contesté le temps du litige. Tu peux répondre depuis la fiche de la commande avant la date limite : les preuves (contrat, facture, historique de téléchargement, coordonnées de l'acheteur) sont déjà prêtes, tu peux ajouter un texte et un fichier. Si tu ne fais rien, aucune réponse n'est envoyée à ta place."
+    case 'litige_rappel':
+      return "Tu n'as pas encore répondu à un litige et la date limite approche. Passé cette date, la banque tranche sans ta réponse, ce qui revient en général à perdre le litige. Tu peux envoyer ta réponse (ou accepter le litige) depuis la fiche de la commande."
+    case 'litige_collaborateur':
+      return "Un client a contesté son paiement sur une vente en collaboration. Stripe bloque ta part le temps du litige. C'est le propriétaire du beat qui gère le litige : il envoie la réponse, preuves à l'appui, et la plateforme la transmet sur ton compte. Tu suis l'état du litige et l'historique de téléchargement sur la fiche de la vente. Ton espace Stripe te permet aussi de répondre, mais c'est déconseillé : une réponse est définitive, et le propriétaire ne pourrait plus répondre pour ta part."
   }
 }
 
@@ -829,6 +842,34 @@ export async function genererApercuTransactionnelPlateforme(
         ['Raison', 'Compte Stripe fermé'],
       ]),
       cta: { texte: 'Voir la commande', lien: '#' },
+    },
+    litige_ouvert: {
+      corpsHtml: corpsLignes([
+        ['Commande', 'Midnight Drive — Licence MP3'],
+        ['Montant contesté', 'Jake B — 24.50€\nNafaz — 24.50€'],
+        ['Motif', libelleMotifLitige('fraudulent')],
+        ['Date limite pour répondre', fmtDateEssai(new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString())],
+      ]),
+      cta: { texte: 'Répondre au litige', lien: '#' },
+    },
+    litige_rappel: {
+      corpsHtml: corpsLignes([
+        ['Commande', 'Midnight Drive — Licence MP3'],
+        ['Montant contesté', '49.00€'],
+        ['Motif', libelleMotifLitige('fraudulent')],
+        ['Date limite pour répondre', fmtDateEssai(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString())],
+      ]),
+      cta: { texte: 'Répondre au litige', lien: '#' },
+    },
+    litige_collaborateur: {
+      corpsHtml: corpsLignes([
+        ['Boutique', 'Jake B (vente en collaboration)'],
+        ['Beat', 'Midnight Drive — Licence MP3'],
+        ['Ta part contestée', '24.50€'],
+        ['Motif', libelleMotifLitige('fraudulent')],
+        ['Date limite', fmtDateEssai(new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString())],
+      ]),
+      cta: { texte: 'Voir la vente', lien: '#' },
     },
   }
 
@@ -1513,4 +1554,76 @@ export async function envoyerRemboursementIncomplet({ commandeId }: { commandeId
       cta: { texte: 'Voir la commande', lien: `${APP_URL}/dashboard/business/commandes/${commandeId}` },
     }).catch(err => console.error('[emails] Erreur envoi remboursement incomplet à', v.id, ':', err))
   }
+}
+
+// ─── Litiges (Phase 13, lot 4b — décision L4-Q5) ────────────────────────────
+// À A : à l'ouverture (un seul email pour toutes les parts contestées en même
+// temps) et en rappel 3 jours avant la date limite s'il n'a pas répondu. À B :
+// un email d'information pour SA part. Le client n'est jamais prévenu par la
+// plateforme (c'est lui qui a ouvert le litige auprès de sa banque).
+export type PartLitigeEmail = { vendeurNom: string; montant: number; motif: string | null; dateLimite: string | null }
+
+function lignesPartsLitige(parts: PartLitigeEmail[]): [string, string][] {
+  const montant = parts.length > 1
+    ? parts.map(p => `${p.vendeurNom} — ${Number(p.montant).toFixed(2)}€`).join('\n')
+    : `${Number(parts[0]?.montant ?? 0).toFixed(2)}€`
+  const motifs = [...new Set(parts.map(p => libelleMotifLitige(p.motif)))]
+  const limites = parts.map(p => p.dateLimite).filter((d): d is string => !!d).sort()
+  return [
+    ['Montant contesté', montant],
+    ['Motif', motifs.join('\n')],
+    ...(limites.length ? [['Date limite pour répondre', fmtDateEssai(limites[0])] as [string, string]] : []),
+  ]
+}
+
+async function emailProprietaire(commandeId: string) {
+  const admin = createAdminClient()
+  const { data: commande } = await admin.from('commandes').select('beatmaker_id').eq('id', commandeId).maybeSingle()
+  if (!commande) return null
+  const { data: bm } = await admin.from('beatmakers').select('email').eq('id', commande.beatmaker_id).maybeSingle()
+  return bm?.email ? { email: bm.email as string, beatmakerId: commande.beatmaker_id as string } : null
+}
+
+async function envoyerLitigeProprietaire(type: 'litige_ouvert' | 'litige_rappel', commandeId: string, parts: PartLitigeEmail[]) {
+  const [proprio, dest] = await Promise.all([emailProprietaire(commandeId), destinataireClient(commandeId)])
+  if (!proprio || !parts.length) return
+  await envoyerEmailCollab({
+    type,
+    to: proprio.email,
+    beatmakerId: proprio.beatmakerId,
+    corpsHtml: corpsLignes([['Commande', dest?.libelle ?? ''], ...lignesPartsLitige(parts)]),
+    cta: { texte: 'Répondre au litige', lien: `${APP_URL}/dashboard/business/commandes/${commandeId}` },
+  })
+}
+
+export async function envoyerLitigeOuvert({ commandeId, parts }: { commandeId: string; parts: PartLitigeEmail[] }) {
+  await envoyerLitigeProprietaire('litige_ouvert', commandeId, parts)
+}
+
+export async function envoyerLitigeRappel({ commandeId, parts }: { commandeId: string; parts: PartLitigeEmail[] }) {
+  await envoyerLitigeProprietaire('litige_rappel', commandeId, parts)
+}
+
+export async function envoyerLitigeCollaborateur({ commandeId, vendeurId, part }: { commandeId: string; vendeurId: string; part: PartLitigeEmail }) {
+  const admin = createAdminClient()
+  const [{ data: commande }, { data: vendeur }, dest] = await Promise.all([
+    admin.from('commandes').select('beatmaker_id').eq('id', commandeId).maybeSingle(),
+    admin.from('beatmakers').select('email').eq('id', vendeurId).maybeSingle(),
+    destinataireClient(commandeId),
+  ])
+  if (!commande || !vendeur?.email) return
+  const { data: boutique } = await admin.from('beatmakers').select('nom_artiste').eq('id', commande.beatmaker_id).maybeSingle()
+  await envoyerEmailCollab({
+    type: 'litige_collaborateur',
+    to: vendeur.email,
+    beatmakerId: commande.beatmaker_id,
+    corpsHtml: corpsLignes([
+      ['Boutique', `${boutique?.nom_artiste ?? ''} (vente en collaboration)`],
+      ['Beat', dest?.libelle ?? ''],
+      ['Ta part contestée', `${Number(part.montant).toFixed(2)}€`],
+      ['Motif', libelleMotifLitige(part.motif)],
+      ...(part.dateLimite ? [['Date limite', fmtDateEssai(part.dateLimite)] as [string, string]] : []),
+    ]),
+    cta: { texte: 'Voir la vente', lien: `${APP_URL}/dashboard/business/commandes/${commandeId}` },
+  })
 }

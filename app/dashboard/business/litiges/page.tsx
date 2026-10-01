@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation'
 import LitigesClient from './_components/LitigesClient'
 
 // Rang 9 ROADMAP — historique daté des litiges Stripe, décidé avec Jake le
-// 2026-08-31. Table `litiges` alimentée par marquerLitige/résoudreLitige
-// (lib/webhook-paiement.ts), lecture seule ici — rien à créer/éditer
-// manuellement, tout vient des events Stripe.
+// 2026-08-31. Table `litiges` alimentée par lib/litiges.ts (une ligne par
+// part contestée, au nom du vendeur dont le compte porte le litige) ; la
+// réponse se fait depuis la fiche commande (Phase 13, lot 4b).
 export type LitigeRow = {
   id: string
   commande_id: string

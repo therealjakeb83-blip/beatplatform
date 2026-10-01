@@ -11,6 +11,8 @@ import ReprendreLivraisonButton from './_components/ReprendreLivraisonButton'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { fuseauSur, formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
 import VueCollaborateur from './_components/VueCollaborateur'
+import EncartLitige from './_components/EncartLitige'
+import { litigesDeLaCommande } from '@/lib/litiges'
 import { decomposerTva } from '@/lib/collaboration-parts'
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -189,6 +191,10 @@ function fmtDateTime(iso: string, tz: string) {
   return formatDateTimeTz(iso, tz, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function emailClientPreuve(c: CommandeDetail): string | null {
+  return c.acheteur_email ?? c.clients?.email ?? null
+}
+
 /* ─── page ───────────────────────────────────────────────────────── */
 
 export default async function CommandeDetailPage({
@@ -248,6 +254,17 @@ export default async function CommandeDetailPage({
     .order('created_at', { ascending: true })
   const avoirs = (avoirsRaw ?? []) as AvoirDetail[]
 
+  /* Litiges (Phase 13, lot 4b) : un par part contestée. */
+  const partsLitige = await litigesDeLaCommande(admin, id, c.beatmaker_id)
+
+  /* Historique téléchargements */
+  const { data: downloadsRaw } = await admin
+    .from('licence_downloads')
+    .select('id, fichier, downloaded_at, ip_address')
+    .eq('commande_id', id)
+    .order('downloaded_at', { ascending: false })
+  const downloads = (downloadsRaw ?? []) as { id: string; fichier: string; downloaded_at: string; ip_address: string | null }[]
+
   // Vente en collaboration sur la boutique d'un autre (Phase 13, lot 3) : vue
   // limitée du collaborateur, identifiée par le numéro de SA facture.
   if (c.beatmaker_id !== user.id) {
@@ -283,6 +300,8 @@ export default async function CommandeDetailPage({
         }}
         avoirs={avoirs.filter(a => a.tranche_id === maTranche.id).map(a => ({ id: a.id, numero: a.numero, url: a.pdf_url }))}
         licenceAnnuleeAt={c.licence_annulee_at}
+        litige={partsLitige.find(p => p.vendeurId === user.id) ?? null}
+        telechargements={downloads.map(d => ({ id: d.id, fichier: d.fichier, date: d.downloaded_at }))}
         lignes={(maTranche.detail_lignes ?? []).map(d => ({
           ...(libelleLigne.get(`${d.beat_id}:${d.licence_id}`) ?? { titre: 'Beat', licence: '' }),
           pourcentage: d.pourcentage,
@@ -308,14 +327,6 @@ export default async function CommandeDetailPage({
   const ltv = historiqueClient
     .filter(h => h.statut === 'payee')
     .reduce((sum, h) => sum + (h.prix_paye ?? 0), 0)
-
-  /* Historique téléchargements */
-  const { data: downloadsRaw } = await admin
-    .from('licence_downloads')
-    .select('id, fichier, downloaded_at, ip_address')
-    .eq('commande_id', id)
-    .order('downloaded_at', { ascending: false })
-  const downloads = (downloadsRaw ?? []) as { id: string; fichier: string; downloaded_at: string; ip_address: string | null }[]
 
   const lignes = c.commande_lignes ?? []
   const multiArticles = lignes.length > 1
@@ -437,6 +448,22 @@ export default async function CommandeDetailPage({
   const tranchesEnEchec = tranches.filter(t => t.statut === 'remboursement_echoue')
   const tranchesRembourseesParVendeur = tranches.filter(t => t.rembourse_par === 'vendeur_stripe' && t.montant_rembourse_cents > 0)
   const nomVendeurAvoir = new Map(tranches.map(t => [t.id, t.vendeur_nom]))
+  /* Preuves jointes automatiquement à une réponse de litige (lib/litiges.ts). */
+  const nbContrats = lignes.filter(l => l.contrat_pdf_url).length
+  const nbTelechargements = downloads.length
+  const preuvesLitige = [
+    `Description de la vente : ${lignes.map(l => l.beats?.titre ?? 'Beat').join(', ')}, licence(s) livrée(s) par téléchargement juste après le paiement`,
+    ...(nbContrats ? [`Contrat${nbContrats > 1 ? 's' : ''} de licence au nom de l'acheteur${nbContrats > 1 ? ' (réunis en un seul PDF)' : ''}`] : []),
+    ...(tranches.length
+      ? (tranches.some(t => t.facture_pdf_url) ? ['Facture de chaque vendeur, jointe sur son propre compte'] : [])
+      : (c.facture_pdf_url ? [`Facture${c.numero_facture ? ` n° ${c.numero_facture}` : ''}`] : [])),
+    nbTelechargements
+      ? `Historique de téléchargement (${nbTelechargements} ligne${nbTelechargements > 1 ? 's' : ''}${tranches.length > 1 ? ' ; adresses IP sur ton compte seulement, jamais sur celui de tes collaborateurs' : ', avec adresses IP'})`
+      : "Historique de téléchargement : aucun téléchargement à ce jour (c'est indiqué tel quel)",
+    `Coordonnées de l'acheteur : ${[c.acheteur_nom, emailClientPreuve(c), c.acheteur_adresse ? 'adresse de facturation' : null].filter(Boolean).join(', ') || '—'}`,
+    `Date d'achat : ${fmtDate(c.created_at, tz)}`,
+  ]
+
   const montantRembourseCents = tranches.length
     ? tranches.reduce((s, t) => s + t.montant_rembourse_cents, 0)
     : c.montant_rembourse_cents ?? 0
@@ -464,6 +491,10 @@ export default async function CommandeDetailPage({
             {s.label}
           </span>
         </div>
+
+        {partsLitige.length > 0 && (
+          <EncartLitige commandeId={id} parts={partsLitige} preuves={preuvesLitige} tz={tz} />
+        )}
 
         {/* 3 colonnes */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

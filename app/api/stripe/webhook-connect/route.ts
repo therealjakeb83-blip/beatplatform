@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { traiterPaiementExpress, marquerLitige, resoudreLitige } from '@/lib/webhook-paiement'
+import { traiterPaiementExpress } from '@/lib/webhook-paiement'
+import { enregistrerLitige, traiterLitigeMisAJour, cloreLitige, LitigeARejouer } from '@/lib/litiges'
 import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { traiterRemboursementStripe } from '@/lib/remboursement'
 import { headers } from 'next/headers'
@@ -25,12 +26,10 @@ export const runtime = 'nodejs'
 // abonnements et les splits collab ne passent jamais par ce chemin (ils
 // restent sur l'ancien modèle, voir plan Phase 2).
 //
-// + litiges Stripe (charge.dispute.created/closed, rang 9 ROADMAP, décidé
-// avec Jake le 2026-08-31) — affichage passif du badge "Litige"/"Remboursée"
-// sur la commande, aucune décision prise à la place du beatmaker (voir
-// lib/webhook-paiement.ts). Ces 2 events doivent être cochés manuellement
-// dans le Dashboard Stripe si jamais ce endpoint est reconfiguré depuis
-// zéro — activés via l'API le 2026-08-31 sur l'endpoint existant.
+// + litiges Stripe (charge.dispute.created/updated/closed) — voir
+// lib/litiges.ts. Ces events doivent être cochés si jamais ce endpoint est
+// reconfiguré depuis zéro (created/closed activés via l'API le 2026-08-31,
+// updated au lot 4b de la Phase 13).
 export async function POST(request: Request) {
   const body = await request.text()
   const headersList = await headers()
@@ -98,17 +97,27 @@ export async function POST(request: Request) {
       await traiterRemboursementStripe(event.data.object as Stripe.Refund, stripeAccountId)
     }
 
+    // Litiges (Phase 13, lot 4b, lib/litiges.ts) : détectés par part (solo
+    // ou collab), A répond depuis la fiche commande. charge.dispute.updated
+    // (réponse envoyée par un vendeur depuis Stripe) est à cocher sur cet
+    // endpoint (.scratch/phase13-lot4b-abonner-litiges.mjs).
     if (event.type === 'charge.dispute.created') {
-      await marquerLitige(event.data.object as Stripe.Dispute, stripeAccountId)
+      await enregistrerLitige(event.data.object as Stripe.Dispute, stripeAccountId)
+    }
+
+    if (event.type === 'charge.dispute.updated') {
+      await traiterLitigeMisAJour(event.data.object as Stripe.Dispute, stripeAccountId)
     }
 
     if (event.type === 'charge.dispute.closed') {
-      await resoudreLitige(event.data.object as Stripe.Dispute, stripeAccountId)
+      await cloreLitige(event.data.object as Stripe.Dispute, stripeAccountId)
     }
   } catch (err) {
     const erreur = err instanceof Error ? err.message : String(err)
     console.error('[webhook-connect] Erreur traitement event', event.type, ':', erreur)
     await logAdmin.from('stripe_events').update({ statut: 'echoue', erreur, traite_at: new Date().toISOString() }).eq('stripe_event_id', event.id)
+    // Litige arrivé avant sa commande : Stripe renverra l'événement plus tard.
+    if (err instanceof LitigeARejouer) return NextResponse.json({ erreur }, { status: 500 })
     // 200 quand même : la signature est valide, l'erreur vient de notre
     // traitement — répondre en erreur ferait retenter Stripe indéfiniment
     // le même event.

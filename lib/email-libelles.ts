@@ -20,4 +20,7 @@ export const LIBELLES_EVENEMENTS_PLATEFORME: Record<string, string> = {
   plateforme_nouvelle_vente: 'Nouvelle vente',
   plateforme_remboursement_vente: "Remboursement d'une vente",
   plateforme_remboursement_incomplet: 'Remboursement incomplet',
+  plateforme_litige_ouvert: 'Litige ouvert',
+  plateforme_litige_rappel: 'Rappel litige',
+  plateforme_litige_collaborateur: 'Litige — collaborateur',
 }

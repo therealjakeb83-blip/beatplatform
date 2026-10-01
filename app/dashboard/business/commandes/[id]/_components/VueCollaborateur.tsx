@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { formatDateTz } from '@/lib/fuseau-horaire'
+import { formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
+import { libelleMotifLitige } from '@/lib/litiges-libelles'
+import type { PartLitige } from '@/lib/litiges'
 
 // Fiche d'une vente en collaboration vue par un collaborateur (B) — Phase 12
 // Q19 / Phase 13 lot 3 : B voit exactement ce qu'imprime SA facture (nom,
@@ -8,6 +10,9 @@ import { formatDateTz } from '@/lib/fuseau-horaire'
 // source marketing, ni l'historique d'achat ; aucune action (A est maître de
 // la vente). Le code promo est visible : c'est lui qui explique une part à
 // 0 € (beat offert, décision de Jake au lot 3).
+// Lot 4b : B voit l'état du litige sur SA part et l'historique de
+// téléchargement (fichier + date, jamais l'adresse IP) — exception voulue à
+// « logs d'achat visibles par A seul », pour suivre un litige.
 
 export type LigneVueCollaborateur = { titre: string; licence: string; pourcentage: number; montantCents: number }
 
@@ -34,13 +39,22 @@ type Props = {
   }
   avoirs: { id: string; numero: string; url: string | null }[]
   licenceAnnuleeAt: string | null
+  litige: PartLitige | null
+  telechargements: { id: string; fichier: string; date: string }[]
   lignes: LigneVueCollaborateur[]
   tz: string
 }
 
 const euros = (cents: number | null) => (cents == null ? '—' : `€${(cents / 100).toFixed(2)}`)
 
+const ETAT_LITIGE = {
+  en_cours: { label: 'En cours', cls: 'bg-orange-500/15 text-orange-400 border-orange-500/20' },
+  gagne:    { label: 'Gagné',    cls: 'bg-green-500/15 text-green-400 border-green-500/20' },
+  perdu:    { label: 'Perdu',    cls: 'bg-red-500/15 text-red-400 border-red-500/20' },
+} as const
+
 export default function VueCollaborateur(p: Props) {
+  const date = (iso: string | null) => (iso ? formatDateTz(iso, p.tz, { day: '2-digit', month: 'long', year: 'numeric' }) : '—')
   const identifiant = p.tranche.factureNumero ?? `#${p.commandeId.slice(0, 8).toUpperCase()}`
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -58,6 +72,33 @@ export default function VueCollaborateur(p: Props) {
           </div>
           <span className={`text-[10px] px-2.5 py-1 rounded-full border font-medium ${p.statutCls}`}>{p.statutLabel}</span>
         </div>
+
+        {p.litige && (
+          <div className="bg-gray-900 border border-orange-500/30 rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-orange-400">Litige sur ta part</p>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${ETAT_LITIGE[p.litige.statut].cls}`}>{ETAT_LITIGE[p.litige.statut].label}</span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+              <div><p className="text-[10px] text-gray-600">Montant contesté</p><p className="text-gray-200">€{p.litige.montant.toFixed(2)}</p></div>
+              <div><p className="text-[10px] text-gray-600">Motif</p><p className="text-gray-300">{libelleMotifLitige(p.litige.motif)}</p></div>
+              <div><p className="text-[10px] text-gray-600">Ouvert le</p><p className="text-gray-300">{date(p.litige.ouvertLe)}</p></div>
+              <div>
+                <p className="text-[10px] text-gray-600">{p.litige.statut === 'en_cours' ? 'Date limite de réponse' : 'Clos le'}</p>
+                <p className="text-gray-300">{date(p.litige.statut === 'en_cours' ? p.litige.dateLimite : p.litige.fermeLe)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">
+              {p.litige.reponsePar === 'proprietaire' && `${p.boutique} a envoyé la réponse pour ta part le ${date(p.litige.reponseEnvoyeeAt)}.`}
+              {p.litige.reponsePar === 'acceptation' && `${p.boutique} a accepté le litige le ${date(p.litige.reponseEnvoyeeAt)}.`}
+              {p.litige.reponsePar === 'vendeur_stripe' && 'Tu as répondu directement depuis ton espace Stripe : le propriétaire ne peut plus répondre pour ta part.'}
+              {!p.litige.reponsePar && p.litige.statut === 'en_cours' && `${p.boutique} gère ce litige et enverra la réponse sur ton compte. Répondre toi-même depuis Stripe est déconseillé : une réponse est définitive.`}
+            </p>
+            {p.litige.statut === 'perdu' && (
+              <p className="text-xs text-gray-400">Ta part a été reprise sur ton compte Stripe (avec les frais de litige) et une facture d&apos;avoir a été émise pour toi.</p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -108,6 +149,22 @@ export default function VueCollaborateur(p: Props) {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-4">Historique des téléchargements</p>
+          {p.telechargements.length ? (
+            <div className="space-y-1.5">
+              {p.telechargements.map(t => (
+                <div key={t.id} className="flex justify-between text-sm">
+                  <span className="text-gray-300">{t.fichier === 'email_renvoi' ? 'Lien renvoyé par email' : t.fichier}</span>
+                  <span className="text-gray-500">{formatDateTimeTz(t.date, p.tz, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Aucun téléchargement enregistré.</p>
+          )}
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">

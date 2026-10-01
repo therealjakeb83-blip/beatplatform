@@ -124,7 +124,7 @@ export async function annulerLicence(admin: Admin, commandeId: string, motif: Mo
 
 // Statut de la commande d'après ce qui a vraiment été rendu. Un litige en
 // cours n'est jamais écrasé ici (lot 4b).
-async function recalculerStatut(admin: Admin, commandeId: string) {
+export async function recalculerStatut(admin: Admin, commandeId: string) {
   const { commande, tranches } = await lireCommande(admin, commandeId)
   if (!commande || commande.statut === 'litige') return commande?.statut ?? null
 
@@ -257,7 +257,7 @@ export type ResultatRemboursement = {
   echecs: { vendeurNom: string; erreur: string }[]
 }
 
-async function prendreVerrou(admin: Admin, commandeId: string): Promise<boolean> {
+export async function prendreVerrou(admin: Admin, commandeId: string): Promise<boolean> {
   const maintenant = new Date()
   const expire = new Date(maintenant.getTime() - 2 * 60 * 1000).toISOString()
   const { data } = await admin
@@ -269,7 +269,7 @@ async function prendreVerrou(admin: Admin, commandeId: string): Promise<boolean>
   return !!data?.length
 }
 
-async function rendreVerrou(admin: Admin, commandeId: string) {
+export async function rendreVerrou(admin: Admin, commandeId: string) {
   await admin.from('commandes').update({ remboursement_verrou_at: null }).eq('id', commandeId)
 }
 

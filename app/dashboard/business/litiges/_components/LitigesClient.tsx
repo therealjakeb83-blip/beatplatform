@@ -39,7 +39,7 @@ export default function LitigesClient({ litiges }: { litiges: LitigeRow[] }) {
       <div>
         <h1 className="text-2xl font-bold text-white">Litiges</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Litiges Stripe (contestations bancaires) sur tes ventes — affichage seul, Stripe gère le déroulement directement avec toi sur ton compte connecté.
+          Litiges Stripe (contestations bancaires) sur tes ventes, montant de ta part. Sur tes propres ventes, tu réponds (ou acceptes) depuis la fiche de la commande ; sur une vente en collaboration, c&apos;est le propriétaire du beat qui s&apos;en occupe.
           {montantEnCours > 0 && <span className="text-orange-400"> {montantEnCours.toFixed(2)}€ actuellement séquestrés.</span>}
         </p>
       </div>

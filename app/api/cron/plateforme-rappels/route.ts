@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerRappelFinEssaiPlateforme } from '@/lib/emails'
+import { envoyerRappelsLitiges } from '@/lib/litiges'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -46,5 +47,14 @@ export async function GET(request: Request) {
     envoyes++
   }
 
-  return NextResponse.json({ ok: true, envoyes })
+  // Litiges (Phase 13, lot 4b) : rappel au propriétaire 3 jours avant la
+  // date limite s'il n'a ni répondu ni accepté — un seul rappel par litige.
+  let rappelsLitiges = 0
+  try {
+    rappelsLitiges = await envoyerRappelsLitiges()
+  } catch (err) {
+    console.error('[cron plateforme-rappels] Rappels litiges:', err instanceof Error ? err.message : err)
+  }
+
+  return NextResponse.json({ ok: true, envoyes, rappelsLitiges })
 }

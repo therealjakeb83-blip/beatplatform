@@ -149,6 +149,27 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     description: "Envoyé quand une part n'a pas pu être rendue au client (compte Stripe fermé, refus de Stripe…). Les autres parts restent remboursées ; le propriétaire peut réessayer.",
     declencheur: "Déclencheur : échec d'une part pendant un remboursement → propriétaire + vendeur concerné",
   },
+  {
+    type: 'litige_ouvert',
+    nom: 'Litige ouvert (propriétaire)',
+    titrePlaceholder: 'Un litige a été ouvert sur une vente',
+    description: "Envoyé au propriétaire de la boutique quand un client conteste un paiement : parts contestées, motif, date limite. Un seul email pour toutes les parts contestées en même temps.",
+    declencheur: 'Déclencheur : litige Stripe ouvert sur une vente (solo ou collab) → propriétaire',
+  },
+  {
+    type: 'litige_rappel',
+    nom: 'Rappel litige (propriétaire)',
+    titrePlaceholder: 'Litige : plus que 3 jours pour répondre',
+    description: "Envoyé au propriétaire 3 jours avant la date limite s'il n'a encore ni répondu ni accepté le litige. Un seul rappel par litige.",
+    declencheur: 'Déclencheur : cron quotidien (11 h) — litige en cours sans réponse, date limite dans 3 jours ou moins',
+  },
+  {
+    type: 'litige_collaborateur',
+    nom: 'Litige (collaborateur)',
+    titrePlaceholder: 'Un litige a été ouvert sur une vente en collaboration',
+    description: "Email d'information au collaborateur dont la part est contestée : le propriétaire gère le litige, répondre seul depuis Stripe est déconseillé.",
+    declencheur: 'Déclencheur : litige Stripe ouvert sur la part d’un collaborateur → ce collaborateur',
+  },
 ]
 
 export default function MailsPlateformeClient({ templates, sauvegarderTemplate, genererApercu }: Props) {

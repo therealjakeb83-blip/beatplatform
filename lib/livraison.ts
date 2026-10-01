@@ -115,3 +115,13 @@ export async function genererUrlSigneePdf(pdfUrl: string, filename = 'contrat.pd
     { expiresIn: 3600 }
   )
 }
+
+// Contenu d'un PDF stocké sur R2 (contrat, facture) — joint comme preuve à
+// la réponse d'un litige (Phase 13, lot 4b).
+export async function lirePdfR2(pdfUrl: string): Promise<Buffer> {
+  const key = pdfUrl.replace(PUBLIC_URL + '/', '')
+  const res = await r2.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
+  const octets = await res.Body?.transformToByteArray()
+  if (!octets) throw new Error(`PDF introuvable : ${key}`)
+  return Buffer.from(octets)
+}
