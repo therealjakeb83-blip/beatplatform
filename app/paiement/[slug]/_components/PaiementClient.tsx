@@ -184,9 +184,9 @@ function AbonnementInner(props: Props & { abonnement: AbonnementPaiement }) {
   return (
     <Elements
       stripe={chargerStripePourCompte(abonnement.stripeAccountId)}
-      // Carte seule, comme l'abonnement créé côté serveur (Apple Pay /
+      // Carte et Link, comme l'abonnement créé côté serveur (Apple Pay /
       // Google Pay passent par une carte).
-      options={{ mode: 'subscription', amount: abonnement.prixCents, currency: 'eur', setupFutureUsage: 'off_session', paymentMethodTypes: ['card'] }}
+      options={{ mode: 'subscription', amount: abonnement.prixCents, currency: 'eur', setupFutureUsage: 'off_session', paymentMethodTypes: ['card', 'link'] }}
     >
       <PaiementForm {...props} multiVendeurs={false} />
     </Elements>
@@ -1050,8 +1050,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                   <CardNumberElement
                     className="StripeElement"
                     // Link masqué sur un panier collab : Stripe refuse de copier un moyen Link chez un vendeur (T14).
-                    // Abonnement : carte seule (le moyen de paiement doit pouvoir être débité chaque mois).
-                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte', disableLink: multiVendeurs || enAbonnement }}
+                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte', disableLink: multiVendeurs }}
                     onChange={(e: StripeCardNumberElementChangeEvent) => setCardComplete(c => ({ ...c, number: e.complete }))}
                   />
                   <div className="pmt-card-brands">
@@ -1146,7 +1145,7 @@ function ExpressButtons({
   onResultatMulti: (resultat: ResultatPaiementMultiClient) => void
   // Abonnement boutique : abonnement créé sur le compte du beatmaker avec les
   // coordonnées du wallet (email du compte connecté prioritaire), puis 1re
-  // facture payée avec ce moyen de paiement. Link exclu (carte seule).
+  // facture payée avec ce moyen de paiement.
   abonnement: { emailImpose: string | null; onSucces: (subscriptionId: string) => Promise<void> } | null
 }) {
   const stripe = useStripe()
@@ -1189,7 +1188,7 @@ function ExpressButtons({
         options={{
           buttonHeight: 50,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesExpressPourAppareil(estIOS, multiVendeurs || abonnement != null),
+          paymentMethods: methodesExpressPourAppareil(estIOS, multiVendeurs),
           emailRequired: true,
           // Adresse obligatoire (contrat de licence — voir lib/contrat.ts),
           // téléphone facultatif (jamais utilisé dans le contrat, juste

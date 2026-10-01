@@ -123,7 +123,7 @@ export async function creerAbonnementAPayer(params: {
     items: [{ price_data: { currency: 'eur', product: params.produitId, unit_amount: params.prixCents, recurring: { interval: 'month' } } }],
     ...(params.couponId ? { discounts: [{ coupon: params.couponId }] } : {}),
     payment_behavior: 'default_incomplete',
-    payment_settings: { save_default_payment_method: 'on_subscription', payment_method_types: ['card'] },
+    payment_settings: { save_default_payment_method: 'on_subscription', payment_method_types: ['card', 'link'] },
     metadata: params.metadata,
     expand: ['latest_invoice.confirmation_secret'],
   }, options)
@@ -155,7 +155,7 @@ export async function creerAbonnementGratuitDepuisCarte(stripeAccount: string, s
     default_payment_method: moyen,
     items: [{ price_data: { currency: 'eur', product: produit_id, unit_amount: Number(meta.prix_cents), recurring: { interval: 'month' } } }],
     ...(coupon_id ? { discounts: [{ coupon: coupon_id }] } : {}),
-    payment_settings: { payment_method_types: ['card'] },
+    payment_settings: { payment_method_types: ['card', 'link'] },
     metadata: { ...metadata, type: 'abonnement_boutique' },
   }, { ...options, idempotencyKey: `abonnement-${setupIntent.id}` })
   return abonnement.id

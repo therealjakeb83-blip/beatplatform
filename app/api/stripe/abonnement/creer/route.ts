@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     if (premierCents === 0) {
       const setupIntent = await stripe.setupIntents.create({
         customer: client.id,
-        payment_method_types: ['card'],
+        payment_method_types: ['card', 'link'],
         usage: 'off_session',
         metadata: { ...metadata, type: 'abonnement_boutique_carte', produit_id: produitId, coupon_id: couponId ?? '' },
       }, options)
