@@ -153,18 +153,20 @@ export default function GererAbonnementButton({
 
   return (
     <div className="flex flex-col gap-3">
-      {impaye && (
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={ouvrirPortail}
-            disabled={loadingPortail}
-            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
-          >
-            {loadingPortail ? 'Ouverture...' : 'Mettre à jour mon moyen de paiement'}
-          </button>
-          {erreurPortail && <p className="text-red-400 text-xs text-center">{erreurPortail}</p>}
-        </div>
-      )}
+      {/* Changer de carte à tout moment (décision de Jake, lot 2) — mis en
+          avant quand un paiement a échoué. */}
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={ouvrirPortail}
+          disabled={loadingPortail}
+          className={impaye
+            ? 'w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white text-sm font-semibold transition-colors'
+            : 'w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 disabled:opacity-60 text-gray-300 hover:text-white text-sm font-semibold transition-colors'}
+        >
+          {loadingPortail ? 'Ouverture...' : impaye ? 'Mettre à jour mon moyen de paiement' : 'Changer de carte'}
+        </button>
+        {erreurPortail && <p className="text-red-400 text-xs text-center">{erreurPortail}</p>}
+      </div>
       <button
         onClick={() => setConfirmer(true)}
         className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white text-sm font-semibold transition-colors"

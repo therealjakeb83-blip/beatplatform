@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { optionsCompteAbonnement } from '@/lib/abonnement-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
@@ -17,15 +18,13 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let aboQuery = admin
-    .from('abonnements_boutique')
-    .select('id, stripe_subscription_id, acheteur_email')
-    .eq('stripe_subscription_id', subscription_id)
-
   let abo = null
 
   if (user) {
-    const { data } = await aboQuery
+    const { data } = await admin
+      .from('abonnements_boutique')
+      .select('id, stripe_subscription_id, stripe_account_id')
+      .eq('stripe_subscription_id', subscription_id)
       .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .single()
     abo = data
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
     }
     const { data } = await admin
       .from('abonnements_boutique')
-      .select('id, stripe_subscription_id, acheteur_email')
+      .select('id, stripe_subscription_id, stripe_account_id')
       .eq('stripe_subscription_id', subscription_id)
       .eq('acheteur_email', emailCookie)
       .single()
@@ -50,13 +49,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Abonnement introuvable' }, { status: 404 })
   }
 
-  // Annuler à la fin de la période (cancel_at_period_end)
+  // Annuler à la fin de la période (cancel_at_period_end), sur le compte où
+  // vit l'abonnement (celui du beatmaker depuis le paiement direct).
   try {
-    await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true })
+    await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true }, optionsCompteAbonnement(abo.stripe_account_id))
   } catch (err) {
-    console.error('[abonnement/annuler] Erreur Stripe:', err)
-    const message = err instanceof Error ? err.message : 'Erreur Stripe inconnue'
-    return NextResponse.json({ erreur: message }, { status: 502 })
+    console.error('[abonnement/annuler] Erreur Stripe:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ erreur: 'L\'annulation n\'a pas pu être enregistrée, réessaie dans quelques instants.' }, { status: 502 })
   }
 
   return NextResponse.json({ ok: true })

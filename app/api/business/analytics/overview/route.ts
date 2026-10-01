@@ -143,7 +143,8 @@ export async function GET(request: Request) {
     const mMrr = (allAbonnements ?? [])
       .filter(a => {
         const debut = new Date(a.date_debut)
-        const fin   = a.date_fin ? new Date(a.date_fin) : null
+        // Seul un abonnement annulé est terminé : date_fin d'un abonné actif = paiement suivant.
+        const fin   = a.statut === 'annule' && a.date_fin ? new Date(a.date_fin) : null
         return debut < slotEnd && (fin === null || fin >= slotStart)
       })
       .reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100

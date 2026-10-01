@@ -6,6 +6,18 @@ import { fuseauSur } from '@/lib/fuseau-horaire'
 
 export const runtime = 'nodejs'
 
+// date_fin = fin de la période en cours (« Paiement suivant » d'un abonné
+// actif) : seul un abonnement annulé est réellement terminé (lot 2 du
+// 2026-10-01 — sinon un abonné renouvelé comptait comme parti).
+function finReelle(a: { statut: string; date_fin: string | null }): string | null {
+  return a.statut === 'annule' ? a.date_fin : null
+}
+
+function dateFinReelle(a: { statut: string; date_fin: string | null }): Date | null {
+  const fin = finReelle(a)
+  return fin ? new Date(fin) : null
+}
+
 export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,7 +48,7 @@ export async function GET(request: Request) {
   // Snapshot à la fin de la période : actifs, MRR, ARR
   const actifs = abos.filter(a => {
     const debut = new Date(a.date_debut)
-    const fin   = a.date_fin ? new Date(a.date_fin) : null
+    const fin   = dateFinReelle(a)
     return debut <= endDate && (fin === null || fin > endDate)
   })
   const mrr = actifs.reduce((s, a) => {
@@ -54,7 +66,7 @@ export async function GET(request: Request) {
   // Rétention moyenne (mois) — all-time, indépendante de la période sélectionnée
   const durees = abos.map(a => {
     const debut = new Date(a.date_debut)
-    const fin   = a.date_fin ? new Date(a.date_fin) : now
+    const fin   = dateFinReelle(a) ?? now
     return (fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
   })
   const retention_moy = durees.length ? durees.reduce((s, d) => s + d, 0) / durees.length : 0
@@ -68,7 +80,7 @@ export async function GET(request: Request) {
     const cl      = Array.isArray(a.clients) ? a.clients[0] : a.clients
     const email   = (cl as { email: string } | null)?.email ?? a.acheteur_email
     const clientId = (cl as { id?: string } | null)?.id
-    const finAbo  = a.date_fin ?? now.toISOString()
+    const finAbo  = finReelle(a) ?? now.toISOString()
     achatsMap.set(a.id, cmds.filter(c =>
       c.created_at > a.date_debut &&
       c.created_at <= finAbo &&
@@ -89,7 +101,7 @@ export async function GET(request: Request) {
       : (a.acheteur_nom ?? a.acheteur_email ?? '—')
     const pays = (cl as { pays: string | null } | null)?.pays ?? null
     const debut = new Date(a.date_debut)
-    const fin   = a.date_fin ? new Date(a.date_fin) : now
+    const fin   = dateFinReelle(a) ?? now
     const mois  = (fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
     const mois_anciennete = Math.max(1, Math.floor(mois))
     const ltv   = (a.mensualites_payees ?? 0) * a.prix / 100
@@ -117,7 +129,7 @@ export async function GET(request: Request) {
     const slotEnd   = new Date(slot.to)
     const mActifs = abos.filter(a => {
       const debut = new Date(a.date_debut)
-      const fin   = a.date_fin ? new Date(a.date_fin) : null
+      const fin   = dateFinReelle(a)
       return debut < slotEnd && (fin === null || fin >= slotStart)
     })
     const mMrr          = mActifs.reduce((s, a) => s + (a.periode === 'annuel' ? a.prix / 12 : a.prix), 0) / 100
@@ -125,7 +137,7 @@ export async function GET(request: Request) {
     const mTotalVendus    = abosDebutSlot.length
     const actifsFinSlot   = abos.filter(a => {
       const debut = new Date(a.date_debut)
-      const fin   = a.date_fin ? new Date(a.date_fin) : null
+      const fin   = dateFinReelle(a)
       return debut <= slotEnd && (fin === null || fin > slotEnd)
     })
     const mRetentionMoy = actifsFinSlot.length
@@ -141,7 +153,7 @@ export async function GET(request: Request) {
         const cl       = Array.isArray(a.clients) ? a.clients[0] : a.clients
         const email    = (cl as { email: string } | null)?.email ?? a.acheteur_email
         const clientId = (cl as { id?: string } | null)?.id
-        const finAbo   = a.date_fin ?? now.toISOString()
+        const finAbo   = finReelle(a) ?? now.toISOString()
         return c.created_at > a.date_debut && c.created_at <= finAbo &&
                (c.client_id === clientId || c.acheteur_email === email)
       })

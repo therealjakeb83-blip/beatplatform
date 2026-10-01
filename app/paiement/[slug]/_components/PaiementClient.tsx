@@ -201,6 +201,18 @@ function urlSuccesAbonnement(slug: string, subscriptionId: string) {
   return `/api/stripe/abonnement/succes?subscription_id=${encodeURIComponent(subscriptionId)}&slug=${encodeURIComponent(slug)}`
 }
 
+// Carte refusée : l'abonnement incomplet (ou la carte en cours
+// d'enregistrement) laissé sur le compte Stripe du beatmaker est annulé tout
+// de suite, chaque nouvel essai en créant un neuf (lot 2 du 2026-10-01).
+// Rien n'est annulé si le paiement est finalement passé (vérifié côté serveur).
+async function abandonnerAbonnementRefuse(slug: string, id: string) {
+  await fetch('/api/stripe/abonnement/etat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, id, annuler: true }),
+  }).catch(() => null)
+}
+
 function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
   const { items, paiementEnCours } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
@@ -672,6 +684,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
       if (error) {
         effacerPaiementEnCours(cleAbonnement(slug))
         setErreurGlobale(error.message ?? 'Carte refusée')
+        await abandonnerAbonnementRefuse(slug, data.id)
         return
       }
       const fin = await fetch('/api/stripe/abonnement/finaliser', {
@@ -693,6 +706,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
     if (error) {
       effacerPaiementEnCours(cleAbonnement(slug))
       setErreurGlobale(error.message ?? 'Paiement refusé')
+      await abandonnerAbonnementRefuse(slug, data.id)
       return
     }
     await apresSuccesAbonnement(data.id)
@@ -1241,6 +1255,7 @@ function ExpressButtons({
                 effacerPaiementEnCours(cleAbonnement(slug))
                 echouer(error.message ?? 'Paiement refusé')
                 event.paymentFailed({ reason: 'fail', message: error.message })
+                await abandonnerAbonnementRefuse(slug, data.id)
                 return
               }
               await abonnement.onSucces(data.id)

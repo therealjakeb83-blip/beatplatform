@@ -9,7 +9,7 @@ type Props = {
   annulationEnCours: boolean
 }
 
-type Action = 'annuler' | 'reactiver' | 'marquer_actif' | 'annuler_impaye'
+type Action = 'annuler' | 'reactiver' | 'annuler_impaye'
 
 export default function StatutButton({ aboId, statut, annulationEnCours }: Props) {
   const router  = useRouter()
@@ -39,7 +39,6 @@ export default function StatutButton({ aboId, statut, annulationEnCours }: Props
         setSucces(
           action === 'annuler'       ? "Annulation programmée pour la fin de la période." :
           action === 'reactiver'     ? "Abonnement réactivé avec succès."                :
-          action === 'marquer_actif' ? "Abonnement marqué comme actif."                  :
                                       "Abonnement annulé."
         )
         router.refresh()
@@ -117,13 +116,6 @@ export default function StatutButton({ aboId, statut, annulationEnCours }: Props
   if (statut === 'impaye') {
     return (
       <div className="space-y-2">
-        <button
-          onClick={() => executer('marquer_actif')}
-          disabled={loading !== null}
-          className="w-full py-2 px-3 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg transition-colors text-left"
-        >
-          {loading === 'marquer_actif' ? 'Mise à jour…' : 'Marquer comme actif'}
-        </button>
         <button
           onClick={() => executer('annuler_impaye')}
           disabled={loading !== null}

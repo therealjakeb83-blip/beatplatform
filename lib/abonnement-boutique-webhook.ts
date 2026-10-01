@@ -75,6 +75,14 @@ export async function traiterMajAbonnementBoutique(subscription: Stripe.Subscrip
   // sur l'abonnement pendant cette période).
   const notifierDemandeAnnulation = demandeAnnulationProgrammee && !abo.demande_annulation_notifiee
 
+  // cancel_at_period_end=true ne remplit PAS cancel_at (mécanismes séparés
+  // côté Stripe, vérifié le 2026-07-17 — cancel_at sert uniquement à annuler
+  // à un timestamp choisi explicitement). La vraie date de fin est
+  // current_period_end, déplacé sur l'item dans cette version de l'API (même
+  // restructuration que pour invoice.parent.subscription_details, voir
+  // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
+  const finPeriode = subscription.items.data[0]?.current_period_end
+
   const { error } = await supabase
     .from('abonnements_boutique')
     .update({
@@ -92,6 +100,10 @@ export async function traiterMajAbonnementBoutique(subscription: Stripe.Subscrip
       // qu'on reste en impaye) ; la efface si le paiement est finalement repassé.
       ...(entreEnImpaye ? { impaye_depuis: new Date().toISOString() } : {}),
       ...(statut === 'actif' ? { impaye_depuis: null } : {}),
+      // Fin de la période en cours : « Paiement suivant » tant que l'abonné
+      // reste, « Date de fin » s'il a churné (lot 2 du 2026-10-01 — restait
+      // figée sur la fin du 1er mois).
+      ...(finPeriode ? { date_fin: new Date(finPeriode * 1000).toISOString() } : {}),
     })
     .eq('stripe_subscription_id', subscription.id)
 
@@ -118,13 +130,6 @@ export async function traiterMajAbonnementBoutique(subscription: Stripe.Subscrip
     if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
   }
 
-  // cancel_at_period_end=true ne remplit PAS cancel_at (mécanismes séparés
-  // côté Stripe, vérifié le 2026-07-17 — cancel_at sert uniquement à annuler
-  // à un timestamp choisi explicitement). La vraie date de fin est
-  // current_period_end, déplacé sur l'item dans cette version de l'API (même
-  // restructuration que pour invoice.parent.subscription_details, voir
-  // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
-  const finPeriode = subscription.items.data[0]?.current_period_end
   if (notifierDemandeAnnulation && abo.acheteur_email && finPeriode) {
     // await : sinon la promesse (appel Resend + écriture email_logs) risque de
     // ne jamais finir — c'est la dernière instruction de la fonction, rien
@@ -152,7 +157,12 @@ export async function traiterAnnulationAbonnementBoutique(subscription: Stripe.S
 
   const { error } = await supabase
     .from('abonnements_boutique')
-    .update({ statut: 'annule', en_essai: false, mois_consecutifs: 0, impaye_depuis: null })
+    .update({
+      statut: 'annule', en_essai: false, mois_consecutifs: 0, impaye_depuis: null,
+      // Fin réelle de l'accès (immédiate pour un impayé annulé, fin de période
+      // pour une annulation programmée).
+      date_fin: new Date((subscription.ended_at ?? Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+    })
     .eq('stripe_subscription_id', subscription.id)
 
   if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
@@ -309,6 +319,8 @@ export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: Abo
   // de fidélité vers le beat cadeau — remis à 0 uniquement sur annulation, pas
   // sur un simple impayé temporaire : un paiement qui repasse pendant la
   // période de grâce ne fait donc pas "repartir de zéro")
+  // Le mois payé court jusqu'à la fin de la période de la facture.
+  const finPeriodePayee = invoice.lines?.data?.[0]?.period?.end
   const { data: aboActuel } = await supabase
     .from('abonnements_boutique')
     .select('mensualites_payees, mois_consecutifs')
@@ -320,6 +332,7 @@ export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: Abo
       mensualites_payees: (aboActuel?.mensualites_payees ?? 0) + 1,
       mois_consecutifs: (aboActuel?.mois_consecutifs ?? 0) + 1,
       impaye_depuis: null,
+      ...(finPeriodePayee ? { date_fin: new Date(finPeriodePayee * 1000).toISOString() } : {}),
     })
     .eq('id', abo.id)
 

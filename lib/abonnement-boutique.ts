@@ -22,6 +22,34 @@ export type PromoAbonnement = {
 
 export const MINIMUM_STRIPE_CENTS = 50
 
+// Compte Stripe sur lequel vit un abonnement déjà créé : celui mémorisé à la
+// souscription (paiement direct). Vide = ancien abonnement créé sur la
+// plateforme avant le 2026-10-01.
+export function optionsCompteAbonnement(stripeAccountId: string | null | undefined): Stripe.RequestOptions | undefined {
+  return stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+}
+
+// Portail Stripe sur le compte du beatmaker : changer de carte uniquement
+// (décision de Jake, lot 2) — pas d'historique de factures Stripe (les
+// factures officielles sont dans « Mes factures »), pas d'annulation (bouton
+// de « Mon abonnement »). Créé au premier usage, retrouvé ensuite.
+export async function assurerConfigurationPortail(stripeAccount: string): Promise<string> {
+  const options = { stripeAccount }
+  const existantes = await stripe.billingPortal.configurations.list({ active: true, limit: 20 }, options)
+  const trouvee = existantes.data.find(c => c.metadata?.my_producer === 'carte')
+  if (trouvee) return trouvee.id
+  const configuration = await stripe.billingPortal.configurations.create({
+    features: {
+      payment_method_update: { enabled: true },
+      invoice_history: { enabled: false },
+      subscription_cancel: { enabled: false },
+      customer_update: { enabled: false },
+    },
+    metadata: { my_producer: 'carte' },
+  }, options)
+  return configuration.id
+}
+
 // Même arrondi que Stripe pour un coupon en pourcentage (remise arrondie au
 // centime) : le montant affiché doit être exactement celui débité. Vérifié
 // après création contre la vraie facture Stripe (voir creerAbonnement).

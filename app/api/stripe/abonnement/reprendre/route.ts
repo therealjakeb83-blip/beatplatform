@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { optionsCompteAbonnement } from '@/lib/abonnement-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   if (user) {
     const { data } = await admin
       .from('abonnements_boutique')
-      .select('id, stripe_subscription_id')
+      .select('id, stripe_subscription_id, stripe_account_id')
       .eq('stripe_subscription_id', subscription_id)
       .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .single()
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     }
     const { data } = await admin
       .from('abonnements_boutique')
-      .select('id, stripe_subscription_id')
+      .select('id, stripe_subscription_id, stripe_account_id')
       .eq('stripe_subscription_id', subscription_id)
       .eq('acheteur_email', emailCookie)
       .single()
@@ -51,11 +52,10 @@ export async function POST(request: Request) {
   // Annule la résiliation programmée — le webhook customer.subscription.updated
   // synchronise annulation_en_cours=false en base (voir traiterMajAbonnement).
   try {
-    await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: false })
+    await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: false }, optionsCompteAbonnement(abo.stripe_account_id))
   } catch (err) {
-    console.error('[abonnement/reprendre] Erreur Stripe:', err)
-    const message = err instanceof Error ? err.message : 'Erreur Stripe inconnue'
-    return NextResponse.json({ erreur: message }, { status: 502 })
+    console.error('[abonnement/reprendre] Erreur Stripe:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ erreur: 'La reprise n\'a pas pu être enregistrée, réessaie dans quelques instants.' }, { status: 502 })
   }
 
   return NextResponse.json({ ok: true })

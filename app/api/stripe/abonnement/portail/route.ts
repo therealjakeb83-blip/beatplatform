@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { assurerConfigurationPortail, optionsCompteAbonnement } from '@/lib/abonnement-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   if (user) {
     const { data } = await admin
       .from('abonnements_boutique')
-      .select('id, stripe_subscription_id')
+      .select('id, stripe_subscription_id, stripe_account_id')
       .eq('stripe_subscription_id', subscription_id)
       .or(`client_id.eq.${user.id},acheteur_email.eq.${user.email}`)
       .single()
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
     const { data } = await admin
       .from('abonnements_boutique')
-      .select('id, stripe_subscription_id')
+      .select('id, stripe_subscription_id, stripe_account_id')
       .eq('stripe_subscription_id', subscription_id)
       .eq('acheteur_email', emailCookie)
       .single()
@@ -50,19 +51,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Abonnement introuvable' }, { status: 404 })
   }
 
-  const subscription = await stripe.subscriptions.retrieve(subscription_id)
-  const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
-
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
   try {
+    // Le client Stripe de l'abonné vit sur le même compte que l'abonnement
+    // (celui du beatmaker depuis le paiement direct).
+    const options = optionsCompteAbonnement(abo.stripe_account_id)
+    const subscription = await stripe.subscriptions.retrieve(subscription_id, {}, options)
+    const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
+    const configuration = abo.stripe_account_id ? await assurerConfigurationPortail(abo.stripe_account_id) : undefined
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/${slug}/mon-abonnement`,
-    })
+      ...(configuration ? { configuration } : {}),
+    }, options)
     return NextResponse.json({ url: session.url })
   } catch (err) {
-    console.error('[abonnement/portail] Erreur création session:', err)
-    return NextResponse.json({ erreur: "Le portail de paiement n'est pas encore configuré — contacte le support." }, { status: 500 })
+    console.error('[abonnement/portail] Erreur création session:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ erreur: 'La page de changement de carte n\'a pas pu s\'ouvrir, réessaie dans quelques instants.' }, { status: 500 })
   }
 }

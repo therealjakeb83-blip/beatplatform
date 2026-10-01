@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { stripe } from '@/lib/stripe'
+import { optionsCompteAbonnement } from '@/lib/abonnement-boutique'
 import { journaliserDecision } from '@/lib/decisions-log'
 import { envoyerSuspensionPlateforme } from '@/lib/emails'
 import { libelleMotifSuspension, type MotifSuspension } from '@/lib/suspension'
@@ -24,7 +25,7 @@ export async function suspendreBoutique(beatmakerId: string, motif: MotifSuspens
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, email, stripe_account_id')
+    .select('id, email')
     .eq('id', beatmakerId)
     .single()
 
@@ -81,7 +82,7 @@ export async function suspendreBoutique(beatmakerId: string, motif: MotifSuspens
   // 3. Pause de chaque abonnement artiste actif (compte Stripe Connect du beatmaker)
   const { data: abosArtistes } = await admin
     .from('abonnements_boutique')
-    .select('id, statut, stripe_subscription_id, acheteur_email')
+    .select('id, statut, stripe_subscription_id, stripe_account_id, acheteur_email')
     .eq('beatmaker_id', beatmakerId)
     .eq('statut', 'actif')
 
@@ -93,16 +94,13 @@ export async function suspendreBoutique(beatmakerId: string, motif: MotifSuspens
       continue
     }
     try {
-      // Un abonnement artiste ne vit sur le compte Connect du beatmaker que
-      // si celui-ci était configuré au moment du checkout (transfer_data) —
-      // sinon la subscription vit sur le compte principal. Découvert le
-      // 2026-07-24 : ignorer purement et simplement dès que stripe_account_id
-      // est absent aurait laissé de vrais abonnements sans Connect continuer
-      // à facturer pendant une suspension.
+      // L'abonnement vit sur le compte mémorisé à sa souscription (celui du
+      // beatmaker en paiement direct, même s'il a changé de compte depuis) ;
+      // sans compte mémorisé, c'est un ancien abonnement de la plateforme.
       await stripe.subscriptions.update(
         abo.stripe_subscription_id,
         { pause_collection: { behavior: 'void' } },
-        beatmaker?.stripe_account_id ? { stripeAccount: beatmaker.stripe_account_id } : undefined
+        optionsCompteAbonnement(abo.stripe_account_id)
       )
       await admin.from('abonnements_boutique').update({
         statut: 'suspendu',
@@ -129,12 +127,6 @@ export async function suspendreBoutique(beatmakerId: string, motif: MotifSuspens
 
 export async function reactiverBoutique(beatmakerId: string, adminId: string): Promise<RapportSuspension> {
   const admin = createAdminClient()
-
-  const { data: beatmaker } = await admin
-    .from('beatmakers')
-    .select('id, stripe_account_id')
-    .eq('id', beatmakerId)
-    .single()
 
   await admin.from('beatmakers').update({
     statut: 'actif',
@@ -176,7 +168,7 @@ export async function reactiverBoutique(beatmakerId: string, adminId: string): P
 
   const { data: abosArtistes } = await admin
     .from('abonnements_boutique')
-    .select('id, statut_avant_suspension, stripe_subscription_id, acheteur_email')
+    .select('id, statut_avant_suspension, stripe_subscription_id, stripe_account_id, acheteur_email')
     .eq('beatmaker_id', beatmakerId)
     .eq('statut', 'suspendu')
 
@@ -195,7 +187,7 @@ export async function reactiverBoutique(beatmakerId: string, adminId: string): P
       await stripe.subscriptions.update(
         abo.stripe_subscription_id,
         { pause_collection: '' },
-        beatmaker?.stripe_account_id ? { stripeAccount: beatmaker.stripe_account_id } : undefined
+        optionsCompteAbonnement(abo.stripe_account_id)
       )
       await admin.from('abonnements_boutique').update({
         statut: abo.statut_avant_suspension ?? 'actif',
