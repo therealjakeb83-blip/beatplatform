@@ -146,11 +146,15 @@ async function recalculerStatut(admin: Admin, commandeId: string) {
   else if (echec) statut = 'remboursement_incomplet'
   else if (rembourseCents > 0) statut = 'remboursee_partielle'
 
-  await admin.from('commandes').update({
+  const { error } = await admin.from('commandes').update({
     statut,
     montant_rembourse: rembourseCents / 100,
     ...(tranches.length ? { montant_rembourse_cents: rembourseCents } : {}),
   }).eq('id', commandeId)
+  if (error) {
+    console.error('[remboursement] Statut de la commande non enregistré', commandeId, statut, JSON.stringify(error))
+    throw new Error(`Statut de la commande non enregistré (${error.message})`)
+  }
   return statut
 }
 
