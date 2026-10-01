@@ -126,7 +126,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
         <KpiCard
           label="Remboursements"
           value={kpis.remboursements_total > 0 ? `−${fmtEuroDisplay(kpis.remboursements_total)}` : '—'}
-          sub="Manuels + litiges perdus"
+          sub="Rendu au client sur ta part (remboursements + litiges perdus)"
           color="#f87171"
           badge="periode"
         />
