@@ -1,25 +1,15 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { confirmationAbonnement, envoyerNouvelAbonnement, confirmationDemandeAnnulation, annulationAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
+import { confirmationAbonnement, envoyerNouvelAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
 import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiementExpress } from '@/lib/webhook-paiement'
-import { genererNumeroFacture, modeleFactureEffectif } from '@/lib/facturation'
-import { genererFacturePdfPourCommande } from '@/lib/facture'
-import { uploadPdfFacture } from '@/lib/livraison'
-import { fuseauSur } from '@/lib/fuseau-horaire'
 import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
-import { calculerStatutLivraison } from '@/lib/livraison-statut'
-import { completerCommande } from '@/lib/completion-commande'
+import { EvenementARejouer, enregistrerPaiementAbonnement, tracerEchecRenouvellementBoutique, traiterAnnulationAbonnementBoutique, traiterMajAbonnementBoutique } from '@/lib/abonnement-boutique-webhook'
 
 export const runtime = 'nodejs'
-
-// Erreur pour laquelle on répond 500 : Stripe renvoie alors l'événement plus
-// tard (abonnement payé qu'on n'a pas encore pu enregistrer — bug du
-// 2026-09-28, 3 abonnements perdus sans bruit avant ce filet).
-class EvenementARejouer extends Error {}
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -91,7 +81,7 @@ export async function POST(request: Request) {
       if (subscription.metadata?.type === 'abonnement_plateforme') {
         await traiterMajAbonnementPlateforme(subscription)
       } else {
-        await traiterMajAbonnement(subscription)
+        await traiterMajAbonnementBoutique(subscription)
       }
     }
 
@@ -100,7 +90,7 @@ export async function POST(request: Request) {
       if (subscription.metadata?.type === 'abonnement_plateforme') {
         await traiterAnnulationAbonnementPlateforme(subscription)
       } else {
-        await traiterAnnulationAbonnement(subscription)
+        await traiterAnnulationAbonnementBoutique(subscription)
       }
     }
 
@@ -176,171 +166,6 @@ async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
     .eq('statut', 'creee')
 
   if (error) console.error('[webhook] Erreur échec tentative_paiement:', JSON.stringify(error))
-}
-
-async function traiterMajAbonnement(subscription: Stripe.Subscription) {
-  const supabase = createAdminClient()
-  const status = subscription.status
-  // actif = active ou trialing ; impaye = renouvellement en échec mais Stripe
-  // retente encore (past_due) ; annule = tout le reste (canceled, unpaid...)
-  const statut = (status === 'active' || status === 'trialing') ? 'actif'
-    : status === 'past_due' ? 'impaye'
-    : 'annule'
-  const enEssai = status === 'trialing'
-
-  const { data: abo } = await supabase
-    .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, statut, acheteur_email, demande_annulation_notifiee')
-    .eq('stripe_subscription_id', subscription.id)
-    .maybeSingle()
-
-  if (!abo) return
-
-  // Boutique suspendue depuis l'admin (Étape 15c) — pause_collection ne
-  // change PAS subscription.status (reste "active"), donc sans ce garde-fou
-  // ce handler écraserait silencieusement 'suspendu' par 'actif' au premier
-  // événement Stripe reçu sur l'abonnement (y compris celui déclenché par la
-  // pause elle-même), cassant la réactivation qui ne retrouve alors plus
-  // rien à traiter. Découvert en testant le 2026-07-24. Le statut ne doit
-  // être repris que par reactiverBoutique() (lib/admin-boutiques.ts).
-  if (abo.statut === 'suspendu') return
-
-  const entreEnImpaye = statut === 'impaye' && abo.statut !== 'impaye'
-  // Moment de la décision de churn (clic "Annuler" côté Business ou
-  // self-service client) — l'abo reste actif jusqu'à la fin de la période
-  // payée (cancel_at_period_end), Stripe n'enverra subscription.deleted que
-  // plus tard. Jake veut le message churn dès la décision, pas à l'échéance
-  // réelle (voir traiterAnnulationAbonnement pour le filet des annulations
-  // immédiates, ex. abo impaye annulé sans phase de transition).
-  //
-  // Pas de détection de transition ici (ex. "!abo.annulation_en_cours") : le
-  // bouton Business pose annulation_en_cours=true en base de façon synchrone
-  // dans sa propre route, avant même que ce webhook n'arrive — une détection
-  // par transition ne verrait donc jamais passer ce cas (toujours déjà true à
-  // la lecture). On tente l'insertion à chaque webhook où cancel_at_period_end
-  // est true ; la contrainte UNIQUE(type, reference_id) sur
-  // automatisation_evenements absorbe les tentatives redondantes (même
-  // mécanisme que pour abonnement_en_attente).
-  const demandeAnnulationProgrammee = subscription.cancel_at_period_end === true
-
-  // Contrairement au churn (ci-dessus), demande_annulation_notifiee n'est
-  // écrit QUE par ce webhook — pas de race avec une route synchrone — donc
-  // une vraie détection de transition est possible et nécessaire ici (sinon
-  // Stripe redéliverait cet email à chaque nouvel événement "updated" reçu
-  // tant que l'abo reste en cancel_at_period_end, ex. tout autre changement
-  // sur l'abonnement pendant cette période).
-  const notifierDemandeAnnulation = demandeAnnulationProgrammee && !abo.demande_annulation_notifiee
-
-  const { error } = await supabase
-    .from('abonnements_boutique')
-    .update({
-      statut,
-      en_essai: enEssai,
-      // Synchronise le flag même pour l'annulation self-service côté client
-      // (/api/stripe/abonnement/annuler), qui ne le mettait jusqu'ici jamais à
-      // jour en base — seul le bouton Business le faisait.
-      annulation_en_cours: subscription.cancel_at_period_end,
-      // Reset dès que l'abo n'est plus en cancel_at_period_end (annulation
-      // annulée ou déjà passée) — une future demande d'annulation renverra
-      // à nouveau l'email de confirmation.
-      demande_annulation_notifiee: demandeAnnulationProgrammee,
-      // Ne pose la date que la première fois (pas à chaque relance Stripe tant
-      // qu'on reste en impaye) ; la efface si le paiement est finalement repassé.
-      ...(entreEnImpaye ? { impaye_depuis: new Date().toISOString() } : {}),
-      ...(statut === 'actif' ? { impaye_depuis: null } : {}),
-    })
-    .eq('stripe_subscription_id', subscription.id)
-
-  if (error) console.error('[webhook] Erreur maj abonnement:', JSON.stringify(error))
-  else console.log('[webhook] Abonnement mis à jour:', subscription.id, statut)
-
-  if (entreEnImpaye && abo.client_id && await automatisationActive(abo.beatmaker_id, 'abonnement_en_attente')) {
-    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
-      beatmaker_id: abo.beatmaker_id,
-      client_id: abo.client_id,
-      type: 'abonnement_en_attente',
-      reference_id: abo.id,
-    })
-    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (impaye):', JSON.stringify(evenementError))
-  }
-
-  if (demandeAnnulationProgrammee && abo.client_id && await automatisationActive(abo.beatmaker_id, 'churn_message_perso')) {
-    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
-      beatmaker_id: abo.beatmaker_id,
-      client_id: abo.client_id,
-      type: 'churn_message_perso',
-      reference_id: abo.id,
-    })
-    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
-  }
-
-  // cancel_at_period_end=true ne remplit PAS cancel_at (mécanismes séparés
-  // côté Stripe, vérifié le 2026-07-17 — cancel_at sert uniquement à annuler
-  // à un timestamp choisi explicitement). La vraie date de fin est
-  // current_period_end, déplacé sur l'item dans cette version de l'API (même
-  // restructuration que pour invoice.parent.subscription_details, voir
-  // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
-  const finPeriode = subscription.items.data[0]?.current_period_end
-  if (notifierDemandeAnnulation && abo.acheteur_email && finPeriode) {
-    // await : sinon la promesse (appel Resend + écriture email_logs) risque de
-    // ne jamais finir — c'est la dernière instruction de la fonction, rien
-    // après pour laisser le temps au fire-and-forget de compléter avant que
-    // Vercel ne gèle l'instance à la réponse du webhook (bug constaté le
-    // 2026-07-17 : conditions toutes vraies au diagnostic, mais aucun email
-    // ni aucune erreur nulle part).
-    await confirmationDemandeAnnulation({
-      to: abo.acheteur_email,
-      beatmakerId: abo.beatmaker_id,
-      clientId: abo.client_id,
-      dateFin: new Date(finPeriode * 1000),
-    }).catch(err => console.error('[webhook] Erreur envoi email demande annulation:', err))
-  }
-}
-
-async function traiterAnnulationAbonnement(subscription: Stripe.Subscription) {
-  const supabase = createAdminClient()
-
-  const { data: abo } = await supabase
-    .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, acheteur_email, demande_annulation_notifiee')
-    .eq('stripe_subscription_id', subscription.id)
-    .maybeSingle()
-
-  const { error } = await supabase
-    .from('abonnements_boutique')
-    .update({ statut: 'annule', en_essai: false, mois_consecutifs: 0, impaye_depuis: null })
-    .eq('stripe_subscription_id', subscription.id)
-
-  if (error) console.error('[webhook] Erreur annulation abonnement:', JSON.stringify(error))
-  else console.log('[webhook] Abonnement annulé:', subscription.id)
-
-  // Filet réservé au cas où aucune demande_annulation_abonnement n'a été
-  // envoyée avant (ex. abo impayé résilié directement, sans jamais passer
-  // par cancel_at_period_end) — sinon le client recevrait 2 emails pour la
-  // même annulation, la date étant déjà connue depuis la 1ère confirmation.
-  if (abo?.acheteur_email && !abo.demande_annulation_notifiee) {
-    await annulationAbonnement({
-      to: abo.acheteur_email,
-      beatmakerId: abo.beatmaker_id,
-      clientId: abo.client_id,
-    }).catch(err => console.error('[webhook] Erreur envoi email annulation abonnement:', err))
-  }
-
-  // Filet pour les annulations immédiates (ex. abo impaye annulé directement,
-  // sans être passé par cancel_at_period_end) — le cas normal (décision
-  // d'annuler pendant que l'abo est encore actif) est déjà couvert par
-  // traiterMajAbonnement. La contrainte UNIQUE(type, reference_id) sur
-  // automatisation_evenements empêche un double envoi si les deux se
-  // déclenchent pour le même abo.
-  if (abo?.client_id && await automatisationActive(abo.beatmaker_id, 'churn_message_perso')) {
-    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
-      beatmaker_id: abo.beatmaker_id,
-      client_id: abo.client_id,
-      type: 'churn_message_perso',
-      reference_id: abo.id,
-    })
-    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements (churn):', JSON.stringify(evenementError))
-  }
 }
 
 // Crée la ligne abonnements_boutique directement depuis le webhook plutôt que
@@ -688,108 +513,7 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
     return
   }
 
-  const typeCommande = billing === 'subscription_create' ? 'CREATION_ABONNEMENT' : 'RENOUVELLEMENT'
-  const montantCents = invoice.amount_paid ?? 0
-  const prixPaye = montantCents / 100
-  const invoiceId = invoice.id
-
-  // Éviter les doublons si le webhook est rejoué (clé d'idempotence = invoice.id)
-  const { data: existing } = await supabase
-    .from('commandes')
-    .select('id')
-    .eq('plateforme_source', 'my_producer')
-    .eq('external_order_id', invoiceId)
-    .maybeSingle()
-  if (existing) {
-    console.log('[webhook] Paiement abo déjà enregistré:', invoiceId)
-    return
-  }
-
-  const { data: commandeAbo, error } = await supabase.from('commandes').insert({
-    client_id: abo.client_id,
-    beatmaker_id: abo.beatmaker_id,
-    prix_paye: prixPaye,
-    methode_paiement: 'stripe',
-    statut: 'payee',
-    plateforme_source: 'my_producer',
-    external_order_id: invoiceId,
-    type_commande: typeCommande,
-    // Pas de contrat PDF / fichier pour une commande d'abonnement — toujours
-    // "livrée" dès la création, aucune opération asynchrone à suivre ici.
-    fichiers_livres: true,
-    statut_livraison: 'livree',
-    // Taux figé à la souscription (TVA toujours absorbée) — jamais le taux
-    // actuel du beatmaker, qui a pu changer depuis pour d'autres abonnés.
-    tva_taux: abo.tva_taux,
-    source_marketing: abo.source_marketing ?? 'direct',
-  }).select('id').single()
-
-  if (error || !commandeAbo) {
-    console.error('[webhook] Erreur insert commande abo:', JSON.stringify(error))
-    return
-  }
-
-  // Facturation (Phase 8) — même règle que pour une vente de licence :
-  // aucune facture générée tant que le mandat de facturation n'a pas été
-  // accepté. Gap réel trouvé le 2026-09-09 : les commandes d'abonnement
-  // passaient par ce chemin séparé, jamais par finaliserCommandePayee, donc
-  // ne recevaient jamais de numero_facture/facture_pdf_url.
-  const { data: beatmakerFacturation } = await supabase
-    .from('beatmakers')
-    .select('slug, mandat_facturation_version, facturation_format, fuseau_horaire, pays, facture_modele, facture_mentions')
-    .eq('id', abo.beatmaker_id)
-    .single()
-
-  if (beatmakerFacturation?.mandat_facturation_version) {
-    try {
-      const numeroFacture = await genererNumeroFacture(supabase, {
-        beatmakerId: abo.beatmaker_id,
-        slug: beatmakerFacturation.slug,
-        format: beatmakerFacturation.facturation_format ?? null,
-        dateVente: new Date(),
-        fuseauHoraire: fuseauSur(beatmakerFacturation.fuseau_horaire),
-      })
-      await supabase.from('commandes').update({
-        numero_facture: numeroFacture,
-        mandat_facturation_version: beatmakerFacturation.mandat_facturation_version,
-        facture_modele: modeleFactureEffectif(beatmakerFacturation.facture_modele, beatmakerFacturation.pays),
-        facture_mentions: beatmakerFacturation.facture_mentions ?? null,
-      }).eq('id', commandeAbo.id)
-
-      const pdfBytes = await genererFacturePdfPourCommande(supabase, commandeAbo.id)
-      const pdfUrl = await uploadPdfFacture(commandeAbo.id, pdfBytes)
-      await supabase.from('commandes').update({ facture_pdf_url: pdfUrl }).eq('id', commandeAbo.id)
-    } catch (err) {
-      console.error('[webhook] Erreur génération facture pour commande abo:', err)
-    }
-    // Facture ratée : la commande passe « à compléter » (2e essai tout de
-    // suite, puis la tâche de nuit) au lieu de rester « livrée » d'office.
-    const { statut: statutLivraison } = await calculerStatutLivraison(commandeAbo.id)
-    if (statutLivraison === 'probleme') {
-      await supabase.from('commandes').update({ statut_livraison: 'probleme' }).eq('id', commandeAbo.id)
-      await completerCommande(commandeAbo.id).catch(err => console.error('[webhook] 2e essai de complétion en échec:', err))
-    }
-  }
-
-  // Incrémenter mensualites_payees (total facturé) et mois_consecutifs (compteur
-  // de fidélité vers le beat cadeau — remis à 0 uniquement sur annulation, pas
-  // sur un simple impayé temporaire : un paiement qui repasse pendant la
-  // période de grâce ne fait donc pas "repartir de zéro")
-  const { data: aboActuel } = await supabase
-    .from('abonnements_boutique')
-    .select('mensualites_payees, mois_consecutifs')
-    .eq('id', abo.id)
-    .single()
-  await supabase
-    .from('abonnements_boutique')
-    .update({
-      mensualites_payees: (aboActuel?.mensualites_payees ?? 0) + 1,
-      mois_consecutifs: (aboActuel?.mois_consecutifs ?? 0) + 1,
-      impaye_depuis: null,
-    })
-    .eq('id', abo.id)
-
-  console.log('[webhook]', typeCommande, '— commande créée, mensualites_payees incrémenté pour abo', abo.id)
+  await enregistrerPaiementAbonnement(supabase, abo, invoice)
 }
 
 // Trace chaque échec de renouvellement dans tentatives_paiement (rien n'était
@@ -807,29 +531,7 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
 
   const supabase = createAdminClient()
 
-  const { data: abo } = await supabase
-    .from('abonnements_boutique')
-    .select('id, beatmaker_id, client_id, acheteur_email, source_marketing')
-    .eq('stripe_subscription_id', subscriptionId)
-    .maybeSingle()
-
-  if (abo) {
-    const { error } = await supabase.from('tentatives_paiement').upsert({
-      type: 'renouvellement_abonnement',
-      beatmaker_id: abo.beatmaker_id,
-      abonnement_id: abo.id,
-      client_id: abo.client_id,
-      email: abo.acheteur_email,
-      prix: (invoice.amount_due ?? 0) / 100,
-      source_marketing: abo.source_marketing,
-      stripe_invoice_id: invoice.id,
-      statut: 'echouee',
-    }, { onConflict: 'stripe_invoice_id' })
-
-    if (error) console.error('[webhook] Erreur insert tentative renouvellement:', JSON.stringify(error))
-    else console.log('[webhook] Échec de renouvellement tracé pour abo', abo.id)
-    return
-  }
+  if (await tracerEchecRenouvellementBoutique(supabase, invoice, subscriptionId)) return
 
   // Pas un abonnement boutique — vérifier l'abonnement plateforme (rang 9
   // ROADMAP, 2026-08-31) : jusqu'ici aucun échec de paiement de l'abonnement

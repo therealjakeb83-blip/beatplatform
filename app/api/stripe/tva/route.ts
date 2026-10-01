@@ -47,13 +47,15 @@ export async function PATCH(request: Request) {
   // change pour les futurs abonnés (TVA toujours absorbée, voir lib/pricing.ts).
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('stripe_product_id, abo_prix, abo_description')
+    .select('stripe_product_id, stripe_produit_compte, stripe_account_id, abo_prix, abo_description')
     .eq('id', user.id)
     .single()
 
-  if (beatmaker?.stripe_product_id && beatmaker.abo_prix) {
+  // Produit sur le compte Stripe du beatmaker (paiement direct, 2026-10-01).
+  if (beatmaker?.stripe_product_id && beatmaker.abo_prix && beatmaker.stripe_account_id && beatmaker.stripe_produit_compte === beatmaker.stripe_account_id) {
     const descriptionComplete = descriptionAvecTva(beatmaker.abo_description, beatmaker.abo_prix, { tvaActive: actif, tvaTaux: taux })
-    await stripe.products.update(beatmaker.stripe_product_id, { description: descriptionComplete })
+    await stripe.products.update(beatmaker.stripe_product_id, { description: descriptionComplete }, { stripeAccount: beatmaker.stripe_account_id })
+      .catch(err => console.error('[tva] Mise à jour produit abonnement:', err instanceof Error ? err.message : err))
   }
 
   await rafraichirPretAVendre(user.id)

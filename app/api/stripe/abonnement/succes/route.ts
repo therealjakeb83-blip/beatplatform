@@ -1,4 +1,3 @@
-import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { lierCompteClient } from '@/lib/lier-compte-client'
 import { cookies } from 'next/headers'
@@ -8,18 +7,19 @@ export const runtime = 'nodejs'
 
 // Cette route ne sert qu'à l'expérience utilisateur (poser le cookie de session
 // membre + rediriger, et depuis 2026-07-15 tenter une connexion automatique
-// réelle) — jamais à créer l'abonnement en base. Cette redirection dépend du
-// navigateur du client (peut être lente, interrompue, ou ne jamais arriver si
-// l'onglet est fermé), donc pas fiable pour une action critique. La création
-// réelle de la ligne abonnements_boutique se fait dans le webhook Stripe
-// (checkout.session.completed → traiterAbonnementCree), qui est garanti
-// serveur à serveur, indépendamment de ce que fait le navigateur.
+// réelle) — jamais à créer l'abonnement en base : c'est le webhook des comptes
+// vendeurs qui l'enregistre à la confirmation du paiement (paiement direct,
+// 2026-10-01). La page de paiement n'appelle cette route qu'une fois
+// l'abonnement enregistré (/api/stripe/abonnement/etat).
+// L'identifiant d'abonnement n'est connu que du navigateur qui a payé (comme
+// l'ancien session_id) ; on n'accepte en plus qu'un abonnement de moins
+// d'une heure.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  const sessionId = searchParams.get('session_id')
+  const subscriptionId = searchParams.get('subscription_id')
   const slug = searchParams.get('slug')
 
-  if (!sessionId || !slug) {
+  if (!subscriptionId || !slug) {
     return NextResponse.redirect(`${origin}/`)
   }
 
@@ -27,12 +27,18 @@ export async function GET(request: Request) {
   let redirection = `${origin}${chemin}`
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId)
-    // Normalisé en minuscule — sinon la même personne peut se retrouver
-    // dupliquée en 2 fiches clients selon la casse tapée au checkout (bug
-    // découvert en testant Phase 5.9, 2026-07-16).
-    const email = session.customer_details?.email?.toLowerCase().trim() ?? null
-    const nom = session.customer_details?.name ?? null
+    const admin = createAdminClient()
+    const { data: beatmaker } = await admin.from('beatmakers').select('id').eq('slug', slug).maybeSingle()
+    const { data: abonnement } = beatmaker
+      ? await admin.from('abonnements_boutique')
+          .select('acheteur_email, acheteur_nom, date_debut')
+          .eq('stripe_subscription_id', subscriptionId)
+          .eq('beatmaker_id', beatmaker.id)
+          .maybeSingle()
+      : { data: null }
+    const recent = abonnement?.date_debut && Date.now() - new Date(abonnement.date_debut).getTime() < 60 * 60 * 1000
+    const email = recent ? abonnement.acheteur_email : null
+    const nom = abonnement?.acheteur_nom ?? null
 
     if (email) {
       const cookieStore = await cookies()

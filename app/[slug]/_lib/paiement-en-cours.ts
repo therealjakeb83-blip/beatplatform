@@ -8,7 +8,7 @@
 
 const DUREE_VALIDITE_MS = 60 * 60 * 1000
 
-export type TypePaiementEnCours = 'solo' | 'multi'
+export type TypePaiementEnCours = 'solo' | 'multi' | 'abonnement'
 
 type Marqueur = { type: TypePaiementEnCours; id: string; onglet: string; date: number }
 

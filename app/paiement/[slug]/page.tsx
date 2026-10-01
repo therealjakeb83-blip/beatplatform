@@ -19,10 +19,15 @@ const poppins = Poppins({
 
 export default async function PaiementPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const { slug } = await params
+  // Même page pour un abonnement (2026-10-01) : on y arrive depuis
+  // /{slug}/abonnement, sans passer par le panier (décision D1).
+  const enAbonnement = (await searchParams).abonnement === '1'
   const admin = createAdminClient()
   const supabase = await createClient()
 
@@ -37,7 +42,7 @@ export default async function PaiementPage({
 
   const { data: beatmaker } = await admin
     .from('beatmakers')
-    .select('id, nom_artiste, logo_url, logo_inverser_fond_clair, tva_active, tva_taux, statut, role, abonnement_exempte')
+    .select('id, nom_artiste, logo_url, logo_inverser_fond_clair, tva_active, tva_taux, statut, role, abonnement_exempte, abo_actif, abo_nom, abo_prix, stripe_account_id')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -57,6 +62,18 @@ export default async function PaiementPage({
       .maybeSingle()
     if (!abonnementActif) notFound()
   }
+
+  if (enAbonnement && (!beatmaker.abo_actif || !beatmaker.abo_prix)) notFound()
+  const abonnement = enAbonnement
+    ? {
+        nom: (beatmaker.abo_nom as string | null) || `Abonnement ${beatmaker.nom_artiste}`,
+        prixCents: Number(beatmaker.abo_prix),
+        stripeAccountId: (beatmaker.stripe_account_id as string | null) ?? null,
+        // Le compte connecté prime (artiste ou beatmaker) : son email est
+        // celui de l'abonnement, affiché sans pouvoir être changé.
+        compteEmail: user?.email ? user.email.toLowerCase().trim() : null,
+      }
+    : null
 
   const { data: reglesLotData } = await admin
     .from('reductions_lot')
@@ -79,6 +96,7 @@ export default async function PaiementPage({
         tvaActive={beatmaker.tva_active}
         tvaTaux={beatmaker.tva_taux}
         clientEmail={clientEmail}
+        abonnement={abonnement}
       />
     </div>
   )

@@ -4,6 +4,9 @@ import { traiterPaiementExpress } from '@/lib/webhook-paiement'
 import { enregistrerLitige, traiterLitigeMisAJour, cloreLitige, LitigeARejouer } from '@/lib/litiges'
 import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { traiterRemboursementStripe } from '@/lib/remboursement'
+import {
+  EvenementARejouer, traiterAnnulationAbonnementBoutique, traiterEchecFactureCompteVendeur, traiterFacturePayeeCompteVendeur, traiterMajAbonnementBoutique,
+} from '@/lib/abonnement-boutique-webhook'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -21,10 +24,9 @@ export const runtime = 'nodejs'
 // les comptes connectés" → même URL que celle-ci → secret distinct
 // (STRIPE_WEBHOOK_CONNECT_SECRET, jamais le même que STRIPE_WEBHOOK_SECRET).
 //
-// Scope volontairement réduit à la vente (checkout.session.completed en
-// mode 'payment', payment_intent.succeeded scopé achat_express) — les
-// abonnements et les splits collab ne passent jamais par ce chemin (ils
-// restent sur l'ancien modèle, voir plan Phase 2).
+// Ventes (payment_intent.succeeded scopé achat_express) et, depuis le
+// 2026-10-01, abonnements boutique en paiement direct (invoice.*,
+// customer.subscription.*).
 //
 // + litiges Stripe (charge.dispute.created/updated/closed) — voir
 // lib/litiges.ts. Ces events doivent être cochés si jamais ce endpoint est
@@ -112,12 +114,32 @@ export async function POST(request: Request) {
     if (event.type === 'charge.dispute.closed') {
       await cloreLitige(event.data.object as Stripe.Dispute, stripeAccountId)
     }
+
+    // Abonnements boutique en paiement direct (2026-10-01,
+    // lib/abonnement-boutique-webhook.ts) : l'abonnement est enregistré à la
+    // 1re facture payée (invoice.paid couvre aussi une 1re facture à 0 €).
+    // Events à cocher sur cet endpoint (.scratch/abo-direct-abonner-events.mjs).
+    if (event.type === 'invoice.paid') {
+      await traiterFacturePayeeCompteVendeur(event.data.object as Stripe.Invoice, stripeAccountId)
+    }
+
+    if (event.type === 'invoice.payment_failed') {
+      await traiterEchecFactureCompteVendeur(event.data.object as Stripe.Invoice)
+    }
+
+    if (event.type === 'customer.subscription.updated') {
+      await traiterMajAbonnementBoutique(event.data.object as Stripe.Subscription)
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      await traiterAnnulationAbonnementBoutique(event.data.object as Stripe.Subscription)
+    }
   } catch (err) {
     const erreur = err instanceof Error ? err.message : String(err)
     console.error('[webhook-connect] Erreur traitement event', event.type, ':', erreur)
     await logAdmin.from('stripe_events').update({ statut: 'echoue', erreur, traite_at: new Date().toISOString() }).eq('stripe_event_id', event.id)
     // Litige arrivé avant sa commande : Stripe renverra l'événement plus tard.
-    if (err instanceof LitigeARejouer) return NextResponse.json({ erreur }, { status: 500 })
+    if (err instanceof LitigeARejouer || err instanceof EvenementARejouer) return NextResponse.json({ erreur }, { status: 500 })
     // 200 quand même : la signature est valide, l'erreur vient de notre
     // traitement — répondre en erreur ferait retenter Stripe indéfiniment
     // le même event.

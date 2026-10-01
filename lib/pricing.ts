@@ -119,6 +119,7 @@ export async function validerCodePromo(
   codePromo: string | undefined,
   user: UtilisateurPourPrix,
   emailAcheteur: string | undefined,
+  options: { pourAbonnement?: boolean } = {},
 ): Promise<ResultatPrix<{ promo: Record<string, unknown>; codePromoValide: string } | null>> {
   if (!codePromo) return { ok: true, value: null }
 
@@ -133,8 +134,11 @@ export async function validerCodePromo(
     .single()
 
   if (!promoData) return { ok: false, erreur: 'Code promo invalide', status: 400 }
-  if (promoData.type_remise === 'abonnement') {
+  if (promoData.type_remise === 'abonnement' && !options.pourAbonnement) {
     return { ok: false, erreur: 'Ce code est réservé aux abonnements', status: 400 }
+  }
+  if (promoData.type_remise !== 'abonnement' && options.pourAbonnement) {
+    return { ok: false, erreur: 'Ce code ne s\'applique pas aux abonnements', status: 400 }
   }
 
   const now = new Date()

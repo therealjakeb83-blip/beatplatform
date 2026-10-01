@@ -23,7 +23,7 @@ import { computeItemsPricing, computeTotal, formatPrix, type ReductionLotRule } 
 import { listePays } from '@/lib/pays-iso'
 import type { TvaPanier } from '@/lib/tva-panier'
 import { appareilEstIOS, methodesExpressPourAppareil } from '@/app/[slug]/_lib/express-payments'
-import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
+import { effacerPaiementEnCours, idDepuisClientSecret, lirePaiementEnCours, noterPaiementEnCours } from '@/app/[slug]/_lib/paiement-en-cours'
 import PaiementEnAttente from '@/app/[slug]/_components/PaiementEnAttente'
 import { messageErreurInattendue, payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
 import { lireCodePromoPanier, oublierCodePromoPanier } from '@/app/[slug]/_lib/code-promo-panier'
@@ -44,6 +44,16 @@ type Props = {
   // à préremplir la facturation et à sauter la demande d'email pour un code
   // promo restreint, sans redemander à quelqu'un déjà identifié.
   clientEmail: string | null
+  // Abonnement boutique (2026-10-01) : même page, l'abonnement est le seul
+  // article (jamais le panier). Paiement direct sur le compte du beatmaker.
+  abonnement: AbonnementPaiement | null
+}
+
+type AbonnementPaiement = {
+  nom: string
+  prixCents: number
+  stripeAccountId: string | null
+  compteEmail: string | null
 }
 
 type PropsForm = Props & {
@@ -94,7 +104,104 @@ export default function PaiementClient(props: Props) {
   )
 }
 
-function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
+function PaiementInner(props: Props) {
+  if (props.abonnement) return <AbonnementInner {...props} abonnement={props.abonnement} />
+  return <PanierInner {...props} />
+}
+
+type EtatAbonnementEnCours = 'verification' | 'en_cours' | 'autre_onglet' | 'non'
+
+function AbonnementInner(props: Props & { abonnement: AbonnementPaiement }) {
+  const { slug, abonnement } = props
+  // Paiement d'abonnement lancé avant un rechargement : jamais de formulaire
+  // pour repayer tant que son issue n'est pas connue (même principe que le
+  // panier, marqueur distinct pour ne pas toucher au panier de beats).
+  const [enCours, setEnCours] = useState<EtatAbonnementEnCours>('verification')
+
+  useEffect(() => {
+    let annule = false
+    const marqueur = lirePaiementEnCours(cleAbonnement(slug))
+    async function verifier(premier: boolean) {
+      if (!marqueur) { setEnCours('non'); return }
+      const res = await fetch('/api/stripe/abonnement/etat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, id: marqueur!.id, annuler: premier && marqueur!.memeOnglet }),
+      }).catch(() => null)
+      const data = res ? await res.json().catch(() => null) as { etat?: string; subscription_id?: string } | null : null
+      if (annule) return
+      if (data?.etat === 'termine' && data.subscription_id) {
+        effacerPaiementEnCours(cleAbonnement(slug))
+        window.location.href = urlSuccesAbonnement(slug, data.subscription_id)
+      } else if (data?.etat === 'abandonne') {
+        effacerPaiementEnCours(cleAbonnement(slug))
+        setEnCours('non')
+      } else if (data?.etat === 'interrompu') {
+        setEnCours('autre_onglet')
+      } else {
+        setEnCours('en_cours')
+        setTimeout(() => { if (!annule) verifier(false) }, 2000)
+      }
+    }
+    verifier(true)
+    return () => { annule = true }
+  }, [slug])
+
+  if (enCours === 'verification') return null
+  if (enCours !== 'non') {
+    return (
+      <div className="pmt-page">
+        <div className="pmt-col">
+          <div className="pmt-body">
+            <p style={{ textAlign: 'center', color: 'rgba(10,10,12,.75)', fontSize: 14, lineHeight: 1.5 }}>
+              {enCours === 'en_cours'
+                ? 'Ton abonnement est en cours d\'activation… Ne ferme pas cette page.'
+                : 'Un paiement d\'abonnement est en cours dans un autre onglet. Termine-le là-bas.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!abonnement.stripeAccountId) {
+    return (
+      <div className="pmt-page">
+        <div className="pmt-col">
+          <div className="pmt-body">
+            <p style={{ textAlign: 'center', color: 'rgba(10,10,12,.75)', fontSize: 14 }}>
+              Cette boutique n&apos;est pas encore prête à vendre — réessaie plus tard.
+            </p>
+            <Link href={`/${slug}`} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
+              Retour à la boutique
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Elements
+      stripe={chargerStripePourCompte(abonnement.stripeAccountId)}
+      // Carte seule, comme l'abonnement créé côté serveur (Apple Pay /
+      // Google Pay passent par une carte).
+      options={{ mode: 'subscription', amount: abonnement.prixCents, currency: 'eur', setupFutureUsage: 'off_session', paymentMethodTypes: ['card'] }}
+    >
+      <PaiementForm {...props} multiVendeurs={false} />
+    </Elements>
+  )
+}
+
+function cleAbonnement(slug: string) {
+  return `abo:${slug}`
+}
+
+function urlSuccesAbonnement(slug: string, subscriptionId: string) {
+  return `/api/stripe/abonnement/succes?subscription_id=${encodeURIComponent(subscriptionId)}&slug=${encodeURIComponent(slug)}`
+}
+
+function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
   const { items, paiementEnCours } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
@@ -170,7 +277,7 @@ function PaiementInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tva
       // dans le navigateur (vu en T10, Apple Pay sur iPhone).
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(contexte?.mode === 'multi' ? { setupFutureUsage: 'off_session' as const, paymentMethodCreation: 'manual' as const } : {}) }}
     >
-      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} multiVendeurs={contexte?.mode === 'multi'} />
+      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} abonnement={null} multiVendeurs={contexte?.mode === 'multi'} />
     </Elements>
   )
 }
@@ -203,17 +310,23 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, multiVendeurs }: PropsForm) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, multiVendeurs, abonnement }: PropsForm) {
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
+  const enAbonnement = abonnement != null
   const pays = useMemo(() => listePays(), [])
 
   const [recapOpen, setRecapOpen] = useState(false)
   const [pro, setPro] = useState(false)
   // Préremplit avec l'email du compte connecté (même principe que le panier,
   // voir CartDrawer.tsx) — reste éditable, au cas où la facturation diffère.
-  const [champs, setChamps] = useState<Champs>(() => (clientEmail ? { ...CHAMPS_VIDES, email: clientEmail } : CHAMPS_VIDES))
+  // Abonnement : l'email du compte connecté (artiste ou beatmaker) est imposé.
+  const emailImpose = abonnement?.compteEmail ?? null
+  const [champs, setChamps] = useState<Champs>(() => {
+    const email = emailImpose ?? clientEmail
+    return email ? { ...CHAMPS_VIDES, email } : CHAMPS_VIDES
+  })
   const [erreursChamps, setErreursChamps] = useState<Partial<Record<keyof Champs, string>>>({})
 
   const [codePromoOpen, setCodePromoOpen] = useState(false)
@@ -231,8 +344,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
   const [carteOpen, setCarteOpen] = useState(false)
   const [newsletterOptIn, setNewsletterOptIn] = useState(false)
 
-  const pricedItems = computeItemsPricing(items, reglesLot)
-  const total = computeTotal(items, reglesLot)
+  // Abonnement : le panier de beats n'apparaît jamais (payé à part, D1).
+  const pricedItems = enAbonnement ? [] : computeItemsPricing(items, reglesLot)
+  const total = abonnement ? abonnement.prixCents / 100 : computeTotal(items, reglesLot)
   const totalApresCode = codeApplique
     ? (codeApplique.type_valeur === 'pourcentage'
         ? total * (1 - codeApplique.valeur / 100)
@@ -259,24 +373,38 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
   // TVA calculée par le serveur, part par part (beat collab) — rien tant que
   // le montant exact n'est pas connu (jamais de calcul provisoire au taux de A).
   const [tvaServeur, setTvaServeur] = useState<TvaPanier | null>(null)
+  // Abonnement avec code promo : « puis 6,99 €/mois », etc. (serveur).
+  const [suiteAbonnement, setSuiteAbonnement] = useState<string | null>(null)
   const tva = montantSynchronise && tvaServeur ? { montant: tvaServeur.montantCents / 100, taux: tvaServeur.taux } : null
   useEffect(() => {
-    if (!elements || items.length === 0) return
+    if (!elements || (!enAbonnement && items.length === 0)) return
     let annule = false
     setMontantSynchronise(false)
-    fetch('/api/stripe/prix-panier', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        slug,
-        items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
-        code_promo: codeApplique?.code,
-        email_acheteur: champs.email || undefined,
-      }),
-    })
-      .then(r => r.json())
-      .then((data: { totalCents?: number; beatsRemiseLimitee?: string[]; tva?: TvaPanier | null; erreur?: string }) => {
+    type ReponsePrix = { totalCents?: number; beatsRemiseLimitee?: string[]; tva?: TvaPanier | null; erreur?: string; suite?: string | null }
+    const requete: Promise<ReponsePrix> = enAbonnement
+      ? fetch('/api/stripe/abonnement/prix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, code_promo: codeApplique?.code, email: champs.email || undefined }),
+        })
+          .then(r => r.json())
+          .then((d: { premierCents?: number; tva?: TvaPanier | null; suite?: string | null; erreur?: string }) => ({
+            totalCents: d.premierCents, tva: d.tva, suite: d.suite ?? null, erreur: d.erreur,
+          }))
+      : fetch('/api/stripe/prix-panier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug,
+            items: items.map(i => ({ beat_id: i.beatId, licence_id: i.licenceId })),
+            code_promo: codeApplique?.code,
+            email_acheteur: champs.email || undefined,
+          }),
+        }).then(r => r.json())
+    requete
+      .then((data: ReponsePrix) => {
         if (annule) return
+        setSuiteAbonnement(data.suite ?? null)
         if (typeof data.totalCents === 'number') {
           // Stripe refuse un montant nul : à 0 € (commande gratuite) les
           // moyens de paiement sont masqués de toute façon.
@@ -297,10 +425,14 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
 
   // Commande gratuite (Phase 13, lot 3) : un code promo fait tomber tout le
   // panier à 0 € — pas de paiement, bouton « Valider la commande ».
-  const gratuit = montantSynchronise && totalServeurCents === 0
+  const gratuit = !enAbonnement && montantSynchronise && totalServeurCents === 0
+  // Abonnement au 1er mois offert : la carte reste demandée (décision D2),
+  // seule la carte est proposée (pas de wallet à 0 €).
+  const premierMoisOffert = enAbonnement && montantSynchronise && totalServeurCents === 0
 
   // Code déjà appliqué dans le panier : repris ici, sans le retaper.
   useEffect(() => {
+    if (enAbonnement) return
     const code = lireCodePromoPanier(slug)
     if (code) validerCode(code)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,6 +443,28 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
     if (!code) return
     setChargementCode(true)
     setErreurCode(null)
+    if (enAbonnement) {
+      try {
+        const res = await fetch('/api/stripe/abonnement/prix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, code_promo: code, email: champs.email.trim() || undefined }),
+        })
+        const data = await res.json() as { code?: { code: string; type_valeur: 'pourcentage' | 'montant'; valeur: number } | null; erreur?: string; a_restriction_email?: boolean }
+        if (data.code) {
+          setCodeApplique(data.code)
+          setCodeInput('')
+        } else {
+          if (data.a_restriction_email) setCodeNecessiteEmail(true)
+          setErreurCode(data.erreur ?? 'Code invalide')
+        }
+      } catch {
+        setErreurCode('Erreur réseau')
+      } finally {
+        setChargementCode(false)
+      }
+      return
+    }
     try {
       const res = await fetch('/api/stripe/valider-code-promo', {
         method: 'POST',
@@ -476,6 +630,74 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
     }
   }
 
+  // Abonnement : activé par le webhook dès que Stripe confirme le paiement —
+  // on attend qu'il soit enregistré avant d'aller à la page de bienvenue.
+  // Le panier de beats n'est jamais vidé (décision D1).
+  async function apresSuccesAbonnement(subscriptionId: string) {
+    for (let tentative = 0; tentative < 45; tentative++) {
+      const res = await fetch('/api/stripe/abonnement/etat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, id: subscriptionId }),
+      }).catch(() => null)
+      const data = res?.ok ? await res.json() as { etat?: string } : null
+      if (data?.etat === 'termine') {
+        effacerPaiementEnCours(cleAbonnement(slug))
+        window.location.href = urlSuccesAbonnement(slug, subscriptionId)
+        return
+      }
+      await new Promise(r => setTimeout(r, 1000))
+    }
+    effacerPaiementEnCours(cleAbonnement(slug))
+    window.location.href = `/${slug}/mon-abonnement`
+  }
+
+  async function payerAbonnementParCarte(cardNumberElement: StripeCardNumberElement) {
+    if (!stripe) return
+    const res = await fetch('/api/stripe/abonnement/creer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: corpsPaiement(),
+    })
+    const data = await res.json() as { type?: 'paiement' | 'carte'; clientSecret?: string; id?: string; erreur?: string }
+    if (!data.clientSecret || !data.id) {
+      setErreurGlobale(data.erreur ?? 'Erreur serveur, réessaie')
+      return
+    }
+    noterPaiementEnCours(cleAbonnement(slug), 'abonnement', data.id)
+    const moyen = { payment_method: { card: cardNumberElement, billing_details: detailsFacturation() } }
+
+    if (data.type === 'carte') {
+      const { error } = await stripe.confirmCardSetup(data.clientSecret, moyen)
+      if (error) {
+        effacerPaiementEnCours(cleAbonnement(slug))
+        setErreurGlobale(error.message ?? 'Carte refusée')
+        return
+      }
+      const fin = await fetch('/api/stripe/abonnement/finaliser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, setup_intent_id: data.id }),
+      })
+      const finData = await fin.json() as { subscription_id?: string; erreur?: string }
+      if (!finData.subscription_id) {
+        setErreurGlobale(finData.erreur ?? 'Erreur serveur, réessaie')
+        return
+      }
+      noterPaiementEnCours(cleAbonnement(slug), 'abonnement', finData.subscription_id)
+      await apresSuccesAbonnement(finData.subscription_id)
+      return
+    }
+
+    const { error } = await stripe.confirmCardPayment(data.clientSecret, moyen)
+    if (error) {
+      effacerPaiementEnCours(cleAbonnement(slug))
+      setErreurGlobale(error.message ?? 'Paiement refusé')
+      return
+    }
+    await apresSuccesAbonnement(data.id)
+  }
+
   async function payerParCarte() {
     if (!stripe || !elements || submitting) return
     if (!validerFormulaire()) return
@@ -485,6 +707,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
     setSubmitting(true)
     setErreurGlobale(null)
     try {
+      if (enAbonnement) {
+        await payerAbonnementParCarte(cardNumberElement)
+        return
+      }
       if (multiVendeurs) {
         await payerMultiVendeurs(cardNumberElement)
         return
@@ -525,13 +751,25 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
     && Boolean(champs.ville.trim())
     && (!pro || (Boolean(champs.raisonSociale.trim()) && /^[A-Za-z]{2}[A-Za-z0-9]{2,13}$/.test(champs.numeroTva.trim())))
 
+  // Abonnement : aucun montant tant que le serveur ne l'a pas confirmé (jamais
+  // de chiffre provisoire), puis ce qui sera débité les mois suivants.
+  const totalTexte = enAbonnement && !montantSynchronise ? '…' : formatPrix(totalAffiche)
+  const libelleRecap = enAbonnement ? '1 abonnement' : `${items.length} beat${items.length > 1 ? 's' : ''}`
+  const texteSuiteAbonnement = !enAbonnement || !montantSynchronise
+    ? null
+    : `${suiteAbonnement
+        ? (suiteAbonnement.startsWith('pendant')
+            ? `${formatPrix(totalAffiche)}/mois ${suiteAbonnement}`
+            : suiteAbonnement.charAt(0).toUpperCase() + suiteAbonnement.slice(1))
+        : `Puis ${formatPrix(totalAffiche)}/mois`}. Sans engagement, annulable à tout moment.`
+
   return (
     <div className="pmt-page">
       <div className="pmt-col">
         <header className="pmt-header">
-          <Link href={`/${slug}`} className="pmt-back" aria-label="Retour au panier">
+          <Link href={enAbonnement ? `/${slug}/abonnement` : `/${slug}`} className="pmt-back" aria-label={enAbonnement ? 'Retour' : 'Retour au panier'}>
             {CHEVRON_LEFT}
-            <span className="pmt-back-label">Retour au panier</span>
+            <span className="pmt-back-label">{enAbonnement ? 'Retour' : 'Retour au panier'}</span>
           </Link>
           {logoUrl ? (
             <img
@@ -565,27 +803,38 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                   desktop toujours — voir CSS). */}
               <span className={`pmt-recap-closed-row${recapOpen ? '' : ' is-shown'}`}>
                 <div className="pmt-recap-thumbs">
+                  {enAbonnement && <div className="pmt-recap-thumb" />}
                   {pricedItems.slice(0, 2).map(item => (
                     item.imageUrl
                       ? <img key={`${item.beatId}:${item.licenceId}`} src={item.imageUrl} alt="" className="pmt-recap-thumb" />
                       : <div key={`${item.beatId}:${item.licenceId}`} className="pmt-recap-thumb" />
                   ))}
                 </div>
-                <span className="pmt-recap-label">{items.length} beat{items.length > 1 ? 's' : ''}</span>
+                <span className="pmt-recap-label">{libelleRecap}</span>
                 <span className="pmt-recap-total-col">
-                  <span className="pmt-recap-total">{formatPrix(totalAffiche)}</span>
+                  <span className="pmt-recap-total">{totalTexte}</span>
                   {tva && <span className="pmt-recap-tva">{tva.taux != null ? `dont ${tva.taux} % TVA` : `dont ${formatPrix(tva.montant)} de TVA`}</span>}
                 </span>
                 <span className={`pmt-recap-chevron${recapOpen ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
               </span>
               <span className={`pmt-recap-open-row${recapOpen ? ' is-shown' : ''}`}>
                 <span className="pmt-recap-open-title">Récapitulatif</span>
-                <span className="pmt-recap-open-count">{items.length} beat{items.length > 1 ? 's' : ''}</span>
+                <span className="pmt-recap-open-count">{libelleRecap}</span>
               </span>
             </button>
             <div className={`pmt-recap-content${recapOpen ? ' is-open' : ''}`}>
               <div className="pmt-recap-inner">
                 <div className="pmt-hr" />
+                {abonnement && (
+                  <div className="pmt-recap-item">
+                    <div className="pmt-recap-item-img" />
+                    <div>
+                      <div className="pmt-recap-item-title">{abonnement.nom}</div>
+                      <div className="pmt-recap-item-licence">Abonnement mensuel</div>
+                    </div>
+                    <div className="pmt-recap-item-price">{formatPrix(abonnement.prixCents / 100)}/mois</div>
+                  </div>
+                )}
                 {pricedItems.map(item => (
                   <div key={`${item.beatId}:${item.licenceId}`} className="pmt-recap-item">
                     {item.imageUrl
@@ -622,7 +871,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                 ) : (
                   <button className="pmt-promo-toggle" onClick={() => setCodePromoOpen(true)}>Code promo ?</button>
                 )}
-                {codeNecessiteEmail && !clientEmail && (
+                {codeNecessiteEmail && !clientEmail && !emailImpose && (
                   <div className="pmt-promo-email">
                     <input
                       className={`pmt-field${erreursChamps.email ? ' has-error' : ''}`}
@@ -643,7 +892,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                 <div className="pmt-hr" />
                 <div className="pmt-row pmt-row-sub"><span>Sous-total</span><span>{formatPrix(total)}</span></div>
                 {tva && <div className="pmt-row pmt-row-sub"><span>{tva.taux != null ? `TVA (${tva.taux} %)` : 'TVA'}</span><span>{formatPrix(tva.montant)}</span></div>}
-                <div className="pmt-row pmt-row-total"><span>{tva ? 'Total TTC' : 'Total'}</span><span>{formatPrix(totalAffiche)}</span></div>
+                <div className="pmt-row pmt-row-total"><span>{enAbonnement ? (tva ? "Total TTC aujourd'hui" : "Total aujourd'hui") : (tva ? 'Total TTC' : 'Total')}</span><span>{totalTexte}</span></div>
+                {texteSuiteAbonnement && <p className="pmt-field-help">{texteSuiteAbonnement}</p>}
                 {beatsRemiseLimitee.length > 0 && (
                   <p className="pmt-remise-limitee">
                     Réduction limitée pour {beatsRemiseLimitee.map(t => `« ${t} »`).join(', ')} : un beat en collaboration ne peut pas descendre sous le prix qui garantit au moins 1 € à chaque artiste.
@@ -657,7 +907,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
               page reste inchangé en mobile, masqué ici en dessous de 1024px) */}
           <div className="pmt-trust-desktop">
             <div className="pmt-trust-desktop-item">{LOCK_ICON}<span>Paiement sécurisé par Stripe</span></div>
-            <div className="pmt-trust-desktop-item">{SHIELD_ICON}<span>Livraison immédiate des fichiers et licences</span></div>
+            <div className="pmt-trust-desktop-item">{SHIELD_ICON}<span>{enAbonnement ? 'Accès membre immédiat' : 'Livraison immédiate des fichiers et licences'}</span></div>
           </div>
           </div>
           </div>
@@ -668,8 +918,10 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
               comportement actuels. */}
           <div className="pmt-form-desktop">
           <div className="pmt-desktop-title">
-            <h1>Finaliser ma commande</h1>
-            <p>Tes fichiers et licences PDF sont envoyés par e-mail juste après {gratuit ? 'la validation' : 'le paiement'}.</p>
+            <h1>{enAbonnement ? 'Finaliser mon abonnement' : 'Finaliser ma commande'}</h1>
+            <p>{enAbonnement
+              ? 'Ton accès membre est activé juste après le paiement.'
+              : `Tes fichiers et licences PDF sont envoyés par e-mail juste après ${gratuit ? 'la validation' : 'le paiement'}.`}</p>
           </div>
 
           {/* Opt-in positif : ne jamais interpréter l'absence de coche comme une désinscription. */}
@@ -688,7 +940,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
 
           {/* Moyens de paiement — aussi pour un panier avec un beat collab
               (Phase 13, lot 2 : enregistrés puis débités chez chaque vendeur) */}
-          {!gratuit && (<>
+          {!gratuit && !premierMoisOffert && (<>
           <div className="pmt-express">
             <span className="pmt-express-title">Moyens de paiement</span>
             <ExpressButtons
@@ -703,6 +955,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
               montantSynchronise={montantSynchronise}
               multiVendeurs={multiVendeurs}
               onResultatMulti={apresPaiementMulti}
+              abonnement={enAbonnement ? { emailImpose, onSucces: apresSuccesAbonnement } : null}
             />
           </div>
 
@@ -713,20 +966,22 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
 
           {/* Payer par carte */}
           <div className="pmt-carte-accordion">
-            <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen || gratuit}>
+            <button className="pmt-carte-head" onClick={() => setCarteOpen(o => !o)} aria-expanded={carteOpen || gratuit || premierMoisOffert}>
               <span className="pmt-carte-head-icon">{CARD_ICON}</span>
-              <span className="pmt-carte-head-label">{gratuit ? 'Mes informations' : 'Payer par carte'}</span>
-              <span className={`pmt-carte-chevron${carteOpen || gratuit ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
+              <span className="pmt-carte-head-label">{gratuit ? 'Mes informations' : premierMoisOffert ? 'Ma carte bancaire' : 'Payer par carte'}</span>
+              <span className={`pmt-carte-chevron${carteOpen || gratuit || premierMoisOffert ? ' is-open' : ''}`}>{CHEVRON_DOWN}</span>
             </button>
-            <div className={`pmt-carte-content${carteOpen || gratuit ? ' is-open' : ''}`}>
+            <div className={`pmt-carte-content${carteOpen || gratuit || premierMoisOffert ? ' is-open' : ''}`}>
               <div className="pmt-carte-inner">
                 {/* Informations de facturation — toujours visibles dès l'ouverture
                     de l'accordéon "Payer par carte" (plus de sous-accordéon
                     imbriqué, décision Jake 2026-09-16 : un seul niveau). */}
-                <div className="pmt-connexion-row">
-                  <span>Déjà client ?</span>
-                  <Link href={`/artiste/connexion?redirect=/paiement/${slug}`} className="pmt-connexion-link">Connexion</Link>
-                </div>
+                {!emailImpose && (
+                  <div className="pmt-connexion-row">
+                    <span>Déjà client ?</span>
+                    <Link href={`/artiste/connexion?redirect=${encodeURIComponent(enAbonnement ? `/paiement/${slug}?abonnement=1` : `/paiement/${slug}`)}`} className="pmt-connexion-link">Connexion</Link>
+                  </div>
+                )}
 
                 <div>
                   <input
@@ -734,10 +989,13 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                     type="email"
                     placeholder="E-mail"
                     value={champs.email}
-                    onChange={e => majChamp('email', e.target.value)}
+                    readOnly={Boolean(emailImpose)}
+                    onChange={e => { if (!emailImpose) majChamp('email', e.target.value) }}
                   />
                   {erreursChamps.email && <p className="pmt-field-error">{erreursChamps.email}</p>}
-                  <p className="pmt-field-help">Les licences PDF et les fichiers y seront envoyés.</p>
+                  <p className="pmt-field-help">{enAbonnement
+                    ? (emailImpose ? 'Adresse de ton compte : ta confirmation et tes factures y seront envoyées.' : 'Ta confirmation et tes factures y seront envoyées.')
+                    : 'Les licences PDF et les fichiers y seront envoyés.'}</p>
                 </div>
 
                 <div className="pmt-grid-2">
@@ -792,7 +1050,8 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                   <CardNumberElement
                     className="StripeElement"
                     // Link masqué sur un panier collab : Stripe refuse de copier un moyen Link chez un vendeur (T14).
-                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte', disableLink: multiVendeurs }}
+                    // Abonnement : carte seule (le moyen de paiement doit pouvoir être débité chaque mois).
+                    options={{ style: cardElementStyle, showIcon: false, placeholder: 'Numéro de carte', disableLink: multiVendeurs || enAbonnement }}
                     onChange={(e: StripeCardNumberElementChangeEvent) => setCardComplete(c => ({ ...c, number: e.complete }))}
                   />
                   <div className="pmt-card-brands">
@@ -821,12 +1080,24 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                   </button>
                 ) : (
                   <button className="pmt-cta" onClick={payerParCarte} disabled={submitting || !cardOk || !facturationOk || !montantSynchronise}>
-                    {submitting ? 'Traitement…' : montantSynchronise ? `Payer ${formatPrix(totalAffiche)}` : 'Calcul du prix…'}
+                    {submitting
+                      ? 'Traitement…'
+                      : !montantSynchronise
+                        ? 'Calcul du prix…'
+                        : premierMoisOffert
+                          ? "Démarrer l'abonnement — 0 € aujourd'hui"
+                          : `Payer ${formatPrix(totalAffiche)}`}
                   </button>
                 )}
-                <p className="pmt-legal">
-                  En {gratuit ? 'validant' : 'payant'}, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
-                </p>
+                {enAbonnement ? (
+                  <p className="pmt-legal">
+                    En t&apos;abonnant, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link>. L&apos;abonnement se renouvelle chaque mois jusqu&apos;à son annulation.
+                  </p>
+                ) : (
+                  <p className="pmt-legal">
+                    En {gratuit ? 'validant' : 'payant'}, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -854,7 +1125,7 @@ const navigateurHydrate = () => true
 const renduServeur = () => false
 
 function ExpressButtons({
-  slug, items, codePromo, newsletterOptIn, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise, multiVendeurs, onResultatMulti,
+  slug, items, codePromo, newsletterOptIn, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise, multiVendeurs, onResultatMulti, abonnement,
 }: {
   slug: string
   items: { beatId: string; licenceId: string }[]
@@ -873,6 +1144,10 @@ function ExpressButtons({
   // est créé ici puis confié au paiement réparti (paiement-multi-client).
   multiVendeurs: boolean
   onResultatMulti: (resultat: ResultatPaiementMultiClient) => void
+  // Abonnement boutique : abonnement créé sur le compte du beatmaker avec les
+  // coordonnées du wallet (email du compte connecté prioritaire), puis 1re
+  // facture payée avec ce moyen de paiement. Link exclu (carte seule).
+  abonnement: { emailImpose: string | null; onSucces: (subscriptionId: string) => Promise<void> } | null
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -914,7 +1189,7 @@ function ExpressButtons({
         options={{
           buttonHeight: 50,
           layout: { maxColumns: 2, maxRows: 0, overflow: 'never' },
-          paymentMethods: methodesExpressPourAppareil(estIOS, multiVendeurs),
+          paymentMethods: methodesExpressPourAppareil(estIOS, multiVendeurs || abonnement != null),
           emailRequired: true,
           // Adresse obligatoire (contrat de licence — voir lib/contrat.ts),
           // téléphone facultatif (jamais utilisé dans le contrat, juste
@@ -928,6 +1203,50 @@ function ExpressButtons({
           setErreur(null)
           setEnAttente(true)
           try {
+            if (abonnement) {
+              const adresse = event.billingDetails?.address
+              const res = await fetch('/api/stripe/abonnement/creer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  slug,
+                  code_promo: codePromo,
+                  email_acheteur: abonnement.emailImpose ?? event.billingDetails?.email,
+                  prenom: event.billingDetails?.name,
+                  telephone: event.billingDetails?.phone,
+                  adresse: adresse?.line1,
+                  code_postal: adresse?.postal_code,
+                  ville: adresse?.city,
+                  pays: adresse?.country,
+                  newsletter_opt_in: newsletterOptIn,
+                  type_client: professionnel ? 'professionnel' : 'particulier',
+                  raison_sociale: professionnel ? raisonSociale : undefined,
+                  numero_tva: professionnel ? numeroTva : undefined,
+                  source_marketing: sessionStorage.getItem('source_marketing') ?? 'direct',
+                }),
+              })
+              const data = await res.json() as { type?: 'paiement' | 'carte'; clientSecret?: string; id?: string; erreur?: string }
+              if (!res.ok || data.type !== 'paiement' || !data.clientSecret || !data.id) {
+                echouer(data.erreur ?? 'Erreur serveur, réessaie')
+                event.paymentFailed({ reason: 'fail', message: data.erreur })
+                return
+              }
+              noterPaiementEnCours(cleAbonnement(slug), 'abonnement', data.id)
+              const { error } = await stripe.confirmPayment({
+                elements,
+                clientSecret: data.clientSecret,
+                confirmParams: { return_url: `${window.location.origin}/paiement/${slug}?abonnement=1` },
+                redirect: 'if_required',
+              })
+              if (error) {
+                effacerPaiementEnCours(cleAbonnement(slug))
+                echouer(error.message ?? 'Paiement refusé')
+                event.paymentFailed({ reason: 'fail', message: error.message })
+                return
+              }
+              await abonnement.onSucces(data.id)
+              return
+            }
             if (multiVendeurs) {
               const { error: erreurSaisie } = await elements.submit()
               const { error: erreurMoyen, paymentMethod } = erreurSaisie

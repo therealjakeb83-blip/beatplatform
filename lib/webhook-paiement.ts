@@ -28,7 +28,7 @@ import type Stripe from 'stripe'
 // Formate une adresse Stripe (Checkout Session ou billing_details d'un
 // PaymentMethod) en une seule ligne lisible, pour affichage direct dans un
 // contrat de licence (variable [ADRESSE DU LICENCIÉ]).
-function formaterAdresse(address: Stripe.Address | null | undefined): string | null {
+export function formaterAdresse(address: Stripe.Address | null | undefined): string | null {
   if (!address) return null
   const parts = [
     [address.line1, address.line2].filter(Boolean).join(' '),

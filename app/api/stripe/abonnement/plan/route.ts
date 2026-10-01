@@ -14,41 +14,23 @@ export async function PUT(request: Request) {
 
   const { data: beatmaker } = await supabase
     .from('beatmakers')
-    .select('stripe_product_id, stripe_price_id, abo_prix, tva_active, tva_taux')
+    .select('stripe_account_id, stripe_product_id, stripe_produit_compte, abo_prix, tva_active, tva_taux')
     .eq('id', user.id)
     .single()
 
   if (!beatmaker) return NextResponse.json({ erreur: 'Beatmaker introuvable' }, { status: 404 })
 
-  let productId = beatmaker.stripe_product_id as string | null
-  let priceId = beatmaker.stripe_price_id as string | null
-  const descriptionComplete = descriptionAvecTva(description ?? null, prix_cents ?? beatmaker.abo_prix ?? 0, { tvaActive: beatmaker.tva_active, tvaTaux: beatmaker.tva_taux })
-
-  if (!productId) {
-    const product = await stripe.products.create({
-      name: nom || 'Abonnement boutique',
-      description: descriptionComplete || undefined,
-    })
-    productId = product.id
-  } else {
-    await stripe.products.update(productId, {
+  // Paiement direct (2026-10-01) : le produit vit sur le compte Stripe du
+  // beatmaker et le prix est fixé à chaque souscription (un abonné garde son
+  // prix à vie). Ici, seul le nom/la description du produit déjà créé sur son
+  // compte est tenu à jour ; il est créé à la 1re souscription sinon
+  // (lib/abonnement-boutique.ts).
+  if (beatmaker.stripe_product_id && beatmaker.stripe_account_id && beatmaker.stripe_produit_compte === beatmaker.stripe_account_id) {
+    const descriptionComplete = descriptionAvecTva(description ?? null, prix_cents ?? beatmaker.abo_prix ?? 0, { tvaActive: beatmaker.tva_active, tvaTaux: beatmaker.tva_taux })
+    await stripe.products.update(beatmaker.stripe_product_id, {
       name: nom || 'Abonnement boutique',
       description: descriptionComplete,
-    })
-  }
-
-  const prixChange = prix_cents && prix_cents !== beatmaker.abo_prix
-  if (prixChange || !priceId) {
-    if (priceId) {
-      await stripe.prices.update(priceId, { active: false })
-    }
-    const price = await stripe.prices.create({
-      product: productId,
-      currency: 'eur',
-      recurring: { interval: 'month' },
-      unit_amount: prix_cents,
-    })
-    priceId = price.id
+    }, { stripeAccount: beatmaker.stripe_account_id }).catch(err => console.error('[abonnement/plan] Mise à jour produit:', err instanceof Error ? err.message : err))
   }
 
   await supabase
@@ -60,8 +42,6 @@ export async function PUT(request: Request) {
       abo_prix: prix_cents,
       abo_remise_pct: remise_pct,
       abo_recurrence_cadeau_mois: recurrence_cadeau_mois && recurrence_cadeau_mois > 0 ? recurrence_cadeau_mois : 4,
-      stripe_product_id: productId,
-      stripe_price_id: priceId,
     })
     .eq('id', user.id)
 
