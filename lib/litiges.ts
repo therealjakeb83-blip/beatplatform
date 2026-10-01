@@ -339,12 +339,23 @@ export type ResultatLitige = {
   echecs: { vendeurNom: string; erreur: string }[]
 }
 
-async function televerserPreuve(compte: string, nom: string, type: string, donnees: Buffer): Promise<string> {
-  const f = await stripe.files.create(
-    { purpose: 'dispute_evidence', file: { data: donnees, name: nom, type } },
-    { stripeAccount: compte },
-  )
-  return f.id
+// Un fichier refusé par Stripe est nommé dans l'erreur (ton fichier, la
+// facture ou le contrat) : rien n'a été envoyé pour la part, A peut corriger
+// et renvoyer.
+async function televerserPreuve(compte: string, nom: string, type: string, donnees: Buffer, libelle: string): Promise<string> {
+  try {
+    const f = await stripe.files.create(
+      { purpose: 'dispute_evidence', file: { data: donnees, name: nom, type } },
+      { stripeAccount: compte },
+    )
+    return f.id
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'erreur inconnue'
+    const explication = /portfolio/i.test(message)
+      ? "c'est un « portfolio PDF » (plusieurs documents dans un seul PDF), refusé par Stripe. Enregistre-le en PDF simple (Imprimer → Enregistrer en PDF) puis renvoie"
+      : message
+    throw new Error(`${libelle} refusé par Stripe : ${explication}. Rien n'a été envoyé pour cette part.`)
+  }
 }
 
 async function fusionnerPdf(contenus: Buffer[]): Promise<Buffer> {
@@ -467,9 +478,9 @@ export async function envoyerReponseLitige(admin: Admin, commandeId: string, p: 
           ...(preuves.adresse ? { billing_address: preuves.adresse } : {}),
           ...(p.texte.trim() ? { uncategorized_text: p.texte.trim() } : {}),
         }
-        if (factureUrl) evidence.receipt = await televerserPreuve(compte, 'facture.pdf', 'application/pdf', await lirePdfR2(factureUrl))
-        if (preuves.contrat) evidence.service_documentation = await televerserPreuve(compte, 'contrat-de-licence.pdf', 'application/pdf', preuves.contrat)
-        if (p.fichier) evidence.uncategorized_file = await televerserPreuve(compte, p.fichier.nom, p.fichier.type, p.fichier.donnees)
+        if (p.fichier) evidence.uncategorized_file = await televerserPreuve(compte, p.fichier.nom, p.fichier.type, p.fichier.donnees, `Ton fichier « ${p.fichier.nom} »`)
+        if (factureUrl) evidence.receipt = await televerserPreuve(compte, 'facture.pdf', 'application/pdf', await lirePdfR2(factureUrl), 'La facture')
+        if (preuves.contrat) evidence.service_documentation = await televerserPreuve(compte, 'contrat-de-licence.pdf', 'application/pdf', preuves.contrat, 'Le contrat')
 
         await stripe.disputes.update(
           l.stripe_dispute_id,
