@@ -6,7 +6,7 @@ import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import IdentiteSaveButton from './_components/IdentiteSaveButton'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { totalDepense, panierMoyenLicences } from '@/app/dashboard/business/_lib/ltv'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants, montantDepense } from '@/app/dashboard/business/_lib/ltv'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -271,10 +271,12 @@ export default async function FicheClientPage({
   const payees         = commandes.filter(c => c.statut === 'payee')
   const achats         = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT')
   const licencesPayees = payees.filter(c => c.type_commande === 'LICENCE')
-  const nbAchats       = licencesPayees.length
+  const commandesLicences = commandes.filter(c => c.type_commande === 'LICENCE')
+  const nbCommandes    = commandesLicences.length
+  const nbAchats       = nbAchatsPayants(commandesLicences)
   const ltv            = totalDepense(commandes)
-  const panierMoyen    = panierMoyenLicences(commandes.filter(c => c.type_commande === 'LICENCE'))
-  const derniereCmd    = licencesPayees.map(c => c.created_at).sort().at(-1) ?? null
+  const panierMoyen    = panierMoyenLicences(commandesLicences)
+  const derniereCmd    = commandesLicences.filter(c => montantDepense(c) > 0).map(c => c.created_at).sort().at(-1) ?? null
   const moisAboCommandes = commandes.filter(
     c => c.type_commande === 'RENOUVELLEMENT' || c.type_commande === 'CREATION_ABONNEMENT'
   ).length
@@ -491,10 +493,10 @@ export default async function FicheClientPage({
   const prenomDisplay = (client as Record<string, unknown>).surnom as string | null ?? client.prenom
   const nomComplet  = `${prenomDisplay ?? ''} ${client.nom ?? ''}`.trim()
   const initiales   = [client.prenom?.[0], client.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'
-  const statutLabel = statut_abo === 'abonne' ? 'Abonné' : nbAchats > 0 ? 'Client' : 'Lead'
+  const statutLabel = statut_abo === 'abonne' ? 'Abonné' : nbCommandes > 0 ? 'Client' : 'Lead'
   const statutCls   = statut_abo === 'abonne'
     ? 'bg-green-500/20 text-green-400'
-    : nbAchats > 0 ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-700 text-gray-400'
+    : nbCommandes > 0 ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-700 text-gray-400'
 
   const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtDate    = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: tz })
@@ -595,15 +597,20 @@ export default async function FicheClientPage({
           </div>
 
           {/* KPIs */}
-          <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-800">
+          <div className="grid grid-cols-5 gap-4 pt-4 border-t border-gray-800">
             <div>
               <p className="text-xs text-gray-500 mb-1">LTV</p>
               <p className="text-2xl font-black">{fmt(ltv)}</p>
               <p className="text-[10px] text-gray-600 mt-0.5">Total dépensé par le client</p>
             </div>
             <div>
+              <p className="text-xs text-gray-500 mb-1">Commandes</p>
+              <p className="text-2xl font-black">{nbCommandes}</p>
+            </div>
+            <div>
               <p className="text-xs text-gray-500 mb-1">Achats</p>
               <p className="text-2xl font-black">{nbAchats}</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">Commandes payantes</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Panier moyen</p>

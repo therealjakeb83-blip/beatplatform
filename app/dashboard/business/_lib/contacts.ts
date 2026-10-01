@@ -4,7 +4,7 @@ import {
   computeScoreRF, computeScoreChaleur,
   type ContactFiltre, type CatalogOptions,
 } from './segments'
-import { totalDepense, panierMoyenLicences } from '@/app/dashboard/business/_lib/ltv'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
@@ -176,7 +176,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       const lead         = leadMap.get(c.id)
 
       const licenceCmds = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
-      const nbAchats    = licenceCmds.length
+      const nbAchats    = nbAchatsPayants(licenceCmds)
       const ltv         = totalDepense(cmds)
       const panierMoyen = panierMoyenLicences(licenceCmds)
       const dernierAchat = licenceCmds.length
@@ -189,7 +189,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       let statut: ContactFiltre['statut']
       if (abo && (abo.statut === 'actif' || abo.statut === 'impaye')) statut = 'abonne'
       else if (abo && abo.statut === 'annule') statut = 'ancien'
-      else if (nbAchats > 0) statut = 'client'
+      else if (licenceCmds.length > 0) statut = 'client'
       else statut = 'lead'
 
       const langueEffective: 'FR' | 'EN' = ((c as Record<string, unknown>).langue as 'FR' | 'EN' | null)

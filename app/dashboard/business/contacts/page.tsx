@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import ContactsClient, { ContactRow } from './_components/ContactsClient'
 import type { LeadRow } from './_components/LeadsView'
 import type { NewsletterRow } from './_components/NewsletterView'
-import { totalDepense, panierMoyenLicences } from '@/app/dashboard/business/_lib/ltv'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -320,7 +320,7 @@ export default async function ContactsPage({
     const lead     = leadParClient.get(c.id)
 
     const licenceCmds = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
-    const nbAchats    = licenceCmds.length
+    const nbAchats    = nbAchatsPayants(licenceCmds)
 
     let statut: ContactRow['statut']
     let statutAboDetail: ContactRow['statut_abo_detail'] = null
@@ -330,7 +330,7 @@ export default async function ContactsPage({
     } else if (abo && abo.statut === 'annule') {
       statut = 'ancien'
       statutAboDetail = 'ancien'
-    } else if (nbAchats > 0) {
+    } else if (licenceCmds.length > 0) {
       statut = 'client'
     } else {
       statut = 'lead'

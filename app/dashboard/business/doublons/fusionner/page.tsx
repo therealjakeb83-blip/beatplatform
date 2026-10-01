@@ -63,7 +63,7 @@ export default async function FusionnerPage({
   for (const cmd of commandes) {
     const id = cmd.client_id as string
     ltvMap.set(id, (ltvMap.get(id) ?? 0) + montantDepense(cmd))
-    if (cmd.type_commande === 'LICENCE') achatsMap.set(id, (achatsMap.get(id) ?? 0) + 1)
+    if (cmd.type_commande === 'LICENCE' && montantDepense(cmd) > 0) achatsMap.set(id, (achatsMap.get(id) ?? 0) + 1)
   }
 
   function enrichir(c: NonNullable<typeof raw_conserve>) {

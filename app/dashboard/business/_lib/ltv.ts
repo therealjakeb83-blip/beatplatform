@@ -27,6 +27,13 @@ export function totalDepense(commandes: CommandeDepense[]): number {
 
 // Panier moyen = dépense moyenne par achat de licence qui a coûté quelque
 // chose au client (un achat remboursé en entier ou offert n'en est pas un).
+// Achats = commandes de licences PAYANTES (le client a réellement dépensé
+// quelque chose) ; à distinguer du nombre de commandes, qui compte aussi les
+// commandes offertes, remboursées en entier ou annulées (décision de Jake).
+export function nbAchatsPayants(licences: CommandeDepense[]): number {
+  return licences.filter(c => centsDepenses(c) > 0).length
+}
+
 export function panierMoyenLicences(licences: CommandeDepense[]): number | null {
   const avecDepense = licences.filter(c => centsDepenses(c) > 0)
   return avecDepense.length ? Math.round(totalDepense(avecDepense) * 100 / avecDepense.length) / 100 : null

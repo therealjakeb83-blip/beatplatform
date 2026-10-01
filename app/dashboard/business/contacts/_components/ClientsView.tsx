@@ -268,7 +268,7 @@ export default function ClientsView({
           <div className="grid grid-cols-3 gap-6 pt-5 border-t border-gray-800">
             {[
               { label: 'LTV moyenne',    value: fmt(ltvMoy),    sub: 'par client'   },
-              { label: 'Licences moy.',  value: commandesMoy.toFixed(1),    sub: 'par client'   },
+              { label: 'Achats moy.',  value: commandesMoy.toFixed(1),    sub: 'par client'   },
               { label: 'Panier moyen',   value: fmt(panierMoy), sub: 'par commande' },
             ].map(({ label, value, sub }) => (
               <div key={label}>

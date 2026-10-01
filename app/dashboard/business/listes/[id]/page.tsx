@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import ListeDetailClient, { type MembreRow, type ContactLight } from './_components/ListeDetailClient'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -103,11 +104,11 @@ export default async function ListeDetailPage({
     membreIds.length > 0
       ? supabase
           .from('commandes')
-          .select('client_id, prix_paye, type_commande, statut, created_at')
+          .select('client_id, prix_paye, type_commande, statut, montant_rembourse_cents, created_at')
           .eq('beatmaker_id', beatmakerId)
           .in('client_id', membreIds)
           .not('client_id', 'is', null)
-      : Promise.resolve({ data: [] as { client_id: unknown; prix_paye: number; type_commande: string | null; statut: string; created_at: string }[] }),
+      : Promise.resolve({ data: [] as { client_id: unknown; prix_paye: number; type_commande: string | null; statut: string; montant_rembourse_cents: number; created_at: string }[] }),
     membreIds.length > 0
       ? supabase
           .from('abonnements_boutique')
@@ -160,10 +161,9 @@ export default async function ListeDetailPage({
     .map(c => {
       const raw      = c as Record<string, unknown>
       const cmds     = cmdsParClient.get(c.id) ?? []
-      const payees   = cmds.filter(cmd => cmd.statut === 'payee')
-      const ltv      = payees.reduce((s, cmd) => s + (cmd.prix_paye ?? 0), 0)
+      const ltv      = totalDepense(cmds)
       const licences = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
-      const nb_achats = licences.length
+      const nb_achats = nbAchatsPayants(licences)
       const dernierAchat = licences.length
         ? new Date(Math.max(...licences.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
         : null
@@ -199,7 +199,7 @@ export default async function ListeDetailPage({
         statut_abo_detail:    aboStatut ?? null,
         nb_achats,
         ltv,
-        panier_moyen:         nb_achats > 0 ? ltv / nb_achats : 0,
+        panier_moyen:         panierMoyenLicences(licences) ?? 0,
         dernier_achat_iso:    dernierAchat,
         premiere_contact_iso: premiereContactISO,
         dernier_contact_iso:  dernierContactISO,
