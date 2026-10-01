@@ -28,7 +28,7 @@ function scoreRF(nb_achats: number, dernier_achat_iso: string | null): { label: 
 
 function fmt(euros: number | null): string {
   if (euros === null) return '—'
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(euros)
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(euros)
 }
 
 function topOf(vals: (string | null)[]): { value: string; count: number; total: number } {
@@ -267,9 +267,9 @@ export default function ClientsView({
           </div>
           <div className="grid grid-cols-3 gap-6 pt-5 border-t border-gray-800">
             {[
-              { label: 'LTV moyenne',    value: fmt(Math.round(ltvMoy)),    sub: 'par client'   },
+              { label: 'LTV moyenne',    value: fmt(ltvMoy),    sub: 'par client'   },
               { label: 'Licences moy.',  value: commandesMoy.toFixed(1),    sub: 'par client'   },
-              { label: 'Panier moyen',   value: fmt(Math.round(panierMoy)), sub: 'par commande' },
+              { label: 'Panier moyen',   value: fmt(panierMoy), sub: 'par commande' },
             ].map(({ label, value, sub }) => (
               <div key={label}>
                 <p className="text-xs text-gray-500 mb-1">{label}</p>

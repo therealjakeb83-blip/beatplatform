@@ -29,5 +29,5 @@ export function totalDepense(commandes: CommandeDepense[]): number {
 // chose au client (un achat remboursé en entier ou offert n'en est pas un).
 export function panierMoyenLicences(licences: CommandeDepense[]): number | null {
   const avecDepense = licences.filter(c => centsDepenses(c) > 0)
-  return avecDepense.length ? Math.round(totalDepense(avecDepense) / avecDepense.length) : null
+  return avecDepense.length ? Math.round(totalDepense(avecDepense) * 100 / avecDepense.length) / 100 : null
 }

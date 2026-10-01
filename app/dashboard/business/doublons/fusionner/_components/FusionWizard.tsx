@@ -64,8 +64,8 @@ function Avatar({ client, badge }: { client: ClientInfo; badge: string }) {
   )
 }
 
-function formatLtv(cents: number) {
-  return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
+function formatLtv(euros: number) {
+  return euros.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
 
 export default function FusionWizard({

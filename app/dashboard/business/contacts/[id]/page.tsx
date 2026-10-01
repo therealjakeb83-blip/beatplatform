@@ -496,7 +496,7 @@ export default async function FicheClientPage({
     ? 'bg-green-500/20 text-green-400'
     : nbAchats > 0 ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-700 text-gray-400'
 
-  const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtDate    = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: tz })
   const fmtDateRel = (iso: string | null) => {
     if (!iso) return '–'

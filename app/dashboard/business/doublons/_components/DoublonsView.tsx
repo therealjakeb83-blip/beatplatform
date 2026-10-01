@@ -59,8 +59,8 @@ function Avatar({ client }: { client: ClientData }) {
   )
 }
 
-function formatLtv(cents: number): string {
-  return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+function formatLtv(euros: number): string {
+  return euros.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
 
 export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) {
