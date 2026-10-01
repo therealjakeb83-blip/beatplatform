@@ -74,6 +74,22 @@ export default async function MonAbonnementPage({
 
   const abo = aboQuery
 
+  if (!abo) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center px-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-white mb-3">Aucun abonnement</h1>
+          <p className="text-gray-400 text-sm mb-6">
+            Tu n&apos;as pas d&apos;abonnement à la boutique de {beatmaker.nom_artiste} avec l&apos;adresse {emailAbonne}.
+          </p>
+          <Link href={`/${slug}/abonnement`} className="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]">
+            S&apos;abonner
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   const prixAffiche = beatmaker.abo_prix ? (beatmaker.abo_prix / 100).toFixed(2).replace('.', ',') : null
 
   const estActif = abo?.statut === 'actif'

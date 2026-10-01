@@ -1,6 +1,8 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
+import { resoudreClientId } from '@/lib/pricing'
+import { normaliserEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
@@ -26,11 +28,19 @@ export async function POST(request: Request) {
 
   const origin = request.headers.get('origin') ?? 'http://localhost:3000'
 
+  // Un beatmaker connecté n'a pas de fiche clients : son id ne peut pas servir
+  // de client_id (clé étrangère refusée → abonnement payé jamais enregistré,
+  // bug du 2026-09-28). Il est alors rattaché par l'email de son compte.
+  const clientId = await resoudreClientId(supabase, user)
+  const emailCompte = user?.email ? normaliserEmail(user.email) : null
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [{ price: beatmaker.stripe_price_id, quantity: 1 }],
     billing_address_collection: 'required',
+    // Le compte connecté prime : son email est imposé chez Stripe, jamais redemandé.
+    ...(emailCompte ? { customer_email: emailCompte } : {}),
     subscription_data: {
       metadata: { beatmaker_id: beatmaker.id, slug },
     },
@@ -38,7 +48,7 @@ export async function POST(request: Request) {
     cancel_url: `${origin}/${slug}/abonnement`,
     metadata: {
       beatmaker_id: beatmaker.id, slug, type: 'abonnement_boutique',
-      client_id: user?.id ?? '', client_email: user?.email ?? '',
+      client_id: clientId ?? '', client_email: emailCompte ?? '',
       source_marketing: source_marketing ?? 'direct',
     },
   }

@@ -16,6 +16,11 @@ import { completerCommande } from '@/lib/completion-commande'
 
 export const runtime = 'nodejs'
 
+// Erreur pour laquelle on répond 500 : Stripe renvoie alors l'événement plus
+// tard (abonnement payé qu'on n'a pas encore pu enregistrer — bug du
+// 2026-09-28, 3 abonnements perdus sans bruit avant ce filet).
+class EvenementARejouer extends Error {}
+
 export async function POST(request: Request) {
   const body = await request.text()
   const headersList = await headers()
@@ -128,6 +133,8 @@ export async function POST(request: Request) {
     const erreur = err instanceof Error ? err.message : String(err)
     console.error('[webhook] Erreur traitement event', event.type, ':', erreur)
     await logAdmin.from('stripe_events').update({ statut: 'echoue', erreur, traite_at: new Date().toISOString() }).eq('stripe_event_id', event.id)
+    // Abonnement payé pas encore enregistrable : Stripe renverra l'événement.
+    if (err instanceof EvenementARejouer) return NextResponse.json({ erreur }, { status: 500 })
     // 200 quand même : la signature est valide, l'erreur vient de notre
     // traitement — répondre en erreur ferait retenter Stripe indéfiniment
     // le même event sans que le rapport /dashboard/admin/stripe-events ne
@@ -371,10 +378,9 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
     }
   }
 
-  const clientId = meta.client_id || await resoudreOuCreerClient(supabase, email, nom)
+  let clientId = meta.client_id || await resoudreOuCreerClient(supabase, email, nom)
   if (!clientId) {
-    console.error('[webhook] Impossible de résoudre le client pour l\'abonnement, session:', session.id)
-    return
+    throw new EvenementARejouer(`Client introuvable pour l'abonnement, session ${session.id}`)
   }
 
   const { data: beatmaker } = await supabase
@@ -386,9 +392,8 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
   const dateDebut = new Date().toISOString()
   const dateFin = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  const { data: abonnement, error } = await supabase.from('abonnements_boutique').insert({
+  const ligne = {
     beatmaker_id: meta.beatmaker_id,
-    client_id: clientId,
     acheteur_email: email,
     acheteur_nom: nom,
     plan: 'standard',
@@ -408,14 +413,28 @@ async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
     date_debut: dateDebut,
     date_fin: dateFin,
     source_marketing: meta.source_marketing ?? 'direct',
-  }).select('id').single()
-
-  if (error) {
-    console.error('[webhook] Erreur insert abonnement_boutique:', JSON.stringify(error))
-    return
   }
 
-  console.log('[webhook] Abonnement créé:', abonnement?.id)
+  let { data: abonnement, error } = await supabase.from('abonnements_boutique')
+    .insert({ ...ligne, client_id: clientId }).select('id').single()
+
+  // Fiche visée disparue entre-temps (fiche invitée fusionnée dans le vrai
+  // compte par /api/stripe/abonnement/succes) : la fiche à jour se retrouve
+  // par email.
+  if (error?.code === '23503' && email) {
+    const clientIdParEmail = await resoudreOuCreerClient(supabase, email, nom)
+    if (clientIdParEmail) {
+      clientId = clientIdParEmail
+      ;({ data: abonnement, error } = await supabase.from('abonnements_boutique')
+        .insert({ ...ligne, client_id: clientId }).select('id').single())
+    }
+  }
+
+  if (error || !abonnement) {
+    throw new EvenementARejouer(`Insert abonnement_boutique refusé (${subscriptionId}) : ${JSON.stringify(error)}`)
+  }
+
+  console.log('[webhook] Abonnement créé:', abonnement.id)
 
   if (email) {
     await confirmationAbonnement({
@@ -660,6 +679,11 @@ async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
   const abo = await attendreAbonnement(supabase, subscriptionId)
 
   if (!abo) {
+    // 1er paiement arrivé avant l'enregistrement de l'abonnement : Stripe
+    // renverra l'événement, la commande et la facture se créeront alors.
+    if (billing === 'subscription_create') {
+      throw new EvenementARejouer(`Abonnement boutique pas encore enregistré pour le 1er paiement : ${subscriptionId}`)
+    }
     console.log('[webhook] invoice.payment_succeeded — abonnement boutique non trouvé:', subscriptionId)
     return
   }
