@@ -242,7 +242,7 @@ export default async function TelechargerPage({
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 mb-6 text-center">
           <p className="text-gray-400 text-xs">
             {licenceAnnulee
-              ? "L'accès aux fichiers est fermé et la licence n'est plus valable. Tes factures et avoirs restent disponibles ci-dessous."
+              ? `L'accès aux fichiers est fermé et la licence n'est plus valable.${factureSigneeUrl || facturesTranches.length || avoirs.length ? ' Tes factures et avoirs restent disponibles ci-dessous.' : ''}`
               : 'Tu peux revenir sur cette page à tout moment pour télécharger tes fichiers.'}
           </p>
         </div>
