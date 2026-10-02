@@ -11,9 +11,9 @@ import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { completerCommande } from '@/lib/completion-commande'
 
 // Abonnements boutique (artiste → beatmaker) : traitement des événements
-// Stripe, partagé entre le webhook plateforme (anciens abonnements créés sur
-// la plateforme, avant le paiement direct) et le webhook des comptes vendeurs
-// (abonnements en paiement direct, lot 1 du 2026-10-01).
+// Stripe reçus par le webhook des comptes vendeurs (paiement direct, lot 1 du
+// 2026-10-01). Les anciens abonnements créés sur la plateforme ont tous été
+// arrêtés au lot 2 (2026-10-02).
 
 // Erreur pour laquelle le webhook répond 500 : Stripe renvoie alors
 // l'événement plus tard (abonnement payé qu'on n'a pas encore pu enregistrer —
@@ -80,7 +80,7 @@ export async function traiterMajAbonnementBoutique(subscription: Stripe.Subscrip
   // à un timestamp choisi explicitement). La vraie date de fin est
   // current_period_end, déplacé sur l'item dans cette version de l'API (même
   // restructuration que pour invoice.parent.subscription_details, voir
-  // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
+  // abonnementDeLaFacture) — un seul item par abonnement dans ce modèle.
   const finPeriode = subscription.items.data[0]?.current_period_end
   // Abonnement terminé : sa vraie fin est la date d'annulation (immédiate pour
   // un impayé coupé), même si cet événement arrive après la suppression.
@@ -225,8 +225,9 @@ export type AcheteurCommande = {
 // Commande (création ou renouvellement) + facture + compteurs de fidélité
 // pour une facture d'abonnement payée. Idempotent sur l'id de facture Stripe.
 // Pas de facture pour un mois à 0 € (code promo 100 %) : aucune opération à
-// facturer, même règle qu'une licence offerte.
-export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: AboPourPaiement, invoice: Stripe.Invoice, acheteur: AcheteurCommande = {}) {
+// facturer, même règle qu'une licence offerte. Renvoie false si la commande
+// existait déjà (événement rejoué).
+export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: AboPourPaiement, invoice: Stripe.Invoice, acheteur: AcheteurCommande = {}): Promise<boolean> {
   const typeCommande = invoice.billing_reason === 'subscription_create' ? 'CREATION_ABONNEMENT' : 'RENOUVELLEMENT'
   const montantCents = invoice.amount_paid ?? 0
   const prixPaye = montantCents / 100
@@ -242,7 +243,7 @@ export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: Abo
     .maybeSingle()
   if (existing) {
     console.log('[abonnement] Paiement abo déjà enregistré:', invoiceId)
-    return
+    return false
   }
 
   const { data: commandeAbo, error } = await supabase.from('commandes').insert({
@@ -340,6 +341,7 @@ export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: Abo
     .eq('id', abo.id)
 
   console.log('[abonnement]', typeCommande, '— commande créée, mensualites_payees incrémenté pour abo', abo.id)
+  return true
 }
 
 // Échec de renouvellement d'un abonnement boutique, tracé dans
@@ -460,10 +462,6 @@ async function enregistrerAbonnementDirect(
   }
   console.log('[abonnement] Abonnement direct créé:', abonnement.id, 'sur', stripeAccountId)
 
-  if (acheteur.email) {
-    await confirmationAbonnement({ to: acheteur.email, beatmakerId: meta.beatmaker_id, abonnementId: abonnement.id, clientId })
-      .catch(err => console.error('[abonnement] Erreur envoi email confirmation abonnement:', err))
-  }
   await envoyerNouvelAbonnement({ beatmakerId: meta.beatmaker_id, periode: 'mensuel', prixCents })
     .catch(err => console.error('[abonnement] Erreur envoi email nouvel abonnement:', err))
 
@@ -512,7 +510,7 @@ export async function traiterFacturePayeeCompteVendeur(invoice: Stripe.Invoice, 
   const supabase = createAdminClient()
   const abo = await enregistrerAbonnementDirect(supabase, invoice, subscriptionId, meta, stripeAccountId)
   const acheteur = acheteurDepuisMetadata(meta)
-  await enregistrerPaiementAbonnement(supabase, abo, invoice, {
+  const commandeCreee = await enregistrerPaiementAbonnement(supabase, abo, invoice, {
     email: acheteur.email,
     nom: acheteur.nom,
     adresse: acheteur.adresse,
@@ -521,6 +519,14 @@ export async function traiterFacturePayeeCompteVendeur(invoice: Stripe.Invoice, 
     numeroTva: acheteur.numeroTva,
     codePromo: acheteur.codePromo,
   })
+
+  // Confirmation envoyée APRÈS la commande et sa facture (lot 2 du
+  // 2026-10-02) : avant, elle partait sans le lien de la facture, voire avec
+  // celle d'un ancien abonnement du même client.
+  if (commandeCreee && invoice.billing_reason === 'subscription_create' && acheteur.email) {
+    await confirmationAbonnement({ to: acheteur.email, beatmakerId: abo.beatmaker_id, abonnementId: abo.id, clientId: abo.client_id })
+      .catch(err => console.error('[abonnement] Erreur envoi email confirmation abonnement:', err))
+  }
 }
 
 export async function traiterEchecFactureCompteVendeur(invoice: Stripe.Invoice) {

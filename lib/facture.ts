@@ -354,7 +354,7 @@ async function chargerFactureCommande(
 
   if (!beatmaker) throw new Error(`Beatmaker introuvable pour la commande: ${commandeId}`)
 
-  // Les commandes d'abonnement (voir traiterPaiementAbonnement) n'enregistrent
+  // Les commandes d'abonnement (voir enregistrerPaiementAbonnement) n'enregistrent
   // jamais acheteur_nom/email/adresse directement, seulement client_id —
   // repli sur la fiche client dans ce cas, pour ne jamais laisser le bloc
   // "Client" vide sur la facture.
@@ -377,7 +377,7 @@ async function chargerFactureCommande(
 
   type LigneRow = { prix_paye: number; beats: { titre: string } | null; licences: { nom: string } | null }
   // Une commande d'abonnement (création/renouvellement, voir
-  // traiterPaiementAbonnement dans app/api/stripe/webhook/route.ts) n'a
+  // enregistrerPaiementAbonnement dans lib/abonnement-boutique-webhook.ts) n'a
   // jamais de commande_lignes — le prix est directement sur la commande.
   // Repli sur une ligne unique dans ce cas, plutôt qu'une facture vide.
   const LABEL_TYPE_COMMANDE: Record<string, string> = {

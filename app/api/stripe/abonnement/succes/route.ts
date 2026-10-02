@@ -106,8 +106,8 @@ async function connecterAutomatiquementApresAbonnement(
   const prenom = parts[0] || undefined
   const nomFamille = parts.slice(1).join(' ') || undefined
 
-  // Attendre que le webhook Stripe (checkout.session.completed →
-  // traiterAbonnementCree) ait eu le temps de créer sa fiche "invitée" AVANT
+  // Attendre que le webhook Stripe (webhook des comptes vendeurs →
+  // enregistrerAbonnementDirect) ait eu le temps de créer sa fiche "invitée" AVANT
   // de créer le compte ici — sinon les deux tentent de créer une fiche
   // clients pour le même email en même temps (course), l'une des deux
   // échoue en doublon, et l'abonnement déjà créé peut se retrouver
@@ -139,7 +139,7 @@ async function connecterAutomatiquementApresAbonnement(
   // existe déjà (résiste aussi à l'ordre inverse : si le webhook n'est
   // toujours pas passé après l'attente ci-dessus, lierCompteClient crée
   // directement la bonne fiche, que le webhook réutilisera ensuite par
-  // email — voir traiterAbonnementCree/resoudreOuCreerClient).
+  // email — voir enregistrerAbonnementDirect/resoudreOuCreerClient).
   await lierCompteClient(created.user.id, email, nomFamille, prenom, undefined, slug)
 
   // Lien de récupération Supabase, vérifié côté navigateur par

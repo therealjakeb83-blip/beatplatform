@@ -1,13 +1,11 @@
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { confirmationAbonnement, envoyerNouvelAbonnement, envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
-import { automatisationActive } from '@/lib/automatisations'
-import { resoudreClientParEmail, resoudreOuCreerClient, traiterPaiementExpress } from '@/lib/webhook-paiement'
+import { envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
+import { resoudreClientParEmail, traiterPaiementExpress } from '@/lib/webhook-paiement'
 import { traiterMajCompteOperationnel } from '@/lib/pret-a-vendre-suivi'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
-import { EvenementARejouer, enregistrerPaiementAbonnement, tracerEchecRenouvellementBoutique, traiterAnnulationAbonnementBoutique, traiterMajAbonnementBoutique } from '@/lib/abonnement-boutique-webhook'
 
 export const runtime = 'nodejs'
 
@@ -49,26 +47,20 @@ export async function POST(request: Request) {
     // une Checkout Session côté plateforme.
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
-      if (session.mode === 'subscription') {
-        if (session.metadata?.type === 'abonnement_plateforme') {
-          await traiterAbonnementPlateformeCree(session)
-        } else {
-          await traiterAbonnementCree(session)
-        }
+      if (session.mode === 'subscription' && session.metadata?.type === 'abonnement_plateforme') {
+        await traiterAbonnementPlateformeCree(session)
       }
     }
 
-    // Les events invoice/subscription n'ont pas de metadata.type directement
-    // dessus (contrairement à checkout.session.completed) — on cherche
-    // d'abord côté abonnements_plateforme (Étape 8b), sinon on retombe sur le
-    // traitement boutique existant. Les deux tables ont des
-    // stripe_subscription_id distincts, jamais de collision possible.
+    // Seuls les abonnements plateforme (beatmaker → My Producer, Étape 8b)
+    // vivent encore sur ce compte : les abonnements boutique sont chez le
+    // beatmaker depuis le paiement direct (2026-10-01) et passent par
+    // /api/stripe/webhook-connect. Les events invoice n'ont pas de
+    // metadata.type : l'abonnement plateforme est reconnu en base.
     if (event.type === 'invoice.payment_succeeded') {
       const invoice = event.data.object as Stripe.Invoice
       if (await estAbonnementPlateforme(invoice)) {
         await traiterPaiementAbonnementPlateforme(invoice)
-      } else {
-        await traiterPaiementAbonnement(invoice)
       }
     }
 
@@ -80,8 +72,6 @@ export async function POST(request: Request) {
       const subscription = event.data.object as Stripe.Subscription
       if (subscription.metadata?.type === 'abonnement_plateforme') {
         await traiterMajAbonnementPlateforme(subscription)
-      } else {
-        await traiterMajAbonnementBoutique(subscription)
       }
     }
 
@@ -89,8 +79,6 @@ export async function POST(request: Request) {
       const subscription = event.data.object as Stripe.Subscription
       if (subscription.metadata?.type === 'abonnement_plateforme') {
         await traiterAnnulationAbonnementPlateforme(subscription)
-      } else {
-        await traiterAnnulationAbonnementBoutique(subscription)
       }
     }
 
@@ -123,8 +111,6 @@ export async function POST(request: Request) {
     const erreur = err instanceof Error ? err.message : String(err)
     console.error('[webhook] Erreur traitement event', event.type, ':', erreur)
     await logAdmin.from('stripe_events').update({ statut: 'echoue', erreur, traite_at: new Date().toISOString() }).eq('stripe_event_id', event.id)
-    // Abonnement payé pas encore enregistrable : Stripe renverra l'événement.
-    if (err instanceof EvenementARejouer) return NextResponse.json({ erreur }, { status: 500 })
     // 200 quand même : la signature est valide, l'erreur vient de notre
     // traitement — répondre en erreur ferait retenter Stripe indéfiniment
     // le même event sans que le rapport /dashboard/admin/stripe-events ne
@@ -168,128 +154,10 @@ async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
   if (error) console.error('[webhook] Erreur échec tentative_paiement:', JSON.stringify(error))
 }
 
-// Crée la ligne abonnements_boutique directement depuis le webhook plutôt que
-// depuis la redirection navigateur (/api/stripe/abonnement/succes) : le webhook
-// arrive de serveur à serveur, quasi instantanément, alors que la redirection
-// dépend du navigateur du client et n'est pas garantie (onglet fermé, connexion
-// lente...). Sans ça, invoice.payment_succeeded peut arriver avant que la ligne
-// existe et abandonner silencieusement (découvert en testant le 2026-07-06).
-async function traiterAbonnementCree(session: Stripe.Checkout.Session) {
-  const meta = session.metadata
-  if (!meta?.beatmaker_id) return
-
-  // Normalisé en minuscule — stocké tel quel dans acheteur_email, sinon les
-  // comparaisons ultérieures (.eq('acheteur_email', ...)) ratent selon la
-  // casse tapée au checkout (bug découvert en testant Phase 5.9, 2026-07-16).
-  const email = session.customer_details?.email?.toLowerCase().trim() ?? null
-  const nom = session.customer_details?.name ?? null
-  const subscriptionId = typeof session.subscription === 'string'
-    ? session.subscription
-    : session.subscription?.id ?? null
-
-  const supabase = createAdminClient()
-
-  // Idempotence : si le webhook est rejoué (ou si la course inverse se produit
-  // un jour), ne pas créer une 2e ligne pour le même abonnement
-  if (subscriptionId) {
-    const { data: existant } = await supabase
-      .from('abonnements_boutique')
-      .select('id')
-      .eq('stripe_subscription_id', subscriptionId)
-      .maybeSingle()
-    if (existant) {
-      console.log('[webhook] Abonnement déjà créé:', subscriptionId)
-      return
-    }
-  }
-
-  let clientId = meta.client_id || await resoudreOuCreerClient(supabase, email, nom)
-  if (!clientId) {
-    throw new EvenementARejouer(`Client introuvable pour l'abonnement, session ${session.id}`)
-  }
-
-  const { data: beatmaker } = await supabase
-    .from('beatmakers')
-    .select('abo_prix, tva_active, tva_taux')
-    .eq('id', meta.beatmaker_id)
-    .single()
-
-  const dateDebut = new Date().toISOString()
-  const dateFin = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-
-  const ligne = {
-    beatmaker_id: meta.beatmaker_id,
-    acheteur_email: email,
-    acheteur_nom: nom,
-    plan: 'standard',
-    periode: 'mensuel',
-    prix: beatmaker?.abo_prix ?? 0,
-    // TVA toujours absorbée (jamais ajoutée) — figée pour cet abonné à cet
-    // instant, jamais recalculée même si le beatmaker change son réglage
-    // TVA ensuite. Sert uniquement à extraire HT/TVA du prix déjà payé.
-    tva_taux: beatmaker?.tva_active && beatmaker?.tva_taux ? beatmaker.tva_taux : null,
-    devise: 'EUR',
-    statut: 'actif',
-    methode_paiement: 'stripe',
-    stripe_subscription_id: subscriptionId,
-    stripe_customer_id: typeof session.customer === 'string' ? session.customer : null,
-    en_essai: false,
-    essai_fin_le: null,
-    date_debut: dateDebut,
-    date_fin: dateFin,
-    source_marketing: meta.source_marketing ?? 'direct',
-  }
-
-  let { data: abonnement, error } = await supabase.from('abonnements_boutique')
-    .insert({ ...ligne, client_id: clientId }).select('id').single()
-
-  // Fiche visée disparue entre-temps (fiche invitée fusionnée dans le vrai
-  // compte par /api/stripe/abonnement/succes) : la fiche à jour se retrouve
-  // par email.
-  if (error?.code === '23503' && email) {
-    const clientIdParEmail = await resoudreOuCreerClient(supabase, email, nom)
-    if (clientIdParEmail) {
-      clientId = clientIdParEmail
-      ;({ data: abonnement, error } = await supabase.from('abonnements_boutique')
-        .insert({ ...ligne, client_id: clientId }).select('id').single())
-    }
-  }
-
-  if (error || !abonnement) {
-    throw new EvenementARejouer(`Insert abonnement_boutique refusé (${subscriptionId}) : ${JSON.stringify(error)}`)
-  }
-
-  console.log('[webhook] Abonnement créé:', abonnement.id)
-
-  if (email) {
-    await confirmationAbonnement({
-      to: email,
-      beatmakerId: meta.beatmaker_id,
-      abonnementId: abonnement.id,
-      clientId,
-    }).catch(err => console.error('[webhook] Erreur envoi email confirmation abonnement:', err))
-  }
-
-  // « Nouvelle vente » au beatmaker (Phase 13, lot 3) — nouvel abonnement
-  // seulement, jamais un renouvellement (traiterPaiementAbonnement).
-  await envoyerNouvelAbonnement({ beatmakerId: meta.beatmaker_id, periode: 'mensuel', prixCents: Number(beatmaker?.abo_prix ?? 0) })
-    .catch(err => console.error('[webhook] Erreur envoi email nouvel abonnement:', err))
-
-  if (await automatisationActive(meta.beatmaker_id, 'bienvenue_abonnement')) {
-    const { error: evenementError } = await supabase.from('automatisation_evenements').insert({
-      beatmaker_id: meta.beatmaker_id,
-      client_id: clientId,
-      type: 'bienvenue_abonnement',
-      reference_id: abonnement.id,
-    })
-    if (evenementError) console.error('[webhook] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
-  }
-}
-
 // ============================================================
 // Étape 8b — Abonnement plateforme (beatmaker → My Producer)
 // ============================================================
-// Même patron que les abonnements boutique ci-dessus, en plus simple : pas
+// Pas
 // de Stripe Connect (paiement direct sur le compte principal, c'est le
 // beatmaker qui paie), pas d'automatisations/emails pour cette V1 minimale
 // (cadrage 2026-07-24). Le blocage d'accès dashboard est volontairement
@@ -460,62 +328,6 @@ async function traiterPaiementAbonnementPlateforme(invoice: Stripe.Invoice) {
   else console.log('[webhook] Paiement abonnement plateforme confirmé:', subscriptionId)
 }
 
-type AboLookup = { id: string; client_id: string | null; beatmaker_id: string; prix: number; tva_taux: number | null; source_marketing: string | null }
-
-async function attendreAbonnement(
-  supabase: ReturnType<typeof createAdminClient>,
-  subscriptionId: string,
-  tentatives = 5,
-  delaiMs = 1500,
-): Promise<AboLookup | null> {
-  for (let i = 0; i < tentatives; i++) {
-    const { data: abo } = await supabase
-      .from('abonnements_boutique')
-      .select('id, client_id, beatmaker_id, prix, tva_taux, source_marketing')
-      .eq('stripe_subscription_id', subscriptionId)
-      .maybeSingle()
-    if (abo) return abo
-    if (i < tentatives - 1) await new Promise(r => setTimeout(r, delaiMs))
-  }
-  return null
-}
-
-async function traiterPaiementAbonnement(invoice: Stripe.Invoice) {
-  // Uniquement les paiements de création ou de renouvellement d'abonnement.
-  // subscription_update couvre notamment la fin d'essai forcée (trial_end
-  // déclenche une facture immédiate avec cette raison, pas subscription_cycle)
-  // et toute autre modification d'abonnement générant un vrai paiement.
-  const billing = invoice.billing_reason
-  if (billing !== 'subscription_create' && billing !== 'subscription_cycle' && billing !== 'subscription_update') return
-
-  // Stripe v22 : l'abonnement est dans invoice.parent.subscription_details.subscription
-  const subRaw = invoice.parent?.subscription_details?.subscription
-  const subscriptionId = typeof subRaw === 'string' ? subRaw : subRaw?.id ?? null
-  if (!subscriptionId) return
-
-  const supabase = createAdminClient()
-
-  // Pour une toute nouvelle souscription, invoice.payment_succeeded arrive en
-  // fait AVANT checkout.session.completed (celui qui crée la ligne
-  // abonnements_boutique) — pas après, contrairement à l'ordre intuitif.
-  // Quelques nouvelles tentatives espacées laissent le temps à cette ligne
-  // d'apparaître plutôt que d'abandonner immédiatement (confirmé en testant
-  // le 2026-07-06 : l'écart observé était de l'ordre d'1 seconde).
-  const abo = await attendreAbonnement(supabase, subscriptionId)
-
-  if (!abo) {
-    // 1er paiement arrivé avant l'enregistrement de l'abonnement : Stripe
-    // renverra l'événement, la commande et la facture se créeront alors.
-    if (billing === 'subscription_create') {
-      throw new EvenementARejouer(`Abonnement boutique pas encore enregistré pour le 1er paiement : ${subscriptionId}`)
-    }
-    console.log('[webhook] invoice.payment_succeeded — abonnement boutique non trouvé:', subscriptionId)
-    return
-  }
-
-  await enregistrerPaiementAbonnement(supabase, abo, invoice)
-}
-
 // Trace chaque échec de renouvellement dans tentatives_paiement (rien n'était
 // visible jusqu'ici : pas de commande puisque rien n'a été payé). Une ligne
 // par facture Stripe (idempotent sur stripe_invoice_id) — visible sur la
@@ -531,11 +343,8 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
 
   const supabase = createAdminClient()
 
-  if (await tracerEchecRenouvellementBoutique(supabase, invoice, subscriptionId)) return
-
-  // Pas un abonnement boutique — vérifier l'abonnement plateforme (rang 9
-  // ROADMAP, 2026-08-31) : jusqu'ici aucun échec de paiement de l'abonnement
-  // beatmaker → My Producer n'était tracé, contrairement au côté boutique.
+  // Abonnement plateforme (rang 9 ROADMAP, 2026-08-31) : les échecs des
+  // abonnements boutique sont tracés par /api/stripe/webhook-connect.
   const { data: aboPlateforme } = await supabase
     .from('abonnements_plateforme')
     .select('id, beatmaker_id')
@@ -543,7 +352,7 @@ async function traiterEchecRenouvellementAbonnement(invoice: Stripe.Invoice) {
     .maybeSingle()
 
   if (!aboPlateforme) {
-    console.log('[webhook] invoice.payment_failed — aucun abonnement (boutique ou plateforme) trouvé:', subscriptionId)
+    console.log('[webhook] invoice.payment_failed — aucun abonnement plateforme trouvé:', subscriptionId)
     return
   }
 

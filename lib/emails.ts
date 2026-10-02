@@ -1063,9 +1063,8 @@ export async function confirmationAbonnement({
   if (!branding) return
 
   // Facture de la commande de création d'abonnement — générée par
-  // traiterPaiementAbonnement (app/api/stripe/webhook/route.ts), qui
-  // s'exécute avant ce point (invoice.payment_succeeded arrive avant
-  // checkout.session.completed pour une nouvelle souscription). Pas de
+  // enregistrerPaiementAbonnement (lib/abonnement-boutique-webhook.ts), juste
+  // avant l'envoi de cet email (traiterFacturePayeeCompteVendeur). Pas de
   // commandeId direct disponible ici : recherche par client+beatmaker,
   // la plus récente commande de création d'abonnement.
   const { data: commandeAbo } = abo?.client_id

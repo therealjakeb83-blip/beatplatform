@@ -6,7 +6,7 @@ import type Stripe from 'stripe'
 export const runtime = 'nodejs'
 
 // Étape 8b — Abonnement plateforme (beatmaker → My Producer). Contrairement
-// à /api/stripe/abonnement/checkout (artiste → boutique d'un beatmaker), pas
+// aux abonnements boutique (artiste → beatmaker, payés sur le compte du beatmaker), pas
 // de Stripe Connect ici : le paiement va directement sur le compte principal,
 // c'est le beatmaker lui-même qui paie. Essai 14 jours + carte obligatoire
 // dès l'inscription (comportement par défaut de Checkout avec

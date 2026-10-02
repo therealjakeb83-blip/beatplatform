@@ -13,7 +13,7 @@ export type OngletRecherche = 'boutiques' | 'artistes' | 'commandes'
 
 // Renseigne acheteur_email depuis le client lié quand la commande/l'abonnement
 // ne le porte pas directement — cas des commandes CREATION_ABONNEMENT/
-// RENOUVELLEMENT (traiterPaiementAbonnement dans le webhook Stripe ne
+// RENOUVELLEMENT (anciennes commandes créées par le webhook Stripe sans
 // renseigne jamais acheteur_email, seulement client_id). Découvert en test le
 // 2026-07-24 : la recherche affichait "email inconnu" alors que le client
 // était bien connu via client_id.
