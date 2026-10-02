@@ -82,6 +82,9 @@ export async function traiterMajAbonnementBoutique(subscription: Stripe.Subscrip
   // restructuration que pour invoice.parent.subscription_details, voir
   // traiterPaiementAbonnement) — un seul item par abonnement dans ce modèle.
   const finPeriode = subscription.items.data[0]?.current_period_end
+  // Abonnement terminé : sa vraie fin est la date d'annulation (immédiate pour
+  // un impayé coupé), même si cet événement arrive après la suppression.
+  const finReelle = subscription.status === 'canceled' && subscription.ended_at ? subscription.ended_at : finPeriode
 
   const { error } = await supabase
     .from('abonnements_boutique')
@@ -103,7 +106,7 @@ export async function traiterMajAbonnementBoutique(subscription: Stripe.Subscrip
       // Fin de la période en cours : « Paiement suivant » tant que l'abonné
       // reste, « Date de fin » s'il a churné (lot 2 du 2026-10-01 — restait
       // figée sur la fin du 1er mois).
-      ...(finPeriode ? { date_fin: new Date(finPeriode * 1000).toISOString() } : {}),
+      ...(finReelle ? { date_fin: new Date(finReelle * 1000).toISOString() } : {}),
     })
     .eq('stripe_subscription_id', subscription.id)
 
