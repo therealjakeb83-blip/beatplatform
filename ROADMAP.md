@@ -533,6 +533,8 @@ Cadrage : `memory/project_phase13_grillme_decisions_2026_09_28.md`, section « C
 | **3 — Inscription groupée + Relier les beats** | Action groupée « Inscrire à la newsletter » (confirmation, trace, désinscrits ignorés) ; écran « Relier les beats » (par titre, propositions exactes uniques, valider tout, mémorisation, réversible). |
 | **4 — Autres plateformes** | Assistant guidé d'association de colonnes (détection par contenu, dates ambiguës, devise + nom de plateforme, association mémorisée, empreinte anti-doublons, avertissements de données manquantes). |
 
+**Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
+
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.
 
 ## Légende
