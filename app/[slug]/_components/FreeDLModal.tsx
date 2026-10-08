@@ -41,6 +41,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState<string | null>(null)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [emailEnvoye, setEmailEnvoye] = useState<string | null>(null)
   const [disclaimer, setDisclaimer]   = useState(false)
   // Connecté : déjà inscrit à la newsletter de CETTE boutique ? (null = en cours de vérification)
   const [dejaInscrit, setDejaInscrit] = useState<boolean | null>(null)
@@ -61,6 +62,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
 
   function handleClose() {
     setDownloadUrl(null)
+    setEmailEnvoye(null)
     setError(null)
     setEmail('')
     setPrenom('')
@@ -92,6 +94,12 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
     const data = await res.json()
     if (!res.ok) {
       setError(data.error ?? 'Une erreur est survenue.')
+      setLoading(false)
+      return
+    }
+
+    if (data.emailEnvoye) {
+      setEmailEnvoye(data.email)
       setLoading(false)
       return
     }
@@ -135,7 +143,21 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
           <p className="text-[11px] text-yellow-300/90 leading-relaxed">{DISCLAIMER}</p>
         </div>
 
-        {downloadUrl ? (
+        {emailEnvoye ? (
+          /* Visiteur : lien envoyé par email (confirme l'adresse) */
+          <div className="text-center py-2">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-2xl mx-auto mb-3">
+              ✉
+            </div>
+            <p className="text-green-400 font-semibold text-sm mb-1">Vérifie ta boîte mail</p>
+            <p className="text-xs text-gray-400 mb-1">
+              On t&apos;a envoyé le lien de téléchargement à <span className="text-white">{emailEnvoye}</span>.
+            </p>
+            <p className="text-xs text-gray-500">
+              Clique sur le lien pour confirmer ton email et télécharger le beat (pense à regarder dans les spams).
+            </p>
+          </div>
+        ) : downloadUrl ? (
           /* Success state */
           <div className="text-center py-2">
             <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-2xl mx-auto mb-3">
@@ -278,10 +300,10 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
               disabled={!canSubmit || loading}
               className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
             >
-              {loading ? 'Préparation…' : 'Télécharger gratuitement'}
+              {loading ? 'Envoi…' : 'Recevoir le lien par email'}
             </button>
             <p className="text-[11px] text-gray-600 text-center">
-              Le fichier sera également envoyé à ton adresse email.
+              Le lien de téléchargement te sera envoyé par email.
             </p>
           </form>
         )}

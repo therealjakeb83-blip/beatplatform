@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { r2, R2_BUCKET } from '@/lib/r2'
 import { telechargementGratuit } from '@/lib/emails'
-import { automatisationActive } from '@/lib/automatisations'
-import { inscrireParClient, lireStatutNewsletter } from '@/lib/newsletter'
+import { lireStatutNewsletter } from '@/lib/newsletter'
+import { normaliserEmail } from '@/lib/email'
+import {
+  genererJetonFreeDownload, urlFichierFreeDownload, resoudreClientFreeDownload, enregistrerFreeDownload,
+} from '@/lib/free-download'
 
 export const runtime = 'nodejs'
+
+const MESSAGE_NEWSLETTER = 'Pour télécharger gratuitement, inscris-toi à la newsletter de cette boutique.'
 
 export async function POST(req: Request) {
   const body = await req.json()
@@ -47,129 +49,61 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Fichier non disponible.' }, { status: 404 })
   }
 
-  // 2. Résoudre le client
+  const beatmakerId = beatmaker.id
   const { data: { user } } = await supabase.auth.getUser()
-  let clientId: string
-  let clientEmail: string
 
-  if (user) {
-    // Vérifier que cet user a bien un compte clients (pas un beatmaker)
-    const { data: clientRecord } = await admin
-      .from('clients')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (clientRecord) {
-      clientId    = user.id
-      clientEmail = user.email!
-    } else {
-      // L'user connecté est un beatmaker, pas un client → traiter comme visiteur anonyme
-      const emailNorm = (user.email ?? '').toLowerCase().trim()
-      const { data: existing } = await admin.from('clients').select('id').eq('email', emailNorm).maybeSingle()
-      if (existing) {
-        clientId = existing.id
-      } else {
-        const newId = crypto.randomUUID()
-        const nom   = emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
-        await admin.from('clients').insert({ id: newId, email: emailNorm, nom })
-        clientId = newId
-      }
-      clientEmail = emailNorm
-    }
-  } else {
-    // Non connecté — email + inscription newsletter obligatoires
+  // 2a. Visiteur non connecté : rien n'est enregistré ici. Le lien envoyé par
+  // email confirme l'adresse ; l'inscription et le téléchargement sont
+  // enregistrés au clic (/[slug]/telechargement-gratuit).
+  if (!user) {
     if (newsletterConsent !== true) {
-      return NextResponse.json({ error: 'Pour télécharger gratuitement, inscris-toi à la newsletter de cette boutique.' }, { status: 400 })
+      return NextResponse.json({ error: MESSAGE_NEWSLETTER }, { status: 400 })
     }
-    const emailNorm = (email ?? '').toLowerCase().trim()
+    const emailNorm = normaliserEmail(email ?? '')
     if (!emailNorm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
       return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
     }
 
-    const { data: existing } = await admin
-      .from('clients')
-      .select('id')
-      .eq('email', emailNorm)
-      .maybeSingle()
+    const jeton = genererJetonFreeDownload({
+      beatId, beatmakerId, email: emailNorm,
+      prenom: prenom || null, nom: nom || null, nomArtiste: nomArtiste || null, pays: pays || null,
+    })
+    const lien = `${new URL(req.url).origin}/${slug}/telechargement-gratuit?t=${encodeURIComponent(jeton)}`
 
-    if (existing) {
-      clientId = existing.id
-      const updates: Record<string, unknown> = {}
-      if (prenom)     updates.prenom      = prenom
-      if (nom)        updates.nom         = nom
-      if (nomArtiste) updates.nom_artiste = nomArtiste
-      if (pays)       updates.pays        = pays
-      if (Object.keys(updates).length > 0) {
-        await admin.from('clients').update(updates).eq('id', clientId)
-      }
-    } else {
-      const newId  = crypto.randomUUID()
-      const nomVal = nom || emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
-      await admin.from('clients').insert({
-        id:                 newId,
-        email:              emailNorm,
-        prenom:             prenom   || null,
-        nom:                nomVal,
-        nom_artiste:        nomArtiste || null,
-        pays:               pays       || null,
-      })
-      clientId = newId
+    const envoye = await telechargementGratuit({
+      to: emailNorm, beatmakerId, titreBeat: beat.titre, downloadUrl: lien, lienDeConfirmation: true,
+    })
+    if (!envoye) {
+      return NextResponse.json({ error: "L'email n'a pas pu être envoyé. Vérifie ton adresse et réessaie." }, { status: 502 })
     }
-    clientEmail = emailNorm
+    return NextResponse.json({ emailEnvoye: true, email: emailNorm })
   }
 
-  const beatmakerId = beatmaker.id
+  // 2b. Connecté : email déjà confirmé à la création du compte → téléchargement direct
+  let clientId: string
+  let clientEmail: string
+  const { data: clientRecord } = await admin.from('clients').select('id').eq('id', user.id).maybeSingle()
+  if (clientRecord) {
+    clientId    = user.id
+    clientEmail = user.email!
+  } else {
+    // Compte beatmaker connecté : fiche client retrouvée/créée par son email
+    clientEmail = normaliserEmail(user.email ?? '')
+    clientId    = await resoudreClientFreeDownload(admin, { email: clientEmail, prenom: null, nom: null, nomArtiste: null, pays: null })
+  }
 
   // 3. Free download = inscription à la newsletter de CETTE boutique,
   // obligatoire même connecté (déjà inscrit : rien à cocher de plus).
-  if (newsletterConsent === true) {
-    await inscrireParClient(admin, { clientId, beatmakerId, origine: 'free_download', sourceLead: 'free_download' })
-  } else if ((await lireStatutNewsletter(admin, clientId, beatmakerId)) !== 'inscrit') {
-    return NextResponse.json({ error: 'Pour télécharger gratuitement, inscris-toi à la newsletter de cette boutique.' }, { status: 400 })
+  if (newsletterConsent !== true && (await lireStatutNewsletter(admin, clientId, beatmakerId)) !== 'inscrit') {
+    return NextResponse.json({ error: MESSAGE_NEWSLETTER }, { status: 400 })
   }
 
-  // 4. Log free_download
-  const { data: freeDownload, error: dlError } = await admin.from('free_downloads').insert({
-    beatmaker_id: beatmakerId,
-    client_id:    clientId,
-    beat_id:      beatId,
-  }).select('id').single()
-  if (dlError) console.error('[free-download] Insert free_downloads error:', JSON.stringify(dlError))
+  await enregistrerFreeDownload(admin, { clientId, beatmakerId, beatId, newsletterConsent: newsletterConsent === true })
 
-  if (freeDownload && await automatisationActive(beatmakerId, 'follow_up_free_download')) {
-    const { error: evenementError } = await admin.from('automatisation_evenements').insert({
-      beatmaker_id: beatmakerId,
-      client_id:    clientId,
-      type:         'follow_up_free_download',
-      reference_id: freeDownload.id,
-    })
-    if (evenementError) console.error('[free-download] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
-  }
+  const downloadUrl = await urlFichierFreeDownload({ titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })
 
-  // 5. Signed URL R2 (1h, force-download)
-  const PUBLIC_URL = process.env.R2_PUBLIC_URL!
-  const key        = beat.mp3_tague_url.replace(PUBLIC_URL + '/', '')
-  const filename   = `${beat.titre}.mp3`
-
-  const downloadUrl = await getSignedUrl(
-    r2,
-    new GetObjectCommand({
-      Bucket:                      R2_BUCKET,
-      Key:                         key,
-      ResponseContentDisposition:  `attachment; filename="${filename}"`,
-    }),
-    { expiresIn: 3600 }
-  )
-
-  // 6. Email avec le lien (branding boutique, personnalisable — Phase 6.9)
-  await telechargementGratuit({
-    to: clientEmail,
-    beatmakerId,
-    clientId,
-    titreBeat: beat.titre,
-    downloadUrl,
-  })
+  // Email avec le lien (branding boutique, personnalisable — Phase 6.9)
+  await telechargementGratuit({ to: clientEmail, beatmakerId, clientId, titreBeat: beat.titre, downloadUrl })
 
   return NextResponse.json({ downloadUrl, beatTitre: beat.titre })
 }

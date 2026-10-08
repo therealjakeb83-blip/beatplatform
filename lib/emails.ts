@@ -1238,21 +1238,27 @@ export async function telechargementGratuit({
   clientId,
   titreBeat,
   downloadUrl,
+  lienDeConfirmation = false,
 }: {
   to: string
   beatmakerId: string
   clientId?: string | null
   titreBeat: string
   downloadUrl: string
-}) {
+  // Visiteur non connecté : le lien confirme l'adresse avant le téléchargement
+  lienDeConfirmation?: boolean
+}): Promise<boolean> {
   const { branding, titre, intro } = await chargerBrandingEtTemplate(beatmakerId, 'telechargement_gratuit')
-  if (!branding) return
+  if (!branding) return false
 
   const corpsHtml = `<p style="font-size:13px;color:#6b7280;margin:0 0 20px;">
       Usage personnel uniquement — maquettes et réseaux sociaux OK. Diffusion sur plateformes de streaming interdite sans achat de licence.
-    </p>`
+    </p>${lienDeConfirmation ? `
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 20px;">
+      Ce lien confirme ton adresse email et reste valable 7 jours.
+    </p>` : ''}`
 
-  await envoyerEmailUnique({
+  const { data, error } = await envoyerEmailUnique({
     beatmakerId,
     from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
     type: 'transactionnel',
@@ -1268,6 +1274,7 @@ export async function telechargementGratuit({
       cta: { texte: `Télécharger ${titreBeat}`, lien: downloadUrl },
     }),
   })
+  return !error && !!data
 }
 
 // ── Aperçu (page réglages) — mêmes titre/intro par défaut que l'envoi réel,
