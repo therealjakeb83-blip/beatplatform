@@ -539,15 +539,15 @@ Checklist lot 1 (A = jakeb-test, B = nic-beat-2809, adresses de test = `nicojaco
 
 | # | Test | Statut |
 |---|---|---|
-| T0 | Migration de ménage exécutée + contrôle (0 ligne) ; site déployé ; fiche client et liste Contacts s'ouvrent sans erreur | 🔄 migration ✅ (Jake), déploiement vérifié par Claude (nouvelle route 200, ancienne 404) ; reste : ouvrir fiche + Contacts |
-| T1 | Formulaire newsletter de A avec une nouvelle adresse → « Inscrit » chez A ; chez B, ce contact n'apparaît pas | 🔄 Claude : `+lot1-nl` inscrit via le formulaire de A (200, « Inscription confirmée ») ; B prouvé par le code ; reste : Jake vérifie « Inscrit » dans le CRM de A |
+| T0 | Migration de ménage exécutée + contrôle (0 ligne) ; site déployé ; fiche client et liste Contacts s'ouvrent sans erreur | ✅ migration (Jake), déploiement (Claude), liste Contacts + fiches OK (Jake) |
+| T1 | Formulaire newsletter de A avec une nouvelle adresse → « Inscrit » chez A ; chez B, ce contact n'apparaît pas | 🔄 Claude : `+lot1-nl` inscrit via le formulaire de A (200, « Inscription confirmée ») ; B prouvé par le code ; « Inscrit » chez A confirmé par Jake ; reste : absent chez B |
 | T2 | Fiche client chez A → « Désinscrire » : fenêtre de confirmation, puis « Désinscrit », plus aucun bouton, texte explicatif | ⬜ |
 | T3 | Même adresse, formulaire newsletter de A → redevient « Inscrit » (geste du client) | ⬜ |
 | T4 | Client connecté, Mon compte sur A : interrupteur « Newsletter de [A] » ; le décocher → « Désinscrit » chez A, B inchangé | ⬜ |
 | T5 | Free download connecté, NON inscrit chez A : case newsletter + case conditions, bouton grisé tant que les deux ne sont pas cochées ; après → « Inscrit » | ⬜ |
 | T6 | Free download connecté, DÉJÀ inscrit chez A : seulement la case conditions | ⬜ |
 | T7 | Free download non connecté : les deux cases obligatoires, libellé « newsletter de cette boutique » | ⬜ |
-| T8 | Création de compte artiste depuis A avec la case cochée → « Inscrit » chez A seulement ; depuis /artiste/inscription sans boutique → case absente | 🔄 Claude : case présente depuis A et /paiement/A, absente sans boutique et depuis /mon-compte ; compte `+lot1-compte` créé depuis A case cochée (réponse 200) ; reste : Jake vérifie « Inscrit » dans le CRM de A |
+| T8 | Création de compte artiste depuis A avec la case cochée → « Inscrit » chez A seulement ; depuis /artiste/inscription sans boutique → case absente | 🔄 Claude : case présente depuis A et /paiement/A, absente sans boutique et depuis /mon-compte ; compte `+lot1-compte` créé depuis A case cochée ; « Inscrit » chez A confirmé par Jake ; reste : absent chez B (avec T1) |
 | T9 | Paiement sur A par un client « Désinscrit » : case cochée → « Inscrit » ; case non cochée (autre client inscrit) → reste « Inscrit » | ✅ prouvé par le code (licence, commande gratuite, abonnement) |
 | T10 | Automatisation (ex. follow-up free download) en file pour un contact passé « Désinscrit » : « Visualiser » dit que rien ne partira, puis l'événement est traité sans envoi ; un « Non inscrit » la reçoit | ✅ prouvé par le code (seul chemin d'envoi = traiterGroupePret, garde en tête) |
 | T11 | Campagnes : le nombre de destinataires d'un segment/d'une liste ne compte que les « Inscrit » de A | ✅ prouvé par le code (seul envoi = resolveDestinataires) |
