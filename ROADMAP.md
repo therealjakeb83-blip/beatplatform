@@ -552,7 +552,7 @@ Checklist lot 1 (A = jakeb-test, B = nic-beat-2809, adresses de test = `nicojaco
 | T10 | Automatisation (ex. follow-up free download) en file pour un contact passé « Désinscrit » : « Visualiser » dit que rien ne partira, puis l'événement est traité sans envoi ; un « Non inscrit » la reçoit | ✅ prouvé par le code (seul chemin d'envoi = traiterGroupePret, garde en tête) |
 | T11 | Campagnes : le nombre de destinataires d'un segment/d'une liste ne compte que les « Inscrit » de A | ✅ prouvé par le code (seul envoi = resolveDestinataires) |
 | T12 | Export newsletter (CSV) = uniquement les inscrits de A | ✅ prouvé par le code |
-| T13 | Onglet Newsletter des Contacts : filtre Inscrit / Non inscrit / Désinscrit, pastille verte / grise / rouge | ⬜ |
+| T13 | Onglet Newsletter des Contacts : filtre Inscrit / Non inscrit / Désinscrit, pastille verte / grise / rouge | ✅ Jake (l'onglet ne montre que les contacts ayant un lien avec la newsletter : inscrits, désinscrits, ou ayant reçu une campagne — voulu) |
 | T14 | Lien de désinscription d'une campagne reçue → « Désinscrit » chez A, B inchangé | ✅ prouvé par le code |
 | T15 | Éditeur Bienvenue perso : conseil « garde-le accueillant plutôt que commercial » affiché | ✅ prouvé par le code |
 
