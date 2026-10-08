@@ -541,8 +541,8 @@ Checklist lot 1 (A = jakeb-test, B = nic-beat-2809, adresses de test = `nicojaco
 |---|---|---|
 | T0 | Migration de ménage exécutée + contrôle (0 ligne) ; site déployé ; fiche client et liste Contacts s'ouvrent sans erreur | ✅ migration (Jake), déploiement (Claude), liste Contacts + fiches OK (Jake) |
 | T1 | Formulaire newsletter de A avec une nouvelle adresse → « Inscrit » chez A ; chez B, ce contact n'apparaît pas | 🔄 Claude : `+lot1-nl` inscrit via le formulaire de A (200, « Inscription confirmée ») ; B prouvé par le code ; « Inscrit » chez A confirmé par Jake ; reste : absent chez B |
-| T2 | Fiche client chez A → « Désinscrire » → « Non inscrit », bouton « Inscrire » de nouveau disponible (1re version « Désinscrit » validée techniquement puis changée à la demande de Jake) | ⬜ |
-| T3 | Même adresse, formulaire newsletter de A → redevient « Inscrit » (geste du client) | ⬜ |
+| T2 | Fiche client chez A → « Désinscrire » → « Non inscrit », bouton « Inscrire » de nouveau disponible (1re version « Désinscrit » validée techniquement puis changée à la demande de Jake) | ✅ Jake (sans fenêtre de confirmation, réinscription possible) |
+| T3 | Même adresse, formulaire newsletter de A → redevient « Inscrit » (geste du client) | ✅ Claude (formulaire, depuis « Désinscrit ») + Jake (fiche) |
 | T4 | Client connecté, Mon compte sur A : interrupteur « Newsletter de [A] » ; le décocher → « Désinscrit » chez A, B inchangé | ⬜ |
 | T5 | Free download connecté, NON inscrit chez A : case newsletter + case conditions, bouton grisé tant que les deux ne sont pas cochées ; après → « Inscrit » | ⬜ |
 | T6 | Free download connecté, DÉJÀ inscrit chez A : seulement la case conditions | ⬜ |
