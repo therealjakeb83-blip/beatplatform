@@ -533,6 +533,29 @@ Cadrage : `memory/project_phase13_grillme_decisions_2026_09_28.md`, section « C
 | **3 — Inscription groupée + Relier les beats** | Action groupée « Inscrire à la newsletter » (confirmation, trace, désinscrits ignorés) ; écran « Relier les beats » (par titre, propositions exactes uniques, valider tout, mémorisation, réversible). |
 | **4 — Autres plateformes** | Assistant guidé d'association de colonnes (détection par contenu, dates ambiguës, devise + nom de plateforme, association mémorisée, empreinte anti-doublons, avertissements de données manquantes). |
 
+**Lot 1 — codé le 2026-10-08 (commits `6ceb683`, `b4d4039`), tests en cours.** Statut dans `leads.newsletter_statut` (+ `_at`, `_source`), règles dans `lib/newsletter.ts` (constantes pures dans `lib/newsletter-statut.ts`). Désinscrire depuis la fiche client = « Désinscrit » (fenêtre de confirmation), le beatmaker ne peut plus jamais le réinscrire. Contact fusionné : le choix exprimé le plus récemment l'emporte. Route morte `/api/artiste/newsletter` (écrivait le global) supprimée. Migrations : `supabase/newsletter_statut_par_boutique.sql` ✅ exécutée ; `supabase/newsletter_statut_par_boutique_menage.sql` (supprime `clients.newsletter_consent` + `leads.newsletter_inscrit`) à exécuter après déploiement. Reste ouvert (double opt-in, reporté) : le formulaire newsletter public accepte n'importe quel email, donc quelqu'un peut réinscrire l'adresse d'un tiers.
+
+Checklist lot 1 (A = jakeb-test, B = nic-beat-2809, adresses de test = `nicojacob83+…@gmail.com` uniquement) :
+
+| # | Test | Statut |
+|---|---|---|
+| T0 | Migration de ménage exécutée + contrôle (0 ligne) ; site déployé ; fiche client et liste Contacts s'ouvrent sans erreur | ⬜ |
+| T1 | Formulaire newsletter de A avec une nouvelle adresse → « Inscrit » chez A ; chez B, ce contact n'apparaît pas | ⬜ |
+| T2 | Fiche client chez A → « Désinscrire » : fenêtre de confirmation, puis « Désinscrit », plus aucun bouton, texte explicatif | ⬜ |
+| T3 | Même adresse, formulaire newsletter de A → redevient « Inscrit » (geste du client) | ⬜ |
+| T4 | Client connecté, Mon compte sur A : interrupteur « Newsletter de [A] » ; le décocher → « Désinscrit » chez A, B inchangé | ⬜ |
+| T5 | Free download connecté, NON inscrit chez A : case newsletter + case conditions, bouton grisé tant que les deux ne sont pas cochées ; après → « Inscrit » | ⬜ |
+| T6 | Free download connecté, DÉJÀ inscrit chez A : seulement la case conditions | ⬜ |
+| T7 | Free download non connecté : les deux cases obligatoires, libellé « newsletter de cette boutique » | ⬜ |
+| T8 | Création de compte artiste depuis A avec la case cochée → « Inscrit » chez A seulement ; depuis /artiste/inscription sans boutique → case absente | ⬜ |
+| T9 | Paiement sur A par un client « Désinscrit » : case cochée → « Inscrit » ; case non cochée (autre client inscrit) → reste « Inscrit » | ⬜ |
+| T10 | Automatisation (ex. follow-up free download) en file pour un contact passé « Désinscrit » : « Visualiser » dit que rien ne partira, puis l'événement est traité sans envoi ; un « Non inscrit » la reçoit | ⬜ |
+| T11 | Campagnes : le nombre de destinataires d'un segment/d'une liste ne compte que les « Inscrit » de A | ⬜ |
+| T12 | Export newsletter (CSV) = uniquement les inscrits de A | ⬜ |
+| T13 | Onglet Newsletter des Contacts : filtre Inscrit / Non inscrit / Désinscrit, pastille verte / grise / rouge | ⬜ |
+| T14 | Lien de désinscription d'une campagne reçue → « Désinscrit » chez A, B inchangé | ⬜ |
+| T15 | Éditeur Bienvenue perso : conseil « garde-le accueillant plutôt que commercial » affiché | ⬜ |
+
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.
