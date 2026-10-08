@@ -30,8 +30,8 @@ function ConnexionArtisteForm() {
       }
       // Déjà connecté en tant qu'artiste : rien à faire ici, retour à la page de départ
       if (!user) return
-      const { data: client } = await supabase.from('clients').select('id').eq('id', user.id).maybeSingle()
-      if (client) window.location.replace(redirect)
+      const res = await fetch('/api/artiste/session').then(r => r.json()).catch(() => null)
+      if (res?.artiste) window.location.replace(redirect)
     })
   }, [redirect])
 
