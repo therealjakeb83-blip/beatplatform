@@ -34,7 +34,8 @@ function InscriptionArtisteForm() {
     setChargement(true)
 
     const supabase = createClient()
-    const callbackNext = `/artiste/connexion?redirect=${encodeURIComponent(redirect)}`
+    // Lien de confirmation → directement la page de départ, déjà connecté
+    const callbackNext = redirect
     const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`
     const { data, error } = await supabase.auth.signUp({
       email, password,

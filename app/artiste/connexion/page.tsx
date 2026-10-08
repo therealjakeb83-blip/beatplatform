@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -14,6 +14,26 @@ function ConnexionArtisteForm() {
   const [password, setPassword] = useState('')
   const [erreur, setErreur] = useState('')
   const [chargement, setChargement] = useState(false)
+  const [info, setInfo] = useState<string | null>(
+    searchParams.get('confirmation') === 'activee'
+      ? "Ton compte est activé ✓ Connecte-toi avec le mot de passe choisi à l'inscription."
+      : null,
+  )
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      // Lien de confirmation expiré ou déjà utilisé (erreur renvoyée par Supabase dans le fragment)
+      const fragment = new URLSearchParams(window.location.hash.slice(1))
+      if (fragment.get('error_code') === 'otp_expired' || fragment.get('error') === 'access_denied') {
+        setInfo("Ce lien de confirmation a expiré ou a déjà été utilisé. Si tu as déjà cliqué dessus, ton compte est sans doute activé : connecte-toi avec le mot de passe choisi à l'inscription.")
+      }
+      // Déjà connecté en tant qu'artiste : rien à faire ici, retour à la page de départ
+      if (!user) return
+      const { data: client } = await supabase.from('clients').select('id').eq('id', user.id).maybeSingle()
+      if (client) window.location.replace(redirect)
+    })
+  }, [redirect])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -72,6 +92,7 @@ function ConnexionArtisteForm() {
             />
           </div>
 
+          {info && !erreur && <p className="text-sm text-indigo-200 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2">{info}</p>}
           {erreur && <p className="text-red-400 text-sm">{erreur}</p>}
 
           <button

@@ -23,9 +23,26 @@ export async function GET(request: NextRequest) {
       )
       return NextResponse.redirect(`${origin}${next}`)
     }
+    // Lien valide mais ouvert dans un autre navigateur que celui de
+    // l'inscription : le compte est activé, mais pas de session ici.
+    return NextResponse.redirect(`${origin}/artiste/connexion?confirmation=activee&redirect=${encodeURIComponent(pageDeDepart(next, origin))}`)
   }
 
-  return NextResponse.redirect(`${origin}/artiste/connexion`)
+  // Lien expiré ou déjà utilisé : Supabase met l'erreur dans le fragment (#error_code=…),
+  // conservé par le navigateur à travers cette redirection et lu par la page de connexion.
+  return NextResponse.redirect(`${origin}/artiste/connexion?redirect=${encodeURIComponent(pageDeDepart(next, origin))}`)
+}
+
+// next = page de départ ("/slug") ou, pour les liens envoyés avant le
+// 2026-10-08, "/artiste/connexion?redirect=/slug".
+function pageDeDepart(next: string, origin: string): string {
+  try {
+    const url = new URL(next, origin)
+    if (url.pathname.startsWith('/artiste/')) return url.searchParams.get('redirect') ?? '/mon-compte'
+    return url.pathname + url.search
+  } catch {
+    return '/mon-compte'
+  }
 }
 
 // Brandé à la boutique de départ (slug dans ?redirect=/{slug} imbriqué dans
@@ -35,14 +52,8 @@ export async function GET(request: NextRequest) {
 async function envoyerConfirmationCompteArtiste(email: string | undefined, next: string, origin: string) {
   if (!email) return
 
-  let slug: string | null = null
-  try {
-    const nextUrl = new URL(next, origin)
-    const redirectParam = nextUrl.searchParams.get('redirect') ?? ''
-    slug = redirectParam.split('/').filter(Boolean)[0] ?? null
-  } catch {
-    return
-  }
+  const segments = pageDeDepart(next, origin).split('?')[0].split('/').filter(Boolean)
+  const slug = (segments[0] === 'paiement' ? segments[1] : segments[0]) ?? null
   if (!slug) return
 
   const admin = createAdminClient()
