@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import type { StatutNewsletter } from '@/lib/newsletter-statut'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -11,6 +12,7 @@ export type LeadRow = {
   nom: string | null
   pays: string | null
   newsletter_consent: boolean
+  newsletter_statut: StatutNewsletter
   source: string          // 'visite' | 'newsletter' | 'free_download' | 'achat'
   lead_created_at: string // = 1ère action
   derniere_action_at: string

@@ -3,6 +3,7 @@ export type Recette = {
   categorie: string
   label: string
   description: string
+  conseil?: string
   corpsDefaut: string
   objetDefaut?: string
   variablesSupplementaires?: { token: string; label: string }[]
@@ -145,6 +146,7 @@ Hâte d'entendre ce que tu vas faire avec {{titre_beats}} !
     categorie: 'Engagement',
     label: 'Bienvenue perso',
     description: "Envoyé le lendemain de la création d'un compte (inscription, ou 1re connexion à un compte existant sur cette boutique).",
+    conseil: "Ce message part à des personnes qui n'ont encore rien acheté : garde-le accueillant plutôt que commercial.",
     objetDefaut: 'Salut {{prénom}} !',
     corpsDefaut: `Salut {{prénom}}, ça va ?
 Je viens de voir que tu as créé ton compte sur ma boutique, bienvenue par ici 👐

@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import ListeDetailClient, { type MembreRow, type ContactLight } from './_components/ListeDetailClient'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { statutFusionne } from '@/lib/newsletter'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ export default async function ListeDetailPage({
   const [clientsRes, commandesRes, abosRes, leadsRes] = await Promise.all([
     admin
       .from('clients')
-      .select('id, prenom, nom, surnom, nom_artiste, email, pays, telephone, instagram, spotify, youtube, tiktok, newsletter_consent')
+      .select('id, prenom, nom, surnom, nom_artiste, email, pays, telephone, instagram, spotify, youtube, tiktok')
       .in('id', allClientIds),
     membreIds.length > 0
       ? supabase
@@ -120,11 +121,11 @@ export default async function ListeDetailPage({
     membreIds.length > 0
       ? supabase
           .from('leads')
-          .select('client_id, newsletter_inscrit, source, created_at')
+          .select('client_id, newsletter_statut, newsletter_statut_at, source, created_at')
           .eq('beatmaker_id', beatmakerId)
           .in('client_id', membreIds)
       : Promise.resolve({ data: [] as {
-          client_id: string; newsletter_inscrit: boolean; source: string; created_at: string
+          client_id: string; newsletter_statut: string; newsletter_statut_at: string | null; source: string; created_at: string
         }[] }),
   ])
 
@@ -145,7 +146,7 @@ export default async function ListeDetailPage({
     arr.push(cmd)
     cmdsParClient.set(id, arr)
   }
-  type LeadData = { newsletter_inscrit: boolean; source: string; created_at: string }
+  type LeadData = { newsletter_statut: string; newsletter_statut_at: string | null; source: string; created_at: string }
   const leadParClient = new Map<string, LeadData>()
   for (const l of leads) {
     if (!leadParClient.has(l.client_id)) leadParClient.set(l.client_id, l)
@@ -203,7 +204,7 @@ export default async function ListeDetailPage({
         dernier_achat_iso:    dernierAchat,
         premiere_contact_iso: premiereContactISO,
         dernier_contact_iso:  dernierContactISO,
-        newsletter_consent:   ((raw.newsletter_consent as boolean | null) ?? false) || (leadData?.newsletter_inscrit ?? false),
+        newsletter_consent:   statutFusionne(leadData ? [leadData] : []) === 'inscrit',
         lead_source:          leadData?.source ?? null,
         lead_nb_favoris:      0,
         lead_nb_free_dl:      0,

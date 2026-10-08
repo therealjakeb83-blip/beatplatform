@@ -6,9 +6,18 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 
+// Boutique depuis laquelle le compte est créé (la case newsletter ne concerne qu'elle)
+const ROUTES_HORS_BOUTIQUE = new Set(['api', 'artiste', 'auth', 'confirmation-compte', 'connexion', 'dashboard', 'inscription', 'mon-compte', 'mot-de-passe-oublie', 'nouveau-mot-de-passe', 'telechargement', 'verification-en-cours'])
+function slugDepuisRedirect(redirect: string): string | null {
+  const segments = redirect.split('?')[0].split('/').filter(Boolean)
+  const slug = segments[0] === 'paiement' ? segments[1] : segments[0]
+  return slug && !ROUTES_HORS_BOUTIQUE.has(slug) && slug !== 'paiement' ? slug : null
+}
+
 function InscriptionArtisteForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/mon-compte'
+  const slugBoutique = slugDepuisRedirect(redirect)
 
   const [prenom, setPrenom] = useState('')
   const [nom, setNom] = useState('')
@@ -38,12 +47,12 @@ function InscriptionArtisteForm() {
       return
     }
 
-    const slug = redirect.split('/').filter(Boolean)[0] ?? null
+    const slug = slugBoutique
     await fetch('/api/artiste/lier-compte', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nom, prenom, newsletter_consent: newsletter, slug,
+        nom, prenom, newsletter_consent: slug ? newsletter : undefined, slug,
         // Pas de session si email non confirmé — on passe userId+email pour que le serveur vérifie
         ...(!data.session ? { userId: data.user.id, userEmail: data.user.email } : {}),
       }),
@@ -131,7 +140,7 @@ function InscriptionArtisteForm() {
             />
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer">
+          {slugBoutique && <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={newsletter}
@@ -139,9 +148,9 @@ function InscriptionArtisteForm() {
               className="mt-0.5 w-4 h-4 rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500 flex-shrink-0"
             />
             <span className="text-sm text-gray-400 leading-snug">
-              Je souhaite recevoir les nouvelles sorties et offres des beatmakers que je suis
+              Je souhaite recevoir la newsletter de cette boutique (nouvelles sorties, offres et actualités)
             </span>
-          </label>
+          </label>}
 
           {erreur && <p className="text-red-400 text-sm">{erreur}</p>}
 

@@ -114,6 +114,11 @@ export default function RecetteCard({ recette, existante, sauvegarder }: {
       {depliee && (
       <div className="p-5 border-t border-gray-800 grid grid-cols-[1fr_220px] gap-5">
         <div className="space-y-4">
+          {recette.conseil && (
+            <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              💡 {recette.conseil}
+            </p>
+          )}
           <div>
             <label className="text-[11px] text-gray-500 mb-1 block">Objet</label>
             <ChampAvecVariables

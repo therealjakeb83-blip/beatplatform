@@ -1,3 +1,4 @@
+import type { StatutNewsletter } from '@/lib/newsletter-statut'
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type BadgeCondition = {
@@ -40,7 +41,9 @@ export type ContactFiltre = {
   mensualites_payees: number
   dernier_achat_iso: string | null
   premierContactISO: string
+  // Inscrit à la newsletter de CETTE boutique (= newsletter_statut === 'inscrit')
   newsletter_consent: boolean
+  newsletter_statut: StatutNewsletter
   langue: 'FR' | 'EN'
   pays: string | null
   instagram: string | null

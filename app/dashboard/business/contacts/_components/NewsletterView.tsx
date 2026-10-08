@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { joursDepuis } from '../../_lib/utils'
+import { LIBELLE_STATUT_NEWSLETTER, type StatutNewsletter } from '@/lib/newsletter-statut'
 
 export type NewsletterRow = {
   id: string
@@ -11,6 +12,7 @@ export type NewsletterRow = {
   nom_artiste: string | null
   pays: string | null
   newsletter_consent: boolean
+  newsletter_statut: StatutNewsletter
   premier_nwt_iso: string
   premier_nwt_type: string
   dernier_nwt_iso: string
@@ -125,8 +127,7 @@ export default function NewsletterView({
   }
 
   const displayed = useMemo(() => contacts.filter(c => {
-    if (filtreInscription === 'inscrit'     && !c.newsletter_consent) return false
-    if (filtreInscription === 'desinscrit'  &&  c.newsletter_consent) return false
+    if (filtreInscription && c.newsletter_statut !== filtreInscription) return false
     if (filtreSearch && !`${c.prenom ?? ''} ${c.nom} ${c.nom_artiste ?? ''}`.toLowerCase().includes(filtreSearch.toLowerCase())) return false
     if (filtreEngagement && scoreNwt(c).label !== filtreEngagement) return false
     if (filtrePremierVal !== '') {
@@ -341,7 +342,8 @@ export default function NewsletterView({
                         <select value={filtreInscription} onChange={e => setFiltreInscription(e.target.value)} className={`${sel2} w-full`}>
                           <option value="">Newsletter — tous</option>
                           <option value="inscrit">Inscrit</option>
-                          <option value="desinscrit">Non inscrit</option>
+                          <option value="non_inscrit">Non inscrit</option>
+                          <option value="desinscrit">Désinscrit</option>
                         </select>
                         {hasFilterContact && <button onClick={() => { setFiltreInscription(''); setFiltreEngagement('') }} className={clearBtn}>Effacer</button>}
                       </div>
@@ -401,7 +403,7 @@ export default function NewsletterView({
                               ? <img src={`https://flagcdn.com/w40/${c.pays.toLowerCase()}.png`} alt={c.pays} className="w-full h-full object-cover" />
                               : <span className="text-indigo-300 font-bold text-xs">{initiales(c.prenom, c.nom)}</span>}
                           </div>
-                          <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-gray-950 ${c.newsletter_consent ? 'bg-green-400' : 'bg-red-500'}`} />
+                          <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-gray-950 ${c.newsletter_statut === 'inscrit' ? 'bg-green-400' : c.newsletter_statut === 'desinscrit' ? 'bg-red-500' : 'bg-gray-500'}`} title={LIBELLE_STATUT_NEWSLETTER[c.newsletter_statut]} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">

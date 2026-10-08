@@ -5,6 +5,7 @@ import { envoyerLotEmails } from './email-logger'
 import { rendreEmailHtml, type BlocEmail, type BrandingBoutique } from './email-blocs'
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '@/app/dashboard/business/_lib/contacts'
 import { evaluerFiltres, type Condition } from '@/app/dashboard/business/_lib/segments'
+import { peutRecevoirCampagne } from './newsletter'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
 const LOT_TAILLE = 100 // limite du batch send Resend
@@ -20,7 +21,7 @@ export type Destinataire = ContactEnrichi
 
 export async function resolveDestinataires(beatmakerId: string, cible: CibleCampagne): Promise<Destinataire[]> {
   const { contacts } = await chargerContactsEnrichis(beatmakerId)
-  const consentants = contacts.filter(c => c.newsletter_consent)
+  const consentants = contacts.filter(c => peutRecevoirCampagne(c.newsletter_statut))
 
   if (cible.mode === 'segment') {
     const supabase = await createServerClient()

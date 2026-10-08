@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { chargerContactsEnrichis } from '@/app/dashboard/business/_lib/contacts'
+import { peutRecevoirCampagne } from '@/lib/newsletter-statut'
 import { redirect } from 'next/navigation'
 import { NextResponse } from 'next/server'
 
@@ -10,35 +11,11 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/connexion')
 
-  const admin = createAdminClient()
+  // Inscrits à la newsletter de CETTE boutique — exactement le public des campagnes
+  const { contacts } = await chargerContactsEnrichis(user.id)
+  const clients = contacts.filter(c => peutRecevoirCampagne(c.newsletter_statut))
 
-  // Récupérer tous les client_id liés à ce beatmaker
-  const [{ data: commandes }, { data: abonnements }] = await Promise.all([
-    admin.from('commandes').select('client_id').eq('beatmaker_id', user.id).not('client_id', 'is', null),
-    admin.from('abonnements_boutique').select('client_id').eq('beatmaker_id', user.id).not('client_id', 'is', null),
-  ])
-
-  const clientIds = [...new Set([
-    ...(commandes ?? []).map(c => c.client_id as string),
-    ...(abonnements ?? []).map(a => a.client_id as string),
-  ])]
-
-  if (clientIds.length === 0) {
-    return new NextResponse('email,prenom,nom,langue\n', {
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="newsletter.csv"',
-      },
-    })
-  }
-
-  const { data: clients } = await admin
-    .from('clients')
-    .select('email, prenom, nom, pays')
-    .in('id', clientIds)
-    .eq('newsletter_consent', true)
-
-  const lignes = (clients ?? []).map(c => {
+  const lignes = clients.map(c => {
     const langue = c.pays && PAYS_FR.has((c.pays as string).toUpperCase()) ? 'FR' : 'US'
     const prenom = (c.prenom ?? '').replace(/"/g, '""')
     const nom = (c.nom ?? '').replace(/"/g, '""')

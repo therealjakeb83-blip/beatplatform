@@ -1,5 +1,6 @@
 import { verifierTokenCampagne, incrementerCompteurCampagne } from '@/lib/mailing'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { desinscrireParClient } from '@/lib/newsletter'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -30,12 +31,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
   const { clientId, beatmakerId, campagneId } = verif
 
-  await admin.from('clients').update({ newsletter_consent: false }).eq('id', clientId)
-
-  await admin.from('leads')
-    .update({ newsletter_inscrit: false })
-    .eq('client_id', clientId)
-    .eq('beatmaker_id', beatmakerId)
+  await desinscrireParClient(admin, { clientId, beatmakerId, origine: 'lien_desinscription' })
 
   const { data: envoi } = await admin
     .from('campagne_envois')

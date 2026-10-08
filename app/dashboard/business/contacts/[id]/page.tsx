@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import IdentiteSaveButton from './_components/IdentiteSaveButton'
+import BoutonNewsletter from './_components/BoutonNewsletter'
+import { statutFusionne, changerStatutParBeatmaker, LIBELLE_STATUT_NEWSLETTER } from '@/lib/newsletter'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants, montantDepense } from '@/app/dashboard/business/_lib/ltv'
 
@@ -131,7 +133,7 @@ export default async function FicheClientPage({
   // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
     .from('clients')
-    .select('id, email, nom, prenom, surnom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, newsletter_consent, notes, tags, emails_secondaires')
+    .select('id, email, nom, prenom, surnom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, notes, tags, emails_secondaires')
     .eq('id', clientId)
     .single()
 
@@ -225,7 +227,7 @@ export default async function FicheClientPage({
       : Promise.resolve({ data: [] as { created_at: string }[] }),
     admin
       .from('leads')
-      .select('newsletter_inscrit')
+      .select('newsletter_statut, newsletter_statut_at')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', allClientIds),
     // RLS : visible seulement si la campagne appartient à ce beatmaker — conservé même après désinscription
@@ -244,9 +246,10 @@ export default async function FicheClientPage({
   const morceaux  = morceauxRaw ?? []
   const freeDLs   = (freeDLRaw   ?? []) as unknown as FreeDL[]
 
-  // Inscrit newsletter = consentement global (clients) OU inscription spécifique à cette boutique (leads)
-  // — même logique que le ciblage des campagnes (app/dashboard/business/_lib/contacts.ts)
-  const inscritNewsletter = client.newsletter_consent || (leadsRaw ?? []).some(l => l.newsletter_inscrit)
+  // Statut newsletter de CETTE boutique uniquement — même logique que le ciblage
+  // des campagnes (app/dashboard/business/_lib/contacts.ts)
+  const statutNewsletter  = statutFusionne(leadsRaw ?? [])
+  const inscritNewsletter = statutNewsletter === 'inscrit'
 
   // Historique d'engagement newsletter — conservé même après désinscription (statut ≠ historique)
   type EnvoiNewsletter = {
@@ -374,8 +377,7 @@ export default async function FicheClientPage({
     'use server'
     const a       = createAdminClient()
     const inscrit = (formData.get('action') as string) === 'inscrire'
-    await a.from('clients').update({ newsletter_consent: inscrit }).eq('id', clientId)
-    await a.from('leads').update({ newsletter_inscrit: inscrit }).eq('client_id', clientId).eq('beatmaker_id', beatmakerId)
+    await changerStatutParBeatmaker(a, { clientId, beatmakerId, inscrire: inscrit })
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -571,6 +573,10 @@ export default async function FicheClientPage({
                   {inscritNewsletter ? (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
                       NWT ✓
+                    </span>
+                  ) : statutNewsletter === 'desinscrit' ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-red-400/70 border border-gray-800">
+                      NWT désinscrit
                     </span>
                   ) : (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-600 border border-gray-800">
@@ -996,27 +1002,26 @@ export default async function FicheClientPage({
               <h2 className="font-bold text-sm">Engagement newsletter</h2>
               <div className="flex items-center gap-2">
                 <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                  inscritNewsletter ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-800 text-gray-500'
+                  statutNewsletter === 'inscrit'    ? 'bg-blue-500/20 text-blue-400'
+                  : statutNewsletter === 'desinscrit' ? 'bg-red-500/15 text-red-400'
+                  : 'bg-gray-800 text-gray-500'
                 }`}>
-                  {inscritNewsletter ? 'Inscrit' : 'Non inscrit'}
+                  {LIBELLE_STATUT_NEWSLETTER[statutNewsletter]}
                 </span>
-                <form action={toggleNewsletter}>
-                  <input type="hidden" name="action" value={inscritNewsletter ? 'desinscrire' : 'inscrire'} />
-                  <button
-                    type="submit"
-                    className={`text-xs px-3 py-1 rounded-lg font-medium transition-colors ${
-                      inscritNewsletter
-                        ? 'bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                    }`}
-                  >
-                    {inscritNewsletter ? 'Désinscrire' : 'Inscrire'}
-                  </button>
-                </form>
+                {statutNewsletter !== 'desinscrit' && (
+                  <form action={toggleNewsletter}>
+                    <input type="hidden" name="action" value={inscritNewsletter ? 'desinscrire' : 'inscrire'} />
+                    <BoutonNewsletter inscrit={inscritNewsletter} />
+                  </form>
+                )}
               </div>
             </div>
             <p className="text-[11px] text-gray-600 mb-4">
-              Bascule manuelle — équivalente au lien de désinscription reçu par email (pratique pour tester sans attendre un vrai envoi).
+              {statutNewsletter === 'desinscrit'
+                ? "Ce contact s'est désinscrit de ta newsletter : il ne reçoit ni campagnes ni automatisations. Seul lui peut se réinscrire, depuis ta boutique."
+                : statutNewsletter === 'inscrit'
+                  ? 'Reçoit tes campagnes et tes automatisations.'
+                  : "N'a jamais dit oui ni non : reçoit tes automatisations, mais pas tes campagnes. Inscris-le seulement si tu as son accord."}
             </p>
             {nbRecues === 0 ? (
               <div className="py-6 text-center text-gray-600 text-sm">

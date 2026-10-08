@@ -5,6 +5,7 @@ import {
   type ContactFiltre, type CatalogOptions,
 } from './segments'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { statutFusionne } from '@/lib/newsletter'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
@@ -60,7 +61,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   // Leads
   const { data: leadsRaw } = await supabase
     .from('leads')
-    .select('client_id, source, newsletter_inscrit')
+    .select('client_id, source, newsletter_statut, newsletter_statut_at')
     .eq('beatmaker_id', beatmakerId)
 
   const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
@@ -123,7 +124,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   const [clientsRes, favorisRes, freeDLRes] = await Promise.all([
     admin
       .from('clients')
-      .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, newsletter_consent, instagram, spotify, youtube, tiktok, tags')
+      .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, instagram, spotify, youtube, tiktok, tags')
       .in('id', clientIds),
     admin
       .from('favoris')
@@ -225,7 +226,9 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
 
       const nbFavoris     = favorisCount.get(c.id) ?? 0
       const nbFreeDL      = freeDLCount.get(c.id)  ?? 0
-      const newsletterConsent = (c.newsletter_consent ?? false) || (lead?.newsletter_inscrit ?? false)
+      const newsletterStatut = statutFusionne(
+        [c.id, ...(conserveArchives.get(c.id) ?? [])].flatMap(id => leadMap.get(id) ?? []),
+      )
 
       return {
         id:                 c.id,
@@ -241,7 +244,8 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
         mensualites_payees: abo?.mensualites_payees ?? 0,
         dernier_achat_iso:  dernierAchat,
         premierContactISO:  premierContact,
-        newsletter_consent: newsletterConsent,
+        newsletter_consent: newsletterStatut === 'inscrit',
+        newsletter_statut:  newsletterStatut,
         langue:             langueEffective,
         pays:               c.pays ?? null,
         instagram:          c.instagram ?? null,
@@ -258,7 +262,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
         nb_favoris:         nbFavoris,
         nb_free_downloads:  nbFreeDL,
         score_rf:           computeScoreRF(nbAchats, dernierAchat),
-        score_chaleur:      computeScoreChaleur(lead?.source ?? null, nbFavoris, nbFreeDL, newsletterConsent),
+        score_chaleur:      computeScoreChaleur(lead?.source ?? null, nbFavoris, nbFreeDL, newsletterStatut === 'inscrit'),
       } satisfies ContactEnrichi
     })
 

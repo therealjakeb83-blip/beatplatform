@@ -5,6 +5,7 @@ import ContactsClient, { ContactRow } from './_components/ContactsClient'
 import type { LeadRow } from './_components/LeadsView'
 import type { NewsletterRow } from './_components/NewsletterView'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { statutFusionne, type StatutNewsletter } from '@/lib/newsletter'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -56,13 +57,19 @@ export default async function ContactsPage({
   // Utilise supabase (client authentifié) car leads n'a pas GRANT service_role
   const leadsRes = await supabase
     .from('leads')
-    .select('client_id, source, created_at, newsletter_inscrit')
+    .select('client_id, source, created_at, newsletter_statut, newsletter_statut_at')
     .eq('beatmaker_id', beatmakerId)
 
   const leadsRaw      = leadsRes.data ?? []
   const leadClientIds = leadsRaw.map(l => l.client_id)
 
-  type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null; newsletter_consent: boolean | null }
+  // Statut newsletter de CETTE boutique (fiches fusionnées comprises)
+  const leadsParId = new Map(leadsRaw.map(l => [l.client_id, l]))
+  const statutNewsletterDe = (clientId: string): StatutNewsletter => statutFusionne(
+    [clientId, ...(conserveToArchives.get(clientId) ?? [])].flatMap(id => leadsParId.get(id) ?? []),
+  )
+
+  type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null }
   type FavBeat    = { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }
 
   let leadClientMap    = new Map<string, LeadClient>()
@@ -74,7 +81,7 @@ export default async function ContactsPage({
   if (leadClientIds.length > 0) {
     const [leadClientsRes, leadFavorisRes, freeDLsRes] = await Promise.all([
       admin.from('clients')
-        .select('id, prenom, nom, pays, newsletter_consent')
+        .select('id, prenom, nom, pays')
         .in('id', leadClientIds),
       admin.from('favoris')
         .select('client_id, created_at, beats(styles, type_beat, ambiances)')
@@ -183,7 +190,8 @@ export default async function ContactsPage({
       prenom:               client.prenom,
       nom:                  client.nom,
       pays:                 client.pays,
-      newsletter_consent:   (client.newsletter_consent ?? false) || (l.newsletter_inscrit ?? false),
+      newsletter_consent:   statutNewsletterDe(l.client_id) === 'inscrit',
+      newsletter_statut:    statutNewsletterDe(l.client_id),
       source:               (l.source as string) ?? 'visite',
       lead_created_at:      l.created_at,
       derniere_action_at:   derniere.at,
@@ -222,7 +230,7 @@ export default async function ContactsPage({
   const [clientsRes, licencesRes, favorisClientsRes, freeDLsClientsRes, envoisNewsletterRes] = await Promise.all([
     admin
       .from('clients')
-      .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok, newsletter_consent')
+      .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok')
       .in('id', clientIds),
     licenceIds.length > 0
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
@@ -394,7 +402,8 @@ export default async function ContactsPage({
       spotify:            (override.spotify     ?? c.spotify)     as string | null,
       youtube:            (override.youtube     ?? c.youtube)     as string | null,
       tiktok:             (override.tiktok      ?? c.tiktok)      as string | null,
-      newsletter_consent: (c.newsletter_consent ?? false) || (lead?.newsletter_inscrit ?? false),
+      newsletter_consent: statutNewsletterDe(c.id) === 'inscrit',
+      newsletter_statut:  statutNewsletterDe(c.id),
       statut,
       statut_abo_detail:  statutAboDetail,
       nb_achats:          nbAchats,
@@ -422,7 +431,7 @@ export default async function ContactsPage({
     ]
     const inscriptionISO = lead?.source === 'newsletter' ? lead.created_at : null
 
-    if (!c.newsletter_consent && envois.length === 0 && !inscriptionISO) return []
+    if (c.newsletter_statut === 'non_inscrit' && envois.length === 0 && !inscriptionISO) return []
 
     const envoyes     = envois.length
     const ouverts     = envois.filter(e => e.ouvert_at).length
@@ -453,6 +462,7 @@ export default async function ContactsPage({
       nom_artiste:        c.nom_artiste,
       pays:               c.pays,
       newsletter_consent: c.newsletter_consent,
+      newsletter_statut:  c.newsletter_statut,
       premier_nwt_iso:    premier.at,
       premier_nwt_type:   premier.type,
       dernier_nwt_iso:    dernier.at,

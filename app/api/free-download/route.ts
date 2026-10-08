@@ -6,15 +6,19 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { r2, R2_BUCKET } from '@/lib/r2'
 import { telechargementGratuit } from '@/lib/emails'
 import { automatisationActive } from '@/lib/automatisations'
+import { inscrireParClient, lireStatutNewsletter } from '@/lib/newsletter'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { beatId, slug, email, prenom, nom, nomArtiste, pays, newsletterConsent = false } = body
+  const { beatId, slug, email, prenom, nom, nomArtiste, pays, newsletterConsent = false, disclaimerAccepte = false } = body
 
   if (!beatId || !slug) {
     return NextResponse.json({ error: 'Paramètres manquants.' }, { status: 400 })
+  }
+  if (disclaimerAccepte !== true) {
+    return NextResponse.json({ error: "Coche la case pour accepter les conditions d'utilisation du téléchargement gratuit." }, { status: 400 })
   }
 
   const admin    = createAdminClient()
@@ -68,13 +72,16 @@ export async function POST(req: Request) {
       } else {
         const newId = crypto.randomUUID()
         const nom   = emailNorm.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || emailNorm
-        await admin.from('clients').insert({ id: newId, email: emailNorm, nom, newsletter_consent: false })
+        await admin.from('clients').insert({ id: newId, email: emailNorm, nom })
         clientId = newId
       }
       clientEmail = emailNorm
     }
   } else {
-    // Non connecté — email obligatoire
+    // Non connecté — email + inscription newsletter obligatoires
+    if (newsletterConsent !== true) {
+      return NextResponse.json({ error: 'Pour télécharger gratuitement, inscris-toi à la newsletter de cette boutique.' }, { status: 400 })
+    }
     const emailNorm = (email ?? '').toLowerCase().trim()
     if (!emailNorm || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
       return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
@@ -89,7 +96,6 @@ export async function POST(req: Request) {
     if (existing) {
       clientId = existing.id
       const updates: Record<string, unknown> = {}
-      if (newsletterConsent) updates.newsletter_consent = true
       if (prenom)     updates.prenom      = prenom
       if (nom)        updates.nom         = nom
       if (nomArtiste) updates.nom_artiste = nomArtiste
@@ -107,7 +113,6 @@ export async function POST(req: Request) {
         nom:                nomVal,
         nom_artiste:        nomArtiste || null,
         pays:               pays       || null,
-        newsletter_consent: newsletterConsent,
       })
       clientId = newId
     }
@@ -116,23 +121,12 @@ export async function POST(req: Request) {
 
   const beatmakerId = beatmaker.id
 
-  // 3. Upsert lead (source conservée si lead existant)
-  const { data: existingLead } = await admin
-    .from('leads')
-    .select('id, newsletter_inscrit')
-    .eq('client_id', clientId)
-    .eq('beatmaker_id', beatmakerId)
-    .maybeSingle()
-
-  if (!existingLead) {
-    await admin.from('leads').insert({
-      client_id:          clientId,
-      beatmaker_id:       beatmakerId,
-      source:             'free_download',
-      newsletter_inscrit: newsletterConsent,
-    })
-  } else if (newsletterConsent && !existingLead.newsletter_inscrit) {
-    await admin.from('leads').update({ newsletter_inscrit: true }).eq('id', existingLead.id)
+  // 3. Free download = inscription à la newsletter de CETTE boutique,
+  // obligatoire même connecté (déjà inscrit : rien à cocher de plus).
+  if (newsletterConsent === true) {
+    await inscrireParClient(admin, { clientId, beatmakerId, origine: 'free_download', sourceLead: 'free_download' })
+  } else if ((await lireStatutNewsletter(admin, clientId, beatmakerId)) !== 'inscrit') {
+    return NextResponse.json({ error: 'Pour télécharger gratuitement, inscris-toi à la newsletter de cette boutique.' }, { status: 400 })
   }
 
   // 4. Log free_download

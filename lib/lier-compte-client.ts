@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { automatisationActive } from './automatisations'
+import { inscrireParClient } from './newsletter'
 
 export async function lierCompteClient(
   userId: string,
@@ -39,7 +40,8 @@ export async function lierCompteClient(
       email_reel: emailNorm,
       nom_reel: nom ?? null,
       prenom_reel: prenom ?? null,
-      newsletter_consent_reel: newsletter_consent ?? null,
+      // Le consentement n'est plus global (leads.newsletter_statut, par boutique)
+      newsletter_consent_reel: null,
     })
     if (error) {
       console.error('[lierCompteClient] Erreur fusion de compte :', guestClient.id, JSON.stringify(error))
@@ -52,7 +54,6 @@ export async function lierCompteClient(
       email: emailNorm,
       nom: nom ?? emailNorm.split('@')[0],
       prenom: prenom ?? null,
-      ...(newsletter_consent !== undefined ? { newsletter_consent } : {}),
     })
     if (error) console.error('[lierCompteClient] Erreur insert clients:', JSON.stringify(error))
 
@@ -60,7 +61,6 @@ export async function lierCompteClient(
     const updates: Record<string, unknown> = {}
     if (prenom) updates.prenom = prenom
     if (nom) updates.nom = nom
-    if (newsletter_consent !== undefined) updates.newsletter_consent = newsletter_consent
     if (Object.keys(updates).length > 0) {
       await admin.from('clients').update(updates).eq('id', userId)
     }
@@ -87,35 +87,42 @@ export async function lierCompteClient(
       .maybeSingle()
 
     if (beatmaker) {
-      const { data: existingLead } = await admin
-        .from('leads')
-        .select('id')
-        .eq('client_id', userId)
-        .eq('beatmaker_id', beatmaker.id)
-        .maybeSingle()
-
-      if (!existingLead) {
-        const { data: lead, error } = await admin.from('leads').insert({
-          client_id:          userId,
-          beatmaker_id:       beatmaker.id,
-          source:             'visite',
-          newsletter_inscrit: newsletter_consent ?? false,
-        }).select('id').single()
-        if (error) console.error('[lierCompteClient] Erreur insert lead:', JSON.stringify(error))
-
-        // "Bienvenue perso" — 1re fois que ce client est connu de CE
-        // beatmaker (nouveau compte global ou connexion sur une nouvelle
-        // boutique). La règle de suppression (rien d'autre le même jour) est
-        // vérifiée à l'envoi, pas ici — voir doitEtreIgnore dans automatisations.ts.
-        if (lead && await automatisationActive(beatmaker.id, 'bienvenue_perso')) {
-          const { error: evenementError } = await admin.from('automatisation_evenements').insert({
-            beatmaker_id: beatmaker.id,
+      // Case « recevoir les actualités » cochée à l'inscription = inscription à
+      // la newsletter de CETTE boutique. Non cochée : on ne touche à rien.
+      let lead: { id: string } | null = null
+      if (newsletter_consent === true) {
+        const res = await inscrireParClient(admin, { clientId: userId, beatmakerId: beatmaker.id, origine: 'inscription_compte', sourceLead: 'visite' })
+        lead = res.leadCree && res.leadId ? { id: res.leadId } : null
+      } else {
+        const { data: existingLead } = await admin
+          .from('leads')
+          .select('id')
+          .eq('client_id', userId)
+          .eq('beatmaker_id', beatmaker.id)
+          .maybeSingle()
+        if (!existingLead) {
+          const { data, error } = await admin.from('leads').insert({
             client_id:    userId,
-            type:         'bienvenue_perso',
-            reference_id: lead.id,
-          })
-          if (evenementError) console.error('[lierCompteClient] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
+            beatmaker_id: beatmaker.id,
+            source:       'visite',
+          }).select('id').single()
+          if (error) console.error('[lierCompteClient] Erreur insert lead:', JSON.stringify(error))
+          lead = data
         }
+      }
+
+      // "Bienvenue perso" — 1re fois que ce client est connu de CE
+      // beatmaker (nouveau compte global ou connexion sur une nouvelle
+      // boutique). La règle de suppression (rien d'autre le même jour) est
+      // vérifiée à l'envoi, pas ici — voir doitEtreIgnore dans automatisations.ts.
+      if (lead && await automatisationActive(beatmaker.id, 'bienvenue_perso')) {
+        const { error: evenementError } = await admin.from('automatisation_evenements').insert({
+          beatmaker_id: beatmaker.id,
+          client_id:    userId,
+          type:         'bienvenue_perso',
+          reference_id: lead.id,
+        })
+        if (evenementError) console.error('[lierCompteClient] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
       }
     }
   }

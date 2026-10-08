@@ -5,6 +5,7 @@ import { notFound, redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { lireStatutNewsletter, inscrireParClient, desinscrireParClient } from '@/lib/newsletter'
 
 type LigneRow = {
   beats: { titre: string; image_url: string | null } | null
@@ -117,19 +118,25 @@ export default async function MonCompteBoutiquePage({
   if (clientId) {
     const { data: client } = await admin
       .from('clients')
-      .select('prenom, nom, nom_artiste, newsletter_consent')
+      .select('prenom, nom, nom_artiste')
       .eq('id', clientId)
       .maybeSingle()
     prenomAffiche = client?.nom_artiste || client?.prenom || prenomAffiche
-    newsletterConsent = client?.newsletter_consent ?? false
+    // Newsletter de CETTE boutique uniquement
+    newsletterConsent = (await lireStatutNewsletter(admin, clientId, beatmaker.id)) === 'inscrit'
   }
 
+  const beatmakerId = beatmaker.id
   async function toggleNewsletter(formData: FormData) {
     'use server'
     if (!clientId) return
     const valeur = formData.get('newsletter_consent') === 'true'
     const admin2 = createAdminClient()
-    await admin2.from('clients').update({ newsletter_consent: valeur }).eq('id', clientId)
+    if (valeur) {
+      await inscrireParClient(admin2, { clientId, beatmakerId, origine: 'mon_compte', sourceLead: 'visite' })
+    } else {
+      await desinscrireParClient(admin2, { clientId, beatmakerId, origine: 'mon_compte' })
+    }
     revalidatePath(`/${slug}/mon-compte`)
   }
 
@@ -321,8 +328,8 @@ export default async function MonCompteBoutiquePage({
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white text-sm font-medium">Emails marketing</p>
-                  <p className="text-gray-500 text-xs mt-0.5">Nouvelles sorties, offres et actualités des beatmakers</p>
+                  <p className="text-white text-sm font-medium">Newsletter de {beatmaker.nom_artiste}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Nouvelles sorties, offres et actualités de cette boutique uniquement</p>
                 </div>
                 <form action={toggleNewsletter}>
                   <input type="hidden" name="newsletter_consent" value={newsletterConsent ? 'false' : 'true'} />

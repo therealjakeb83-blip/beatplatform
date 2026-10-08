@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const DISCLAIMER =
@@ -41,9 +41,22 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState<string | null>(null)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [disclaimer, setDisclaimer]   = useState(false)
+  // Connecté : déjà inscrit à la newsletter de CETTE boutique ? (null = en cours de vérification)
+  const [dejaInscrit, setDejaInscrit] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!open || !clientId) return
+    let annule = false
+    fetch(`/api/artiste/newsletter-statut?slug=${encodeURIComponent(slug)}`)
+      .then(r => r.json())
+      .then(d => { if (!annule) setDejaInscrit(d.statut === 'inscrit') })
+      .catch(() => { if (!annule) setDejaInscrit(false) })
+    return () => { annule = true }
+  }, [open, clientId, slug])
 
   const canSubmit = clientId
-    ? true
+    ? dejaInscrit !== null && disclaimer && (dejaInscrit || newsletter)
     : newsletter && compte && email.includes('@') && pays !== '' && prenom.trim() !== ''
 
   function handleClose() {
@@ -56,6 +69,8 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
     setPays('')
     setNewsletter(false)
     setCompte(false)
+    setDisclaimer(false)
+    setDejaInscrit(null)
     onClose()
   }
 
@@ -65,8 +80,8 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
     setError(null)
 
     const body = clientId
-      ? { beatId, slug }
-      : { beatId, slug, email, prenom: prenom || undefined, nom: nom || undefined, nomArtiste: nomArtiste || undefined, pays: pays || undefined, newsletterConsent: newsletter }
+      ? { beatId, slug, newsletterConsent: !dejaInscrit && newsletter, disclaimerAccepte: disclaimer }
+      : { beatId, slug, email, prenom: prenom || undefined, nom: nom || undefined, nomArtiste: nomArtiste || undefined, pays: pays || undefined, newsletterConsent: newsletter, disclaimerAccepte: compte }
 
     const res = await fetch('/api/free-download', {
       method: 'POST',
@@ -138,13 +153,51 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
             </a>
           </div>
         ) : clientId ? (
-          /* Connected user — direct download */
-          <form onSubmit={handleSubmit}>
-            {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
+          /* Connected user — newsletter (si pas encore inscrit à cette boutique) + conditions */
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {dejaInscrit === null ? (
+              <p className="flex items-center justify-center gap-2 text-xs text-gray-500 py-2">
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Vérification de ton inscription…
+              </p>
+            ) : (
+              <>
+                {!dejaInscrit && (
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newsletter}
+                      onChange={e => setNewsletter(e.target.checked)}
+                      className="mt-0.5 flex-shrink-0 accent-brand-600 cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-400 leading-relaxed">
+                      Je m&apos;inscris à la newsletter de cette boutique pour recevoir les prochains beats et nouveautés{' '}
+                      <span className="text-red-400">*</span>
+                    </span>
+                  </label>
+                )}
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={disclaimer}
+                    onChange={e => setDisclaimer(e.target.checked)}
+                    className="mt-0.5 flex-shrink-0 accent-brand-600 cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-400 leading-relaxed">
+                    J&apos;ai lu et j&apos;accepte les conditions ci-dessus{' '}
+                    <span className="text-red-400">*</span>
+                  </span>
+                </label>
+              </>
+            )}
+            {error && <p className="text-red-400 text-xs">{error}</p>}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold text-sm transition-colors"
+              disabled={!canSubmit || loading}
+              className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
             >
               {loading ? 'Préparation…' : 'Télécharger gratuitement'}
             </button>
@@ -203,7 +256,7 @@ export default function FreeDLModal({ open, onClose, beatId, beatTitre, slug, cl
                 className="mt-0.5 flex-shrink-0 accent-brand-600 cursor-pointer"
               />
               <span className="text-xs text-gray-400 leading-relaxed">
-                Je m&apos;inscris à la newsletter pour recevoir les prochains beats et nouveautés{' '}
+                Je m&apos;inscris à la newsletter de cette boutique pour recevoir les prochains beats et nouveautés{' '}
                 <span className="text-red-400">*</span>
               </span>
             </label>

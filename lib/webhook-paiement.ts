@@ -13,6 +13,7 @@ import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { completerCommande, remplirFraisTranches } from '@/lib/completion-commande'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { inscrireParClient } from '@/lib/newsletter'
 import type Stripe from 'stripe'
 
 // Traitement des paiements de vente (panier classique + achat express) —
@@ -60,9 +61,6 @@ export async function resoudreOuCreerClient(
   nom: string | null,
   address?: Stripe.Address | null,
   telephone?: string | null,
-  optionsClient?: {
-    newsletterOptIn?: boolean
-  },
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
@@ -75,11 +73,6 @@ export async function resoudreOuCreerClient(
 
   if (existingClient) {
     const backfill: Record<string, string | boolean | null> = {}
-    // Cette checkbox est un opt-in uniquement : une absence de coche ne doit
-    // jamais désinscrire un client qui avait déjà donné son consentement.
-    if (optionsClient?.newsletterOptIn === true) {
-      backfill.newsletter_consent = true
-    }
     if (address && !existingClient.adresse) {
       backfill.adresse = [address.line1, address.line2].filter(Boolean).join(' ') || null
       backfill.ville = address.city ?? null
@@ -119,7 +112,6 @@ export async function resoudreOuCreerClient(
       ville: address?.city ?? null,
       code_postal: address?.postal_code ?? null,
       pays: address?.country ?? null,
-      newsletter_consent: optionsClient?.newsletterOptIn === true,
     })
     .select('id')
     .single()
@@ -371,9 +363,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
   const acheteurRaisonSociale = meta.acheteur_raison_sociale?.trim() || null
   const acheteurNumeroTva = meta.acheteur_numero_tva?.trim() || null
 
-  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone, {
-    newsletterOptIn,
-  })
+  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone)
 
   const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
   const licenceIds = [...new Set(tentativeLignes.map(l => l.licence_id as string))]
@@ -716,29 +706,27 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     }
   }
 
-  // Créer un lead pour ce beatmaker si le client n'en a pas déjà un
+  // Créer un lead pour ce beatmaker si le client n'en a pas déjà un. Case
+  // newsletter cochée = inscription à CETTE boutique (geste du client, peut
+  // réinscrire un désinscrit) ; non cochée = on ne touche à rien.
   if (clientId) {
-    const { data: existingLead } = await supabase
-      .from('leads')
-      .select('id, newsletter_inscrit')
-      .eq('client_id', clientId)
-      .eq('beatmaker_id', meta.beatmaker_id)
-      .maybeSingle()
-
-    if (!existingLead) {
-      const { error: leadError } = await supabase.from('leads').insert({
-        client_id:          clientId,
-        beatmaker_id:       meta.beatmaker_id,
-        source:             'visite',
-        newsletter_inscrit: newsletterOptIn,
-      })
-      if (leadError) console.error('[webhook-paiement] Erreur insert lead:', JSON.stringify(leadError))
-    } else if (newsletterOptIn && !existingLead.newsletter_inscrit) {
-      const { error: leadError } = await supabase
+    if (newsletterOptIn) {
+      await inscrireParClient(supabase, { clientId, beatmakerId: meta.beatmaker_id, origine: 'paiement', sourceLead: 'visite' })
+    } else {
+      const { data: existingLead } = await supabase
         .from('leads')
-        .update({ newsletter_inscrit: true })
-        .eq('id', existingLead.id)
-      if (leadError) console.error('[webhook-paiement] Erreur opt-in newsletter lead:', JSON.stringify(leadError))
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('beatmaker_id', meta.beatmaker_id)
+        .maybeSingle()
+      if (!existingLead) {
+        const { error: leadError } = await supabase.from('leads').insert({
+          client_id:    clientId,
+          beatmaker_id: meta.beatmaker_id,
+          source:       'visite',
+        })
+        if (leadError) console.error('[webhook-paiement] Erreur insert lead:', JSON.stringify(leadError))
+      }
     }
   }
 

@@ -52,7 +52,6 @@ export async function POST(req: Request) {
     spotify:            (spotify as string)?.trim()    || null,
     youtube:            (youtube as string)?.trim()    || null,
     tiktok:             (tiktok as string)?.trim()     || null,
-    newsletter_consent: newsletter === 'inscrit',
   }).select('id')
   if (clientError) {
     console.error('[contacts] client insert error:', JSON.stringify(clientError))
@@ -64,7 +63,9 @@ export async function POST(req: Request) {
     client_id:          clientId,
     beatmaker_id:       beatmaker.id,
     source:             'manuel',
-    newsletter_inscrit: newsletter === 'inscrit',
+    ...(newsletter === 'inscrit'
+      ? { newsletter_statut: 'inscrit', newsletter_statut_at: new Date().toISOString(), newsletter_statut_source: 'beatmaker' }
+      : {}),
   }).select('id')
   if (leadError) {
     console.error('[contacts] lead insert error:', JSON.stringify(leadError))

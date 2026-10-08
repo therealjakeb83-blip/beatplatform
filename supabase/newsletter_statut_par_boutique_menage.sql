@@ -1,21 +1,12 @@
--- ============================================================
--- Fusion de compte client — transaction atomique
--- ============================================================
--- Remplace la fusion faite en plusieurs appels JS successifs dans
--- lib/lier-compte-client.ts, qui laissait une fenêtre pendant laquelle un
--- webhook Stripe concurrent (invoice.payment_succeeded, quasi simultané à
--- checkout.session.completed) pouvait insérer une nouvelle commande
--- référençant la fiche invitée PILE entre la réassignation et la
--- suppression — bug reproductible à chaque test le 2026-07-15/16, pas
--- juste une coïncidence rare (les 2 événements Stripe arrivent
--- structurellement à quelques centaines de ms l'un de l'autre).
---
--- SELECT ... FOR UPDATE verrouille la fiche invitée : toute transaction
--- concurrente qui tente d'insérer une ligne référençant cette fiche (le
--- webhook, via la contrainte de clé étrangère) doit attendre que cette
--- fonction se termine avant de continuer — au lieu de deviner un délai
--- d'attente, Postgres synchronise lui-même les deux transactions.
+-- Import de commandes externes — lot 1 : ménage APRÈS mise en ligne du code
+-- Supprime le drapeau global clients.newsletter_consent et l'ancien booléen
+-- leads.newsletter_inscrit, remplacés par leads.newsletter_statut (par boutique).
+-- À lancer seulement quand le nouveau code est déployé sur Vercel.
 
+BEGIN;
+
+-- La fusion de compte ne recopie plus aucun consentement global (le paramètre
+-- est gardé pour ne pas casser l'appel, il est ignoré).
 CREATE OR REPLACE FUNCTION fusionner_compte_client(
   id_invite uuid,
   id_reel uuid,
@@ -31,17 +22,8 @@ AS $$
 BEGIN
   PERFORM 1 FROM clients WHERE id = id_invite FOR UPDATE;
 
-  -- Libère temporairement l'email de la fiche invitée (contrainte unique) —
-  -- sinon l'insert de la nouvelle fiche juste en dessous échoue en doublon
-  -- tant que l'ancienne fiche existe encore.
   UPDATE clients SET email = email || '.fusion-tmp-' || id_reel::text WHERE id = id_invite;
 
-  -- Créer la fiche du vrai compte AVANT de réassigner quoi que ce soit —
-  -- sinon les tables sans cascade (commandes...) refusent de pointer vers un
-  -- client_id qui n'existe pas encore (bug trouvé le 2026-07-16 : la 1re
-  -- version de cette fonction réassignait avant de créer la fiche).
-  -- newsletter_consent_reel ignoré depuis le 2026-10-08 : consentement par
-  -- boutique (leads.newsletter_statut), voir newsletter_statut_par_boutique_menage.sql
   INSERT INTO clients (id, email, nom, prenom)
   VALUES (id_reel, email_reel, COALESCE(nom_reel, id_invite::text), prenom_reel);
 
@@ -66,3 +48,14 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION fusionner_compte_client TO service_role;
+
+ALTER TABLE clients DROP COLUMN IF EXISTS newsletter_consent;
+ALTER TABLE leads   DROP COLUMN IF EXISTS newsletter_inscrit;
+
+COMMIT;
+
+-- Contrôle (à lancer après) : doit renvoyer 0 ligne
+-- SELECT table_name, column_name FROM information_schema.columns
+-- WHERE table_schema = 'public'
+--   AND ((table_name = 'clients' AND column_name = 'newsletter_consent')
+--     OR (table_name = 'leads'   AND column_name = 'newsletter_inscrit'));

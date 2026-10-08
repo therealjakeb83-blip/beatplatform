@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
+import { lireStatutNewsletter, peutRecevoirAutomatisation } from './newsletter'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
 import type { BrandingBoutique } from './email-blocs'
 import { normaliserEmail } from './email'
@@ -470,17 +471,22 @@ async function chargerConfigs(beatmakerId: string, types: TypeAutomatisation[]):
 // tournent en contexte service_role (webhook/cron, aucun beatmaker connecté).
 // Suffisant pour les textes de référence de Jake, qui ne référencent que
 // l'identité et la boutique — à enrichir si un futur workflow a besoin de plus.
-async function chargerDestinatairePourAutomatisation(clientId: string): Promise<Destinataire | null> {
+async function chargerDestinatairePourAutomatisation(clientId: string, beatmakerId: string): Promise<Destinataire | null> {
   const admin = createAdminClient()
-  const { data: client } = await admin
-    .from('clients')
-    .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, newsletter_consent, instagram, spotify, youtube, tiktok, tags, created_at')
-    .eq('id', clientId)
-    .single()
+  const [{ data: client }, statutNewsletter] = await Promise.all([
+    admin
+      .from('clients')
+      .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, instagram, spotify, youtube, tiktok, tags, created_at')
+      .eq('id', clientId)
+      .single(),
+    lireStatutNewsletter(admin, clientId, beatmakerId),
+  ])
   if (!client) return null
 
   return {
     ...client,
+    newsletter_statut: statutNewsletter,
+    newsletter_consent: statutNewsletter === 'inscrit',
     langue: (client.langue === 'EN' ? 'EN' : 'FR'),
     tags: client.tags ?? [],
     statut: 'abonne',
@@ -568,7 +574,7 @@ async function envoyerPourTemplate(params: {
   if (!params.config.objet || !params.config.corps) return
 
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
-    chargerDestinatairePourAutomatisation(params.clientId),
+    chargerDestinatairePourAutomatisation(params.clientId, params.beatmakerId),
     createAdminClient().from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url, signature_emails').eq('id', params.beatmakerId).single(),
     resoudreTokensSupplementaires(params.typeTemplate, params.evenementsSources, params.beatmakerId, params.clientId),
   ])
@@ -654,6 +660,14 @@ async function traiterGroupePret(
   configs: Map<TypeAutomatisation, ConfigAutomatisation>,
   inactifs: EvenementAutomatisation[],
 ): Promise<void> {
+  // Désinscrit de la newsletter de CETTE boutique : aucune automatisation
+  // (inscrits et non inscrits les reçoivent). Vérifié avant toute préparation,
+  // pour ne pas générer de code promo de relance pour rien.
+  if (!peutRecevoirAutomatisation(await lireStatutNewsletter(admin, clientId, beatmakerId))) {
+    await marquerTraites(admin, [...actifsPrets, ...inactifs])
+    return
+  }
+
   // 3. Garde-fou follow_up_free_download : exclure les téléchargements déjà
   // achetés entre-temps — ils ne doivent influencer aucune résolution.
   const { actifs: pretsFiltres, achetesEntreTemps } = await filtrerDownloadsNonAchetes(actifsPrets)
@@ -753,6 +767,10 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
   const actifs = evenements.filter(e => configs.get(e.type)?.actif)
   if (actifs.length === 0) return { erreur: "Aucune des recettes concernées par ce jour n'est activée." }
 
+  if (!peutRecevoirAutomatisation(await lireStatutNewsletter(admin, clientId, beatmakerId))) {
+    return { erreur: "Rien ne sera envoyé : ce contact s'est désinscrit de ta newsletter (les automatisations ne partent jamais aux désinscrits)." }
+  }
+
   const { actifs: pretsFiltres } = await filtrerDownloadsNonAchetes(actifs)
   const resolution = resoudreJournee(pretsFiltres)
 
@@ -777,7 +795,7 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
   }
 
   const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
-    chargerDestinatairePourAutomatisation(clientId),
+    chargerDestinatairePourAutomatisation(clientId, beatmakerId),
     admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url, signature_emails').eq('id', beatmakerId).single(),
     resoudreTokensSupplementaires(typeTemplate, evenementsSources, beatmakerId, clientId, { previsualisation: true }),
   ])

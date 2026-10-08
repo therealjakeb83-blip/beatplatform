@@ -7,6 +7,7 @@ import { joursDepuis } from '../../_lib/utils'
 import ClientsView from './ClientsView'
 import LeadsView, { type LeadRow } from './LeadsView'
 import NewsletterView, { type NewsletterRow } from './NewsletterView'
+import type { StatutNewsletter } from '@/lib/newsletter-statut'
 
 export type ContactRow = {
   id: string
@@ -21,6 +22,7 @@ export type ContactRow = {
   youtube: string | null
   tiktok: string | null
   newsletter_consent: boolean
+  newsletter_statut: StatutNewsletter
   statut: 'abonne' | 'ancien' | 'client' | 'lead'
   statut_abo_detail: 'actif' | 'impaye' | 'annulation_en_cours' | 'ancien' | null
   nb_achats: number
