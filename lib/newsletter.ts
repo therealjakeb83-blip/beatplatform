@@ -71,7 +71,9 @@ export async function desinscrireParClient(
 }
 
 // Action du beatmaker (fiche client, ajout manuel) : ne peut JAMAIS inscrire
-// quelqu'un qui s'est désinscrit lui-même.
+// quelqu'un qui s'est désinscrit lui-même. Sa désinscription manuelle remet en
+// « non inscrit » (décision de Jake, 2026-10-08) : « désinscrit » est réservé
+// au geste du client.
 export async function changerStatutParBeatmaker(
   admin: Admin,
   params: { clientId: string; beatmakerId: string; inscrire: boolean; sourceLead?: SourceLead },
@@ -83,7 +85,7 @@ export async function changerStatutParBeatmaker(
   await ecrireStatut(admin, {
     clientId: params.clientId,
     beatmakerId: params.beatmakerId,
-    statut: params.inscrire ? 'inscrit' : 'desinscrit',
+    statut: params.inscrire ? 'inscrit' : 'non_inscrit',
     origine: 'beatmaker',
     sourceLead: params.sourceLead ?? 'manuel',
   })
