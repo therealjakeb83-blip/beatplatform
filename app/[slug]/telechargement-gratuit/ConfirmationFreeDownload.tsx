@@ -28,12 +28,13 @@ export default function ConfirmationFreeDownload({ slug, nomArtiste, jeton }: { 
           return
         }
         setEtat({ kind: 'ok', downloadUrl: data.downloadUrl, beatTitre: data.beatTitre })
-        const a = document.createElement('a')
-        a.href = data.downloadUrl
-        a.download = data.beatTitre + '.mp3'
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
+        // Cadre invisible plutôt que de faire naviguer l'onglet vers le fichier :
+        // un onglet ouvert depuis Gmail est refermé par Chrome dès que sa propre
+        // navigation devient un téléchargement (page disparue, rien de téléchargé).
+        const cadre = document.createElement('iframe')
+        cadre.style.display = 'none'
+        cadre.src = data.downloadUrl
+        document.body.appendChild(cadre)
       } catch {
         setEtat({ kind: 'erreur', message: 'Une erreur est survenue. Réessaie dans un instant.' })
       }
