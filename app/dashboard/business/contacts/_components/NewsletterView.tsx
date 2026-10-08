@@ -255,6 +255,9 @@ export default function NewsletterView({
             <span className="text-sm text-gray-500 mb-0.5">contact{total !== 1 ? 's' : ''} newsletter</span>
             {hasAnyFilter && <span className="text-xs text-gray-600 mb-0.5">sur {contacts.length} au total</span>}
           </div>
+          <p className="text-xs text-gray-500 -mt-3 mb-5">
+            Contacts ayant déjà interagi avec la newsletter : inscrits, désinscrits, ou ayant reçu au moins une campagne.
+          </p>
           <div className="grid grid-cols-4 gap-4 pt-5 border-t border-gray-800">
             {[
               { label: 'Envoyés',          value: String(totalEnvoyes), sub: 'emails au total' },
