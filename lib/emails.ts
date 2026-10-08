@@ -118,7 +118,7 @@ function introDefaut(type: TypeTemplateTransactionnel, nomArtiste: string): stri
     case 'confirmation_compte_artiste':
       return `Bienvenue ! Ton compte est activé, tu peux dès maintenant accéder à tes achats, favoris et abonnements sur ${nomArtiste}.`
     case 'telechargement_gratuit':
-      return 'Voici ton téléchargement gratuit. Le lien expire dans 1 heure, télécharge-le rapidement !'
+      return 'Voici ton téléchargement gratuit.'
     case 'beat_cadeau_fidelite':
       return 'Merci pour ta fidélité ! Voici un code pour un beat gratuit.'
     case 'remboursement_commande':
@@ -1253,10 +1253,12 @@ export async function telechargementGratuit({
 
   const corpsHtml = `<p style="font-size:13px;color:#6b7280;margin:0 0 20px;">
       Usage personnel uniquement — maquettes et réseaux sociaux OK. Diffusion sur plateformes de streaming interdite sans achat de licence.
-    </p>${lienDeConfirmation ? `
+    </p>
     <p style="font-size:12px;color:#9ca3af;margin:0 0 20px;">
-      Ce lien confirme ton adresse email et reste valable 7 jours.
-    </p>` : ''}`
+      ${lienDeConfirmation
+        ? 'Ce lien confirme ton adresse email et reste valable 7 jours.'
+        : 'Le lien expire dans 1 heure, télécharge-le rapidement.'}
+    </p>`
 
   const { data, error } = await envoyerEmailUnique({
     beatmakerId,
