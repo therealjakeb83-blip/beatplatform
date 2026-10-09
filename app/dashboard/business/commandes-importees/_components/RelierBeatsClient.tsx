@@ -28,6 +28,23 @@ function Pochette({ beat }: { beat: BeatCatalogue }) {
     : <span className="w-8 h-8 rounded-md bg-gray-800 flex-shrink-0" />
 }
 
+function BadgeProposition({ groupe }: { groupe: GroupeTitre }) {
+  const sur = groupe.propositionNiveau !== 'ressemblant'
+  const detail = groupe.propositionNiveau === 'identique' ? 'titre identique'
+    : groupe.propositionNiveau === 'debut' ? 'début du titre'
+    : `ressemblant ${Math.round((groupe.propositionScore ?? 0) * 100)} %`
+  return (
+    <span
+      className={`text-[11px] rounded px-1.5 py-0.5 flex-shrink-0 border whitespace-nowrap ${sur
+        ? 'text-indigo-300 bg-indigo-500/10 border-indigo-500/30'
+        : 'text-amber-300 bg-amber-500/10 border-amber-500/30'}`}
+      title={sur ? undefined : 'Titre proche mais pas identique : vérifie avant de valider'}
+    >
+      Proposé · {detail}
+    </span>
+  )
+}
+
 function NomBeat({ beat }: { beat: BeatCatalogue }) {
   return (
     <span className="flex items-center gap-2.5 min-w-0">
@@ -68,7 +85,9 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
     })
   }, [groupes, filtre, recherche, beatsParId, filtrerPropositions])
 
-  const propositions = filtres.filter(g => g.decision === 'a_traiter' && g.propositionId)
+  // « Valider les N » : seulement les propositions sûres (titre identique ou
+  // début du titre identique) ; les « ressemblant » se valident une par une
+  const propositions = filtres.filter(g => g.decision === 'a_traiter' && g.propositionId && g.propositionNiveau !== 'ressemblant')
   const pagination = usePagination(filtres, [filtre, recherche, filtrerPropositions])
   const occupe = enCours !== null || rafraichissement
 
@@ -154,7 +173,7 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
               title={verrou}
               className={`${bouton} text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold`}
             >
-              {enCours === '__toutes__' ? <><Roue petite /> Enregistrement…</> : `${planPayant ? '' : '🔒 '}Valider les ${nb(propositions.length)} proposition${propositions.length > 1 ? 's' : ''}`}
+              {enCours === '__toutes__' ? <><Roue petite /> Enregistrement…</> : `${planPayant ? '' : '🔒 '}Valider les ${nb(propositions.length)} proposition${propositions.length > 1 ? 's' : ''} sûre${propositions.length > 1 ? 's' : ''}`}
             </button>
           )}
         </div>
@@ -194,7 +213,7 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
                       : g.decision === 'ne_pas_relier' ? <span className="text-xs text-gray-500">Ne pas relier</span>
                       : propose ? (
                         <span className="flex items-center gap-2 min-w-0">
-                          <span className="text-[11px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded px-1.5 py-0.5 flex-shrink-0">Proposé</span>
+                          <BadgeProposition groupe={g} />
                           <NomBeat beat={propose} />
                         </span>
                       ) : <span className="text-xs text-gray-600">Aucune correspondance exacte</span>}

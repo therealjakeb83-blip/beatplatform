@@ -84,12 +84,12 @@ export function estFichierBeatStars(texte: string): boolean {
   return ligneEnTetes(lireCsv(texte.slice(0, 5000))) >= 0
 }
 
-// « (COLLABORATOR) » est ajouté par BeatStars à la fin de tous les titres ;
-// l'article s'écrit « Titre | tags » : seul le titre est gardé (l'original
-// complet reste dans titreOriginal)
+// « (COLLABORATOR) » est ajouté par BeatStars à la fin de TOUS les titres
+// (bruit, la vraie collab est lue dans les parts) : seul ce suffixe est retiré.
+// Le reste est le titre entier choisi par le beatmaker (« Sanglot | Piano
+// Solo/No Drums ») : aucun format standard, on ne le coupe pas (Jake, 2026-10-09).
 export function nettoyerTitre(article: string): string {
-  const sansCollab = article.replace(/(\s*\(COLLABORATOR\))+\s*$/i, '').trim()
-  return sansCollab.split('|')[0].trim() || sansCollab
+  return article.replace(/(\s*\(COLLABORATOR\))+\s*$/i, '').trim()
 }
 
 function montant(v: string): number | null {
