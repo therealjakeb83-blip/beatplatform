@@ -568,9 +568,9 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 | T2 | Plan Free : page ouverte, Importer 🔒, API refuse | ✅ prouvé par le code : page dans `PREFIXES_LIBRES` (`lib/acces-plan.ts`) ; bouton 🔒 si `planPayant` faux ; `importer`/`analyser` exigent `aAccesPlanPayant` (même règle que `proxy.ts` : admin, exempté ou abonnement actif/essai) ; `annuler` ne l'exige pas |
 | T3 | Écran de vérification sur A : BeatStars, « Jake B », oct. 2020 → févr. 2026, 2 035 commandes, 0 rejet, nouveaux/existants, $ ≈ €, 5 exemples | ✅ Claude (vrai code de préparation, base simulée) + Jake (écran réel identique : 2 035 commandes, 2 194 beats, 1 517 acheteurs dont 1 514 nouveaux / 3 déjà dans le CRM, 95 847,50 $ ≈ 88 623,17 €, OUTRO « Vendu par AchProdd », Cramé offert, Chakra collab). Corrigé : exemples = acheteurs différents |
 | T4 | Rien n'écrit après l'écran de vérification | ✅ prouvé par le code : le chemin `analyser` → `preparerImport` ne contient que des lectures (aucun insert/update/delete/rpc) ; seule la route `importer` écrit ; confirmé en base par Jake après l'écran de vérification (0 import, 0 commande, 0 contact) |
-| T5 | Import : nombres annoncés = nombres en base, attente visible | ⬜ |
+| T5 | Import : nombres annoncés = nombres en base, attente visible | ✅ Jake (< 10 s ; base = écran : 2 035 commandes, 2 194 beats vendus, 1 514 contacts dont 1 514 fiches créées, 95 847,50 $ / 88 623,17 €, 0 importé inscrit ; page actualisée seule) |
 | T6 | Conversion au taux BCE du jour (week-end = vendredi), au centime | ✅ Claude (3 commandes + « Cramé » un samedi → taux du vendredi 30/01, vérifiés directement sur l'API BCE) |
-| T7 | Collab : Chakra = simple (collab avec Franci A La Prod) ; OUTRO = « Vendu par AchProdd », 44,99 $ | ✅ Claude (préparation) ; affichage à voir (Jake) |
+| T7 | Collab : Chakra = simple (collab avec Franci A La Prod) ; OUTRO = « Vendu par AchProdd », 44,99 $ | ✅ Claude (préparation) + Jake (liste : Chakra « Collab avec Franci A La Prod ») |
 | T8 | Offert : Cramé offert dans une facture à 3 beats, Carré/IA normaux | ✅ Claude (préparation) |
 | T9 | Aucun « (COLLABORATOR) » dans les titres | ✅ Claude (0 sur 2 194) |
 | T10 | Liste Contacts : acheteur importé = Client, LTV, achats, dates, source « Import — BeatStars », Non inscrit | ⬜ |
