@@ -164,7 +164,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
                   <p className="text-xs text-gray-500 mt-1">
                     {nb(apercu.nbCommandesFichier)} dans le fichier
                     {apercu.nbDejaImportees > 0 && <>, dont <strong className="text-gray-300">{nb(apercu.nbDejaImportees)} déjà importées</strong> (ignorées)</>}
-                    {' '}· {nb(apercu.nbBeats)} beats
+                    {' '}· {nb(apercu.nbBeats)} beats vendus
                   </p>
                 </Bloc>
                 <Bloc titre="Acheteurs">
@@ -266,7 +266,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
               <p className="text-4xl mb-3">✓</p>
               <p className="text-white font-bold text-lg">Import terminé</p>
               <p className="text-sm text-gray-400 mt-2">
-                {nb(resultat.nb_commandes)} commandes ({nb(resultat.nb_lignes)} beats) importées · {nb(resultat.nb_contacts_crees)} contacts ajoutés à ton CRM.
+                {nb(resultat.nb_commandes)} commandes ({nb(resultat.nb_lignes)} beats vendus) importées · {nb(resultat.nb_contacts_crees)} contacts ajoutés à ton CRM.
               </p>
               <div className="flex justify-center gap-3 mt-6">
                 <Link href="/dashboard/business/contacts" className="text-sm px-4 py-2 rounded-xl border border-gray-700 text-gray-300 hover:text-white">
