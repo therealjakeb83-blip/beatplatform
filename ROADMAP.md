@@ -529,7 +529,7 @@ Cadrage : `memory/project_phase13_grillme_decisions_2026_09_28.md`, section « C
 | Lot | Contenu |
 |---|---|
 | **1 — Consentement par boutique** ✅ (2026-10-08) | 3 statuts par boutique (Inscrit / Non inscrit / Désinscrit) remplaçant le drapeau global `clients.newsletter_consent` (lu en OU aujourd'hui → un client inscrit chez A apparaît inscrit chez B) ; tous les points d'écriture (fiche client, lien de désinscription, Mon compte boutique, formulaire newsletter, free download, paiement, inscription artiste, export newsletter) ; règle d'envoi : transactionnel toujours, 7 automatisations = inscrits + non inscrits jamais désinscrits (aujourd'hui elles ne vérifient rien), campagnes = inscrits ; free download = inscription newsletter obligatoire même connecté + case disclaimer ; conseil dans l'éditeur Bienvenue perso. Tranché le 2026-10-08 : la case « actualités » à l'inscription artiste = newsletter de la boutique d'inscription ; double opt-in reporté (tests de sécurité). **Méthode (exception validée par Jake)** : codé directement sans plan préalable, checklist T0-TN présentée après le code, migrations SQL transmises dès qu'elles sont écrites. |
-| **2 — Import BeatStars de bout en bout** | Tables (`commandes_externes`, historique des imports), lecture du fichier BeatStars (lignes collab, beats offerts, nettoyage des titres), conversion BCE, écran de vérification, rejets, doublons, création/rattachement des contacts, intégration CRM (LTV, achats, dates, statut, source), historique fiche client avec badge + panneau de détail, page « Commandes importées » (liste, historique, annulation), boutons d'accès, accès par plan, retrait des anciennes colonnes. |
+| **2 — Import BeatStars de bout en bout** 🔄 (codé le 2026-10-09, tests en cours) | Tables (`commandes_externes`, historique des imports), lecture du fichier BeatStars (lignes collab, beats offerts, nettoyage des titres), conversion BCE, écran de vérification, rejets, doublons, création/rattachement des contacts, intégration CRM (LTV, achats, dates, statut, source), historique fiche client avec badge + panneau de détail, page « Commandes importées » (liste, historique, annulation), boutons d'accès, accès par plan, retrait des anciennes colonnes. |
 | **3 — Inscription groupée + Relier les beats** | Action groupée « Inscrire à la newsletter » (confirmation, trace, désinscrits ignorés) ; écran « Relier les beats » (par titre, propositions exactes uniques, valider tout, mémorisation, réversible). |
 | **4 — Autres plateformes** | Assistant guidé d'association de colonnes (détection par contenu, dates ambiguës, devise + nom de plateforme, association mémorisée, empreinte anti-doublons, avertissements de données manquantes). |
 
@@ -555,6 +555,34 @@ Checklist lot 1 (A = jakeb-test, B = nic-beat-2809, adresses de test = `nicojaco
 | T13 | Onglet Newsletter des Contacts : filtre Inscrit / Non inscrit / Désinscrit, pastille verte / grise / rouge | ✅ Jake (l'onglet ne montre que les contacts ayant un lien avec la newsletter : inscrits, désinscrits, ou ayant reçu une campagne — voulu) |
 | T14 | Lien de désinscription d'une campagne reçue → « Désinscrit » chez A, B inchangé | ✅ prouvé par le code |
 | T15 | Éditeur Bienvenue perso : conseil « garde-le accueillant plutôt que commercial » affiché | ✅ prouvé par le code |
+
+**Lot 2 — 🔄 CODÉ le 2026-10-09, tests en cours.** Migration `supabase/import_externe_lot2.sql` ✅ exécutée et contrôlée (4 tables, 4 fonctions, 166 `stripe_invoice_id` = 166 anciens ids, source `import`). Migration de ménage `supabase/import_externe_lot2_menage.sql` (suppression de `plateforme_source`/`external_order_id`) à lancer APRÈS T20. Code : `lib/import-externe/` (lecteur CSV, lecteur BeatStars, taux BCE, préparation commune aperçu/import), routes `/api/business/imports-externes/{analyser,importer,annuler}`, page `/dashboard/business/commandes-importees`, `app/dashboard/business/_lib/commandes-externes.ts` (vue CRM des commandes importées), `_lib/requetes.ts`. Trouvé en route : les écrans CRM étaient tronqués au-delà de 1 000 contacts (limite Supabase par requête) → lectures paginées / par paquets ; détection de doublons accélérée (mêmes résultats). Limite assumée : plusieurs beats dans une même case BeatStars = commande rejetée (prix par beat inconnu). **Avant lancement (étape 17)** : annuler l'import de test du vrai fichier de Jake sur jakeb-test.
+
+Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatStars de Jake ; copie abîmée pour T15 : `Downloads	est-import-lignes-rejetees.csv`) :
+
+| # | Test | Statut |
+|---|---|---|
+| T0 | Migration exécutée + contrôle ; site déployé ; Commandes / fiche commande / Contacts / fiche client s'ouvrent sans erreur | ✅ migration (Jake) + déploiement (Claude : routes 401 hors connexion) ; pages à ouvrir (Jake) |
+| T1 | Lecteur sur le vrai fichier = Sales Report | ✅ Claude (janvier : 2 058 beats, 93 312,89 $, remises 4 880,22 $ ; février : 2 035 commandes, 0 rejet) |
+| T2 | Plan Free : page ouverte, Importer 🔒, API refuse | ⬜ (refus API prouvé par le code : `aAccesPlanPayant` dans `route-commun.ts`) |
+| T3 | Écran de vérification sur A : BeatStars, « Jake B », oct. 2020 → févr. 2026, 2 035 commandes, 0 rejet, nouveaux/existants, $ ≈ €, 5 exemples | ✅ Claude (vrai code de préparation, base simulée : 95 847,50 $ ≈ 88 623,17 €, 1 517 acheteurs) ; écran réel à voir (Jake) |
+| T4 | Rien n'écrit après l'écran de vérification | ⬜ |
+| T5 | Import : nombres annoncés = nombres en base, attente visible | ⬜ |
+| T6 | Conversion au taux BCE du jour (week-end = vendredi), au centime | ✅ Claude (3 commandes + « Cramé » un samedi → taux du vendredi 30/01, vérifiés directement sur l'API BCE) |
+| T7 | Collab : Chakra = simple (collab avec Franci A La Prod) ; OUTRO = « Vendu par AchProdd », 44,99 $ | ✅ Claude (préparation) ; affichage à voir (Jake) |
+| T8 | Offert : Cramé offert dans une facture à 3 beats, Carré/IA normaux | ✅ Claude (préparation) |
+| T9 | Aucun « (COLLABORATOR) » dans les titres | ✅ Claude (0 sur 2 194) |
+| T10 | Liste Contacts : acheteur importé = Client, LTV, achats, dates, source « Import — BeatStars », Non inscrit | ⬜ |
+| T11 | Contact déjà existant chez A : nom et source inchangés, LTV = natif + importé | ⬜ |
+| T12 | Fiche client : historique mélangé, badge, panneau de détail sans facture/contrat | ⬜ |
+| T13 | Chez B : rien de l'import de A | ⬜ |
+| T14 | Réimport : « 2 035 déjà importées », bouton grisé ; janvier puis février = 13 nouvelles | ⬜ |
+| T15 | Rejets : commande entière rejetée avec raison, CSV téléchargeable | ✅ Claude (copie abîmée : email vide, date illisible sur 3 beats, facture en double → 3 commandes rejetées, n° de ligne exacts) ; écran + CSV à voir (Jake) |
+| T16 | BCE indisponible → échec propre, rien d'écrit | ✅ Claude (réseau coupé sur le vrai code : message prévu, l'erreur survient avant toute écriture) |
+| T17 | Analytics / Commandes / factures inchangés ; aucun email ni automatisation | ⬜ (prouvé par le code : aucune de ces parties ne lit `commandes_externes` ; relance d'inactivité = table `commandes` seulement) |
+| T18 | Annulation : commandes supprimées, contacts intacts supprimés, modifiés/inscrits/en liste conservés, préexistants intacts, OK en Free | ⬜ |
+| T19 | Segment « LTV > X » contient des contacts importés | ⬜ |
+| T20 | Ménage : abonnement rejoué pas compté deux fois (`stripe_invoice_id`) ; anciennes colonnes supprimées | ⬜ |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
