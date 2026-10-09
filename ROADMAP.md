@@ -622,7 +622,7 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 | # | Test | Statut |
 |---|---|---|
 | T0 | Build de prod OK ; 7 onglets + fiche d'un beat s'ouvrent sans erreur | |
-| T1 | Migration exécutée : SELECT de contrôle (3 fonctions, 3 index, exécution réservée à service_role, fonction = comptage direct) | |
+| T1 | Migration exécutée : SELECT de contrôle (3 fonctions, 3 index, exécution réservée à service_role, fonction = comptage direct) || ✅ Jake (3 fonctions, 3 index, accès service_role seul ; jakeb-test : 161 écoutes, 42 free DL, 22 favoris = comptage direct) |
 | T2 | Sous 1 000 lignes : relevés avant/après de A identiques (comparaison par script ; seules les durées d'abonnement bougent avec l'heure) | |
 | T3 | Idem pour B (côté collaborateur : « Reçu en collab », parts) | |
 | T4 | 1 500 fausses écoutes (sans client, `pays = 'ZZ-TEST'`) sur un beat de A : Vue d'ensemble / Beats / Préférences = comptage SQL, période complète et « Ce mois » | |
