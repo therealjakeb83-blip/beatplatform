@@ -573,7 +573,7 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 | T7 | Collab : Chakra = simple (collab avec Franci A La Prod) ; OUTRO = « Vendu par AchProdd », 44,99 $ | ✅ Claude (préparation) + Jake (liste : Chakra « Collab avec Franci A La Prod ») |
 | T8 | Offert : Cramé offert dans une facture à 3 beats, Carré/IA normaux | ✅ Claude (préparation) |
 | T9 | Aucun « (COLLABORATOR) » dans les titres | ✅ Claude (0 sur 2 194) |
-| T10 | Liste Contacts : acheteur importé = Client, LTV, achats, dates, source « Import — BeatStars », Non inscrit | ⬜ |
+| T10 | Liste Contacts : acheteur importé = Client, LTV, achats, dates, Non inscrit | ✅ Jake (Manuel Diniz : Client, valeurs attendues). Corrigé à sa demande : 1re action d'un contact importé = « Commande » (plus « Import — BeatStars ») |
 | T11 | Contact déjà existant chez A : nom et source inchangés, LTV = natif + importé | ⬜ |
 | T12 | Fiche client : historique mélangé, badge, panneau de détail sans facture/contrat | ⬜ |
 | T13 | Chez B : rien de l'import de A | ✅ prouvé par le code : l'import ne crée de lead que pour A ; tous les écrans CRM partent des leads/commandes de la boutique connectée et filtrent `beatmaker_id` ; nouvelles tables en RLS `beatmaker_id = auth.uid()`. ⚠️ Trou ANTÉRIEUR au lot, noté pour 16b : la fiche `/contacts/[id]` charge n'importe quel client par son id sans vérifier qu'il appartient à la boutique (nom/email visibles si on connaît l'UUID ; commandes importées de A jamais visibles chez B) |
@@ -584,6 +584,8 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 | T18 | Annulation : commandes supprimées, contacts intacts supprimés, modifiés/inscrits/en liste conservés, préexistants intacts, OK en Free | ⬜ |
 | T19 | Segment « LTV > X » contient des contacts importés | ⬜ |
 | T20 | Ménage : abonnement rejoué pas compté deux fois (`stripe_invoice_id`) ; anciennes colonnes supprimées | 🔄 anti-doublon ✅ prouvé par le code (recherche par `stripe_invoice_id` avant insertion + index unique en base) ; migration de ménage + contrôle à faire (Jake) |
+
+**À faire juste après les tests du lot 2 (demande de Jake, 2026-10-09) — pagination de tous les tableaux** : aujourd'hui 33 tableaux du dashboard affichent toutes leurs lignes (2 000+ possibles depuis l'import), un seul est limité. Composant commun : choix 20 / 50 / 100 lignes (50 par défaut, mémorisé par tableau dans le navigateur), précédent/suivant + numéros de page, « 1–50 sur 1 517 », retour page 1 à chaque filtre/recherche. Tableaux qui grossissent : Contacts (4 onglets), détail liste, détail segment, Doublons, Commandes, Commandes importées (remplace « Afficher plus »), Abonnements, Beats, Codes promo, Litiges, Campagnes, file d'attente automatisations, journaux emails/décisions, onglet Commandes de la fiche client, journaux admin. Exclus (courts par nature) : résumés Analytics, détail de commande, encart litige, catégories. Checklist T0-TN à présenter avant de coder.
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
