@@ -6,7 +6,6 @@ const STATS_VIDES: StatsCategorie = { nb_beats: 0, ventes: 0, ca_net: 0, ecoutes
 
 type BeatTags = { id: string; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null }
 type LigneVente = { beat_id: string; prix_paye: number; reduction_montant: number | null }
-type PlayRow = { beat_id: string }
 
 const COLONNES_TAGS: { type: TypeCategorie; get: (b: BeatTags) => string[] | null }[] = [
   { type: 'styles', get: b => b.styles },
@@ -23,7 +22,8 @@ const COLONNES_TAGS: { type: TypeCategorie; get: (b: BeatTags) => string[] | nul
 export function agregerStatsParCategorie(
   beats: BeatTags[],
   lignes: LigneVente[],
-  plays: PlayRow[],
+  // Écoutes par beat, comptées dans la base (supabase/analytics_agregats.sql)
+  ecoutesParBeat: Map<string, number>,
 ): Map<string, StatsCategorie> {
   const parBeat = new Map<string, { ventes: number; ca_net: number; ecoutes: number }>()
 
@@ -33,10 +33,10 @@ export function agregerStatsParCategorie(
     cur.ca_net += l.prix_paye - (l.reduction_montant ?? 0)
     parBeat.set(l.beat_id, cur)
   }
-  for (const p of plays) {
-    const cur = parBeat.get(p.beat_id) ?? { ventes: 0, ca_net: 0, ecoutes: 0 }
-    cur.ecoutes += 1
-    parBeat.set(p.beat_id, cur)
+  for (const [beatId, n] of ecoutesParBeat) {
+    const cur = parBeat.get(beatId) ?? { ventes: 0, ca_net: 0, ecoutes: 0 }
+    cur.ecoutes += n
+    parBeat.set(beatId, cur)
   }
 
   const parTag = new Map<string, StatsCategorie>()

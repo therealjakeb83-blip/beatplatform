@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
 
@@ -25,23 +26,27 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const [{ data: abonnements }, { data: commandes }, { data: beatmaker }] = await Promise.all([
-    admin.from('abonnements_boutique')
+  const [abonnements, commandes, { data: beatmaker }] = await Promise.all([
+    toutesLesLignes((debut, fin) => admin.from('abonnements_boutique')
       .select('id, created_at, prix, statut, periode, date_debut, date_fin, annulation_en_cours, mois_consecutifs, mensualites_payees, acheteur_nom, acheteur_email, clients(id, prenom, nom, email, pays)')
       .eq('beatmaker_id', user.id)
-      .order('date_debut', { ascending: false }),
-    admin.from('commandes')
+      .order('date_debut', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('commandes')
       .select('client_id, acheteur_email, created_at')
       .eq('beatmaker_id', user.id)
       .eq('statut', 'payee')
-      .eq('type_commande', 'LICENCE'),
+      .eq('type_commande', 'LICENCE')
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single(),
   ])
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
 
-  const abos    = abonnements ?? []
+  const abos    = abonnements
   const now     = new Date()
   const endDate = to ? new Date(to) : now
 
@@ -74,7 +79,7 @@ export async function GET(request: Request) {
   const churn_rate = total_vendus > 0 ? (annulesInPeriod.length / total_vendus) * 100 : 0
 
   // Achats post-abo — map par id d'abonnement (pour la table) + moyenne KPI (sur la période)
-  const cmds = commandes ?? []
+  const cmds = commandes
   const achatsMap = new Map<string, number>()
   for (const a of abos) {
     const cl      = Array.isArray(a.clients) ? a.clients[0] : a.clients

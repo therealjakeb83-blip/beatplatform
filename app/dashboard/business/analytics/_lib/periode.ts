@@ -117,7 +117,7 @@ export type HistoriqueSlot = {
 const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const MOIS_COURTS  = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
 
-function granularite(periode: Periode, from: string | null, to: string | null): 'jours' | 'semaines' | 'mois' {
+export function granularite(periode: Periode, from: string | null, to: string | null): 'jours' | 'semaines' | 'mois' {
   switch (periode) {
     case 'cette-semaine':
     case 'semaine-derniere':

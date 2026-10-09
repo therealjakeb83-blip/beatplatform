@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import type { CategorieRow, TypeCategorie } from '@/lib/categories'
 import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
+import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 import {
   approuverCertificationGroupe,
   rejeterCertificationGroupe,
@@ -15,22 +16,26 @@ export default async function AdminCategoriesPage() {
   // perso en plus du catalogue plateforme/certifié.
   const admin = createAdminClient()
 
-  const [{ data }, { data: demandesRaw }, { data: beatsData }, { data: lignesData }, { data: playsData }] = await Promise.all([
-    admin.from('categories').select('id, type, nom, source, beatmaker_id, statut, image_url, beatmakers(nom_artiste)').order('nom'),
+  // Plateforme entière : catégories, beats, ventes et écoutes dépassent vite
+  // 1 000 lignes → lecture par pages, écoutes comptées dans la base.
+  const [data, { data: demandesRaw }, beatsData, lignesData, ecoutes] = await Promise.all([
+    toutesLesLignes((debut, fin) => admin.from('categories').select('id, type, nom, source, beatmaker_id, statut, image_url, beatmakers(nom_artiste)').order('nom').order('id').range(debut, fin)),
     // Demandes en attente : nom/type dénormalisés (Phase 7.10) — pas besoin
     // de la catégorie d'origine, elle peut avoir été fusionnée/supprimée.
     admin.from('demandes_certification')
       .select('id, nom, type, beatmaker_id, beatmakers(nom_artiste)')
       .eq('statut', 'en_attente')
       .order('created_at', { ascending: true }),
-    admin.from('beats').select('id, styles, ambiances, instruments, type_beat'),
-    admin.from('commande_lignes')
+    toutesLesLignes((debut, fin) => admin.from('beats').select('id, styles, ambiances, instruments, type_beat').order('id').range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('commande_lignes')
       .select('beat_id, prix_paye, reduction_montant, commandes!inner(statut)')
-      .eq('commandes.statut', 'payee'),
-    admin.from('beat_plays').select('beat_id'),
+      .eq('commandes.statut', 'payee')
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes<{ beat_id: string; ecoutes: number }>((debut, fin) => admin.rpc('analytics_ecoutes_par_beat_plateforme').order('beat_id').range(debut, fin)),
   ])
 
-  const statsParTag = agregerStatsParCategorie(beatsData ?? [], lignesData ?? [], playsData ?? [])
+  const statsParTag = agregerStatsParCategorie(beatsData, lignesData, new Map(ecoutes.map(e => [e.beat_id, Number(e.ecoutes)])))
 
   const categories = ((data ?? []) as unknown as (CategorieRow & { beatmakers: { nom_artiste: string } | null })[])
     .map(c => ({ ...c, nom_artiste: c.beatmakers?.nom_artiste ?? null, ...statsPour(statsParTag, c.type, c.nom) }))

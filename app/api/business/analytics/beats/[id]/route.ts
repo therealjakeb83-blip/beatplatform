@@ -4,6 +4,7 @@ import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { chargerPartsVendeur, partsDeLignes } from '@/lib/analytics-parts'
+import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
 
@@ -45,16 +46,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (!beat) return NextResponse.json({ erreur: 'Beat introuvable' }, { status: 404 })
 
+  // Lu en entier (par pages de 1 000) : cette fiche affiche chaque écoute,
+  // free download et favori du beat, les totaux sont comptés sur ces listes.
   const [
-    { data: lignesBoutique },
-    { data: allPlays },
-    { data: allFreeDl },
+    lignesBoutique,
+    allPlays,
+    allFreeDl,
     { data: allSplits },
-    { data: allFavoris },
+    allFavoris,
   ] = await Promise.all([
     // Niveau article — un panier peut inclure ce beat parmi d'autres ; l'id renvoyé
     // (commande_id) reste celui de la commande, pour le lien vers sa fiche détail.
-    admin.from('commande_lignes')
+    toutesLesLignes((debut, fin) => admin.from('commande_lignes')
       .select(`
         commande_id, beat_id, licence_id, created_at, prix_paye, reduction_montant, licences(nom),
         commandes!inner(beatmaker_id, statut, source_marketing, client_id, clients(id, prenom, nom))
@@ -62,34 +65,42 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq('beat_id', id)
       .eq('commandes.beatmaker_id', user.id)
       .eq('commandes.statut', 'payee')
-      .order('created_at', { ascending: false }),
-    admin.from('beat_plays')
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('beat_plays')
       .select('id, played_at, client_id, pays, device_type, source_marketing, duree_secondes, clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
-      .order('played_at', { ascending: false }),
-    admin.from('free_downloads')
+      .order('played_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('free_downloads')
       .select('id, downloaded_at, client_id, clients(id, prenom, nom)')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
-      .order('downloaded_at', { ascending: false }),
+      .order('downloaded_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
     admin.from('beat_splits')
       .select('id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
       .eq('beat_id', id),
-    admin.from('favoris')
+    toutesLesLignes((debut, fin) => admin.from('favoris')
       .select('id, created_at, client_id, clients(id, prenom, nom)')
       .eq('beat_id', id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
   ])
 
   // CA d'un beat collab = part du propriétaire (Phase 13, lot 3).
-  const allCommandes = partsDeLignes(lignesBoutique ?? [], await chargerPartsVendeur(admin, user.id))
+  const allCommandes = partsDeLignes(lignesBoutique, await chargerPartsVendeur(admin, user.id))
 
   // Filtrer par période
-  const cmds    = (allCommandes ?? []).filter(c => inPeriod(c.created_at,    from, to))
-  const plays   = (allPlays    ?? []).filter(p => inPeriod(p.played_at,      from, to))
-  const freeDl  = (allFreeDl   ?? []).filter(f => inPeriod(f.downloaded_at,  from, to))
-  const favoris = (allFavoris  ?? []).filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
+  const cmds    = allCommandes.filter(c => inPeriod(c.created_at,    from, to))
+  const plays   = allPlays.filter(p => inPeriod(p.played_at,      from, to))
+  const freeDl  = allFreeDl.filter(f => inPeriod(f.downloaded_at,  from, to))
+  const favoris = allFavoris.filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
 
   const ca_brut = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
@@ -185,15 +196,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   })
 
   // Historique adaptatif selon période
-  const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
+  const dataFrom = periode === 'tout' ? allCommandes.map(c => c.created_at).sort()[0] : undefined
   const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => ({
     label:    slot.label,
     fullLabel: slot.fullLabel,
-    ventes:  (allCommandes ?? []).filter(c => c.created_at   >= slot.from && c.created_at   < slot.to).length,
-    ecoutes: (allPlays    ?? []).filter(p => p.played_at     >= slot.from && p.played_at     < slot.to).length,
-    free_dl: (allFreeDl   ?? []).filter(f => f.downloaded_at >= slot.from && f.downloaded_at < slot.to).length,
-    favoris: (allFavoris  ?? []).filter(f => (f as { created_at: string }).created_at >= slot.from && (f as { created_at: string }).created_at < slot.to).length,
+    ventes:  allCommandes.filter(c => c.created_at   >= slot.from && c.created_at   < slot.to).length,
+    ecoutes: allPlays.filter(p => p.played_at     >= slot.from && p.played_at     < slot.to).length,
+    free_dl: allFreeDl.filter(f => f.downloaded_at >= slot.from && f.downloaded_at < slot.to).length,
+    favoris: allFavoris.filter(f => (f as { created_at: string }).created_at >= slot.from && (f as { created_at: string }).created_at < slot.to).length,
   }))
 
   // Durée moyenne d'écoute (uniquement les plays avec duree_secondes non null)

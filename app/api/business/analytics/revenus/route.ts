@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur, dayKeyInTz } from '@/lib/fuseau-horaire'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 import { chargerPartsVendeur, partsDeCommandes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
@@ -14,12 +15,14 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const [{ data: commandesBoutique }, { data: beatmaker }, { data: litigesEnCours }] = await Promise.all([
-    admin.from('commandes')
+  const [commandesBoutique, { data: beatmaker }, litigesEnCours] = await Promise.all([
+    toutesLesLignes((debut, fin) => admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant')
       .eq('beatmaker_id', user.id)
       .in('statut', STATUTS_ANALYTICS)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers')
       .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
@@ -29,18 +32,19 @@ export async function GET(request: Request) {
     // en ce moment, peu importe la période consultée dans les Analytics.
     // Historique daté complet : page dédiée /dashboard/business/litiges,
     // pas ici (déplacé du brouillon initial sur demande de Jake).
-    admin.from('litiges')
+    toutesLesLignes((debut, fin) => admin.from('litiges')
       .select('montant')
       .eq('beatmaker_id', user.id)
-      .eq('statut', 'en_cours'),
+      .eq('statut', 'en_cours')
+      .order('id')
+      .range(debut, fin)),
   ])
 
   // CA = part du vendeur (Phase 13, lot 3) — voir lib/analytics-parts.ts.
   const parts = await chargerPartsVendeur(admin, user.id)
-  const { data: commandesAutres } = parts.autresCommandes.length
-    ? await admin.from('commandes').select('id, created_at, prix_paye, reduction_montant').in('id', parts.autresCommandes).in('statut', STATUTS_ANALYTICS)
-    : { data: [] }
-  const allCommandes = partsDeCommandes([...(commandesBoutique ?? []), ...(commandesAutres ?? [])], parts)
+  const commandesAutres = await parLots(parts.autresCommandes, lot =>
+    admin.from('commandes').select('id, created_at, prix_paye, reduction_montant').in('id', lot).in('statut', STATUTS_ANALYTICS))
+  const allCommandes = partsDeCommandes([...commandesBoutique, ...commandesAutres], parts)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
@@ -105,16 +109,14 @@ export async function GET(request: Request) {
   })
 
   // Litiges en cours — instantané, indépendant de la période (voir requête).
-  const litiges_en_cours = (litigesEnCours ?? []).reduce((s, l) => s + Number(l.montant), 0)
+  const litiges_en_cours = litigesEnCours.reduce((s, l) => s + Number(l.montant), 0)
 
   // Remboursements (bouton, remboursement depuis Stripe, litiges perdus) —
   // ce que le vendeur a rendu sur SA part (lot 4, T21) ; période sur la date
   // de la commande, comme le reste de l'onglet.
   const idsRembourses = [...parts.rembourseParCommande.keys()]
-  const { data: datesRembourses } = idsRembourses.length
-    ? await admin.from('commandes').select('id, created_at').in('id', idsRembourses)
-    : { data: [] }
-  const remboursements_total = (datesRembourses ?? [])
+  const datesRembourses = await parLots(idsRembourses, lot => admin.from('commandes').select('id, created_at').in('id', lot))
+  const remboursements_total = datesRembourses
     .filter(c => inPeriod(c.created_at, from, to))
     .reduce((s, c) => s + (parts.rembourseParCommande.get(c.id) ?? 0) / 100, 0)
 

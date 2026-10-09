@@ -1,9 +1,11 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, inPeriod, getHistoriqueSlots, type HistoriqueSlot } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots, granularite, type HistoriqueSlot } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { chargerPartsVendeur, partsDeLignes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
+import { evenementsParBeat, evenementsParTranche, type EvenementsTranche } from '@/lib/analytics-evenements'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
 
@@ -12,7 +14,9 @@ type LicenceRow = { name: string; ca: number; ventes: number }
 type HistoPoint    = { label: string; fullLabel: string; ca: number; ventes: number; ecoutes: number; favoris: number; free_dl: number }
 type LicenceHisto  = { label: string; fullLabel: string; ca: number; ventes: number }
 type RawCmd  = { prix_paye: number; created_at: string; licences: unknown; beats: unknown }
-type RawEvt  = { created_at: string; beats: unknown } // beat_plays / free_downloads / favoris (colonnes de date différentes, normalisées en amont)
+// Écoutes / free downloads / favoris d'UN beat, comptés dans la base (lib/analytics-evenements.ts) :
+// chaque compte vaut pour chacune des catégories du beat.
+type EvtBeat = { beats: unknown; ecoutes: number; free_dl: number; favoris: number }
 
 function getArr(b: unknown, key: string): string[] {
   if (!b || typeof b !== 'object') return []
@@ -64,7 +68,7 @@ function sumLicenceBySlot(cmds: RawCmd[], slots: HistoriqueSlot[], target: strin
 }
 
 // Groupes par style/ambiance/instrument/type_beat — combine CA+ventes (commandes) et écoutes/favoris/free_dl (events)
-function buildBeatGroups(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favoris: RawEvt[], key: string): PrefRow[] {
+function buildBeatGroups(cmds: RawCmd[], evts: EvtBeat[], key: string): PrefRow[] {
   const map = new Map<string, PrefRow>()
   const get = (name: string) => {
     let row = map.get(name)
@@ -76,25 +80,28 @@ function buildBeatGroups(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favo
     row.ca     += c.prix_paye
     row.ventes += 1
   }
-  for (const p of plays)   for (const label of beatLabels(key)(p.beats))   get(label).ecoutes += 1
-  for (const f of freeDl)  for (const label of beatLabels(key)(f.beats))   get(label).free_dl += 1
-  for (const f of favoris) for (const label of beatLabels(key)(f.beats))   get(label).favoris += 1
+  for (const e of evts) for (const label of beatLabels(key)(e.beats)) {
+    const row = get(label)
+    row.ecoutes += e.ecoutes
+    row.free_dl += e.free_dl
+    row.favoris += e.favoris
+  }
   return [...map.values()].sort((a, b) => b.ca - a.ca)
 }
 
-function sumBeatBySlot(cmds: RawCmd[], plays: RawEvt[], freeDl: RawEvt[], favoris: RawEvt[], key: string, slots: HistoriqueSlot[], target: string | null): HistoPoint[] {
-  return slots.map(slot => {
-    const inSlot = (dateIso: string) => dateIso >= slot.from && dateIso < slot.to
-    const mCmds    = cmds.filter(c => inSlot(c.created_at))
-    const mPlays   = plays.filter(p => inSlot(p.created_at))
-    const mFreeDl  = freeDl.filter(f => inSlot(f.created_at))
-    const mFavoris = favoris.filter(f => inSlot(f.created_at))
+function sumBeatBySlot(cmds: RawCmd[], evtsSlots: EvenementsTranche[][], tags: Map<string, unknown>, key: string, slots: HistoriqueSlot[], target: string | null): HistoPoint[] {
+  return slots.map((slot, i) => {
+    const mCmds    = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
 
     let ca = 0, ventes = 0
     for (const c of mCmds) { const n = occ(beatLabels(key)(c.beats), target); ca += c.prix_paye * n; ventes += n }
-    const ecoutes = mPlays.reduce((s, p) => s + occ(beatLabels(key)(p.beats), target), 0)
-    const free_dl = mFreeDl.reduce((s, f) => s + occ(beatLabels(key)(f.beats), target), 0)
-    const favorisCount = mFavoris.reduce((s, f) => s + occ(beatLabels(key)(f.beats), target), 0)
+    let ecoutes = 0, free_dl = 0, favorisCount = 0
+    for (const e of evtsSlots[i] ?? []) {
+      const n = occ(beatLabels(key)(tags.get(e.beat_id ?? '')), target)
+      ecoutes += e.ecoutes * n
+      free_dl += e.free_dl * n
+      favorisCount += e.favoris * n
+    }
 
     return { label: slot.label, fullLabel: slot.fullLabel, ca, ventes, ecoutes, free_dl, favoris: favorisCount }
   })
@@ -108,27 +115,17 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
 
   const [
-    { data: lignesBoutique },
-    { data: allPlays },
-    { data: allFreeDl },
-    { data: allFavoris },
+    lignesBoutique,
     { data: beatmaker },
   ] = await Promise.all([
     // Niveau article (commande_lignes) — un panier de plusieurs beats donne
     // plusieurs lignes ici, chacune avec ses propres styles/licence.
-    admin.from('commande_lignes')
+    toutesLesLignes((debut, fin) => admin.from('commande_lignes')
       .select('commande_id, beat_id, licence_id, prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
-      .in('commandes.statut', STATUTS_ANALYTICS),
-    admin.from('beat_plays')
-      .select('played_at, beats(styles, ambiances, instruments, type_beat)')
-      .eq('beatmaker_id', user.id),
-    admin.from('free_downloads')
-      .select('downloaded_at, beats(styles, ambiances, instruments, type_beat)')
-      .eq('beatmaker_id', user.id),
-    admin.from('favoris')
-      .select('created_at, beats!inner(beatmaker_id, styles, ambiances, instruments, type_beat)')
-      .eq('beats.beatmaker_id', user.id),
+      .in('commandes.statut', STATUTS_ANALYTICS)
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single(),
   ])
 
@@ -136,24 +133,27 @@ export async function GET(request: Request) {
   const { from, to, periode } = getPeriodDates(request, tz)
 
   // CA d'un beat collab = part du propriétaire (Phase 13, lot 3).
-  const allCmds    = partsDeLignes(lignesBoutique ?? [], await chargerPartsVendeur(admin, user.id)) as unknown as RawCmd[]
-  const allPlaysN  = (allPlays   ?? []).map(p => ({ created_at: p.played_at,     beats: p.beats })) as RawEvt[]
-  const allFreeDlN = (allFreeDl  ?? []).map(f => ({ created_at: f.downloaded_at, beats: f.beats })) as RawEvt[]
-  const allFavN    = (allFavoris ?? []) as unknown as RawEvt[]
-
+  const allCmds = partsDeLignes(lignesBoutique, await chargerPartsVendeur(admin, user.id)) as unknown as RawCmd[]
   const cmds    = allCmds.filter(c => inPeriod(c.created_at, from, to))
-  const plays   = allPlaysN.filter(p => inPeriod(p.created_at, from, to))
-  const freeDl  = allFreeDlN.filter(f => inPeriod(f.created_at, from, to))
-  const favoris = allFavN.filter(f => inPeriod(f.created_at, from, to))
-
-  const licences    = buildLicenceGroups(cmds)
-  const styles      = buildBeatGroups(cmds, plays, freeDl, favoris, 'styles')
-  const ambiances   = buildBeatGroups(cmds, plays, freeDl, favoris, 'ambiances')
-  const instruments = buildBeatGroups(cmds, plays, freeDl, favoris, 'instruments')
-  const type_beat   = buildBeatGroups(cmds, plays, freeDl, favoris, 'type_beat')
 
   const dataFrom = periode === 'tout' ? allCmds.map(c => c.created_at).sort()[0] : undefined
   const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
+
+  const [evtsPeriode, evtsSlots] = await Promise.all([
+    evenementsParBeat(admin, user.id, from, to),
+    evenementsParTranche(admin, user.id, tz, granularite(periode, from, to), slots, true),
+  ])
+  const idsBeats = [...evtsPeriode.keys(), ...evtsSlots.flat().map(e => e.beat_id ?? '').filter(Boolean)]
+  const beatsTags = await parLots<{ id: string }>(idsBeats, lot =>
+    admin.from('beats').select('id, styles, ambiances, instruments, type_beat').in('id', lot))
+  const tags = new Map<string, unknown>(beatsTags.map(b => [b.id, b]))
+  const evts: EvtBeat[] = [...evtsPeriode.entries()].map(([id, e]) => ({ beats: tags.get(id), ecoutes: e.ecoutes, free_dl: e.free_dl, favoris: e.favoris }))
+
+  const licences    = buildLicenceGroups(cmds)
+  const styles      = buildBeatGroups(cmds, evts, 'styles')
+  const ambiances   = buildBeatGroups(cmds, evts, 'ambiances')
+  const instruments = buildBeatGroups(cmds, evts, 'instruments')
+  const type_beat   = buildBeatGroups(cmds, evts, 'type_beat')
 
   // Historique par vue : total agrégé + une série par catégorie (pour l'analyse ciblée dans le graphique)
   const licenceHisto = {
@@ -161,8 +161,8 @@ export async function GET(request: Request) {
     parCategorie: Object.fromEntries(licences.map(r => [r.name, sumLicenceBySlot(allCmds, slots, r.name)])),
   }
   const beatHisto = (rows: PrefRow[], key: string) => ({
-    total:        sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, key, slots, null),
-    parCategorie: Object.fromEntries(rows.map(r => [r.name, sumBeatBySlot(allCmds, allPlaysN, allFreeDlN, allFavN, key, slots, r.name)])),
+    total:        sumBeatBySlot(allCmds, evtsSlots, tags, key, slots, null),
+    parCategorie: Object.fromEntries(rows.map(r => [r.name, sumBeatBySlot(allCmds, evtsSlots, tags, key, slots, r.name)])),
   })
 
   const historique = {

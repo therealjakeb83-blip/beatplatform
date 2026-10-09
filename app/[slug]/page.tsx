@@ -180,7 +180,7 @@ export default async function BoutiquePage({
   // Compteurs par tag (styles/ambiances/instruments/type beats) — uniquement
   // sur les beats publics, cohérent avec ce qu'un visiteur non-abonné peut
   // réellement parcourir sans compte.
-  const statsParTag = agregerStatsParCategorie(rawBeatsArr, [], [])
+  const statsParTag = agregerStatsParCategorie(rawBeatsArr, [], new Map())
 
   // Images des cartes catégories — best-effort : si la table `categories`
   // (Phase 7) n'existe pas encore en base, ces requêtes renvoient

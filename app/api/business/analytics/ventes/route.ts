@@ -5,6 +5,7 @@ import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/bu
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { chargerPartsVendeur, chargerFluxCollab, partsDeCommandes, partsDeLignes, type FluxCollab, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 import { SOURCE_LABELS, SOURCES_MARKETING } from '@/lib/sources-marketing'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
 
@@ -17,23 +18,29 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
+  const SELECT_COMMANDES = 'id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)'
+  const SELECT_LIGNES = 'id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)'
   const [
-    { data: commandesBoutique },
-    { data: lignesBoutique },
+    commandesBoutique,
+    lignesBoutique,
     { data: beatmaker },
   ] = await Promise.all([
-    admin.from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)')
+    toutesLesLignes((debut, fin) => admin.from('commandes')
+      .select(SELECT_COMMANDES)
       .eq('beatmaker_id', user.id)
       .in('statut', STATUTS_ANALYTICS)
       .or('type_commande.eq.LICENCE,type_commande.is.null')
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
     // Niveau article — pour le KPI "beats vendus" (compte les articles, pas les paniers)
-    admin.from('commande_lignes')
-      .select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)')
+    toutesLesLignes((debut, fin) => admin.from('commande_lignes')
+      .select(SELECT_LIGNES)
       .eq('commandes.beatmaker_id', user.id)
       .in('commandes.statut', STATUTS_ANALYTICS)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers')
       .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
@@ -43,18 +50,16 @@ export async function GET(request: Request) {
   // CA = part du vendeur (Phase 13, lot 3). Sur la boutique d'un autre, le
   // collaborateur ne voit jamais l'email du client ni sa fiche CRM.
   const [parts, flux] = await Promise.all([chargerPartsVendeur(admin, user.id), chargerFluxCollab(admin, user.id)])
-  const [{ data: commandesAutres }, { data: lignesAutres }] = parts.autresCommandes.length
-    ? await Promise.all([
-        admin.from('commandes').select('id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)').in('id', parts.autresCommandes).in('statut', STATUTS_ANALYTICS).or('type_commande.eq.LICENCE,type_commande.is.null'),
-        admin.from('commande_lignes').select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)').in('commande_id', parts.autresCommandes).in('commandes.statut', STATUTS_ANALYTICS),
-      ])
-    : [{ data: [] }, { data: [] }]
+  const [commandesAutres, lignesAutres] = await Promise.all([
+    parLots(parts.autresCommandes, lot => admin.from('commandes').select(SELECT_COMMANDES).in('id', lot).in('statut', STATUTS_ANALYTICS).or('type_commande.eq.LICENCE,type_commande.is.null')),
+    parLots(parts.autresCommandes, lot => admin.from('commande_lignes').select(SELECT_LIGNES).in('commande_id', lot).in('commandes.statut', STATUTS_ANALYTICS)),
+  ])
   const parDateDesc = (a: { created_at: string }, b: { created_at: string }) => b.created_at.localeCompare(a.created_at)
   const allCommandes = partsDeCommandes([
-    ...(commandesBoutique ?? []),
-    ...(commandesAutres ?? []).map(c => ({ ...c, acheteur_email: null, clients: null })),
+    ...commandesBoutique,
+    ...commandesAutres.map(c => ({ ...c, acheteur_email: null, clients: null })),
   ], parts).sort(parDateDesc)
-  const allLignes = partsDeLignes([...(lignesBoutique ?? []), ...(lignesAutres ?? [])], parts).sort(parDateDesc)
+  const allLignes = partsDeLignes([...lignesBoutique, ...lignesAutres], parts).sort(parDateDesc)
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)

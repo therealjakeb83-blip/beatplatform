@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 import { chargerPartsVendeur, partsDeCommandes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 
 export const runtime = 'nodejs'
@@ -14,26 +15,30 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const [{ data: codes }, { data: commandesBoutique }, { data: beatmaker }, parts] = await Promise.all([
-    admin.from('codes_promo')
+  const [codes, commandesBoutique, { data: beatmaker }, parts] = await Promise.all([
+    toutesLesLignes((debut, fin) => admin.from('codes_promo')
       .select('id, code, description, type_remise, type_valeur, valeur, statut, created_at')
       .eq('beatmaker_id', user.id)
-      .order('created_at', { ascending: false }),
-    admin.from('commandes')
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('commandes')
       .select('id, created_at, prix_paye, reduction_montant, code_promo')
       .eq('beatmaker_id', user.id)
       .in('statut', STATUTS_ANALYTICS)
-      .not('code_promo', 'is', null),
+      .not('code_promo', 'is', null)
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers').select('tva_active, tva_taux, fuseau_horaire').eq('id', user.id).single(),
     chargerPartsVendeur(admin, user.id),
   ])
   // CA généré = part du vendeur sur une vente collab (Phase 13, lot 3).
-  const allCommandes = partsDeCommandes(commandesBoutique ?? [], parts)
+  const allCommandes = partsDeCommandes(commandesBoutique, parts)
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
 
-  const promos = codes ?? []
+  const promos = codes
 
   // CA net (HT) = brut − remises − TVA, cohérent avec les onglets Revenus/Overview/Ventes
   const tvaTaux = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) : 0

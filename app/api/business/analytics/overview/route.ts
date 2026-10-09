@@ -1,9 +1,11 @@
 import { createClient }      from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
-import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
+import { getPeriodDates, inPeriod, getHistoriqueSlots, granularite } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur, startOfMonthInTz } from '@/lib/fuseau-horaire'
 import { chargerPartsVendeur, chargerFluxCollab, partsDeCommandes, partsDeLignes, type FluxCollab, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
+import { evenementsParBeat, evenementsParTranche, totalEvenements, sommeTranche } from '@/lib/analytics-evenements'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
 
@@ -14,45 +16,43 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
+  const SELECT_COMMANDES = 'id, prix_paye, reduction_montant, type_commande, created_at, source_marketing'
+  const SELECT_LIGNES = 'id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(id, titre, couleur), licences(nom), commandes!inner(beatmaker_id, statut)'
   const [
-    { data: commandesBoutique },
-    { data: lignesBoutique },
-    { data: allPlays },
-    { data: allFreeDl },
-    { data: abonActifs },
-    { data: allAbonnements },
-    { data: allFavoris },
+    commandesBoutique,
+    lignesBoutique,
+    abonActifs,
+    allAbonnements,
     { data: beatmaker },
   ] = await Promise.all([
-    admin.from('commandes')
-      .select('id, prix_paye, reduction_montant, type_commande, created_at, source_marketing')
+    toutesLesLignes((debut, fin) => admin.from('commandes')
+      .select(SELECT_COMMANDES)
       .eq('beatmaker_id', user.id)
       .in('statut', STATUTS_ANALYTICS)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
     // Niveau article — un panier de plusieurs beats donne plusieurs lignes ici,
     // c'est la source pour tout ce qui compte des BEATS (pas des commandes) :
     // top beats, "beats vendus", dernières licences.
-    admin.from('commande_lignes')
-      .select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(id, titre, couleur), licences(nom), commandes!inner(beatmaker_id, statut)')
+    toutesLesLignes((debut, fin) => admin.from('commande_lignes')
+      .select(SELECT_LIGNES)
       .eq('commandes.beatmaker_id', user.id)
       .in('commandes.statut', STATUTS_ANALYTICS)
-      .order('created_at', { ascending: false }),
-    admin.from('beat_plays')
-      .select('played_at, beat_id')
-      .eq('beatmaker_id', user.id),
-    admin.from('free_downloads')
-      .select('downloaded_at, beat_id')
-      .eq('beatmaker_id', user.id),
-    admin.from('abonnements_boutique')
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('abonnements_boutique')
       .select('prix, statut, periode')
       .eq('beatmaker_id', user.id)
-      .eq('statut', 'actif'),
-    admin.from('abonnements_boutique')
+      .eq('statut', 'actif')
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes((debut, fin) => admin.from('abonnements_boutique')
       .select('prix, statut, periode, date_debut, date_fin, created_at')
-      .eq('beatmaker_id', user.id),
-    admin.from('favoris')
-      .select('created_at, beats!inner(beatmaker_id)')
-      .eq('beats.beatmaker_id', user.id),
+      .eq('beatmaker_id', user.id)
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers')
       .select('tva_active, tva_taux, fuseau_horaire')
       .eq('id', user.id)
@@ -62,26 +62,22 @@ export async function GET(request: Request) {
   // CA = part du vendeur (Phase 13, lot 3) : tranche sur une vente collab, et
   // ventes faites sur la boutique d'un autre pour un collaborateur.
   const [parts, flux] = await Promise.all([chargerPartsVendeur(admin, user.id), chargerFluxCollab(admin, user.id)])
-  const [{ data: commandesAutres }, { data: lignesAutres }] = parts.autresCommandes.length
-    ? await Promise.all([
-        admin.from('commandes').select('id, prix_paye, reduction_montant, type_commande, created_at, source_marketing').in('id', parts.autresCommandes).in('statut', STATUTS_ANALYTICS),
-        admin.from('commande_lignes').select('id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(id, titre, couleur), licences(nom), commandes!inner(beatmaker_id, statut)').in('commande_id', parts.autresCommandes).in('commandes.statut', STATUTS_ANALYTICS),
-      ])
-    : [{ data: [] }, { data: [] }]
+  const [commandesAutres, lignesAutres] = await Promise.all([
+    parLots(parts.autresCommandes, lot => admin.from('commandes').select(SELECT_COMMANDES).in('id', lot).in('statut', STATUTS_ANALYTICS)),
+    parLots(parts.autresCommandes, lot => admin.from('commande_lignes').select(SELECT_LIGNES).in('commande_id', lot).in('commandes.statut', STATUTS_ANALYTICS)),
+  ])
   const parDateDesc = (a: { created_at: string }, b: { created_at: string }) => b.created_at.localeCompare(a.created_at)
-  const allCommandes = partsDeCommandes([...(commandesBoutique ?? []), ...(commandesAutres ?? [])], parts).sort(parDateDesc)
-  const allLignes = partsDeLignes([...(lignesBoutique ?? []), ...(lignesAutres ?? [])], parts).sort(parDateDesc)
+  const allCommandes = partsDeCommandes([...commandesBoutique, ...commandesAutres], parts).sort(parDateDesc)
+  const allLignes = partsDeLignes([...lignesBoutique, ...lignesAutres], parts).sort(parDateDesc)
 
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
 
   // Filtrer par période pour les KPIs
-  const cmds   = (allCommandes   ?? []).filter(c => inPeriod(c.created_at,   from, to))
-  const lignes = (allLignes      ?? []).filter(l => inPeriod(l.created_at,   from, to))
-  const plays  = (allPlays       ?? []).filter(p => inPeriod(p.played_at,    from, to))
-  const freeDl = (allFreeDl      ?? []).filter(f => inPeriod(f.downloaded_at, from, to))
-
-  const favorisInPeriod = (allFavoris ?? []).filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
+  const cmds   = allCommandes.filter(c => inPeriod(c.created_at, from, to))
+  const lignes = allLignes.filter(l => inPeriod(l.created_at, from, to))
+  // Écoutes / free downloads / favoris : comptés dans la base (lib/analytics-evenements.ts).
+  const evenements = totalEvenements(await evenementsParBeat(admin, user.id, from, to))
 
   const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
   // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
@@ -94,16 +90,16 @@ export async function GET(request: Request) {
   // un panier de 3 beats compte pour 3 ici, mais pour 1 seul panier_moyen ci-dessous.
   const beats_vendus = lignes.length
   const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
-  const ecoutes   = plays.length
-  const free_dl   = freeDl.length
+  const ecoutes   = evenements.ecoutes
+  const free_dl   = evenements.free_dl
   // Collaborations : reçu sur la boutique d'un autre / part de mes collaborateurs.
   const sommeFlux = (f: FluxCollab[], de: string | null, a: string | null) =>
     f.filter(x => (!de || x.created_at >= de) && (!a || x.created_at < a)).reduce((s, x) => s + x.montant, 0)
   const recu_collab = flux.recus.filter(x => inPeriod(x.created_at, from, to)).reduce((s, x) => s + x.montant, 0)
   const part_collaborateurs = flux.collaborateurs.filter(x => inPeriod(x.created_at, from, to)).reduce((s, x) => s + x.montant, 0)
-  const favoris   = favorisInPeriod.length
+  const favoris   = evenements.favoris
 
-  const mrr = (abonActifs ?? []).reduce((s, a) => {
+  const mrr = abonActifs.reduce((s, a) => {
     const mensuel = a.periode === 'annuel' ? a.prix / 12 : a.prix
     return s + mensuel
   }, 0) / 100
@@ -126,21 +122,19 @@ export async function GET(request: Request) {
     .slice(0, 5)
     .map(b => ({ ...b }))
 
-  const dataFrom = periode === 'tout' ? (allCommandes ?? []).map(c => c.created_at).sort()[0] : undefined
+  const dataFrom = periode === 'tout' ? allCommandes.map(c => c.created_at).sort()[0] : undefined
   const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
-  const historique = slots.map(slot => {
-    const mCmds    = (allCommandes ?? []).filter(c => c.created_at    >= slot.from && c.created_at    < slot.to)
-    const mLignes  = (allLignes   ?? []).filter(l => l.created_at     >= slot.from && l.created_at     < slot.to)
-    const mPlays   = (allPlays    ?? []).filter(p => p.played_at      >= slot.from && p.played_at      < slot.to)
-    const mFreeDl  = (allFreeDl   ?? []).filter(f => f.downloaded_at  >= slot.from && f.downloaded_at  < slot.to)
+  const evenementsSlots = await evenementsParTranche(admin, user.id, tz, granularite(periode, from, to), slots, false)
+  const historique = slots.map((slot, i) => {
+    const mCmds    = allCommandes.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
+    const mLignes  = allLignes.filter(l => l.created_at >= slot.from && l.created_at < slot.to)
 
     const mCa      = mCmds.reduce((s, c) => s + c.prix_paye, 0)
     const mRemise  = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-    const mFavoris = (allFavoris ?? []).filter(f => (f as { created_at: string }).created_at >= slot.from && (f as { created_at: string }).created_at < slot.to).length
 
     const slotStart = new Date(slot.from)
     const slotEnd   = new Date(slot.to)
-    const mMrr = (allAbonnements ?? [])
+    const mMrr = allAbonnements
       .filter(a => {
         const debut = new Date(a.date_debut)
         // Seul un abonnement annulé est terminé : date_fin d'un abonné actif = paiement suivant.
@@ -157,11 +151,11 @@ export async function GET(request: Request) {
       mrr:          mMrr,
       panier_moyen: mCmds.length ? mCa / mCmds.length : 0,
       ventes:       mLignes.length,
-      ecoutes:      mPlays.length,
-      free_dl:      mFreeDl.length,
+      ecoutes:      sommeTranche(evenementsSlots[i], 'ecoutes'),
+      free_dl:      sommeTranche(evenementsSlots[i], 'free_dl'),
       recu_collab:         sommeFlux(flux.recus, slot.from, slot.to),
       part_collaborateurs: sommeFlux(flux.collaborateurs, slot.from, slot.to),
-      favoris:      mFavoris,
+      favoris:      sommeTranche(evenementsSlots[i], 'favoris'),
     }
   })
 
@@ -169,14 +163,14 @@ export async function GET(request: Request) {
   const now = new Date()
   const debutMois = startOfMonthInTz(now, tz).toISOString()
   const abonnes = {
-    actifs:   (abonActifs ?? []).length,
-    nouveaux: (allAbonnements ?? []).filter(a => a.created_at >= debutMois).length,
-    annules:  (allAbonnements ?? []).filter(a => a.statut === 'annule' && a.date_fin && a.date_fin >= debutMois).length,
+    actifs:   abonActifs.length,
+    nouveaux: allAbonnements.filter(a => a.created_at >= debutMois).length,
+    annules:  allAbonnements.filter(a => a.statut === 'annule' && a.date_fin && a.date_fin >= debutMois).length,
   }
 
   // Dernières licences — au niveau article (5 derniers beats vendus, pas 5 derniers paniers)
   type Raw = { id: string; created_at: string; prix_paye: number; reduction_montant: number | null; beats: unknown; licences: unknown }
-  const dernieres_licences = ((allLignes ?? []) as unknown as Raw[]).slice(0, 5).map((d: Raw) => {
+  const dernieres_licences = (allLignes as unknown as Raw[]).slice(0, 5).map((d: Raw) => {
     const b = Array.isArray(d.beats) ? d.beats[0] : d.beats
     const l = Array.isArray(d.licences) ? d.licences[0] : d.licences
     return {

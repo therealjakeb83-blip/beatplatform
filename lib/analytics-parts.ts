@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 
 // Analytics = parts de chaque vendeur (Phase 12 Q18-Q19 / Phase 13 lot 3) :
 // sur une vente à plusieurs vendeurs, le CA d'un beatmaker est SA tranche,
@@ -34,22 +35,29 @@ export type PartsVendeur = {
 }
 
 export async function chargerPartsVendeur(admin: SupabaseClient, vendeurId: string): Promise<PartsVendeur> {
-  const [{ data }, { data: litiges }, { data: solos }] = await Promise.all([
-    admin
+  const [data, litiges, solos] = await Promise.all([
+    toutesLesLignes<unknown>((debut, fin) => admin
       .from('commande_tranches')
       .select('id, commande_id, montant_ttc_cents, montant_rembourse_cents, detail_lignes, commandes!inner(beatmaker_id, prix_paye, statut)')
-      .eq('vendeur_id', vendeurId),
-    admin.from('litiges').select('commande_id, tranche_id').eq('beatmaker_id', vendeurId).eq('statut', 'en_cours'),
+      .eq('vendeur_id', vendeurId)
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes<{ commande_id: string; tranche_id: string | null }>((debut, fin) => admin
+      .from('litiges').select('commande_id, tranche_id').eq('beatmaker_id', vendeurId).eq('statut', 'en_cours')
+      .order('id')
+      .range(debut, fin)),
     // Ventes solo touchées par un remboursement ou un litige (les autres
     // comptent telles quelles, sans entrée ici).
-    admin
+    toutesLesLignes<{ id: string; prix_paye: number; montant_rembourse_cents: number | null; statut: string }>((debut, fin) => admin
       .from('commandes')
       .select('id, prix_paye, montant_rembourse_cents, statut')
       .eq('beatmaker_id', vendeurId)
-      .in('statut', ['litige', 'remboursee', 'remboursee_partielle', 'remboursement_incomplet']),
+      .in('statut', ['litige', 'remboursee', 'remboursee_partielle', 'remboursement_incomplet'])
+      .order('id')
+      .range(debut, fin)),
   ])
 
-  const sousLitige = new Set((litiges ?? []).map(l => l.tranche_id ?? `solo:${l.commande_id}`))
+  const sousLitige = new Set(litiges.map(l => l.tranche_id ?? `solo:${l.commande_id}`))
 
   type Row = {
     id: string
@@ -62,7 +70,7 @@ export async function chargerPartsVendeur(admin: SupabaseClient, vendeurId: stri
   const parCommande = new Map<string, PartCommande>()
   const rembourseParCommande = new Map<string, number>()
   const autresCommandes: string[] = []
-  for (const r of (data ?? []) as unknown as Row[]) {
+  for (const r of data as Row[]) {
     const rembourse = Math.min(r.montant_rembourse_cents ?? 0, r.montant_ttc_cents)
     const garde = sousLitige.has(r.id) ? 0 : r.montant_ttc_cents - rembourse
     const facteur = sousLitige.has(r.id) ? 0 : r.montant_ttc_cents > 0 ? garde / r.montant_ttc_cents : 1
@@ -76,7 +84,7 @@ export async function chargerPartsVendeur(admin: SupabaseClient, vendeurId: stri
     if (r.commandes.beatmaker_id !== vendeurId && STATUTS_ANALYTICS.includes(r.commandes.statut)) autresCommandes.push(r.commande_id)
   }
 
-  for (const c of (solos ?? []) as { id: string; prix_paye: number; montant_rembourse_cents: number | null; statut: string }[]) {
+  for (const c of solos) {
     if (parCommande.has(c.id)) continue
     const total = Math.round(Number(c.prix_paye) * 100)
     const rembourse = c.statut === 'remboursee' ? total : Math.min(c.montant_rembourse_cents ?? 0, total)
@@ -143,27 +151,30 @@ export type FluxCollab = { created_at: string; montant: number }
 
 export async function chargerFluxCollab(admin: SupabaseClient, vendeurId: string): Promise<{ recus: FluxCollab[]; collaborateurs: FluxCollab[] }> {
   const select = 'id, montant_ttc_cents, montant_rembourse_cents, commandes!inner(beatmaker_id, statut, created_at)'
-  const [{ data: recus }, { data: collaborateurs }] = await Promise.all([
-    admin.from('commande_tranches')
+  type Row = { id: string; montant_ttc_cents: number; montant_rembourse_cents: number | null; commandes: { created_at: string } }
+  const [recus, collaborateurs] = await Promise.all([
+    toutesLesLignes<Row>((debut, fin) => admin.from('commande_tranches')
       .select(select)
       .eq('vendeur_id', vendeurId)
       .neq('commandes.beatmaker_id', vendeurId)
-      .in('commandes.statut', STATUTS_ANALYTICS),
-    admin.from('commande_tranches')
+      .in('commandes.statut', STATUTS_ANALYTICS)
+      .order('id')
+      .range(debut, fin) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>),
+    toutesLesLignes<Row>((debut, fin) => admin.from('commande_tranches')
       .select(select)
       .eq('commandes.beatmaker_id', vendeurId)
       .eq('est_proprietaire', false)
-      .in('commandes.statut', STATUTS_ANALYTICS),
+      .in('commandes.statut', STATUTS_ANALYTICS)
+      .order('id')
+      .range(debut, fin) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>),
   ])
-  type Row = { id: string; montant_ttc_cents: number; montant_rembourse_cents: number | null; commandes: { created_at: string } }
-  const lignes = [...((recus ?? []) as unknown as Row[]), ...((collaborateurs ?? []) as unknown as Row[])]
-  const { data: litiges } = lignes.length
-    ? await admin.from('litiges').select('tranche_id').eq('statut', 'en_cours').in('tranche_id', lignes.map(r => r.id))
-    : { data: [] }
-  const sousLitige = new Set((litiges ?? []).map(l => l.tranche_id as string))
+  const lignes = [...recus, ...collaborateurs]
+  const litiges = await parLots<{ tranche_id: string }>(lignes.map(r => r.id), lot =>
+    admin.from('litiges').select('tranche_id').eq('statut', 'en_cours').in('tranche_id', lot))
+  const sousLitige = new Set(litiges.map(l => l.tranche_id))
   // Même règle que le CA : ce qui a été rendu au client, ou est bloqué par un
   // litige en cours, ne compte pas.
-  const versFlux = (rows: unknown) => ((rows ?? []) as Row[])
+  const versFlux = (rows: Row[]) => rows
     .filter(r => !sousLitige.has(r.id))
     .map(r => ({ created_at: r.commandes.created_at, montant: Math.max(r.montant_ttc_cents - (r.montant_rembourse_cents ?? 0), 0) / 100, ttc: r.montant_ttc_cents }))
     .filter(f => f.montant > 0 || f.ttc === 0)
