@@ -140,7 +140,8 @@ export default function Sidebar({ nomArtiste, planFree, demandesCollab }: { nomA
   }
 
   const searchParams = useSearchParams()
-  const tabActif     = searchParams.get('tab') ?? 'overview'
+  // La fiche d'un beat (/analytics/beats/[id]) n'a pas de ?tab= : elle dépend de l'onglet Beats
+  const tabActif     = pathname.startsWith(`${ANALYTICS_ROUTE}/beats/`) ? 'beats' : (searchParams.get('tab') ?? 'overview')
   const initiale     = initiales(nomArtiste)
 
   return (

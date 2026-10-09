@@ -108,13 +108,16 @@ export async function GET(request: Request) {
   const arr = mrr * 12
 
   // Top 5 beats — CA/ventes calculés au niveau article, pas commande
-  type BeatAcc = { id: string; titre: string; couleur: string | null; ca: number; ventes: number }
+  // cliquable = beat de MA boutique (sa fiche m'est accessible) ; une vente collab
+  // faite sur la boutique d'un autre porte un beat qui ne m'appartient pas.
+  const beatsDeMaBoutique = new Set(lignesBoutique.map(l => l.beat_id))
+  type BeatAcc = { id: string; titre: string; couleur: string | null; ca: number; ventes: number; cliquable: boolean }
   const beatMap = new Map<string, BeatAcc>()
   for (const l of lignes) {
     if (!l.beat_id) continue
     const beat = Array.isArray(l.beats) ? l.beats[0] : l.beats
     if (!beat) continue
-    const ex = beatMap.get(l.beat_id) ?? { id: (beat as { id: string }).id, titre: (beat as { titre: string }).titre, couleur: (beat as { couleur: string | null }).couleur, ca: 0, ventes: 0 }
+    const ex = beatMap.get(l.beat_id) ?? { id: (beat as { id: string }).id, titre: (beat as { titre: string }).titre, couleur: (beat as { couleur: string | null }).couleur, ca: 0, ventes: 0, cliquable: beatsDeMaBoutique.has(l.beat_id) }
     ex.ca     += l.prix_paye + (l.reduction_montant ?? 0)
     ex.ventes += 1
     beatMap.set(l.beat_id, ex)

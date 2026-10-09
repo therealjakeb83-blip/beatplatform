@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link               from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, fmtNum, fmtDate, getGranulariteLabel, type Periode } from '../_lib/periode'
@@ -10,7 +11,7 @@ type Props = { periode: Periode; debut: string; fin: string }
 type Data = {
   kpis: { ca_brut: number; ca_net: number; mrr: number; arr: number; panier_moyen: number; beats_vendus: number; ecoutes: number; free_dl: number; favoris: number; recu_collab: number; part_collaborateurs: number }
   historique: Array<Record<string, unknown>>
-  top_beats: Array<{ id: string; titre: string; couleur: string | null; ca: number; ventes: number }>
+  top_beats: Array<{ id: string; titre: string; couleur: string | null; ca: number; ventes: number; cliquable: boolean }>
   dernieres_licences: Array<{ id: string; beat_titre: string; licence_nom: string; created_at: string; prix_paye: number; reduction_montant: number | null }>
   abonnes: { actifs: number; nouveaux: number; annules: number }
 }
@@ -94,19 +95,25 @@ export default function TabOverview({ periode, debut, fin }: Props) {
             {top_beats.length === 0 && (
               <p className="px-4 py-6 text-center text-gray-600 text-xs">Aucune vente</p>
             )}
-            {top_beats.map((b, i) => (
-              <div key={b.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white"
-                  style={{ background: b.couleur ?? '#6366f1' }}>
-                  {i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-white font-medium truncate">{b.titre}</p>
-                  <p className="text-[10px] text-gray-500">{b.ventes} vente{b.ventes > 1 ? 's' : ''}</p>
-                </div>
-                <p className="text-sm font-bold text-green-400 flex-shrink-0">{fmtEuroDisplay(b.ca)}</p>
-              </div>
-            ))}
+            {top_beats.map((b, i) => {
+              const contenu = (
+                <>
+                  <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ background: b.couleur ?? '#6366f1' }}>
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white font-medium truncate">{b.titre}</p>
+                    <p className="text-[10px] text-gray-500">{b.ventes} vente{b.ventes > 1 ? 's' : ''}</p>
+                  </div>
+                  <p className="text-sm font-bold text-green-400 flex-shrink-0">{fmtEuroDisplay(b.ca)}</p>
+                </>
+              )
+              // Beat d'une autre boutique (vente collab) : sa fiche n'est pas accessible ici.
+              return b.cliquable
+                ? <Link key={b.id} href={`/dashboard/business/analytics/beats/${b.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors">{contenu}</Link>
+                : <div key={b.id} className="flex items-center gap-3 px-4 py-3">{contenu}</div>
+            })}
           </div>
         </div>
 

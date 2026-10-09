@@ -21,7 +21,7 @@ type FavoriRow  = { created_at: string;   client_id: string | null; client_nom: 
 type FreeDlRow  = { downloaded_at: string; client_id: string | null; client_nom: string | null }
 type Data = {
   beat: Beat
-  kpis: { ca_brut: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number; favoris: number; duree_moy: number | null }
+  kpis: { ca_brut: number; remises: number; ca_net: number; ventes: number; ecoutes: number; free_dl: number; favoris: number; duree_moy: number | null }
   ventes_detail:  Vente[]
   ecoutes_detail: EcouteRow[]
   favoris_detail: FavoriRow[]
@@ -293,7 +293,7 @@ export default function BeatDetailPage() {
           <div className="space-y-6">
             {/* KPIs financiers + durée moyenne */}
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis!.ca_brut)} sub={`Net HT : ${fmtEuroDisplay(kpis!.ca_net)}`} color="#4ade80" />
+              <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis!.ca_brut)} sub={`Remises : ${fmtEuroDisplay(kpis!.remises)}`} color="#4ade80" />
               <KpiCard label="CA Net (HT)"   value={fmtEuroDisplay(kpis!.ca_net)}  color="#22d3ee" />
               <KpiCard label="Durée moy. écoute" value={fmtDuree(kpis!.duree_moy)} color="#f59e0b" />
             </div>

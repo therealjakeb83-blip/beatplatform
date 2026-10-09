@@ -220,7 +220,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   return NextResponse.json({
     beat,
-    kpis: { ca_brut, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length, favoris: favoris.length, duree_moy },
+    kpis: { ca_brut, remises, ca_net, ventes: cmds.length, ecoutes: plays.length, free_dl: freeDl.length, favoris: favoris.length, duree_moy },
     ventes_detail,
     ecoutes_detail,
     favoris_detail,

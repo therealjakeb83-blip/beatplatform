@@ -50,6 +50,8 @@ export default function AnalyticsLineChart({ data, xKey, series, formatValue, he
           axisLine={false}
           tickLine={false}
           tickCount={4}
+          // Comptes (ventes, écoutes…) : pas de graduation 0,67 affichée « 1 » en double
+          allowDecimals={!!formatValue}
           domain={[0, yMax]}
           tickFormatter={v => fmtTick(v as number, formatValue)}
           width={52}
