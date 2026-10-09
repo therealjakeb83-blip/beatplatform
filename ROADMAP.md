@@ -672,7 +672,7 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 
 | # | Test | Statut |
 |---|---|---|
-| T0 | Migration + SELECT de contrôle ; build ; Contacts, Commandes importées, Relier les beats sans erreur | |
+| T0 | Migration + SELECT de contrôle ; build ; Contacts, Commandes importées, Relier les beats sans erreur | 🔄 Jake (migration OK : 2 tables, 3 fonctions réservées à service_role, import avec beat_id vérifié) + Claude (build OK) — pages à vérifier |
 | T1 | Inscription groupée de 3 contacts de test (adresses de Jake) dont 1 désinscrit : « 2 inscrits · 1 ignoré », case obligatoire, base | |
 | T2 | Le désinscrit reste désinscrit ; trace enregistrée avec le texte de la case | |
 | T3 | Sélection de plus de 1 000 contacts : décompte = SQL | |
