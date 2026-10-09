@@ -2,12 +2,13 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import SocialIcon from '../../_components/SocialIcon'
 import { joursDepuis } from '../../_lib/utils'
 import ClientsView from './ClientsView'
 import LeadsView, { type LeadRow } from './LeadsView'
 import NewsletterView, { type NewsletterRow } from './NewsletterView'
-import type { StatutNewsletter } from '@/lib/newsletter-statut'
+import { TEXTE_CONFIRMATION_INSCRIPTION_GROUPEE, type StatutNewsletter } from '@/lib/newsletter-statut'
 import Pagination from '../../../_pagination/Pagination'
 import { usePagination } from '../../../_pagination/usePagination'
 
@@ -248,6 +249,7 @@ function ContactsHeader() {
 // ── Table principale ──────────────────────────────────────────────────────────
 function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: { id: string; nom: string; nb: number }[] }) {
   const [selected, setSelected]                   = useState<Set<string>>(new Set())
+  const [showNwtModal, setShowNwtModal]           = useState(false)
   const [filtreSearch, setFiltreSearch]           = useState('')
   const [filtreStatut, setFiltreStatut]           = useState('')
   const [filtreNewsletter, setFiltreNewsletter]   = useState('')
@@ -472,6 +474,9 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
                 <button onClick={() => setShowListeModal(true)} className="text-xs px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors">
                   + Ajouter à une liste
                 </button>
+                <button onClick={() => setShowNwtModal(true)} className="text-xs px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-semibold transition-colors">
+                  Inscrire à la newsletter
+                </button>
                 {hasAnyFilter && <button onClick={resetAll} className="text-xs text-gray-600 hover:text-white transition-colors">Réinitialiser</button>}
                 <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-white transition-colors">Annuler</button>
               </>
@@ -608,6 +613,14 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
         <Pagination {...pagination.barre} />
       </div>
 
+      {showNwtModal && (
+        <InscriptionGroupeeModal
+          clientIds={[...selected]}
+          onFermer={() => setShowNwtModal(false)}
+          onTermine={() => setSelected(new Set())}
+        />
+      )}
+
       {/* Modal liste */}
       {showListeModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowListeModal(false)}>
@@ -667,6 +680,119 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
         </div>
       )}
     </>
+  )
+}
+
+// ── Inscription groupée à la newsletter ───────────────────────────────────────
+// Décompte calculé par le serveur AVANT validation (rien n'est écrit), case
+// obligatoire, désinscrits d'eux-mêmes jamais réinscrits, aucun email envoyé.
+type DecompteInscription = { nb_inscrits: number; nb_deja_inscrits: number; nb_desinscrits_ignores: number; nb_hors_boutique: number }
+
+function InscriptionGroupeeModal({ clientIds, onFermer, onTermine }: { clientIds: string[]; onFermer: () => void; onTermine: () => void }) {
+  const router = useRouter()
+  const [idsFiges]              = useState(clientIds)
+  const [decompte, setDecompte] = useState<DecompteInscription | null>(null)
+  const [resultat, setResultat] = useState<DecompteInscription | null>(null)
+  const [coche, setCoche]       = useState(false)
+  const [envoi, setEnvoi]       = useState(false)
+  const [erreur, setErreur]     = useState<string | null>(null)
+
+  useEffect(() => {
+    let annule = false
+    fetch('/api/business/newsletter/inscription-groupee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_ids: idsFiges, simulation: true }),
+    })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}))
+        if (annule) return
+        if (!r.ok) setErreur(data.erreur ?? 'Erreur')
+        else setDecompte(data.resultat)
+      })
+      .catch(() => { if (!annule) setErreur('Erreur réseau') })
+    return () => { annule = true }
+  }, [idsFiges])
+
+  async function valider() {
+    setEnvoi(true)
+    setErreur(null)
+    try {
+      const r = await fetch('/api/business/newsletter/inscription-groupee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_ids: idsFiges, confirme: true }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) { setErreur(data.erreur ?? 'Erreur'); setEnvoi(false); return }
+      setResultat(data.resultat)
+      onTermine()
+      router.refresh()
+    } catch {
+      setErreur('Erreur réseau')
+      setEnvoi(false)
+    }
+  }
+
+  const n = (x: number) => x.toLocaleString('fr-FR')
+  const pluriel = (x: number, s: string, p: string) => `${n(x)} ${x > 1 ? p : s}`
+  const lignes = (d: DecompteInscription, fait: boolean) => (
+    <ul className="text-sm space-y-1.5">
+      <li className="text-white"><strong>{pluriel(d.nb_inscrits, fait ? 'contact inscrit' : 'contact sera inscrit', fait ? 'contacts inscrits' : 'contacts seront inscrits')}</strong></li>
+      {d.nb_deja_inscrits > 0 && <li className="text-gray-400">{pluriel(d.nb_deja_inscrits, 'déjà inscrit', 'déjà inscrits')} (rien ne change)</li>}
+      {d.nb_desinscrits_ignores > 0 && (
+        <li className="text-amber-400">
+          {pluriel(d.nb_desinscrits_ignores, 'contact s’est désinscrit lui-même', 'contacts se sont désinscrits eux-mêmes')} : {d.nb_desinscrits_ignores > 1 ? 'ignorés, jamais réinscrits' : 'ignoré, jamais réinscrit'}
+        </li>
+      )}
+      {d.nb_hors_boutique > 0 && (
+        <li className="text-gray-500">
+          {pluriel(d.nb_hors_boutique, 'contact introuvable', 'contacts introuvables')} dans ta boutique : {d.nb_hors_boutique > 1 ? 'ignorés' : 'ignoré'}
+        </li>
+      )}
+    </ul>
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={envoi && !resultat ? undefined : onFermer}>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+        <h2 className="font-bold text-white mb-1">Inscrire à la newsletter</h2>
+        <p className="text-xs text-gray-500 mb-4">{pluriel(idsFiges.length, 'contact sélectionné', 'contacts sélectionnés')} · aucun email ne sera envoyé</p>
+
+        {resultat ? (
+          <>
+            <p className="text-green-400 font-semibold text-sm mb-3">Inscription enregistrée ✓</p>
+            {lignes(resultat, true)}
+            <button onClick={onFermer} className="w-full mt-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm text-white transition-colors">Fermer</button>
+          </>
+        ) : !decompte ? (
+          erreur
+            ? <p className="text-red-400 text-sm">{erreur}</p>
+            : <p className="text-sm text-gray-400 flex items-center gap-2"><span className="w-4 h-4 border-2 border-gray-600 border-t-indigo-400 rounded-full animate-spin" />Calcul du nombre de contacts…</p>
+        ) : (
+          <>
+            {lignes(decompte, false)}
+            {decompte.nb_inscrits > 0 && (
+              <label className="flex items-start gap-2.5 mt-5 p-3 rounded-xl bg-gray-800/60 border border-gray-700 cursor-pointer">
+                <input type="checkbox" checked={coche} onChange={e => setCoche(e.target.checked)} className="mt-0.5 w-4 h-4 accent-indigo-500 cursor-pointer flex-shrink-0" />
+                <span className="text-xs text-gray-300 leading-relaxed">{TEXTE_CONFIRMATION_INSCRIPTION_GROUPEE}</span>
+              </label>
+            )}
+            {erreur && <p className="text-red-400 text-xs mt-2">{erreur}</p>}
+            <div className="flex gap-2 mt-5">
+              {decompte.nb_inscrits > 0 && (
+                <button onClick={valider} disabled={!coche || envoi} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-white transition-colors">
+                  {envoi ? 'Inscription…' : `Inscrire ${pluriel(decompte.nb_inscrits, 'contact', 'contacts')}`}
+                </button>
+              )}
+              <button onClick={onFermer} disabled={envoi} className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm text-gray-400 transition-colors">
+                {decompte.nb_inscrits > 0 ? 'Annuler' : 'Fermer'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

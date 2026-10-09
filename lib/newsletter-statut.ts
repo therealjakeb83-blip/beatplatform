@@ -48,3 +48,8 @@ export function statutFusionne(
   }
   return meilleur?.statut ?? 'non_inscrit'
 }
+
+// Inscription groupée par le beatmaker (import lot 3) : case obligatoire,
+// texte enregistré tel quel dans la trace (inscriptions_newsletter_groupees).
+export const TEXTE_CONFIRMATION_INSCRIPTION_GROUPEE =
+  "Je confirme que ces contacts m'ont donné leur accord pour recevoir ma newsletter, et que je peux le prouver si besoin."
