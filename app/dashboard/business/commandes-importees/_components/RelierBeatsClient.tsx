@@ -216,7 +216,7 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
                           <BadgeProposition groupe={g} />
                           <NomBeat beat={propose} />
                         </span>
-                      ) : <span className="text-xs text-gray-600">Aucune correspondance exacte</span>}
+                      ) : <span className="text-xs text-gray-600">Aucun beat proche</span>}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-2">
