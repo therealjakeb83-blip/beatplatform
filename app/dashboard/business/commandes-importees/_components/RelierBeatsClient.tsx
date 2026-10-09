@@ -42,6 +42,7 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
   const router = useRouter()
   const [filtre, setFiltre] = useState<DecisionLien>('a_traiter')
   const [recherche, setRecherche] = useState('')
+  const [seulementPropositions, setSeulementPropositions] = useState(false)
   const [enCours, setEnCours] = useState<string | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
   const [choix, setChoix] = useState<GroupeTitre | null>(null)
@@ -53,19 +54,22 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
     for (const g of groupes) c[g.decision]++
     return c
   }, [groupes])
+  const nbPropositions = useMemo(() => groupes.filter(g => g.decision === 'a_traiter' && g.propositionId).length, [groupes])
+  const filtrerPropositions = filtre === 'a_traiter' && seulementPropositions && nbPropositions > 0
 
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase()
     return groupes.filter(g => {
       if (g.decision !== filtre) return false
+      if (filtrerPropositions && !g.propositionId) return false
       if (!q) return true
       const beat = g.beatId ? beatsParId.get(g.beatId) : g.propositionId ? beatsParId.get(g.propositionId) : null
       return g.titres.some(t => t.toLowerCase().includes(q)) || (beat?.titre.toLowerCase().includes(q) ?? false)
     })
-  }, [groupes, filtre, recherche, beatsParId])
+  }, [groupes, filtre, recherche, beatsParId, filtrerPropositions])
 
   const propositions = filtres.filter(g => g.decision === 'a_traiter' && g.propositionId)
-  const pagination = usePagination(filtres, [filtre, recherche])
+  const pagination = usePagination(filtres, [filtre, recherche, filtrerPropositions])
   const occupe = enCours !== null || rafraichissement
 
   async function envoyer(liens: Action[], cle: string) {
@@ -126,6 +130,16 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
           ))}
         </div>
         <div className="flex items-center gap-2">
+          {filtre === 'a_traiter' && nbPropositions > 0 && (
+            <button
+              onClick={() => setSeulementPropositions(v => !v)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${seulementPropositions
+                ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-200'
+                : 'border-gray-700 text-gray-400 hover:text-white'}`}
+            >
+              {seulementPropositions ? '✓ ' : ''}Propositions seulement ({nb(nbPropositions)})
+            </button>
+          )}
           <input
             type="text"
             value={recherche}
