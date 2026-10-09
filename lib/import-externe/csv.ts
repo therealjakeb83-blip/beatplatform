@@ -47,7 +47,9 @@ export function lireCsv(texte: string): LigneCsv[] {
   return lignes
 }
 
-export function ecrireCsv(lignes: string[][]): string {
-  const echapper = (v: string) => /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
-  return lignes.map(l => l.map(echapper).join(',')).join('\r\n')
+// Séparateur « ; » par défaut : c'est ce qu'attend Excel en français (avec
+// « , » tout s'affiche dans la colonne A)
+export function ecrireCsv(lignes: string[][], separateur = ';'): string {
+  const echapper = (v: string) => v.includes(separateur) || /["\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+  return lignes.map(l => l.map(echapper).join(separateur)).join('\r\n')
 }
