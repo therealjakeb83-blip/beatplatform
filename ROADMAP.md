@@ -597,7 +597,7 @@ Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
 | # | Test | Statut |
 |---|---|---|
 | T0 | Site déployé ; toutes les pages concernées s'ouvrent sans erreur | ✅ build de production OK (Claude) + Jake (Contacts, Commandes, Commandes importées, Beats, Abonnements, fiche client : pages OK, barre présente) |
-| T1 | Contacts « Tous » : 50 lignes, « 1–50 sur 1 517 », page suivante, dernière page juste | ⬜ |
+| T1 | Contacts « Tous » : 50 lignes, « 1–50 sur 1 517 », page suivante, dernière page juste | ✅ Claude (calcul : 31 pages, chaque ligne une fois en 20/50/100) + Jake (écran : 1–50, 51–100, dernière page 1 501–1 517) |
 | T2 | Choix 100 repris dans les autres tableaux et encore là après fermeture du navigateur | ⬜ |
 | T3 | Recherche lancée depuis la page 5 → page 1 | ⬜ |
 | T4 | Changement d'onglet / filtre / tri → page 1 | ⬜ |
