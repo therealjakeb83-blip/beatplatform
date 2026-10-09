@@ -601,7 +601,7 @@ Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
 | T2 | Choix 100 repris dans les autres tableaux et encore là après fermeture du navigateur | ✅ Claude (calcul : cookie invalide → 50, 1re ligne gardée au changement de taille) + Jake (100 dans Contacts → Commandes à 100 → navigateur fermé/rouvert → toujours 100) |
 | T3 | Recherche lancée depuis la page 5 → page 1 | ✅ Claude (code : la recherche fait partie des valeurs qui renvoient en page 1, tous les tableaux) + Jake (page 5 → « manuel » : 6 contacts affichés depuis le début, pas de barre car ≤ 20) |
 | T4 | Changement d'onglet / filtre / tri → page 1 | ✅ Claude (code : filtres et tris dans les valeurs qui renvoient en page 1 ; onglets Contacts = rechargement) + Jake (page 5 → filtre Statut : Client → page 1) |
-| T5 | Contacts sélectionnés sur 2 pages → l'action groupée (ajout à une liste) les prend tous | ⬜ |
+| T5 | Contacts sélectionnés sur 2 pages → l'action groupée (ajout à une liste) les prend tous | ✅ Claude (code : sélection indépendante de la page, l'action envoie toute la sélection) + Jake (2 + 2 contacts sur pages 1 et 2 → « 4 sélectionnés » → liste « Test pagination » avec les 4) |
 | T6 | Commandes : plus de limite à 500 (total = base) | ⬜ |
 | T6b | Beats / Abonnements / code promo : plus de plafond | ✅ prouvé par le code (lecture par lots de 1 000 via `toutesLesLignes`, ordre stable) |
 | T7 | Commandes importées (liste + historique) : pagination, panneau de détail toujours OK | ⬜ |
