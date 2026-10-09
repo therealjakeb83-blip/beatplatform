@@ -32,6 +32,7 @@ function fmtTick(v: number, formatValue?: (v: number) => string): string {
 export default function AnalyticsLineChart({ data, xKey, series, formatValue, height = 160, showLegend = true }: Props) {
   const dataMax = Math.max(...data.flatMap(d => series.map(s => (d[s.key] as number) ?? 0)), 0)
   const yMax: number | 'auto' = dataMax === 0 ? 10 : 'auto'
+  const valeursEntieres = data.every(d => series.every(s => Number.isInteger((d[s.key] as number) ?? 0)))
   const tickInterval = data.length > 12 ? Math.ceil(data.length / 8) - 1 : 0
 
   return (
@@ -50,8 +51,8 @@ export default function AnalyticsLineChart({ data, xKey, series, formatValue, he
           axisLine={false}
           tickLine={false}
           tickCount={4}
-          // Comptes (ventes, écoutes…) : pas de graduation 0,67 affichée « 1 » en double
-          allowDecimals={!!formatValue}
+          // Valeurs toutes entières (ventes, écoutes…) : pas de graduation 0,67 affichée « 1 » en double
+          allowDecimals={!valeursEntieres}
           domain={[0, yMax]}
           tickFormatter={v => fmtTick(v as number, formatValue)}
           width={52}
