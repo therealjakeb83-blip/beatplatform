@@ -597,10 +597,10 @@ Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
 | # | Test | Statut |
 |---|---|---|
 | T0 | Site déployé ; toutes les pages concernées s'ouvrent sans erreur | ✅ build de production OK (Claude) + Jake (Contacts, Commandes, Commandes importées, Beats, Abonnements, fiche client : pages OK, barre présente) |
-| T1 | Contacts « Tous » : 50 lignes, « 1–50 sur 1 517 », page suivante, dernière page juste | ✅ Claude (calcul : 31 pages, chaque ligne une fois en 20/50/100) + Jake (écran : 1–50, 51–100, dernière page 1 501–1 517) |
+| T1 | Contacts « Tous » : 50 lignes, « 1–50 sur 1 733 » (1 517 = acheteurs BeatStars seuls), page suivante, dernière page juste | ✅ Claude (calcul : 31 pages, chaque ligne une fois en 20/50/100) + Jake (écran : 1–50, 51–100, dernière page 1 501–1 517) |
 | T2 | Choix 100 repris dans les autres tableaux et encore là après fermeture du navigateur | ⬜ |
 | T3 | Recherche lancée depuis la page 5 → page 1 | ✅ Claude (code : la recherche fait partie des valeurs qui renvoient en page 1, tous les tableaux) + Jake (page 5 → « manuel » : 6 contacts affichés depuis le début, pas de barre car ≤ 20) |
-| T4 | Changement d'onglet / filtre / tri → page 1 | ⬜ |
+| T4 | Changement d'onglet / filtre / tri → page 1 | ✅ Claude (code : filtres et tris dans les valeurs qui renvoient en page 1 ; onglets Contacts = rechargement) + Jake (page 5 → filtre Statut : Client → page 1) |
 | T5 | Contacts sélectionnés sur 2 pages → l'action groupée (ajout à une liste) les prend tous | ⬜ |
 | T6 | Commandes : plus de limite à 500 (total = base) | ⬜ |
 | T6b | Beats / Abonnements / code promo : plus de plafond | ✅ prouvé par le code (lecture par lots de 1 000 via `toutesLesLignes`, ordre stable) |
