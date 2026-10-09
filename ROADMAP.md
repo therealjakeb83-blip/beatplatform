@@ -564,9 +564,9 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 |---|---|---|
 | T0 | Migration exécutée + contrôle ; site déployé ; Commandes / fiche commande / Contacts / fiche client s'ouvrent sans erreur | ✅ migration (Jake) + déploiement (Claude : routes 401 hors connexion) ; pages à ouvrir (Jake) |
 | T1 | Lecteur sur le vrai fichier = Sales Report | ✅ Claude (janvier : 2 058 beats, 93 312,89 $, remises 4 880,22 $ ; février : 2 035 commandes, 0 rejet) |
-| T2 | Plan Free : page ouverte, Importer 🔒, API refuse | ⬜ (refus API prouvé par le code : `aAccesPlanPayant` dans `route-commun.ts`) |
+| T2 | Plan Free : page ouverte, Importer 🔒, API refuse | ✅ prouvé par le code : page dans `PREFIXES_LIBRES` (`lib/acces-plan.ts`) ; bouton 🔒 si `planPayant` faux ; `importer`/`analyser` exigent `aAccesPlanPayant` (même règle que `proxy.ts` : admin, exempté ou abonnement actif/essai) ; `annuler` ne l'exige pas |
 | T3 | Écran de vérification sur A : BeatStars, « Jake B », oct. 2020 → févr. 2026, 2 035 commandes, 0 rejet, nouveaux/existants, $ ≈ €, 5 exemples | ✅ Claude (vrai code de préparation, base simulée : 95 847,50 $ ≈ 88 623,17 €, 1 517 acheteurs) ; écran réel à voir (Jake) |
-| T4 | Rien n'écrit après l'écran de vérification | ⬜ |
+| T4 | Rien n'écrit après l'écran de vérification | ✅ prouvé par le code : le chemin `analyser` → `preparerImport` ne contient que des lectures (aucun insert/update/delete/rpc) ; seule la route `importer` écrit |
 | T5 | Import : nombres annoncés = nombres en base, attente visible | ⬜ |
 | T6 | Conversion au taux BCE du jour (week-end = vendredi), au centime | ✅ Claude (3 commandes + « Cramé » un samedi → taux du vendredi 30/01, vérifiés directement sur l'API BCE) |
 | T7 | Collab : Chakra = simple (collab avec Franci A La Prod) ; OUTRO = « Vendu par AchProdd », 44,99 $ | ✅ Claude (préparation) ; affichage à voir (Jake) |
@@ -575,14 +575,14 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 | T10 | Liste Contacts : acheteur importé = Client, LTV, achats, dates, source « Import — BeatStars », Non inscrit | ⬜ |
 | T11 | Contact déjà existant chez A : nom et source inchangés, LTV = natif + importé | ⬜ |
 | T12 | Fiche client : historique mélangé, badge, panneau de détail sans facture/contrat | ⬜ |
-| T13 | Chez B : rien de l'import de A | ⬜ |
+| T13 | Chez B : rien de l'import de A | ✅ prouvé par le code : l'import ne crée de lead que pour A ; tous les écrans CRM partent des leads/commandes de la boutique connectée et filtrent `beatmaker_id` ; nouvelles tables en RLS `beatmaker_id = auth.uid()`. ⚠️ Trou ANTÉRIEUR au lot, noté pour 16b : la fiche `/contacts/[id]` charge n'importe quel client par son id sans vérifier qu'il appartient à la boutique (nom/email visibles si on connaît l'UUID ; commandes importées de A jamais visibles chez B) |
 | T14 | Réimport : « 2 035 déjà importées », bouton grisé ; janvier puis février = 13 nouvelles | ⬜ |
 | T15 | Rejets : commande entière rejetée avec raison, CSV téléchargeable | ✅ Claude (copie abîmée : email vide, date illisible sur 3 beats, facture en double → 3 commandes rejetées, n° de ligne exacts) ; écran + CSV à voir (Jake) |
 | T16 | BCE indisponible → échec propre, rien d'écrit | ✅ Claude (réseau coupé sur le vrai code : message prévu, l'erreur survient avant toute écriture) |
-| T17 | Analytics / Commandes / factures inchangés ; aucun email ni automatisation | ⬜ (prouvé par le code : aucune de ces parties ne lit `commandes_externes` ; relance d'inactivité = table `commandes` seulement) |
+| T17 | Analytics / Commandes / factures inchangés ; aucun email ni automatisation | ✅ prouvé par le code : seuls les fichiers CRM/import lisent `commandes_externes`/`imports_externes` ; la fonction d'import n'écrit que imports_externes, clients, leads, commandes_externes(_lignes), imports_externes_contacts ; aucun déclencheur SQL sur leads/clients ; Analytics ne lit pas leads ; relance d'inactivité = table `commandes` seulement ; aucun envoi d'email dans l'import ; contacts importés « non_inscrit » donc hors campagnes. Seul effet visible ailleurs : le compteur de contacts de la fiche boutique admin augmente (normal) |
 | T18 | Annulation : commandes supprimées, contacts intacts supprimés, modifiés/inscrits/en liste conservés, préexistants intacts, OK en Free | ⬜ |
 | T19 | Segment « LTV > X » contient des contacts importés | ⬜ |
-| T20 | Ménage : abonnement rejoué pas compté deux fois (`stripe_invoice_id`) ; anciennes colonnes supprimées | ⬜ |
+| T20 | Ménage : abonnement rejoué pas compté deux fois (`stripe_invoice_id`) ; anciennes colonnes supprimées | 🔄 anti-doublon ✅ prouvé par le code (recherche par `stripe_invoice_id` avant insertion + index unique en base) ; migration de ménage + contrôle à faire (Jake) |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
