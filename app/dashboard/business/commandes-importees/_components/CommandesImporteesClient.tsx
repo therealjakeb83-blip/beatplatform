@@ -30,6 +30,8 @@ export type ImportHistorique = {
 
 const PAR_PAGE = 50
 
+const pluriel = (n: number, un: string, plusieurs: string) => `${n.toLocaleString('fr-FR')} ${n > 1 ? plusieurs : un}`
+
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
 
 function Roue() {
@@ -168,8 +170,9 @@ export default function CommandesImporteesClient({
                           <span className="text-red-300/80 font-medium">Annulé</span>{i.annule_at ? ` le ${fmtDate(i.annule_at)}` : ''}
                           {i.annulation_rapport && (
                             <p className="mt-0.5">
-                              {i.annulation_rapport.nb_commandes_supprimees} commandes et {i.annulation_rapport.nb_contacts_supprimes} contacts supprimés
-                              {i.annulation_rapport.nb_contacts_conserves > 0 && `, ${i.annulation_rapport.nb_contacts_conserves} contacts conservés`}
+                              {pluriel(i.annulation_rapport.nb_commandes_supprimees, 'commande supprimée', 'commandes supprimées')}
+                              {', '}{pluriel(i.annulation_rapport.nb_contacts_supprimes, 'contact supprimé', 'contacts supprimés')}
+                              {i.annulation_rapport.nb_contacts_conserves > 0 && `, ${pluriel(i.annulation_rapport.nb_contacts_conserves, 'contact conservé', 'contacts conservés')}`}
                             </p>
                           )}
                         </div>
