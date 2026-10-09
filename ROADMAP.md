@@ -649,7 +649,7 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 | # | Retouche | Statut |
 |---|---|---|
 | R1 | Fiche d'un beat : « Beats » surligné dans le menu | ✅ Jake (capture fiche Calor) |
-| R2 | Graphique « Ventes » de la fiche de Calor : axe 0 / 1 / 2 sans doublon | 🔄 1er essai raté (tous les écrans passent un format d'affichage → la condition ne s'appliquait jamais) ; corrigé `20e5092` : pas de décimales dès que toutes les valeurs sont entières |
+| R2 | Graphique « Ventes » de la fiche de Calor : axe 0 / 1 / 2 sans doublon | ✅ Jake (1er essai raté : tous les écrans passent un format d'affichage → condition jamais vraie ; corrigé `20e5092` : pas de décimales dès que toutes les valeurs sont entières → axe 0 / 1 / 2 / 3) |
 | R3 | Carte « CA Brut » de la fiche : sous-titre « Remises : 15,00 € » pour Calor | ✅ Jake (capture fiche Calor) |
 | R4 | Vue d'ensemble → clic sur un beat du Top 5 → sa fiche | |
 
