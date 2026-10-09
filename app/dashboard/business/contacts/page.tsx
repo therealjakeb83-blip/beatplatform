@@ -373,7 +373,9 @@ export default async function ContactsPage({
 
     // Tous les événements triés chronologiquement
     const events: ExtraEvent[] = []
-    if (lead) events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source, lead.source_plateforme) })
+    // Contact importé : son premier contact EST sa première commande (déjà
+    // dans les événements « Commande ») — pas d'événement « Import » à part
+    if (lead && lead.source !== 'import') events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source, lead.source_plateforme) })
     if (abo)  events.push({ date: new Date(abo.created_at),  type: 'Abonnement' })
     for (const cmd of licenceCmds) events.push({ date: new Date(cmd.created_at), type: 'Commande' })
     for (const ev of extraEventsParClient.get(c.id) ?? []) events.push(ev)
