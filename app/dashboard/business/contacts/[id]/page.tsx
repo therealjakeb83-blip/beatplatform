@@ -97,6 +97,15 @@ type Commande = {
   commande_lignes: LigneCommande[]
 }
 
+const LIBELLES_STATUT_PAIEMENT: Record<string, { label: string; cls: string }> = {
+  payee:                   { label: 'Payé',                    cls: 'bg-green-500/20 text-green-400' },
+  remboursee:              { label: 'Remboursé',               cls: 'bg-red-500/20 text-red-400' },
+  remboursee_partielle:    { label: 'Remboursé en partie',     cls: 'bg-orange-500/20 text-orange-300' },
+  remboursement_incomplet: { label: 'Remboursement incomplet', cls: 'bg-red-500/20 text-red-300' },
+  litige:                  { label: 'Litige',                  cls: 'bg-orange-500/20 text-orange-400' },
+  annulee:                 { label: 'Annulé',                  cls: 'bg-gray-700/60 text-gray-400' },
+}
+
 // ── Onglets ───────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -279,7 +288,12 @@ export default async function FicheClientPage({
 
   // Métriques
   const payees         = commandes.filter(c => c.statut === 'payee')
-  const achats         = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT')
+  // Onglet Commandes = achats de licences uniquement ; les paiements
+  // d'abonnement (création + renouvellements) sont dans l'onglet Abonnement
+  const achats         = payees.filter(c => c.type_commande === 'LICENCE')
+  const paiementsAbonnement = commandes
+    .filter(c => c.type_commande === 'CREATION_ABONNEMENT' || c.type_commande === 'RENOUVELLEMENT')
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
   const licencesPayees = payees.filter(c => c.type_commande === 'LICENCE')
   // Commandes importées = achats de licence pour le CRM (badge plateforme à l'affichage)
   const importeesCrm   = commandesImportees.map(versCrmDepuisDetail)
@@ -882,7 +896,7 @@ export default async function FicheClientPage({
                     ? <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">Impayé</span>
                     : <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/60 text-gray-500 font-medium">Annulé</span>
                 } />
-                <Row label="Plan"   value={<span className="capitalize">{abonnement.plan}</span>} />
+                <Row label="Plan"   value={nomAbonnement} />
                 <Row label={abonnement.statut === 'actif' ? 'Depuis' : 'Débuté'} value={fmtDate(abonnement.date_debut)} />
                 {abonnement.en_essai && <Row label="Essai gratuit" value="Oui" />}
                 {(abonnement.prix ?? 0) > 0 && (
@@ -904,6 +918,41 @@ export default async function FicheClientPage({
             ) : (
               <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-center py-10">
                 <p className="text-gray-600 text-sm">Pas d&apos;abonnement</p>
+              </div>
+            )}
+
+            {paiementsAbonnement.length > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                <h2 className="font-bold text-sm px-5 pt-4 pb-2">Historique des paiements</h2>
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-800">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Paiement</th>
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paiementsAbonnement.map((p, i) => {
+                      const statut = LIBELLES_STATUT_PAIEMENT[p.statut] ?? { label: p.statut, cls: 'bg-gray-700/60 text-gray-400' }
+                      return (
+                        <tr key={p.id} className={`${i < paiementsAbonnement.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}>
+                          <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
+                            <Link href={`/dashboard/business/commandes/${p.id}`} className="hover:text-white">{fmtDate(p.created_at)}</Link>
+                          </td>
+                          <td className="px-5 py-3 text-xs text-gray-300">
+                            {p.type_commande === 'CREATION_ABONNEMENT' ? 'Souscription' : 'Renouvellement'}
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statut.cls}`}>{statut.label}</span>
+                          </td>
+                          <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(Number(p.prix_paye))}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -946,9 +995,7 @@ export default async function FicheClientPage({
                       )
                     }
                     const a = h.ligne
-                    const titre = a.type_commande === 'CREATION_ABONNEMENT' || a.type_commande === 'RENOUVELLEMENT'
-                      ? nomAbonnement
-                      : a.beats?.titre ?? 'Beat supprimé'
+                    const titre = a.beats?.titre ?? 'Beat supprimé'
                     return (
                       <tr
                         key={a.id}
@@ -956,9 +1003,7 @@ export default async function FicheClientPage({
                       >
                         <td className="px-5 py-3 font-medium text-white">{titre}</td>
                         <td className="px-5 py-3 text-xs text-gray-400">
-                          {a.type_commande === 'CREATION_ABONNEMENT'
-                            ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">Abonnement</span>
-                            : a.licences?.nom ?? 'Inconnue'}
+                          {a.licences?.nom ?? 'Inconnue'}
                         </td>
                         <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.created_at)}</td>
                         <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(a.prix_paye)}</td>
