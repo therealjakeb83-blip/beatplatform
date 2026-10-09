@@ -574,7 +574,7 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 | T8 | Offert : Cramé offert dans une facture à 3 beats, Carré/IA normaux | ✅ Claude (préparation) |
 | T9 | Aucun « (COLLABORATOR) » dans les titres | ✅ Claude (0 sur 2 194) |
 | T10 | Liste Contacts : acheteur importé = Client, LTV, achats, dates, Non inscrit | ✅ Jake (Manuel Diniz : Client, valeurs attendues). Corrigé à sa demande : 1re action d'un contact importé = « Commande » (plus « Import — BeatStars ») |
-| T11 | Contact déjà existant chez A : nom et source inchangés, LTV = natif + importé | ⬜ |
+| T11 | Contact déjà existant chez A : nom et source inchangés, LTV = natif + importé | ✅ Jake (3 contacts existants : Card Holder Name 49 + 2,52 = 51,52 € / 1 + 3 commandes ; Test 2706 45 + 44,06 = 89,06 € / 3 ; Doudou Ngom 96,42 € / 1, passé de Lead à Client ; noms d'origine gardés) |
 | T12 | Fiche client : historique mélangé, badge, panneau de détail sans facture/contrat | ⬜ |
 | T13 | Chez B : rien de l'import de A | ✅ prouvé par le code : l'import ne crée de lead que pour A ; tous les écrans CRM partent des leads/commandes de la boutique connectée et filtrent `beatmaker_id` ; nouvelles tables en RLS `beatmaker_id = auth.uid()`. ⚠️ Trou ANTÉRIEUR au lot, noté pour 16b : la fiche `/contacts/[id]` charge n'importe quel client par son id sans vérifier qu'il appartient à la boutique (nom/email visibles si on connaît l'UUID ; commandes importées de A jamais visibles chez B) |
 | T14 | Réimport : « 2 035 déjà importées », bouton grisé ; janvier puis février = 13 nouvelles | ⬜ |
