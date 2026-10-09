@@ -231,10 +231,10 @@ function ContactsHeader() {
                 <p className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors mb-1">Importer des contacts</p>
                 <p className="text-gray-500 text-xs leading-relaxed">Ajoute de nouveaux contacts à ton CRM depuis un fichier CSV — noms, emails, réseaux sociaux, préférences.</p>
               </button>
-              <button className="text-left p-4 rounded-xl border border-gray-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group">
-                <p className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors mb-1">Importer des commandes</p>
-                <p className="text-gray-500 text-xs leading-relaxed">Importe l'historique de commandes depuis BeatStars. Les contacts associés seront créés automatiquement.</p>
-              </button>
+              <Link href="/dashboard/business/commandes-importees?importer=1" className="text-left p-4 rounded-xl border border-gray-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group">
+                <p className="text-white font-semibold text-sm group-hover:text-indigo-300 transition-colors mb-1">Importer des commandes externes</p>
+                <p className="text-gray-500 text-xs leading-relaxed">Ton historique de ventes BeatStars, Airbit, Instrurap… Les acheteurs sont ajoutés automatiquement à ton CRM (non inscrits à ta newsletter).</p>
+              </Link>
             </div>
           </div>
         </div>

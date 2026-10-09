@@ -69,6 +69,7 @@ function sourceLabel(source: string): string {
   if (source === 'visite')       return 'Compte créé'
   if (source === 'achat')        return 'Achat'
   if (source === 'manuel')       return 'Ajout manuel'
+  if (source === 'import')       return 'Import'
   return source
 }
 

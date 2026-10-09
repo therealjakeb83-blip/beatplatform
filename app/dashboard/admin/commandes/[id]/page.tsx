@@ -25,7 +25,7 @@ export default async function CommandeAdminDetailPage({ params }: { params: Prom
     .from('commandes')
     .select(`
       id, created_at, prix_paye, statut, methode_paiement, code_promo, reduction_montant,
-      fichiers_livres, source_marketing, type_commande, plateforme_source, acheteur_email, acheteur_nom,
+      fichiers_livres, source_marketing, type_commande, acheteur_email, acheteur_nom,
       client_id, beatmaker_id,
       clients ( id, prenom, nom, email ),
       beatmakers ( id, nom_artiste, slug ),
@@ -82,7 +82,7 @@ export default async function CommandeAdminDetailPage({ params }: { params: Prom
       </div>
 
       <p className="text-xs text-gray-600">
-        {commande.methode_paiement} — {commande.plateforme_source} — {commande.type_commande}
+        {commande.methode_paiement} — {commande.type_commande}
         {commande.source_marketing ? ` — source : ${commande.source_marketing}` : ''}
         {commande.fichiers_livres ? ' — fichiers livrés' : ' — fichiers non livrés'}
       </p>

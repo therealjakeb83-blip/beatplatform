@@ -4,6 +4,9 @@ import { redirect, notFound } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import ListeDetailClient, { type MembreRow, type ContactLight } from './_components/ListeDetailClient'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
+import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
+import { libellePlateforme } from '@/lib/import-externe/plateformes'
 import { statutFusionne } from '@/lib/newsletter'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -63,25 +66,28 @@ export default async function ListeDetailPage({
 
   // ── Données ───────────────────────────────────────────────────────────────
 
-  const { data: membresRaw } = await supabase
+  const membresRaw = await toutesLesLignes<{ client_id: string }>((debut, fin) => supabase
     .from('listes_crm_contacts')
     .select('client_id')
     .eq('liste_id', listeId)
+    .order('client_id')
+    .range(debut, fin))
 
   const membreIds = (membresRaw ?? []).map(m => m.client_id)
   const membreSet = new Set(membreIds)
 
   // Tous les IDs clients du beatmaker
-  const [cmdIdsRes, leadIdsRes, aboIdsRes] = await Promise.all([
-    supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null),
-    supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId),
-    supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null),
+  type AvecClient = { client_id: string }
+  const [cmdIds, leadIds, aboIds] = await Promise.all([
+    toutesLesLignes<AvecClient>((d, f) => supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
+    toutesLesLignes<AvecClient>((d, f) => supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId).order('id').range(d, f)),
+    toutesLesLignes<AvecClient>((d, f) => supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
   ])
 
   const allClientIds = [...new Set([
-    ...(cmdIdsRes.data  ?? []).map(c => c.client_id as string),
-    ...(leadIdsRes.data ?? []).map(l => l.client_id),
-    ...(aboIdsRes.data  ?? []).map(a => a.client_id as string),
+    ...cmdIds.map(c => c.client_id),
+    ...leadIds.map(l => l.client_id),
+    ...aboIds.map(a => a.client_id),
   ])]
 
   if (allClientIds.length === 0) {
@@ -97,42 +103,35 @@ export default async function ListeDetailPage({
   }
 
   // Infos clients (admin) + commandes + abos + leads membres en parallèle
-  const [clientsRes, commandesRes, abosRes, leadsRes] = await Promise.all([
-    admin
+  type ClientListe = {
+    id: string; prenom: string | null; nom: string; surnom: string | null; nom_artiste: string | null; email: string
+    pays: string | null; telephone: string | null; instagram: string | null; spotify: string | null; youtube: string | null; tiktok: string | null
+  }
+  type CommandeListe = { client_id: string; prix_paye: number | string | null; type_commande: string | null; statut: string; montant_rembourse_cents: number | null; created_at: string }
+  type LeadListe = { client_id: string; newsletter_statut: string; newsletter_statut_at: string | null; source: string; source_plateforme: string | null; created_at: string }
+  const [clients, commandesNatives, commandesExternes, abos, leads] = await Promise.all([
+    parLots<ClientListe>(allClientIds, lot => admin
       .from('clients')
       .select('id, prenom, nom, surnom, nom_artiste, email, pays, telephone, instagram, spotify, youtube, tiktok')
-      .in('id', allClientIds),
-    membreIds.length > 0
-      ? supabase
-          .from('commandes')
-          .select('client_id, prix_paye, type_commande, statut, montant_rembourse_cents, created_at')
-          .eq('beatmaker_id', beatmakerId)
-          .in('client_id', membreIds)
-          .not('client_id', 'is', null)
-      : Promise.resolve({ data: [] as { client_id: unknown; prix_paye: number; type_commande: string | null; statut: string; montant_rembourse_cents: number; created_at: string }[] }),
-    membreIds.length > 0
-      ? supabase
-          .from('abonnements_boutique')
-          .select('client_id, statut')
-          .eq('beatmaker_id', beatmakerId)
-          .in('client_id', membreIds)
-          .not('client_id', 'is', null)
-      : Promise.resolve({ data: [] as { client_id: unknown; statut: string }[] }),
-    membreIds.length > 0
-      ? supabase
-          .from('leads')
-          .select('client_id, newsletter_statut, newsletter_statut_at, source, created_at')
-          .eq('beatmaker_id', beatmakerId)
-          .in('client_id', membreIds)
-      : Promise.resolve({ data: [] as {
-          client_id: string; newsletter_statut: string; newsletter_statut_at: string | null; source: string; created_at: string
-        }[] }),
+      .in('id', lot)),
+    parLots<CommandeListe>(membreIds, lot => supabase
+      .from('commandes')
+      .select('client_id, prix_paye, type_commande, statut, montant_rembourse_cents, created_at')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
+    chargerCommandesExternesCrm(supabase, beatmakerId, membreIds),
+    parLots<{ client_id: string; statut: string }>(membreIds, lot => supabase
+      .from('abonnements_boutique')
+      .select('client_id, statut')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
+    parLots<LeadListe>(membreIds, lot => supabase
+      .from('leads')
+      .select('client_id, newsletter_statut, newsletter_statut_at, source, source_plateforme, created_at')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
   ])
-
-  const clients   = clientsRes.data   ?? []
-  const commandes = commandesRes.data ?? []
-  const abos      = abosRes.data      ?? []
-  const leads     = leadsRes.data     ?? []
+  const commandes: CommandeListe[] = [...commandesNatives, ...commandesExternes]
 
   // Maps
   const aboParClient = new Map<string, string>()
@@ -146,7 +145,7 @@ export default async function ListeDetailPage({
     arr.push(cmd)
     cmdsParClient.set(id, arr)
   }
-  type LeadData = { newsletter_statut: string; newsletter_statut_at: string | null; source: string; created_at: string }
+  type LeadData = LeadListe
   const leadParClient = new Map<string, LeadData>()
   for (const l of leads) {
     if (!leadParClient.has(l.client_id)) leadParClient.set(l.client_id, l)
@@ -205,7 +204,7 @@ export default async function ListeDetailPage({
         premiere_contact_iso: premiereContactISO,
         dernier_contact_iso:  dernierContactISO,
         newsletter_consent:   statutFusionne(leadData ? [leadData] : []) === 'inscrit',
-        lead_source:          leadData?.source ?? null,
+        lead_source:          leadData?.source === 'import' ? `Import — ${libellePlateforme(leadData.source_plateforme)}` : leadData?.source ?? null,
         lead_nb_favoris:      0,
         lead_nb_free_dl:      0,
         pref_style:           null,

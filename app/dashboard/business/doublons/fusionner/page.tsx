@@ -5,6 +5,7 @@ import Link from 'next/link'
 import FusionWizard from './_components/FusionWizard'
 import type { RaisonData } from '../_components/DoublonsView'
 import { montantDepense } from '@/app/dashboard/business/_lib/ltv'
+import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 
 export default async function FusionnerPage({
   searchParams,
@@ -39,7 +40,7 @@ export default async function FusionnerPage({
   if (!knownIds.has(id_conserve) || !knownIds.has(id_archive)) notFound()
 
   // Charger les données des deux clients
-  const [clientsRes, commandesRes] = await Promise.all([
+  const [clientsRes, commandesRes, commandesExternes] = await Promise.all([
     admin.from('clients')
       .select('id, prenom, nom, email, pays, telephone, instagram, spotify, youtube, tiktok, notes, nom_artiste')
       .in('id', [id_conserve, id_archive]),
@@ -47,10 +48,11 @@ export default async function FusionnerPage({
       .select('client_id, prix_paye, statut, montant_rembourse_cents, type_commande')
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', [id_conserve, id_archive]),
+    chargerCommandesExternesCrm(supabase, beatmakerId, [id_conserve, id_archive]),
   ])
 
   const clients = clientsRes.data ?? []
-  const commandes = commandesRes.data ?? []
+  const commandes = [...(commandesRes.data ?? []), ...commandesExternes]
 
   const raw_conserve = clients.find(c => c.id === id_conserve)
   const raw_archive  = clients.find(c => c.id === id_archive)

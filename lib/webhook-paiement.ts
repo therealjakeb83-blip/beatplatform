@@ -433,7 +433,6 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     // phase5_statut_livraison.sql), sera retiré dans un nettoyage séparé.
     fichiers_livres: false,
     statut_livraison: 'en_cours',
-    plateforme_source: 'my_producer',
     source_marketing: meta.source_marketing ?? 'direct',
     type_commande: 'LICENCE',
     paiement_multi_vendeurs: ctx.paiementMulti === true,

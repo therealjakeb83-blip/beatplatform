@@ -14,7 +14,6 @@ export type CommandeRow = {
   source_marketing: string | null
   type_transaction: string | null
   type_commande: string | null
-  plateforme_source: string | null
   methode_paiement: string | null
   acheteur_email: string | null
   acheteur_nom: string | null
@@ -65,7 +64,7 @@ export default async function CommandesPage({
     .select(
       `id, created_at, prix_paye, statut,
        code_promo, reduction_montant, fichiers_livres,
-       source_marketing, type_commande, plateforme_source,
+       source_marketing, type_commande,
        acheteur_email, acheteur_nom, methode_paiement, tva_taux, paiement_multi_vendeurs,
        clients (id, prenom, nom, email, pays),
        commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele))`
@@ -106,7 +105,6 @@ export default async function CommandesPage({
     fichiers_livres: boolean | null
     source_marketing: string | null
     type_commande: string | null
-    plateforme_source: string | null
     acheteur_email: string | null
     acheteur_nom: string | null
     methode_paiement: string | null
@@ -174,7 +172,6 @@ export default async function CommandesPage({
     fichiers_livres: null,
     source_marketing: t.source_marketing,
     type_commande: t.type === 'renouvellement_abonnement' ? 'RENOUVELLEMENT' : null,
-    plateforme_source: 'my_producer',
     methode_paiement: 'stripe',
     acheteur_email: t.email,
     acheteur_nom: null,
@@ -223,7 +220,6 @@ export default async function CommandesPage({
     fichiers_livres: null,
     source_marketing: null,
     type_commande: t.commandes.type_commande,
-    plateforme_source: 'my_producer',
     methode_paiement: null,
     acheteur_email: null,
     acheteur_nom: t.commandes.acheteur_nom,

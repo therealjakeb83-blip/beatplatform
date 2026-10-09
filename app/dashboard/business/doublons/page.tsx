@@ -4,26 +4,45 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DoublonsView, { DoublonPairData, ClientData, RaisonData } from './_components/DoublonsView'
 import { montantDepense } from '@/app/dashboard/business/_lib/ltv'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
+import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 
 // ── Algorithme de détection ────────────────────────────────────────────────────
 
-function levenshtein(a: string, b: string): number {
+// Deux lignes réutilisées (pas de tableau alloué par paire) : la détection
+// compare toutes les paires, soit ~1 million pour 1 500 contacts.
+let ligneA = new Uint16Array(64)
+let ligneB = new Uint16Array(64)
+// borne : dès que toute la ligne dépasse la borne, la distance finale aussi
+// (renvoie alors une distance hors d'atteinte, la valeur exacte n'importe plus)
+function levenshtein(a: string, b: string, borne = Infinity): number {
   const m = a.length, n = b.length
-  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
-  )
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] = a[i-1] === b[j-1]
-        ? dp[i-1][j-1]
-        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
-  return dp[m][n]
+  if (ligneA.length <= n) { ligneA = new Uint16Array(n + 1); ligneB = new Uint16Array(n + 1) }
+  let prec = ligneA, cour = ligneB
+  for (let j = 0; j <= n; j++) prec[j] = j
+  for (let i = 1; i <= m; i++) {
+    cour[0] = i
+    let minLigne = i
+    for (let j = 1; j <= n; j++) {
+      cour[j] = a.charCodeAt(i - 1) === b.charCodeAt(j - 1)
+        ? prec[j - 1]
+        : 1 + Math.min(prec[j], cour[j - 1], prec[j - 1])
+      if (cour[j] < minLigne) minLigne = cour[j]
+    }
+    if (minLigne > borne) return m + n + 1
+    const t = prec; prec = cour; cour = t
+  }
+  return prec[n]
 }
 
-function sim(a: string, b: string): number {
+// seuil : en dessous, la valeur exacte n'importe pas — la différence de
+// longueur suffit souvent à l'écarter sans calcul
+function sim(a: string, b: string, seuil = 0): number {
   if (!a || !b) return 0
   if (a === b) return 1
-  return 1 - levenshtein(a, b) / Math.max(a.length, b.length)
+  const max = Math.max(a.length, b.length)
+  if (1 - Math.abs(a.length - b.length) / max < seuil) return 0
+  return 1 - levenshtein(a, b, Math.ceil((1 - seuil) * max)) / max
 }
 
 function norm(s: string): string {
@@ -42,39 +61,51 @@ function normTel(tel: string | null): string | null {
   return d || null
 }
 
+type Cles = { email: string; nom: string; tel: string | null }
+const clesCache = new WeakMap<ClientData, Cles>()
+function cles(c: ClientData): Cles {
+  let k = clesCache.get(c)
+  if (!k) {
+    k = { email: c.email.toLowerCase().trim(), nom: norm(`${c.prenom ?? ''} ${c.nom ?? ''}`), tel: normTel(c.telephone) }
+    clesCache.set(c, k)
+  }
+  return k
+}
+
 function comparerPaire(a: ClientData, b: ClientData): RaisonData[] {
   const raisons: RaisonData[] = []
+  const ka = cles(a), kb = cles(b)
 
   // Email
-  const ea = a.email.toLowerCase().trim()
-  const eb = b.email.toLowerCase().trim()
+  const ea = ka.email
+  const eb = kb.email
   if (ea === eb) {
     raisons.push({ champ: 'email', type: 'exact', score: 1 })
   } else {
-    const s = sim(ea, eb)
+    const s = sim(ea, eb, 0.82)
     if (s >= 0.82) raisons.push({ champ: 'email', type: 'similaire', score: s })
   }
 
   // Nom complet
-  const nomA = norm(`${a.prenom ?? ''} ${a.nom ?? ''}`)
-  const nomB = norm(`${b.prenom ?? ''} ${b.nom ?? ''}`)
+  const nomA = ka.nom
+  const nomB = kb.nom
   if (nomA.length > 2 && nomB.length > 2) {
     if (nomA === nomB) {
       raisons.push({ champ: 'nom', type: 'exact', score: 1 })
     } else {
-      const s = sim(nomA, nomB)
+      const s = sim(nomA, nomB, 0.80)
       if (s >= 0.80) raisons.push({ champ: 'nom', type: 'similaire', score: s })
     }
   }
 
   // Téléphone
-  const telA = normTel(a.telephone)
-  const telB = normTel(b.telephone)
+  const telA = ka.tel
+  const telB = kb.tel
   if (telA && telB) {
     if (telA === telB) {
       raisons.push({ champ: 'telephone', type: 'exact', score: 1 })
     } else {
-      const s = sim(telA, telB)
+      const s = sim(telA, telB, 0.88)
       if (s >= 0.88) raisons.push({ champ: 'telephone', type: 'similaire', score: s })
     }
   }
@@ -101,16 +132,17 @@ export default async function DoublonsPage() {
   const beatmakerId = user.id
 
   // ── Tous les client_ids de ce beatmaker ───────────────────────────────────
-  const [commandesIdsRes, aboIdsRes, leadsIdsRes] = await Promise.all([
-    supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null),
-    supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null),
-    supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId),
+  type AvecClient = { client_id: string }
+  const [commandesIds, aboIds, leadsIds] = await Promise.all([
+    toutesLesLignes<AvecClient>((d, f) => supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
+    toutesLesLignes<AvecClient>((d, f) => supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
+    toutesLesLignes<AvecClient>((d, f) => supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId).order('id').range(d, f)),
   ])
 
   const clientIds = [...new Set([
-    ...(commandesIdsRes.data ?? []).map(c => c.client_id as string),
-    ...(aboIdsRes.data ?? []).map(a => a.client_id as string),
-    ...(leadsIdsRes.data ?? []).map(l => l.client_id as string),
+    ...commandesIds.map(c => c.client_id),
+    ...aboIds.map(a => a.client_id),
+    ...leadsIds.map(l => l.client_id),
   ])]
 
   if (clientIds.length < 2) {
@@ -126,14 +158,18 @@ export default async function DoublonsPage() {
   }
 
   // ── Données clients, commandes, abos, doublons ignorés + fusionnés ─────────
-  const [clientsRes, commandesRes, aboRes, ignoresRes, fusionsRes] = await Promise.all([
-    admin.from('clients')
+  type CommandeDoublon = { client_id: string; prix_paye: number | string | null; statut: string; montant_rembourse_cents: number | null; type_commande: string }
+  const [clientsData, commandesNatives, commandesExternes, aboRes, ignoresRes, fusionsRes] = await Promise.all([
+    parLots<{ id: string; prenom: string; nom: string; email: string; pays: string | null; telephone: string | null }>(clientIds, lot => admin.from('clients')
       .select('id, prenom, nom, email, pays, telephone')
-      .in('id', clientIds),
-    supabase.from('commandes')
+      .in('id', lot)),
+    toutesLesLignes<CommandeDoublon>((d, f) => supabase.from('commandes')
       .select('client_id, prix_paye, statut, montant_rembourse_cents, type_commande')
       .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
+      .not('client_id', 'is', null)
+      .order('id')
+      .range(d, f)),
+    chargerCommandesExternesCrm(supabase, beatmakerId),
     supabase.from('abonnements_boutique')
       .select('client_id, statut')
       .eq('beatmaker_id', beatmakerId)
@@ -146,8 +182,8 @@ export default async function DoublonsPage() {
       .eq('beatmaker_id', beatmakerId),
   ])
 
-  const clientsRaw  = clientsRes.data ?? []
-  const commandes   = commandesRes.data ?? []
+  const clientsRaw  = clientsData
+  const commandes: CommandeDoublon[] = [...commandesNatives, ...commandesExternes]
   const abos        = aboRes.data ?? []
   const ignores     = ignoresRes.data ?? []
   const archiveIds  = new Set((fusionsRes.data ?? []).map(f => f.client_id_archive))

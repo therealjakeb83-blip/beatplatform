@@ -6,6 +6,9 @@ import type { LeadRow } from './_components/LeadsView'
 import type { NewsletterRow } from './_components/NewsletterView'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
 import { statutFusionne, type StatutNewsletter } from '@/lib/newsletter'
+import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
+import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
+import { libellePlateforme } from '@/lib/import-externe/plateformes'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -55,12 +58,13 @@ export default async function ContactsPage({
 
   // ── 1. Leads — fetch indépendant AVANT le return anticipé ─────────────────
   // Utilise supabase (client authentifié) car leads n'a pas GRANT service_role
-  const leadsRes = await supabase
+  type LeadBrut = { client_id: string; source: string; source_plateforme: string | null; created_at: string; newsletter_statut: string; newsletter_statut_at: string | null }
+  const leadsRaw = await toutesLesLignes<LeadBrut>((debut, fin) => supabase
     .from('leads')
-    .select('client_id, source, created_at, newsletter_statut, newsletter_statut_at')
+    .select('client_id, source, source_plateforme, created_at, newsletter_statut, newsletter_statut_at')
     .eq('beatmaker_id', beatmakerId)
-
-  const leadsRaw      = leadsRes.data ?? []
+    .order('id')
+    .range(debut, fin))
   const leadClientIds = leadsRaw.map(l => l.client_id)
 
   // Statut newsletter de CETTE boutique (fiches fusionnées comprises)
@@ -79,18 +83,22 @@ export default async function ContactsPage({
   let leadDerniereMap  = new Map<string, { at: string; type: string }>()
 
   if (leadClientIds.length > 0) {
-    const [leadClientsRes, leadFavorisRes, freeDLsRes] = await Promise.all([
-      admin.from('clients')
+    type AvecBeat = { client_id: string; beats: unknown }
+    const [leadClientsData, leadFavorisData, freeDLsData] = await Promise.all([
+      parLots<LeadClient>(leadClientIds, lot => admin.from('clients')
         .select('id, prenom, nom, pays')
-        .in('id', leadClientIds),
-      admin.from('favoris')
+        .in('id', lot)),
+      parLots<AvecBeat & { created_at: string }>(leadClientIds, lot => admin.from('favoris')
         .select('client_id, created_at, beats(styles, type_beat, ambiances)')
-        .in('client_id', leadClientIds),
-      admin.from('free_downloads')
+        .in('client_id', lot)),
+      parLots<AvecBeat & { downloaded_at: string }>(leadClientIds, lot => admin.from('free_downloads')
         .select('client_id, downloaded_at, beats(styles, type_beat, ambiances)')
         .eq('beatmaker_id', beatmakerId)
-        .in('client_id', leadClientIds),
+        .in('client_id', lot)),
     ])
+    const leadClientsRes = { data: leadClientsData }
+    const leadFavorisRes = { data: leadFavorisData }
+    const freeDLsRes     = { data: freeDLsData }
     for (const c of leadClientsRes.data ?? []) leadClientMap.set(c.id, c as LeadClient)
 
     const leadFavDatesMap = new Map<string, Date[]>()
@@ -119,6 +127,7 @@ export default async function ContactsPage({
       const src = l.source === 'free_download' ? 'Free DL'
         : l.source === 'newsletter' ? 'Inscription NWT'
         : l.source === 'visite'     ? 'Visite'
+        : l.source === 'import'     ? `Import — ${libellePlateforme(l.source_plateforme)}`
         : 'Inscription'
       evts.push({ date: new Date(l.created_at), type: src })
       for (const d of leadFavDatesMap.get(l.client_id) ?? []) evts.push({ date: d, type: 'Favori' })
@@ -129,12 +138,20 @@ export default async function ContactsPage({
   }
 
   // ── 2. Commandes + abos + listes ─────────────────────────────────────────
-  const [commandesRes, aboRes, listesRes] = await Promise.all([
-    supabase
+  type CommandeCrm = {
+    client_id: string | null; created_at: string; prix_paye: number | string | null; statut: string
+    montant_rembourse_cents: number | null; type_commande: string
+    commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
+  }
+  const [commandesNatives, commandesExternes, aboRes, listesRes] = await Promise.all([
+    toutesLesLignes<CommandeCrm>((debut, fin) => supabase
       .from('commandes')
       .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
       .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
+      .not('client_id', 'is', null)
+      .order('id')
+      .range(debut, fin)),
+    chargerCommandesExternesCrm(supabase, beatmakerId),
     supabase
       .from('abonnements_boutique')
       .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
@@ -147,7 +164,7 @@ export default async function ContactsPage({
       .order('nom'),
   ])
 
-  const commandes = commandesRes.data ?? []
+  const commandes: CommandeCrm[] = [...commandesNatives, ...commandesExternes]
   const abos      = aboRes.data      ?? []
   const listesRaw = listesRes.data   ?? []
 
@@ -227,28 +244,38 @@ export default async function ContactsPage({
   const beatIds    = [...new Set(lignesAll.map(l => l.beat_id).filter(Boolean) as string[])]
   const licenceIds = [...new Set(lignesAll.map(l => l.licence_id).filter(Boolean) as string[])]
 
-  const [clientsRes, licencesRes, favorisClientsRes, freeDLsClientsRes, envoisNewsletterRes] = await Promise.all([
-    admin
+  type ClientBrut = {
+    id: string; prenom: string; surnom: string | null; nom: string; nom_artiste: string | null; email: string
+    pays: string | null; telephone: string | null; created_at: string; instagram: string | null; spotify: string | null
+    youtube: string | null; tiktok: string | null
+  }
+  type EnvoiBrut = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
+  const [clientsData, licencesRes, favorisClientsData, freeDLsClientsData, envoisNewsletterData] = await Promise.all([
+    parLots<ClientBrut>(clientIds, lot => admin
       .from('clients')
       .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok')
-      .in('id', clientIds),
+      .in('id', lot)),
     licenceIds.length > 0
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
       : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
-    admin.from('favoris')
+    parLots<{ client_id: string; beat_id: string | null; created_at: string }>(clientIds, lot => admin.from('favoris')
       .select('client_id, beat_id, created_at')
-      .in('client_id', clientIds),
-    admin.from('free_downloads')
+      .in('client_id', lot)),
+    parLots<{ client_id: string; beat_id: string | null; downloaded_at: string }>(clientIds, lot => admin.from('free_downloads')
       .select('client_id, beat_id, downloaded_at')
       .eq('beatmaker_id', beatmakerId)
-      .in('client_id', clientIds),
+      .in('client_id', lot)),
     // RLS : visible seulement pour les campagnes de ce beatmaker — inclut les archivés (fusion)
     // pour rattacher l'historique newsletter d'avant-fusion au contact conservé
-    supabase
+    parLots<EnvoiBrut>([...clientIds, ...archiveIds], lot => supabase
       .from('campagne_envois')
       .select('client_id, envoye_at, ouvert_at, clique_at, converti_at')
-      .in('client_id', [...clientIds, ...archiveIds]),
+      .in('client_id', lot)),
   ])
+  const clientsRes          = { data: clientsData }
+  const favorisClientsRes   = { data: favorisClientsData }
+  const freeDLsClientsRes   = { data: freeDLsClientsData }
+  const envoisNewsletterRes = { data: envoisNewsletterData }
 
   const clientsRaw = clientsRes.data ?? []
   const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
@@ -258,9 +285,8 @@ export default async function ContactsPage({
   const beatIdsFavoris = [...new Set((favorisClientsRes.data ?? []).map(f => f.beat_id).filter(Boolean) as string[])]
   const beatIdsFreeDL  = [...new Set((freeDLsClientsRes.data ?? []).map(d => d.beat_id).filter(Boolean) as string[])]
   const beatIdsPourPrefs = [...new Set([...beatIds, ...beatIdsFavoris, ...beatIdsFreeDL])]
-  const { data: beatsData } = beatIdsPourPrefs.length > 0
-    ? await supabase.from('beats').select('id, styles, type_beat, ambiances').in('id', beatIdsPourPrefs)
-    : { data: [] as { id: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }[] }
+  const beatsData = await parLots<{ id: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }>(
+    beatIdsPourPrefs, lot => supabase.from('beats').select('id, styles, type_beat, ambiances').in('id', lot))
   const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
 
   type EnvoiNwt = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
@@ -309,11 +335,12 @@ export default async function ContactsPage({
     if (dl.beat_id) freeDLBeatIdsParClient.set(dl.client_id, [...(freeDLBeatIdsParClient.get(dl.client_id) ?? []), dl.beat_id])
   }
 
-  function leadSourceLabel(source: string | null): string {
+  function leadSourceLabel(source: string | null, plateforme?: string | null): string {
     if (source === 'free_download') return 'Free DL'
     if (source === 'newsletter')   return 'Inscription NWT'
     if (source === 'visite')       return 'Visite'
     if (source === 'manuel')       return 'Ajout manuel'
+    if (source === 'import')       return `Import — ${libellePlateforme(plateforme)}`
     return 'Inscription'
   }
 
@@ -346,7 +373,7 @@ export default async function ContactsPage({
 
     // Tous les événements triés chronologiquement
     const events: ExtraEvent[] = []
-    if (lead) events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source) })
+    if (lead) events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source, lead.source_plateforme) })
     if (abo)  events.push({ date: new Date(abo.created_at),  type: 'Abonnement' })
     for (const cmd of licenceCmds) events.push({ date: new Date(cmd.created_at), type: 'Commande' })
     for (const ev of extraEventsParClient.get(c.id) ?? []) events.push(ev)

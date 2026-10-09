@@ -9,6 +9,8 @@ import BoutonNewsletter from './_components/BoutonNewsletter'
 import { statutFusionne, changerStatutParBeatmaker, LIBELLE_STATUT_NEWSLETTER } from '@/lib/newsletter'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants, montantDepense } from '@/app/dashboard/business/_lib/ltv'
+import { chargerCommandesImporteesClient, versCrmDepuisDetail } from '@/app/dashboard/business/_lib/commandes-externes'
+import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantLigne } from '@/app/dashboard/business/_components/CommandeImportee'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -92,7 +94,6 @@ type Commande = {
   prix_paye: number
   statut: string
   type_commande: string | null
-  plateforme_source: string | null
   commande_lignes: LigneCommande[]
 }
 
@@ -184,11 +185,12 @@ export default async function FicheClientPage({
     { data: archivesDateRaw },
     { data: leadsRaw },
     { data: envoisNewsletterRaw },
+    commandesImportees,
   ] = await Promise.all([
     supabase
       .from('commandes')
       .select(`
-        id, created_at, prix_paye, statut, montant_rembourse_cents, plateforme_source, type_commande,
+        id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande,
         commande_lignes(
           beat_id, prix_paye,
           beats(titre, image_url, styles, type_beat, ambiances, instruments),
@@ -236,6 +238,8 @@ export default async function FicheClientPage({
       .select('envoye_at, ouvert_at, clique_at, converti_at, campagnes(nom, sent_at)')
       .in('client_id', allClientIds)
       .order('envoye_at', { ascending: false }),
+    // Commandes importées d'autres plateformes (CRM uniquement)
+    chargerCommandesImporteesClient(supabase, beatmakerId, allClientIds),
   ])
 
   type BeatAvecTitre = { titre?: string; image_url?: string; styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null; instruments: string[] | null } | null
@@ -267,17 +271,19 @@ export default async function FicheClientPage({
   const pctNewsletter = (n: number) => nbRecues > 0 ? `${Math.round((n / nbRecues) * 100)}%` : '–'
 
   // "Client depuis" = date la plus ancienne parmi conservé + archivés
-  const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at)]
+  const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at), ...commandesImportees.map(c => c.date_vente)]
   const clientDepuis = allDates.sort()[0]
 
   // Métriques
   const payees         = commandes.filter(c => c.statut === 'payee')
   const achats         = payees.filter(c => c.type_commande !== 'RENOUVELLEMENT')
   const licencesPayees = payees.filter(c => c.type_commande === 'LICENCE')
-  const commandesLicences = commandes.filter(c => c.type_commande === 'LICENCE')
+  // Commandes importées = achats de licence pour le CRM (badge plateforme à l'affichage)
+  const importeesCrm   = commandesImportees.map(versCrmDepuisDetail)
+  const commandesLicences = [...commandes.filter(c => c.type_commande === 'LICENCE'), ...importeesCrm]
   const nbCommandes    = commandesLicences.length
   const nbAchats       = nbAchatsPayants(commandesLicences)
-  const ltv            = totalDepense(commandes)
+  const ltv            = totalDepense([...commandes, ...importeesCrm])
   const panierMoyen    = panierMoyenLicences(commandesLicences)
   const derniereCmd    = commandesLicences.filter(c => montantDepense(c) > 0).map(c => c.created_at).sort().at(-1) ?? null
   const moisAboCommandes = commandes.filter(
@@ -306,6 +312,7 @@ export default async function FicheClientPage({
     instruments: new Map<string, number>(),
   }
   for (const c of payees) for (const l of c.commande_lignes ?? []) accumPrefs(prefCounts, l.beats, 10)
+  for (const c of commandesImportees) for (const l of c.lignes) accumPrefs(prefCounts, l.beat, 10)
   for (const dl of freeDLs) accumPrefs(prefCounts, dl.beats, 2)
   for (const fav of favoris) accumPrefs(prefCounts, fav.beats, 1)
 
@@ -335,7 +342,6 @@ export default async function FicheClientPage({
       ? a.commande_lignes.map(l => ({
           id: `${a.id}:${l.beat_id ?? 'na'}`,
           created_at: a.created_at,
-          plateforme_source: a.plateforme_source,
           type_commande: a.type_commande,
           prix_paye: l.prix_paye,
           beats: l.beats,
@@ -344,13 +350,22 @@ export default async function FicheClientPage({
       : [{
           id: a.id,
           created_at: a.created_at,
-          plateforme_source: a.plateforme_source,
           type_commande: a.type_commande,
           prix_paye: a.prix_paye,
           beats: null,
           licences: null,
         }]
   )
+
+  /* Historique mélangé par date : commandes My Producer + commandes importées
+     (une ligne par beat, badge plateforme, clic = panneau de détail). */
+  type LigneHistorique =
+    | { genre: 'native'; date: string; ligne: (typeof achatsLignes)[number] }
+    | { genre: 'importee'; date: string; commande: (typeof commandesImportees)[number]; ligne: (typeof commandesImportees)[number]['lignes'][number] }
+  const historique: LigneHistorique[] = [
+    ...achatsLignes.map(l => ({ genre: 'native' as const, date: l.created_at, ligne: l })),
+    ...commandesImportees.flatMap(c => c.lignes.map(l => ({ genre: 'importee' as const, date: c.date_vente, commande: c, ligne: l }))),
+  ].sort((a, b) => b.date.localeCompare(a.date))
 
   // ── Server actions ─────────────────────────────────────────────────────────
 
@@ -896,7 +911,7 @@ export default async function FicheClientPage({
         {/* ══════════════════════════════════════════════════════════════════ */}
         {onglet === 'commandes' && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            {achats.length === 0 ? (
+            {historique.length === 0 ? (
               <div className="py-10 text-center text-gray-600 text-sm">Aucune commande.</div>
             ) : (
               <table className="w-full text-sm border-collapse">
@@ -909,19 +924,36 @@ export default async function FicheClientPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {achatsLignes.map((a, i) => {
-                    const isBs  = a.plateforme_source === 'beatstars'
-                    const titre = a.beats?.titre ?? (isBs ? 'Import BeatStars' : 'Beat supprimé')
+                  {historique.map((h, i) => {
+                    const bordure = `${i < historique.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`
+                    if (h.genre === 'importee') {
+                      return (
+                        <LigneTableauImportee key={`${h.commande.id}:${h.ligne.id}`} commande={h.commande} className={bordure}>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-2">
+                              <BadgePlateforme plateforme={h.commande.plateforme} />
+                              <span className="font-medium text-white">{h.ligne.titre}</span>
+                            </div>
+                            <MentionsLigne ligne={h.ligne} typeBoutique={h.commande.type_boutique} />
+                          </td>
+                          <td className="px-5 py-3 text-xs text-gray-500">{h.ligne.licence ?? 'Non précisée'}</td>
+                          <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(h.date)}</td>
+                          <td className="px-5 py-3 text-right"><MontantLigne ligne={h.ligne} devise={h.commande.devise} /></td>
+                        </LigneTableauImportee>
+                      )
+                    }
+                    const a = h.ligne
+                    const titre = a.beats?.titre ?? 'Beat supprimé'
                     return (
                       <tr
                         key={a.id}
-                        className={`${i < achatsLignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}
+                        className={bordure}
                       >
                         <td className="px-5 py-3 font-medium text-white">{titre}</td>
                         <td className="px-5 py-3 text-xs text-gray-400">
                           {a.type_commande === 'CREATION_ABONNEMENT'
                             ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">Abonnement</span>
-                            : isBs ? '–' : a.licences?.nom ?? 'Inconnue'}
+                            : a.licences?.nom ?? 'Inconnue'}
                         </td>
                         <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.created_at)}</td>
                         <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(a.prix_paye)}</td>

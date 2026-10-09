@@ -239,8 +239,7 @@ export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: Abo
   const { data: existing } = await supabase
     .from('commandes')
     .select('id')
-    .eq('plateforme_source', 'my_producer')
-    .eq('external_order_id', invoiceId)
+    .eq('stripe_invoice_id', invoiceId)
     .maybeSingle()
   if (existing) {
     console.log('[abonnement] Paiement abo déjà enregistré:', invoiceId)
@@ -253,8 +252,7 @@ export async function enregistrerPaiementAbonnement(supabase: Supabase, abo: Abo
     prix_paye: prixPaye,
     methode_paiement: 'stripe',
     statut: 'payee',
-    plateforme_source: 'my_producer',
-    external_order_id: invoiceId,
+    stripe_invoice_id: invoiceId,
     type_commande: typeCommande,
     // Pas de contrat PDF / fichier pour une commande d'abonnement — toujours
     // "livrée" dès la création, aucune opération asynchrone à suivre ici.

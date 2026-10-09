@@ -26,6 +26,9 @@ const PREFIXES_LIBRES = [
   `${BASE}/facturation`,
   `${BASE}/analytics`,
   `${BASE}/commandes`,
+  // Commandes importées : consulter et annuler un import restent possibles en
+  // Free (décision 21) ; l'import lui-même est refusé par l'API.
+  `${BASE}/commandes-importees`,
   `${BASE}/collabs`,
 ]
 
@@ -50,4 +53,16 @@ export async function aUnAbonnementPlateformeActif(
     .limit(1)
     .maybeSingle()
   return !!data
+}
+
+// Accès « plan payant » pour une route API (proxy.ts ne garde que les pages) :
+// même règle que le layout Business — admin et comptes exemptés compris.
+export async function aAccesPlanPayant(supabase: SupabaseClient, beatmakerId: string): Promise<boolean> {
+  const { data: bm } = await supabase
+    .from('beatmakers')
+    .select('role, abonnement_exempte')
+    .eq('id', beatmakerId)
+    .maybeSingle()
+  if (bm?.role === 'admin' || bm?.abonnement_exempte) return true
+  return aUnAbonnementPlateformeActif(supabase, beatmakerId)
 }

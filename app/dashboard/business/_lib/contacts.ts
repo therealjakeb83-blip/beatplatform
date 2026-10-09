@@ -6,6 +6,8 @@ import {
 } from './segments'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
 import { statutFusionne } from '@/lib/newsletter'
+import { toutesLesLignes, parLots } from './requetes'
+import { chargerCommandesExternesCrm } from './commandes-externes'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
@@ -59,20 +61,30 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   }
 
   // Leads
-  const { data: leadsRaw } = await supabase
+  const leadsRaw = await toutesLesLignes<{ client_id: string; source: string; newsletter_statut: string; newsletter_statut_at: string | null }>((debut, fin) => supabase
     .from('leads')
     .select('client_id, source, newsletter_statut, newsletter_statut_at')
     .eq('beatmaker_id', beatmakerId)
+    .order('id')
+    .range(debut, fin))
 
   const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
 
   // Commandes + abos + beats catalogue + licences catalogue en parallèle
-  const [commandesRes, aboRes, beatsAllRes, licencesAllRes] = await Promise.all([
-    supabase
+  type CommandeCrm = {
+    client_id: string | null; created_at: string; prix_paye: number | string | null; statut: string
+    montant_rembourse_cents: number | null; type_commande: string
+    commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
+  }
+  const [commandesNatives, commandesExternes, aboRes, beatsAllRes, licencesAllRes] = await Promise.all([
+    toutesLesLignes<CommandeCrm>((debut, fin) => supabase
       .from('commandes')
       .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
       .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
+      .not('client_id', 'is', null)
+      .order('id')
+      .range(debut, fin)),
+    chargerCommandesExternesCrm(supabase, beatmakerId),
     supabase
       .from('abonnements_boutique')
       .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
@@ -88,7 +100,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       .eq('beatmaker_id', beatmakerId),
   ])
 
-  const commandes   = commandesRes.data ?? []
+  const commandes: CommandeCrm[] = [...commandesNatives, ...commandesExternes]
   const abos        = aboRes.data       ?? []
   const beatsAll    = beatsAllRes.data  ?? []
   const licencesAll = licencesAllRes.data ?? []
@@ -104,7 +116,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   const beatMap = new Map(beatsAll.map(b => [b.id, b]))
 
   const licenceIds = [...new Set(
-    commandes.flatMap(c => (c.commande_lignes ?? []).map(l => l.licence_id))
+    commandes.flatMap(c => (c.commande_lignes ?? []).map(l => l.licence_id)).filter((id): id is string => !!id)
   )]
 
   const licencesRes = licenceIds.length
@@ -121,21 +133,29 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   if (clientIds.length === 0) return { contacts: [], catalog }
 
   // Clients + favoris + free_downloads en parallèle
-  const [clientsRes, favorisRes, freeDLRes] = await Promise.all([
-    admin
+  type ClientCrm = {
+    id: string; prenom: string | null; surnom: string | null; nom: string; nom_artiste: string | null; email: string
+    pays: string | null; langue: string | null; instagram: string | null; spotify: string | null; youtube: string | null
+    tiktok: string | null; tags: string[] | null
+  }
+  const [clientsData, favorisData, freeDLData] = await Promise.all([
+    parLots<ClientCrm>(clientIds, lot => admin
       .from('clients')
       .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, instagram, spotify, youtube, tiktok, tags')
-      .in('id', clientIds),
-    admin
+      .in('id', lot)),
+    parLots<{ client_id: string; beat_id: string | null }>(clientIds, lot => admin
       .from('favoris')
       .select('client_id, beat_id')
-      .in('client_id', clientIds),
-    admin
+      .in('client_id', lot)),
+    parLots<{ client_id: string; beat_id: string | null }>(clientIds, lot => admin
       .from('free_downloads')
       .select('client_id, beat_id')
       .eq('beatmaker_id', beatmakerId)
-      .in('client_id', clientIds),
+      .in('client_id', lot)),
   ])
+  const clientsRes = { data: clientsData }
+  const favorisRes = { data: favorisData }
+  const freeDLRes  = { data: freeDLData }
 
   const commandesParClient = new Map<string, typeof commandes>()
   for (const cmd of commandes) {

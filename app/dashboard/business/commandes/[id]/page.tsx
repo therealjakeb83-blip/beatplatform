@@ -15,6 +15,7 @@ import EncartLitige from './_components/EncartLitige'
 import { litigesDeLaCommande } from '@/lib/litiges'
 import { decomposerTva } from '@/lib/collaboration-parts'
 import { totalDepense } from '@/app/dashboard/business/_lib/ltv'
+import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -69,7 +70,6 @@ type CommandeDetail = {
   numero_facture: string | null
   source_marketing: string | null
   type_commande: string | null
-  plateforme_source: string | null
   acheteur_email: string | null
   acheteur_nom: string | null
   acheteur_adresse: string | null
@@ -220,7 +220,7 @@ export default async function CommandeDetailPage({
       id, created_at, prix_paye, statut, beatmaker_id,
       methode_paiement, code_promo, reduction_montant,
       fichiers_livres, statut_livraison, facture_pdf_url, numero_facture,
-      source_marketing, type_commande, plateforme_source,
+      source_marketing, type_commande,
       acheteur_email, acheteur_nom, acheteur_adresse, acheteur_telephone,
       acheteur_raison_sociale, acheteur_numero_tva,
       notes, client_id, tva_taux,
@@ -315,7 +315,11 @@ export default async function CommandeDetailPage({
 
   /* Historique client */
   let historiqueClient: HistoriqueCommande[] = []
+  let depenseImportee = 0
   if (c.client_id) {
+    // Commandes importées d'autres plateformes : comptées dans le total
+    // dépensé du client (CRM), jamais listées ici
+    depenseImportee = totalDepense(await chargerCommandesExternesCrm(admin, user.id, [c.client_id]))
     const { data } = await admin
       .from('commandes')
       .select('id, created_at, prix_paye, statut, montant_rembourse_cents')
@@ -325,7 +329,7 @@ export default async function CommandeDetailPage({
     historiqueClient = (data ?? []) as HistoriqueCommande[]
   }
 
-  const ltv = totalDepense(historiqueClient)
+  const ltv = Math.round((totalDepense(historiqueClient) + depenseImportee) * 100) / 100
 
   const lignes = c.commande_lignes ?? []
   const multiArticles = lignes.length > 1

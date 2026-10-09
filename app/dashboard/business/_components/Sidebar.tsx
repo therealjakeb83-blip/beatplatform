@@ -12,7 +12,7 @@ const BASE = '/dashboard/business'
 const CRM_ROUTES       = [`${BASE}/contacts`, `${BASE}/doublons`, `${BASE}/listes`, `${BASE}/segments`]
 const MARKETING_ROUTES = [`${BASE}/marketing`]
 const MAILING_ROUTES   = [`${BASE}/mailing`]
-const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/reductions-lot`, `${BASE}/licences`, `${BASE}/collabs`, `${BASE}/categories`, `${BASE}/litiges`, `${BASE}/facturation`]
+const COMMERCE_ROUTES  = [`${BASE}/commandes`, `${BASE}/commandes-importees`, `${BASE}/abonnements`, `${BASE}/plans`, `${BASE}/beats`, `${BASE}/codes-promo`, `${BASE}/reductions-lot`, `${BASE}/licences`, `${BASE}/collabs`, `${BASE}/categories`, `${BASE}/litiges`, `${BASE}/facturation`]
 const ANALYTICS_ROUTE  = `${BASE}/analytics`
 const LOGS_ROUTES      = [`${BASE}/logs`]
 
@@ -235,7 +235,8 @@ export default function Sidebar({ nomArtiste, planFree, demandesCollab }: { nomA
         )}
         {commerceOpen && (
           <>
-            {subItem(`${BASE}/commandes`,   'Commandes',   pathname.startsWith(`${BASE}/commandes`))}
+            {subItem(`${BASE}/commandes`,   'Commandes',   pathname === `${BASE}/commandes` || pathname.startsWith(`${BASE}/commandes/`))}
+            {subItem(`${BASE}/commandes-importees`, 'Commandes importées', pathname.startsWith(`${BASE}/commandes-importees`))}
             {subItem(`${BASE}/abonnements`, 'Abonnements', pathname.startsWith(`${BASE}/abonnements`))}
             {subItem(`${BASE}/plans`,       'Plans',       pathname.startsWith(`${BASE}/plans`))}
             {subItem(`${BASE}/beats`,       'Beats',       pathname.startsWith(`${BASE}/beats`))}
