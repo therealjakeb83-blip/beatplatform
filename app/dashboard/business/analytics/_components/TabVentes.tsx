@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link                   from 'next/link'
 import KpiCard            from './KpiCard'
+import Pagine             from '../../../_pagination/Pagine'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Periode } from '../_lib/periode'
 import { SOURCE_COLORS, SOURCE_LABELS, SOURCES_MARKETING } from '@/lib/sources-marketing'
@@ -115,6 +116,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Commandes ({commandes.length})</p>
+        <Pagine lignes={commandes}>{page => (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -129,7 +131,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
               </tr>
             </thead>
             <tbody>
-              {commandes.map(c => (
+              {page.map(c => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                   <td className="px-4 py-2.5">
                     <Link href={`/dashboard/business/commandes/${c.id}`} className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300">
@@ -157,12 +159,14 @@ export default function TabVentes({ periode, debut, fin }: Props) {
             </tbody>
           </table>
         </div>
+        )}</Pagine>
       </div>
     </div>
   )
 }
 
-function Skeleton() {
+function Skeleton
+() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({length:6}).map((_,i)=><div key={i} className="h-20 bg-gray-800 rounded-xl"/>)}</div>

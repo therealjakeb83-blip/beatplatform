@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams }           from 'next/navigation'
 import Link                    from 'next/link'
 import KpiCard                 from '../../_components/KpiCard'
+import Pagination              from '../../../../_pagination/Pagination'
+import { usePagination }       from '../../../../_pagination/usePagination'
 import AnalyticsLineChart      from '../../_components/AnalyticsLineChart'
 import PeriodSelector          from '../../_components/PeriodSelector'
 import { fmtEuroDisplay, fmtDate, fmtDuree, getGranulariteLabel, type Periode } from '../../_lib/periode'
@@ -46,6 +48,7 @@ function ClientCell({ client_id, client_nom }: { client_id: string | null; clien
 }
 
 function TableVentes({ rows }: { rows: Vente[] }) {
+  const pagination = usePagination(rows)
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Achats ({rows.length})</p>
@@ -61,7 +64,7 @@ function TableVentes({ rows }: { rows: Vente[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map(v => (
+          {pagination.lignes.map(v => (
             <tr key={v.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
               <td className="px-4 py-2.5">
                 <Link href={`/dashboard/business/commandes/${v.id}`} className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors">
@@ -83,6 +86,7 @@ function TableVentes({ rows }: { rows: Vente[] }) {
           {rows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune vente</td></tr>}
         </tbody>
       </table>
+      <Pagination {...pagination.barre} />
     </div>
   )
 }
@@ -105,6 +109,7 @@ function countryFlag(code: string): string {
 }
 
 function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
+  const pagination = usePagination(rows)
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Écoutes ({rows.length})</p>
@@ -120,7 +125,7 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {pagination.lignes.map((r, i) => (
             <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
               <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
               <td className="px-4 py-2.5 text-gray-400">
@@ -141,11 +146,13 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
           {rows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">Aucune écoute</td></tr>}
         </tbody>
       </table>
+      <Pagination {...pagination.barre} />
     </div>
   )
 }
 
 function TableFavoris({ rows }: { rows: FavoriRow[] }) {
+  const pagination = usePagination(rows)
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Favoris ({rows.length})</p>
@@ -157,7 +164,7 @@ function TableFavoris({ rows }: { rows: FavoriRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {pagination.lignes.map((r, i) => (
             <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
               <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
               <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.created_at)}</td>
@@ -166,11 +173,13 @@ function TableFavoris({ rows }: { rows: FavoriRow[] }) {
           {rows.length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-600">Aucun favori</td></tr>}
         </tbody>
       </table>
+      <Pagination {...pagination.barre} />
     </div>
   )
 }
 
 function TableFreeDl({ rows }: { rows: FreeDlRow[] }) {
+  const pagination = usePagination(rows)
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Free Downloads ({rows.length})</p>
@@ -182,7 +191,7 @@ function TableFreeDl({ rows }: { rows: FreeDlRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {pagination.lignes.map((r, i) => (
             <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
               <td className="px-4 py-2.5"><ClientCell client_id={r.client_id} client_nom={r.client_nom} /></td>
               <td className="px-4 py-2.5 text-gray-400">{fmtDate(r.downloaded_at)}</td>
@@ -191,6 +200,7 @@ function TableFreeDl({ rows }: { rows: FreeDlRow[] }) {
           {rows.length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-600">Aucun téléchargement</td></tr>}
         </tbody>
       </table>
+      <Pagination {...pagination.barre} />
     </div>
   )
 }

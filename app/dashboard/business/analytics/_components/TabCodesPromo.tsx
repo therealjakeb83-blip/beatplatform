@@ -5,6 +5,7 @@ import Link               from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import MiniBar            from './MiniBar'
+import Pagine             from '../../../_pagination/Pagine'
 import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } from '../_lib/periode'
 
 type Props = { periode: Periode; debut: string; fin: string }
@@ -92,6 +93,7 @@ export default function TabCodesPromo({ periode, debut, fin }: Props) {
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Codes promo ({codes.length})</p>
+        <Pagine lignes={codes}>{page => (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -107,7 +109,7 @@ export default function TabCodesPromo({ periode, debut, fin }: Props) {
               </tr>
             </thead>
             <tbody>
-              {codes.map(c => (
+              {page.map(c => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                   <td className="px-4 py-2.5">
                     <Link href={`/dashboard/business/codes-promo/${c.id}`} className="font-mono text-white font-semibold hover:text-indigo-400 transition-colors">
@@ -150,12 +152,14 @@ export default function TabCodesPromo({ periode, debut, fin }: Props) {
             </tbody>
           </table>
         </div>
+        )}</Pagine>
       </div>
     </div>
   )
 }
 
-function Skeleton() {
+function Skeleton
+() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">{Array.from({length:5}).map((_,i)=><div key={i} className="h-20 bg-gray-800 rounded-xl"/>)}</div>

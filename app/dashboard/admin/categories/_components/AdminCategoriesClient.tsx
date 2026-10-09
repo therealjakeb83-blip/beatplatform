@@ -6,6 +6,8 @@ import type { CategorieRow, TypeCategorie } from '@/lib/categories'
 import { estOfficielle } from '@/lib/categories'
 import { fmtEuroDisplay } from '@/app/dashboard/business/analytics/_lib/periode'
 import type { StatsCategorie } from '@/lib/categories-stats'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 // Les images ne sont pour l'instant proposées que sur Type Beat (photo
 // d'artiste) — décision Jake du 2026-07-20, facile à ouvrir aux autres
@@ -102,6 +104,7 @@ export default function AdminCategoriesClient({
           <p className="text-xs text-gray-600">Aucune catégorie pour l&apos;instant.</p>
         ) : (
           <TableOfficielles
+            key={ongletActif}
             categories={officielles}
             avecImage={avecImage(ongletActif)}
             supprimerCategoriePlateforme={supprimerCategoriePlateforme}
@@ -260,8 +263,10 @@ function TableOfficielles({ categories, avecImage, supprimerCategoriePlateforme 
   supprimerCategoriePlateforme: (id: string) => Promise<{ erreur?: string }>
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const pagination = usePagination(categories)
 
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -275,7 +280,7 @@ function TableOfficielles({ categories, avecImage, supprimerCategoriePlateforme 
           </tr>
         </thead>
         <tbody>
-          {categories.map(c => (
+          {pagination.lignes.map(c => (
             <Fragment key={c.id}>
               <tr className="border-b border-gray-800/60 last:border-0">
                 <td className="py-2 text-white font-medium">
@@ -307,8 +312,11 @@ function TableOfficielles({ categories, avecImage, supprimerCategoriePlateforme 
         </tbody>
       </table>
     </div>
+    <Pagination {...pagination.barre} />
+    </>
   )
 }
+
 
 function ImageUploader({ categorieId, imageUrl, label }: { categorieId: string; imageUrl: string | null; label: string }) {
   const router = useRouter()

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import IgnorerButton from './IgnorerButton'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 export type ClientData = {
   id: string
@@ -74,6 +76,7 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
   }
 
   const displayed = filtre ? paires.filter(p => p.confiance === filtre) : paires
+  const pagination = usePagination(displayed, [filtre])
 
   const kpiBase = 'bg-gray-900 border rounded-xl p-4 cursor-pointer transition-all select-none'
 
@@ -116,8 +119,8 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
         </div>
       ) : (
         <div className="space-y-4">
-          {displayed.map((pair, i) => (
-            <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          {pagination.lignes.map(pair => (
+            <div key={`${pair.a.id}|${pair.b.id}`} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
 
               {/* En-tête */}
               <div className="px-5 py-3 border-b border-gray-800 flex items-center gap-2 flex-wrap">
@@ -206,6 +209,12 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
           ))}
         </div>
       )}
+      {displayed.length > 20 && (
+        <div className="mt-4 bg-gray-900 border border-gray-800 rounded-2xl [&>div]:border-t-0">
+          <Pagination {...pagination.barre} />
+        </div>
+      )}
     </>
   )
 }
+

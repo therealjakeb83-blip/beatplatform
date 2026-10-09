@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { AboRow } from '../page'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 /* ─── types ─────────────────────────────────────────────────────── */
 
@@ -121,6 +123,8 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
       return true
     })
   }, [abonnements, filtreStatut, filtreMethode, filtrePeriode, search, scope])
+
+  const pagination = usePagination(displayed, [filtreStatut, filtreMethode, filtrePeriode, search, scope])
 
   return (
     <div className="flex-1 overflow-auto">
@@ -253,7 +257,7 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {displayed.map(a => {
+              {pagination.lignes.map(a => {
                 const uiStatut  = computeStatut(a)
                 const pays      = paysCode(a)
                 const paiement  = paiementSuivant(a)
@@ -364,9 +368,11 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
               )}
             </tbody>
           </table>
+          <Pagination {...pagination.barre} />
         </div>
 
       </div>
+
     </div>
   )
 }

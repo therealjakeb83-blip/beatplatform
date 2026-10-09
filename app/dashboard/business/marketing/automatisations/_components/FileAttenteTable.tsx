@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import type { EvenementFileAttente } from '../_lib/types'
+import Pagination from '../../../../_pagination/Pagination'
+import { usePagination } from '../../../../_pagination/usePagination'
 
 type Props = {
   fileAttente: EvenementFileAttente[]
@@ -44,6 +46,8 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
       setSuppressionEnCours(null)
     })
   }
+
+  const pagination = usePagination(fileAttente)
 
   function toggleSelection(id: string) {
     setSelection(prev => {
@@ -138,7 +142,7 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/50">
-            {fileAttente.map(e => (
+            {pagination.lignes.map(e => (
               <tr key={e.id}>
                 <td className="pl-5 pr-2 py-3 w-0">
                   <input
@@ -189,8 +193,10 @@ export default function FileAttenteTable({ fileAttente, executerMaintenant, prev
           </tbody>
         </table>
       )}
+      {fileAttente.length > 0 && <Pagination {...pagination.barre} />}
 
-      {apercu && <ApercuModal apercu={apercu} onClose={() => setApercu(null)} />}
+      {apercu &&
+ <ApercuModal apercu={apercu} onClose={() => setApercu(null)} />}
     </div>
   )
 }

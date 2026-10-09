@@ -41,7 +41,8 @@ export default function Pagination({ total, page, taille, onTaille, onPage, lien
 
   // Après un changement de page en bas du tableau, on remonte au début du tableau
   function remonter() {
-    const tableau = ref.current?.previousElementSibling
+    const tableau = ref.current?.previousElementSibling ?? ref.current?.parentElement?.previousElementSibling
+
     if (tableau && tableau.getBoundingClientRect().top < 0) tableau.scrollIntoView({ block: 'start' })
   }
 

@@ -5,6 +5,8 @@ import Link from 'next/link'
 import type { CampagneRow, CibleOption, TemplateOption } from '../page'
 import NouvelleCampagneWizard from './NouvelleCampagneWizard'
 import EnvoyerCampagneButton from './EnvoyerCampagneButton'
+import Pagination from '../../../../_pagination/Pagination'
+import { usePagination } from '../../../../_pagination/usePagination'
 
 type Props = {
   campagnes: CampagneRow[]
@@ -51,6 +53,7 @@ export default function CampagnesClient({
   const [planifId,   setPlanifId]   = useState<string | null>(null)
 
   const envoyees = campagnes.filter(c => c.statut === 'envoyee')
+  const paginationEnvoyees = usePagination(envoyees)
   const planifiees = campagnes.filter(c => c.statut === 'planifiee')
   const brouillons = campagnes.filter(c => c.statut === 'brouillon')
   const echouees = campagnes.filter(c => c.statut === 'echouee')
@@ -214,7 +217,7 @@ export default function CampagnesClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {envoyees.map(c => (
+                  {paginationEnvoyees.lignes.map(c => (
                     <tr key={c.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
                       <td className="px-3 py-3">
                         <p className="font-semibold text-white text-xs">{c.nom}</p>
@@ -232,7 +235,9 @@ export default function CampagnesClient({
               </table>
             </div>
           )}
+          {envoyees.length > 0 && <Pagination {...paginationEnvoyees.barre} />}
         </Section>
+
       </div>
 
       {showWizard && (

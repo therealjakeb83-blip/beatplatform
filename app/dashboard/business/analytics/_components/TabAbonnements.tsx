@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link              from 'next/link'
 import KpiCard            from './KpiCard'
+import Pagine             from '../../../_pagination/Pagine'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } from '../_lib/periode'
 
@@ -94,6 +95,7 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
             className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
           />
         </div>
+        <Pagine lignes={filtered} reinitialiser={[search]}>{page => (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -108,7 +110,7 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(a => (
+              {page.map(a => (
                 <tr key={a.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                   <td className="px-4 py-2.5">
                     <Link href={`/dashboard/business/abonnements/${a.id}`} className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors">
@@ -155,12 +157,14 @@ export default function TabAbonnements({ periode, debut, fin }: Props) {
             )}
           </table>
         </div>
+        )}</Pagine>
       </div>
     </div>
   )
 }
 
-function Skeleton() {
+function Skeleton
+() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({length:6}).map((_,i)=><div key={i} className="h-20 bg-gray-800 rounded-xl"/>)}</div>

@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../page'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 /* ─── types ─────────────────────────────────────────────────────── */
 
@@ -181,6 +183,8 @@ export default function CodesPromoClient({
     return list
   }, [codes, tab, search])
 
+  const pagination = usePagination(filtered, [tab, search])
+
   const counts = useMemo(() => ({
     actif:   codes.filter(c => computeStatut(c) === 'actif').length,
     inactif: codes.filter(c => computeStatut(c) === 'inactif').length,
@@ -353,7 +357,7 @@ export default function CodesPromoClient({
                 </td>
               </tr>
             )}
-            {filtered.map(c => {
+            {pagination.lignes.map(c => {
               const statut = computeStatut(c)
               return (
                 <tr key={c.id} className="group hover:bg-gray-800/30 transition-colors">
@@ -443,9 +447,11 @@ export default function CodesPromoClient({
             })}
           </tbody>
         </table>
+        <Pagination {...pagination.barre} />
       </div>
 
-      {/* ── modal ────────────────────────────────────────────────── */}
+      {/* ── modal
+ ────────────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && fermerModal()}>
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col">

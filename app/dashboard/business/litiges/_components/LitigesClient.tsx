@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { LitigeRow } from '../page'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 const STATUT = {
   en_cours: { label: 'En cours', cls: 'bg-orange-500/15 text-orange-400 border border-orange-500/20' },
@@ -32,6 +34,7 @@ export default function LitigesClient({ litiges }: { litiges: LitigeRow[] }) {
   }), [litiges])
 
   const filtres = tab ? litiges.filter(l => l.statut === tab) : litiges
+  const pagination = usePagination(filtres, [tab])
   const montantEnCours = litiges.filter(l => l.statut === 'en_cours').reduce((s, l) => s + l.montant, 0)
 
   return (
@@ -73,7 +76,7 @@ export default function LitigesClient({ litiges }: { litiges: LitigeRow[] }) {
               </tr>
             </thead>
             <tbody>
-              {filtres.map(l => {
+              {pagination.lignes.map(l => {
                 const s = STATUT[l.statut]
                 return (
                   <tr key={l.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
@@ -96,7 +99,9 @@ export default function LitigesClient({ litiges }: { litiges: LitigeRow[] }) {
               )}
             </tbody>
           </table>
+          <Pagination {...pagination.barre} />
         </div>
+
       </div>
     </div>
   )

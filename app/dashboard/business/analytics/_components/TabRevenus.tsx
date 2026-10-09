@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import KpiCard            from './KpiCard'
+import Pagine             from '../../../_pagination/Pagine'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, getGranulariteLabel, type Periode } from '../_lib/periode'
 
@@ -215,6 +216,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
       {/* Table journalière */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Détail journalier</p>
+        <Pagine lignes={jours}>{page => (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -228,7 +230,7 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
               </tr>
             </thead>
             <tbody>
-              {jours.map(j => (
+              {page.map(j => (
                 <tr key={j.date} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                   <td className="px-4 py-2.5 text-gray-300">{fmtJourDate(j.date)}</td>
                   <td className="px-4 py-2.5 text-center text-gray-400">{j.nb}</td>
@@ -256,10 +258,12 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
             )}
           </table>
         </div>
+        )}</Pagine>
       </div>
 
     </div>
   )
+
 }
 
 function Skeleton() {

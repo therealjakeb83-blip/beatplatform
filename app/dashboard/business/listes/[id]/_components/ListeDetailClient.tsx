@@ -3,6 +3,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import SocialIcon from '../../../_components/SocialIcon'
+import Pagination from '../../../../_pagination/Pagination'
+import { usePagination } from '../../../../_pagination/usePagination'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -443,6 +445,7 @@ export default function ListeDetailClient({
   const [draggingKey,   setDraggingKey]   = useState<string | null>(null)
   const [dragOverKey,   setDragOverKey]   = useState<string | null>(null)
   const dragIdx = useRef<number | null>(null)
+  const pagination = usePagination(membres)
 
   // Hydrate depuis localStorage après montage
   useEffect(() => {
@@ -607,7 +610,7 @@ export default function ListeDetailClient({
                 </tr>
               </thead>
               <tbody>
-                {membres.map(m => (
+                {pagination.lignes.map(m => (
                   <tr key={m.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors group">
 
                     {/* Contact — fixe */}
@@ -654,9 +657,11 @@ export default function ListeDetailClient({
             </table>
           </div>
         )}
+        {membres.length > 0 && <Pagination {...pagination.barre} />}
       </div>
 
       {showModal && (
+
         <AjouterModal
           contacts={tousContacts}
           onClose={() => setShowModal(false)}

@@ -4,6 +4,8 @@ import { useState, useRef, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CategorieRow, TypeCategorie } from '@/lib/categories'
 import { estOfficielle } from '@/lib/categories'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 type CategorieAvecDonnees = CategorieRow & {
   nb_beats: number; ventes: number; ca_net: number; ecoutes: number
@@ -82,7 +84,7 @@ export default function CategoriesClient({
           {officielles.length === 0 ? (
             <p className="text-xs text-gray-600">Aucune catégorie pour l&apos;instant.</p>
           ) : (
-            <TableOfficielles categories={officielles} avecImage={avecImage(ongletActif)} />
+            <TableOfficielles key={ongletActif} categories={officielles} avecImage={avecImage(ongletActif)} />
           )}
         </div>
 
@@ -118,8 +120,10 @@ export default function CategoriesClient({
 
 function TableOfficielles({ categories, avecImage }: { categories: CategorieAvecDonnees[]; avecImage: boolean }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const pagination = usePagination(categories)
 
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -129,7 +133,7 @@ function TableOfficielles({ categories, avecImage }: { categories: CategorieAvec
           </tr>
         </thead>
         <tbody>
-          {categories.map(c => (
+          {pagination.lignes.map(c => (
             <Fragment key={c.id}>
               <tr className="border-b border-gray-800/60 last:border-0">
                 <td className="py-2 text-white font-medium">
@@ -165,8 +169,11 @@ function TableOfficielles({ categories, avecImage }: { categories: CategorieAvec
         </tbody>
       </table>
     </div>
+    <Pagination {...pagination.barre} />
+    </>
   )
 }
+
 
 function CategoriePersonnelleRow({
   categorie,
