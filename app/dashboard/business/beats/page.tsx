@@ -35,7 +35,7 @@ export default async function BeatsPage() {
 
   const admin = createAdminClient()
 
-  // Tout le catalogue, sans plafond (ancien .limit(500)) â€” paginÃ© Ã  l'affichage
+  // Tout le catalogue, sans plafond (ancien .limit(500)) — paginé à l'affichage
   const rawBeats = await toutesLesLignes((debut, fin) => admin
     .from('beats')
     .select('id, titre, bpm, cle, statut, image_url, couleur, created_at, styles, type_beat, mp3_tague_url, mis_en_avant, hors_vente_collab')

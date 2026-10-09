@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import AbonnementsClient from './_components/AbonnementsClient'
+import { toutesLesLignes } from '../_lib/requetes'
 
 export type AboRow = {
   id: string
@@ -40,8 +41,9 @@ export default async function AbonnementsPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: abos }, { data: cmdsDerniere }] = await Promise.all([
-    admin
+  // Sans plafond (ancien .limit(300)) — la liste est paginée à l'affichage
+  const [abos, cmdsDerniere] = await Promise.all([
+    toutesLesLignes((debut, fin) => admin
       .from('abonnements_boutique')
       .select(`
         id, client_id, beatmaker_id, created_at,
@@ -54,14 +56,17 @@ export default async function AbonnementsPage() {
       `)
       .eq('beatmaker_id', user.id)
       .order('date_debut', { ascending: false })
-      .limit(300),
+      .order('id')
+      .range(debut, fin)),
 
-    admin
+    toutesLesLignes((debut, fin) => admin
       .from('commandes')
       .select('client_id, created_at')
       .eq('beatmaker_id', user.id)
       .in('type_commande', ['CREATION_ABONNEMENT', 'RENOUVELLEMENT'])
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(debut, fin)),
   ])
 
   // Map client_id → dernière commande d'abonnement

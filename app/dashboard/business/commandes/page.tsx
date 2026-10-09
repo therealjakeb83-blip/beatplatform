@@ -61,7 +61,7 @@ export default async function CommandesPage({
   const admin = createAdminClient()
 
   // Toutes les commandes, sans plafond (ancien .limit(500) : les plus anciennes
-  // n'apparaissaient jamais) â€” la liste est paginÃ©e Ã  l'affichage.
+  // n'apparaissaient jamais) — la liste est paginée à l'affichage.
   const data = await toutesLesLignes((debut, fin) => admin
     .from('commandes')
     .select(

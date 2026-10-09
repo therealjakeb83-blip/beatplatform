@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../../page'
+import Pagination from '../../../../_pagination/Pagination'
+import { usePagination } from '../../../../_pagination/usePagination'
 
 /* ─── types ─────────────────────────────────────────────────────── */
 
@@ -154,6 +156,7 @@ export default function CodePromoDetailClient({
   const [form, setForm]           = useState<FormData>(formFromCode(initialCode))
   const [loading, setLoading]     = useState(false)
   const [erreur, setErreur]       = useState<string | null>(null)
+  const pagination = usePagination(commandes)
 
   const statut    = computeStatut(code)
   const shareUrl  = typeof window !== 'undefined'
@@ -354,7 +357,7 @@ export default function CodePromoDetailClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/60">
-              {commandes.map(c => (
+              {pagination.lignes.map(c => (
                 <tr key={c.id} className="hover:bg-gray-800/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">
                     {c.id.slice(0, 8).toUpperCase()}
@@ -387,6 +390,7 @@ export default function CodePromoDetailClient({
             </tbody>
           </table>
         )}
+        {commandes.length > 0 && <Pagination {...pagination.barre} />}
       </div>
 
       {/* modal édition */}

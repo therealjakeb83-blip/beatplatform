@@ -3,13 +3,20 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { evaluerFiltres, couleurCls, type Condition } from '../../_lib/segments'
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '../../_lib/contacts'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { decouperPage, lirePageAdresse } from '@/lib/pagination'
+import PaginationAdresse from '../../../_pagination/PaginationAdresse'
 
 export default async function SegmentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ page?: string }>
 }) {
   const { id: segmentId } = await params
+  const { page: pageParam } = await searchParams
+  const taille = await tailleTableaux()
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,6 +43,7 @@ export default async function SegmentDetailPage({
   const contacts: ContactEnrichi[] = tousLesContacts
     .filter(c => evaluerFiltres(c, filtres))
     .sort((a, b) => b.ltv - a.ltv)
+  const contactsPage = decouperPage(contacts, lirePageAdresse(pageParam), taille)
 
   const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
   const fmtDateRel = (iso: string | null) => {
@@ -101,7 +109,7 @@ export default async function SegmentDetailPage({
               </tr>
             </thead>
             <tbody>
-              {contacts.map((c, i) => {
+              {contactsPage.lignes.map((c, i) => {
                 const prenomAffiche = nomAffichage(c)
                 return (
                 <tr
@@ -157,6 +165,7 @@ export default async function SegmentDetailPage({
             </tbody>
           </table>
         )}
+        {contacts.length > 0 && <PaginationAdresse total={contacts.length} page={contactsPage.page} taille={taille} />}
       </div>
     </div>
   )

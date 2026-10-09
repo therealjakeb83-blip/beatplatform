@@ -4,6 +4,9 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import StatutButton from './_components/StatutButton'
 import { fuseauSur } from '@/lib/fuseau-horaire'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { decouperPage, lirePageAdresse } from '@/lib/pagination'
+import PaginationAdresse from '../../../_pagination/PaginationAdresse'
 
 /* ─── helpers ─────────────────────────────────────────────────────── */
 
@@ -61,10 +64,14 @@ const COMMANDE_STATUT_LABEL: Record<string, string> = {
 
 export default async function AbonnementDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ page?: string }>
 }) {
   const { id } = await params
+  const { page: pageParam } = await searchParams
+  const taille = await tailleTableaux()
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -258,6 +265,7 @@ export default async function AbonnementDetailPage({
       lienCommande: false,
     })),
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  const lignesPage = decouperPage(lignesAssociees, lirePageAdresse(pageParam), taille)
 
   return (
     <div className="flex-1 overflow-auto">
@@ -398,7 +406,7 @@ export default async function AbonnementDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
-                    {lignesAssociees.map(c => (
+                    {lignesPage.lignes.map(c => (
                       <tr key={c.id} className="hover:bg-gray-800/40 transition-colors">
                         <td className="px-5 py-2.5">
                           {c.lienCommande ? (
@@ -432,6 +440,7 @@ export default async function AbonnementDetailPage({
               ) : (
                 <p className="px-5 py-8 text-xs text-gray-700 text-center">Aucune commande associée</p>
               )}
+              <PaginationAdresse total={lignesAssociees.length} page={lignesPage.page} taille={taille} />
             </div>
 
             {/* Historique */}

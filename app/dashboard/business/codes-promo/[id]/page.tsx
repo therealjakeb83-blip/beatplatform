@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../page'
 import CodePromoDetailClient from './_components/CodePromoDetailClient'
+import { toutesLesLignes } from '../../_lib/requetes'
 
 type CommandeDetail = {
   id: string
@@ -44,17 +45,19 @@ export default async function CodePromoDetailPage({
   if (!rawCode) notFound()
   const code = rawCode as CodePromoRow
 
-  const [{ data: rawCommandes }, { data: bm }, { data: rawLicences }, { data: rawBeats }] = await Promise.all([
-    admin
+  // Toutes les commandes du code (ancien .limit(100) : liste ET totaux CA/remise faussés au-delà de 100)
+  const [rawCommandes, { data: bm }, { data: rawLicences }, rawBeats] = await Promise.all([
+    toutesLesLignes((debut, fin) => admin
       .from('commandes')
       .select('id, created_at, prix_paye, reduction_montant, statut, clients(id, prenom, nom, nom_artiste), commande_lignes(beats(titre), licences(nom))')
       .eq('beatmaker_id', user.id)
       .eq('code_promo', code.code)
       .order('created_at', { ascending: false })
-      .limit(100),
+      .order('id')
+      .range(debut, fin)),
     admin.from('beatmakers').select('slug').eq('id', user.id).single(),
     admin.from('licences').select('id, nom, modele').eq('beatmaker_id', user.id).eq('actif', true).order('ordre'),
-    admin.from('beats').select('id, titre, couleur, statut').eq('beatmaker_id', user.id).is('supprime_le', null).in('statut', ['public', 'prive']).order('created_at', { ascending: false }).limit(200),
+    toutesLesLignes((debut, fin) => admin.from('beats').select('id, titre, couleur, statut').eq('beatmaker_id', user.id).is('supprime_le', null).in('statut', ['public', 'prive']).order('created_at', { ascending: false }).order('id').range(debut, fin)),
   ])
 
   type RawCommande = Omit<CommandeDetail, 'beats' | 'licences' | 'nbArticles'> & { commande_lignes: LigneJointe[] }

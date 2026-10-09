@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import CodesPromoClient from './_components/CodesPromoClient'
+import { toutesLesLignes } from '../_lib/requetes'
 
 export type CodePromoRow = {
   id: string
@@ -44,10 +45,11 @@ export default async function CodesPromoPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: rawCodes }, { data: rawLicences }, { data: rawBeats }] = await Promise.all([
+  const [{ data: rawCodes }, { data: rawLicences }, rawBeats] = await Promise.all([
     admin.from('codes_promo').select('*').eq('beatmaker_id', user.id).order('created_at', { ascending: false }),
     admin.from('licences').select('id, nom, modele').eq('beatmaker_id', user.id).eq('actif', true).order('ordre'),
-    admin.from('beats').select('id, titre, couleur, statut').eq('beatmaker_id', user.id).is('supprime_le', null).in('statut', ['public', 'prive']).order('created_at', { ascending: false }).limit(200),
+    // Tout le catalogue (ancien .limit(200) : les beats plus anciens ne pouvaient pas être ciblés)
+    toutesLesLignes((debut, fin) => admin.from('beats').select('id, titre, couleur, statut').eq('beatmaker_id', user.id).is('supprime_le', null).in('statut', ['public', 'prive']).order('created_at', { ascending: false }).order('id').range(debut, fin)),
   ])
 
   return (
