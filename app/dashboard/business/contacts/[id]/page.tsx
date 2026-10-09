@@ -128,8 +128,11 @@ export default async function FicheClientPage({
   if (!user) redirect('/connexion')
   const beatmakerId = user.id
 
-  const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', beatmakerId).single()
+  const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire, abo_nom').eq('id', beatmakerId).single()
   const tz = fuseauSur(beatmakerRow?.fuseau_horaire)
+  // Une commande d'abonnement n'a pas de beat : on affiche le nom de l'abonnement
+  // (même repli que lib/abonnement-boutique.ts)
+  const nomAbonnement = beatmakerRow?.abo_nom || 'Abonnement boutique'
 
   // Client — admin car RLS clients = acheteurs seulement
   const { data: client } = await admin
@@ -943,7 +946,9 @@ export default async function FicheClientPage({
                       )
                     }
                     const a = h.ligne
-                    const titre = a.beats?.titre ?? 'Beat supprimé'
+                    const titre = a.type_commande === 'CREATION_ABONNEMENT' || a.type_commande === 'RENOUVELLEMENT'
+                      ? nomAbonnement
+                      : a.beats?.titre ?? 'Beat supprimé'
                     return (
                       <tr
                         key={a.id}
