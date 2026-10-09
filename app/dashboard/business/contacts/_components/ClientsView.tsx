@@ -4,6 +4,8 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { ContactRow } from './ContactsClient'
 import { joursDepuis } from '../../_lib/utils'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 function initiales(prenom: string | null, nom: string | null) {
   return `${prenom?.[0] ?? ''}${nom?.[0] ?? ''}`.toUpperCase() || '?'
@@ -192,6 +194,8 @@ export default function ClientsView({
   const nbFidele      = displayed.filter(c => scoreRF(c.nb_achats, c.dernier_achat_iso).label === 'Fidèle').length
   const nbOccasionnel = displayed.filter(c => scoreRF(c.nb_achats, c.dernier_achat_iso).label === 'Occasionnel').length
   const nbDormant     = displayed.filter(c => scoreRF(c.nb_achats, c.dernier_achat_iso).label === 'Dormant').length
+  const pagination = usePagination(displayed, [filtreSearch, filtreFidelite, filtreNewsletter, filtreAbo, filtreStyle, filtreTypeBeat, filtreLicence, filtreCommandesVal, filtreCommandesSigne, filtrePanierVal, filtrePanierSigne, filtreLtvVal, filtreLtvSigne, filtreLastVal, filtreLastSigne, filtreLastUnite])
+
   const topStyle    = topOf(displayed.map(c => c.pref_style))
   const topTypeBeat = topOf(displayed.map(c => c.pref_type_beat))
   const topLicence  = topOf(displayed.map(c => c.pref_licence))
@@ -525,7 +529,7 @@ export default function ClientsView({
               </tr>
             </thead>
             <tbody>
-              {displayed.map(c => {
+              {pagination.lignes.map(c => {
                 const rf  = scoreRF(c.nb_achats, c.dernier_achat_iso)
                 const sel = selected.has(c.id)
                 return (
@@ -587,7 +591,9 @@ export default function ClientsView({
             </tbody>
           </table>
         </div>
+        <Pagination {...pagination.barre} />
       </div>
+
 
       {/* Modal liste */}
       {showListeModal && (

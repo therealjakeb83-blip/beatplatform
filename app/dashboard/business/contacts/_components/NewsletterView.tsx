@@ -4,6 +4,8 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { joursDepuis } from '../../_lib/utils'
 import { LIBELLE_STATUT_NEWSLETTER, type StatutNewsletter } from '@/lib/newsletter-statut'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 export type NewsletterRow = {
   id: string
@@ -164,6 +166,8 @@ export default function NewsletterView({
     acc[label] = (acc[label] ?? 0) + 1
     return acc
   }, {} as Record<string, number>)
+
+  const pagination = usePagination(displayed, [filtreInscription, filtreSearch, filtreEngagement, filtrePremierVal, filtrePremierSigne, filtrePremierUnite, filtreDernierVal, filtreDernierSigne, filtreDernierUnite])
 
   const allSelected = displayed.length > 0 && displayed.every(c => selected.has(c.id))
   function toggleAll() {
@@ -388,12 +392,12 @@ export default function NewsletterView({
               </tr>
             </thead>
             <tbody>
-              {displayed.map((c, i) => {
+              {pagination.lignes.map((c, i) => {
                 const eng = scoreNwt(c)
                 const ouv = c.envoyes > 0 ? Math.round(c.ouverts / c.envoyes * 100) : 0
                 const cli = c.ouverts > 0 ? Math.round(c.clics   / c.ouverts * 100) : 0
                 return (
-                  <tr key={c.id} className={`${i < displayed.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors ${selected.has(c.id) ? 'bg-indigo-500/5' : ''}`}>
+                  <tr key={c.id} className={`${i < pagination.lignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors ${selected.has(c.id) ? 'bg-indigo-500/5' : ''}`}>
                     <td className="px-5 py-3">
                       <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
                     </td>
@@ -452,7 +456,9 @@ export default function NewsletterView({
             </tbody>
           </table>
         </div>
+        <Pagination {...pagination.barre} />
       </div>
+
 
       {/* Modal liste */}
       {showListeModal && (

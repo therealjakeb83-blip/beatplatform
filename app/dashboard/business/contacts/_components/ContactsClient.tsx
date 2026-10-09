@@ -8,6 +8,8 @@ import ClientsView from './ClientsView'
 import LeadsView, { type LeadRow } from './LeadsView'
 import NewsletterView, { type NewsletterRow } from './NewsletterView'
 import type { StatutNewsletter } from '@/lib/newsletter-statut'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 export type ContactRow = {
   id: string
@@ -316,6 +318,8 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
   }).sort((a, b) => new Date(b.dernierContactISO).getTime() - new Date(a.dernierContactISO).getTime()),
   [contacts, filtreSearch, filtreStatut, filtreNewsletter, filtrePremVal, filtrePremSign, filtrePremUnite, filtreDernVal, filtreDernSign, filtreDernUnite])
 
+  const pagination = usePagination(displayed, [filtreSearch, filtreStatut, filtreNewsletter, filtrePremVal, filtrePremSign, filtrePremUnite, filtreDernVal, filtreDernSign, filtreDernUnite])
+
   const total    = displayed.length
   const nbAbonne = displayed.filter(c => c.statut === 'abonne').length
   const nbAncien = displayed.filter(c => c.statut === 'ancien').length
@@ -541,7 +545,7 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
               </tr>
             </thead>
             <tbody>
-              {displayed.map(c => {
+              {pagination.lignes.map(c => {
                 const badge = statutBadge(c.statut)
                 const sel   = selected.has(c.id)
                 return (
@@ -601,9 +605,11 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
             </tbody>
           </table>
         </div>
+        <Pagination {...pagination.barre} />
       </div>
 
       {/* Modal liste */}
+
       {showListeModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowListeModal(false)}>
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>

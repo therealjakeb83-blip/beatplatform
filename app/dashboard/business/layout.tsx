@@ -4,6 +4,8 @@ import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif } from '@/lib/acces-plan'
 import { compterDemandesCollabEnAttente } from '@/lib/collaboration'
 import Sidebar from './_components/Sidebar'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { TaillePageProvider } from '../_pagination/TaillePage'
 
 export default async function BusinessLayout({
   children,
@@ -32,12 +34,13 @@ export default async function BusinessLayout({
   const abonnementActif = gateExempte || await aUnAbonnementPlateformeActif(supabase, user.id)
   const planFree = !abonnementActif
   const demandesCollab = await compterDemandesCollabEnAttente(user.id, user.email ?? null)
+  const taille = await tailleTableaux()
 
   return (
     <div className="flex h-screen bg-gray-950 text-white overflow-hidden">
       <Sidebar nomArtiste={nomArtiste} planFree={planFree} demandesCollab={demandesCollab} />
       <main className="flex-1 overflow-y-auto">
-        {children}
+        <TaillePageProvider initiale={taille}>{children}</TaillePageProvider>
       </main>
     </div>
   )

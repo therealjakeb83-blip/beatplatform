@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { estAdmin } from '@/lib/admin'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { TaillePageProvider } from '../_pagination/TaillePage'
 
 // Lot 1 de l'Étape 15 (2026-07-24) : Recherche/Support + Log Stripe +
 // Suspendre/Réactiver une boutique, en plus des Catégories déjà en place.
@@ -8,6 +10,7 @@ import { estAdmin } from '@/lib/admin'
 // des mises à jour) sera ajouté au fur et à mesure — voir ROADMAP.md étape 15.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   if (!(await estAdmin())) redirect('/dashboard/business')
+  const taille = await tailleTableaux()
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -18,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/dashboard/admin/stripe-events" className="text-sm text-gray-400 hover:text-white transition-colors">Log Stripe</Link>
         <Link href="/dashboard/business" className="ml-auto text-sm text-gray-500 hover:text-gray-300 transition-colors">← Business</Link>
       </div>
-      {children}
+      <TaillePageProvider initiale={taille}>{children}</TaillePageProvider>
     </div>
   )
 }

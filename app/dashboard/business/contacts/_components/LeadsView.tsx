@@ -3,6 +3,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import type { StatutNewsletter } from '@/lib/newsletter-statut'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -208,6 +210,8 @@ export default function LeadsView({
   const nbChauds     = displayed.filter(l => scoreChaleur(l).label === 'Chaud').length
   const nbTiedes     = displayed.filter(l => scoreChaleur(l).label === 'Tiède').length
   const nbFroids     = displayed.filter(l => scoreChaleur(l).label === 'Froid').length
+  const pagination = usePagination(displayed, [filtreSearch, filtreChaleur, filtreNewsletter, filtreFreeDLVal, filtreFreeDLSigne, filtreFavVal, filtreFavSigne, filtrePremierVal, filtrePremierSigne, filtrePremierUnite, filtreStyle, filtreTypeBeat, filtreAmbiance])
+
   const topStyle     = topOf(displayed.map(l => l.pref_style))
   const topTypeBeat  = topOf(displayed.map(l => l.pref_type_beat))
   const topAmbiance  = topOf(displayed.map(l => l.pref_ambiance))
@@ -536,7 +540,7 @@ export default function LeadsView({
               </tr>
             </thead>
             <tbody>
-              {displayed.map(l => {
+              {pagination.lignes.map(l => {
                 const chaleur = scoreChaleur(l)
                 const sel     = selected.has(l.id)
                 return (
@@ -608,7 +612,9 @@ export default function LeadsView({
             </tbody>
           </table>
         </div>
+        <Pagination {...pagination.barre} />
       </div>
+
 
       {/* ── Modal créer une liste ── */}
       {showListeModal && (
