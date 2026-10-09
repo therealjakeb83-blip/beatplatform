@@ -128,6 +128,11 @@ function choisirEchantillon(commandes: CommandePayload[]): CommandePayload[] {
   ajouter(commandes.find(c => c.lignes.some(l => l.offert)))
   ajouter(commandes.find(c => c.lignes.length > 1))
   ajouter(commandes.find(c => c.lignes.some(l => l.collaborateurs.length > 0 && !l.vendeur_principal)))
+  // Compléter avec des acheteurs différents de ceux déjà montrés
+  for (const c of commandes) {
+    if (choix.length >= 5) break
+    if (!choix.some(x => x.acheteur_email === c.acheteur_email)) ajouter(c)
+  }
   for (const c of commandes) { if (choix.length >= 5) break; ajouter(c) }
   return choix.slice(0, 5)
 }
