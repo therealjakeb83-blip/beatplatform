@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { CommandeRow } from '../page'
+import { SOURCE_LABELS as SOURCE_LABEL } from '@/lib/sources-marketing'
 
 /* ─── constants ─────────────────────────────────────────────────── */
 
@@ -31,10 +32,6 @@ const TYPE_COMMANDE_LABEL: Record<string, string> = {
   RENOUVELLEMENT: 'Renouvellement abonnement',
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', google: 'Google',
-  google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
-}
 
 const TABS = [
   { label: 'Toutes',           value: '' },

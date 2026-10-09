@@ -5,6 +5,7 @@ import Link                   from 'next/link'
 import KpiCard            from './KpiCard'
 import AnalyticsLineChart from './AnalyticsLineChart'
 import { periodeToSearch, fmtEuroDisplay, fmtDate, getGranulariteLabel, type Periode } from '../_lib/periode'
+import { SOURCE_COLORS, SOURCE_LABELS, SOURCES_MARKETING } from '@/lib/sources-marketing'
 
 type Props = { periode: Periode; debut: string; fin: string }
 
@@ -24,14 +25,8 @@ const KPI_CONFIG: Array<{ key: KpiKey; histKey: string; label: string; color: st
   { key: 'recu_collab',  histKey: 'recu_collab', label: 'Collaborations', color: '#38bdf8', fmt: v => fmtEuroDisplay(v) },
 ]
 
-const SOURCE_COLORS: Record<string, string> = {
-  instagram: '#6366f1', youtube: '#ef4444', tiktok: '#f472b6', google: '#f59e0b', google_ads: '#4285f4', youtube_ads: '#dc2626', newsletter: '#f97316', direct: '#4ade80', autre: '#6b7280',
-}
-const SOURCE_LABELS: Record<string, string> = {
-  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
-}
 
-const ALL_SOURCES = ['instagram', 'youtube', 'tiktok', 'google', 'google_ads', 'youtube_ads', 'newsletter', 'direct', 'autre'] as const
+const ALL_SOURCES = SOURCES_MARKETING
 
 export default function TabVentes({ periode, debut, fin }: Props) {
   const [data,           setData]           = useState<Data | null>(null)

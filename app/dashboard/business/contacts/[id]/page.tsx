@@ -11,6 +11,8 @@ import { fuseauSur } from '@/lib/fuseau-horaire'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants, montantDepense } from '@/app/dashboard/business/_lib/ltv'
 import { chargerCommandesImporteesClient, versCrmDepuisDetail } from '@/app/dashboard/business/_lib/commandes-externes'
 import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantLigne } from '@/app/dashboard/business/_components/CommandeImportee'
+import { libelleSource, SOURCE_COLORS } from '@/lib/sources-marketing'
+import { libelleSourceImport } from '@/lib/import-externe/plateformes'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,6 +96,7 @@ type Commande = {
   prix_paye: number
   statut: string
   type_commande: string | null
+  source_marketing: string | null
   commande_lignes: LigneCommande[]
 }
 
@@ -202,7 +205,7 @@ export default async function FicheClientPage({
     supabase
       .from('commandes')
       .select(`
-        id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande,
+        id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, source_marketing,
         commande_lignes(
           beat_id, prix_paye,
           beats(titre, image_url, styles, type_beat, ambiances, instruments),
@@ -360,6 +363,7 @@ export default async function FicheClientPage({
           id: `${a.id}:${l.beat_id ?? 'na'}`,
           created_at: a.created_at,
           type_commande: a.type_commande,
+          source_marketing: a.source_marketing,
           prix_paye: l.prix_paye,
           beats: l.beats,
           licences: l.licences,
@@ -368,6 +372,7 @@ export default async function FicheClientPage({
           id: a.id,
           created_at: a.created_at,
           type_commande: a.type_commande,
+          source_marketing: a.source_marketing,
           prix_paye: a.prix_paye,
           beats: null,
           licences: null,
@@ -972,6 +977,7 @@ export default async function FicheClientPage({
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Beat</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Licence</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
                     <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Montant</th>
                   </tr>
                 </thead>
@@ -986,10 +992,11 @@ export default async function FicheClientPage({
                               <BadgePlateforme plateforme={h.commande.plateforme} />
                               <span className="font-medium text-white">{h.ligne.titre}</span>
                             </div>
-                            <MentionsLigne ligne={h.ligne} typeBoutique={h.commande.type_boutique} />
+                            <MentionsLigne ligne={h.ligne} />
                           </td>
                           <td className="px-5 py-3 text-xs text-gray-500">{h.ligne.licence ?? 'Non précisée'}</td>
                           <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(h.date)}</td>
+                          <td className="px-5 py-3 text-xs text-amber-200/80 whitespace-nowrap">{libelleSourceImport(h.commande.plateforme, h.commande.type_boutique)}</td>
                           <td className="px-5 py-3 text-right"><MontantLigne ligne={h.ligne} devise={h.commande.devise} /></td>
                         </LigneTableauImportee>
                       )
@@ -1006,6 +1013,12 @@ export default async function FicheClientPage({
                           {a.licences?.nom ?? 'Inconnue'}
                         </td>
                         <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.created_at)}</td>
+                        <td className="px-5 py-3 text-xs text-gray-300 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full" style={{ background: SOURCE_COLORS[a.source_marketing ?? 'direct'] ?? '#6b7280' }} />
+                            {libelleSource(a.source_marketing)}
+                          </span>
+                        </td>
                         <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(a.prix_paye)}</td>
                       </tr>
                     )

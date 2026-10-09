@@ -7,6 +7,7 @@ import KpiCard                 from '../../_components/KpiCard'
 import AnalyticsLineChart      from '../../_components/AnalyticsLineChart'
 import PeriodSelector          from '../../_components/PeriodSelector'
 import { fmtEuroDisplay, fmtDate, fmtDuree, getGranulariteLabel, type Periode } from '../../_lib/periode'
+import { SOURCE_LABELS } from '@/lib/sources-marketing'
 
 type Beat = { id: string; titre: string; couleur: string | null; styles: string[]; bpm: number; cle: string | null; statut: string }
 type Vente = {
@@ -29,9 +30,6 @@ type Data = {
   historique: Array<Record<string, unknown>>
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', google: 'Google', google_ads: 'Google Ads (Search)', youtube_ads: 'YouTube Ads', newsletter: 'Newsletter', direct: 'Direct', autre: 'Autre',
-}
 const STATUT_BEAT: Record<string, string> = {
   public: 'Public', prive: 'Privé', masque: 'Masqué', programme: 'Programmé', vendu: 'Exclusif vendu',
 }
