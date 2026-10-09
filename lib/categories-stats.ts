@@ -5,7 +5,9 @@ export type StatsCategorie = { nb_beats: number; ventes: number; ca_net: number;
 const STATS_VIDES: StatsCategorie = { nb_beats: 0, ventes: 0, ca_net: 0, ecoutes: 0 }
 
 type BeatTags = { id: string; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null }
-type LigneVente = { beat_id: string; prix_paye: number; reduction_montant: number | null }
+// Une ligne = une vente du beat ; ca_net = HT, déjà ramené aux règles d'Analytics
+// (parts, remboursements, litiges, TVA de chaque vendeur) par l'appelant.
+export type LigneVente = { beat_id: string; ca_net: number }
 
 const COLONNES_TAGS: { type: TypeCategorie; get: (b: BeatTags) => string[] | null }[] = [
   { type: 'styles', get: b => b.styles },
@@ -30,7 +32,7 @@ export function agregerStatsParCategorie(
   for (const l of lignes) {
     const cur = parBeat.get(l.beat_id) ?? { ventes: 0, ca_net: 0, ecoutes: 0 }
     cur.ventes += 1
-    cur.ca_net += l.prix_paye - (l.reduction_montant ?? 0)
+    cur.ca_net += l.ca_net
     parBeat.set(l.beat_id, cur)
   }
   for (const [beatId, n] of ecoutesParBeat) {

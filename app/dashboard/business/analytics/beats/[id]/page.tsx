@@ -293,8 +293,8 @@ export default function BeatDetailPage() {
           <div className="space-y-6">
             {/* KPIs financiers + durée moyenne */}
             <div className="grid grid-cols-3 gap-3">
-              <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis!.ca_brut)} sub={`Net : ${fmtEuroDisplay(kpis!.ca_net)}`} color="#4ade80" />
-              <KpiCard label="CA Net"        value={fmtEuroDisplay(kpis!.ca_net)}  color="#22d3ee" />
+              <KpiCard label="CA Brut"       value={fmtEuroDisplay(kpis!.ca_brut)} sub={`Net HT : ${fmtEuroDisplay(kpis!.ca_net)}`} color="#4ade80" />
+              <KpiCard label="CA Net (HT)"   value={fmtEuroDisplay(kpis!.ca_net)}  color="#22d3ee" />
               <KpiCard label="Durée moy. écoute" value={fmtDuree(kpis!.duree_moy)} color="#f59e0b" />
             </div>
 

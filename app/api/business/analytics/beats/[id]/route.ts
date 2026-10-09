@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { chargerPartsVendeur, partsDeLignes } from '@/lib/analytics-parts'
+import { chargerPartsVendeur, partsDeLignes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params
   const admin = createAdminClient()
 
-  const { data: beatmaker } = await admin.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
+  const { data: beatmaker } = await admin.from('beatmakers').select('fuseau_horaire, tva_active, tva_taux').eq('id', user.id).single()
   const tz = fuseauSur(beatmaker?.fuseau_horaire)
   const { from, to, periode } = getPeriodDates(request, tz)
 
@@ -64,7 +64,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       `)
       .eq('beat_id', id)
       .eq('commandes.beatmaker_id', user.id)
-      .eq('commandes.statut', 'payee')
+      .in('commandes.statut', STATUTS_ANALYTICS)
       .order('created_at', { ascending: false })
       .order('id')
       .range(debut, fin)),
@@ -104,7 +104,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const ca_brut = cmds.reduce((s, c) => s + c.prix_paye, 0)
   const remises = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ca_net  = ca_brut - remises
+  // Mêmes règles que l'onglet Beats et le reste d'Analytics : CA net = HT
+  // (TTC après remises, TVA retirée).
+  const tvaRate = beatmaker?.tva_active ? (beatmaker.tva_taux ?? 20) / 100 : 0
+  const ca_net  = tvaRate > 0 ? (ca_brut - remises) / (1 + tvaRate) : ca_brut - remises
 
   // CA par licence
   const licenceMap = new Map<string, { ca: number; ventes: number }>()

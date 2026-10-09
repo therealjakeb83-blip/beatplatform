@@ -1,6 +1,6 @@
 import {
   startOfDayInTz, startOfWeekInTz, startOfMonthInTz, startOfQuarterInTz, startOfYearInTz,
-  addMonthsInTz, addDaysInstant, getZonedParts,
+  addMonthsInTz, addDaysInstant, getZonedParts, zonedTimeToUtc,
 } from '@/lib/fuseau-horaire'
 
 export type Periode =
@@ -89,15 +89,27 @@ export function getPeriodDates(request: Request, tz: string): { from: string | n
       const finDerniere = new Date(debutCette.getTime() - 1)
       return { from: debutDerniere.toISOString(), to: finDerniere.toISOString(), periode }
     }
-    case 'custom':
+    case 'custom': {
+      // Du minuit local du jour de début au dernier instant local du jour de
+      // fin (comme « Mois dernier ») — lues telles quelles, les dates tapées
+      // excluaient le jour de fin et coupaient les journées à minuit UTC.
+      const debut = jourSaisi(searchParams.get('debut'), tz)
+      const fin   = jourSaisi(searchParams.get('fin'), tz)
       return {
-        from: searchParams.get('debut') ?? null,
-        to:   searchParams.get('fin')   ?? null,
+        from: debut ? debut.toISOString() : null,
+        to:   fin ? new Date(startOfDayInTz(addDaysInstant(fin, 1.5), tz).getTime() - 1).toISOString() : null,
         periode,
       }
+    }
     default:
       return { from: null, to: null, periode: 'tout' }
   }
+}
+
+/** Minuit local (fuseau du beatmaker) d'une date 'YYYY-MM-DD' saisie, null si illisible. */
+function jourSaisi(valeur: string | null, tz: string): Date | null {
+  const m = valeur ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(valeur) : null
+  return m ? zonedTimeToUtc(Number(m[1]), Number(m[2]), Number(m[3]), 0, 0, 0, tz) : null
 }
 
 export function inPeriod(dateStr: string, from: string | null, to: string | null): boolean {
@@ -134,7 +146,10 @@ export function granularite(periode: Periode, from: string | null, to: string | 
       return 'mois'
     case 'custom': {
       if (!from || !to) return 'mois'
-      const days = (new Date(to).getTime() - new Date(from).getTime()) / 86_400_000
+      // Écran : dates saisies 'YYYY-MM-DD' (écart = n jours) ; serveur : du 1er
+      // au dernier instant de la période (≈ n + 1 jours) → même n des deux côtés.
+      const ecart = (new Date(to).getTime() - new Date(from).getTime()) / 86_400_000
+      const days  = from.includes('T') ? Math.round(ecart) - 1 : ecart
       if (days < 35)  return 'jours'
       if (days < 120) return 'semaines'
       return 'mois'

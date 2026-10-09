@@ -636,6 +636,21 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 | T10 | Catégories (beatmaker + admin) : chiffres justes (pas de relevé « avant » pour ces pages → comparaison à un comptage SQL direct) || ✅ Jake (Admin → Catégories → Styles = SQL direct plateforme sur 4 colonnes : Trap 90/146/106/6 262,70 €, Reggaeton 61/52/17/4 900,50 €, R&B 41/40/2/1 133,60 €) ; page beatmaker = n'affiche que le nombre de beats (lecture par pages, prouvé par le code) |
 | T11 | **Bug trouvé en testant (antérieur, introduit avec le fuseau par beatmaker)** : graphiques en boucle sans fin dès qu'une période par jour/semaine contient le passage à l'heure d'hiver (25/10/2026 en France → « Ce mois » et « Ce trimestre » auraient cessé de répondre le 25 octobre) ; « Semaine dernière » décalée d'1 h après un changement d'heure ; `zonedTimeToUtc` faux d'1 h les jours de changement d'heure dans les fuseaux éloignés (Auckland). Corrigé (`periode.ts`, `lib/fuseau-horaire.ts`, utilisés seulement par Analytics) | ✅ Claude (périodes qui bloquaient → 14 et 27 tranches en < 40 ms ; test T6 à 0 erreur) |
 
+**🔄 LOT EN COURS (plan validé le 2026-10-09) — Cohérence des chiffres Analytics** (décision de Jake : « il faut que tout soit cohérent », puis « plus logique d'avoir les données exactes même sur admin »).
+- **C1 — Période « Personnalisé »** (`periode.ts`) : du minuit local du jour de début au dernier instant local du jour de fin (avant : dates lues telles quelles → jour de fin exclu, journées coupées à minuit UTC) ; découpage par jour/semaine/mois inchangé (même nombre de jours que l'écran).
+- **C2 — Fiche d'un beat** : mêmes statuts que l'onglet Beats (`STATUTS_ANALYTICS`, avant : `payee` seul) ; CA net = HT (avant : TVA non retirée) ; libellé « CA Net (HT) ».
+- **C3 — Admin → Catégories** : ventes et CA net = somme de ce que chaque vendeur voit dans son Analytics (mêmes statuts, part de chaque vendeur sur une collab, remboursements et litiges en cours retirés, TVA au taux de chaque vendeur) — `chargerPartsTousVendeurs` (`lib/analytics-parts.ts`, mêmes règles, 3 lectures pour toute la plateforme). Page Catégories beatmaker : n'affiche que le nombre de beats → ventes/écoutes plus lues.
+- Trouvé, hors lot : erreur de lint antérieure `react-hooks/set-state-in-effect` dans `analytics/beats/[id]/page.tsx` ligne 236 (ne bloque pas le build).
+
+| # | Test | Statut |
+|---|---|---|
+| T0 | Build OK ; Analytics, fiche d'un beat, Admin → Catégories s'ouvrent sans erreur | |
+| T1 | Relevé comparé à `apres-jakeb-test` : seules la période Personnalisé et les fiches de beats changent, chaque écart expliqué | |
+| T2 | Personnalisé 1er → 30 septembre = Mois dernier au chiffre près | |
+| T3 | Fiche d'un beat = sa ligne dans l'onglet Beats (ventes, CA) pour 3 beats × 7 périodes ; CA net = HT | |
+| T4 | Personnalisé : même découpage du graphique qu'avant | |
+| T5 | Admin → Catégories : ventes et CA net des 3 premiers styles = calcul SQL indépendant | |
+
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.

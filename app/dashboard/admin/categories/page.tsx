@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import type { CategorieRow, TypeCategorie } from '@/lib/categories'
-import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
+import { agregerStatsParCategorie, statsPour, type LigneVente } from '@/lib/categories-stats'
+import { chargerPartsTousVendeurs, partDeLigne, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 import {
   approuverCertificationGroupe,
@@ -10,6 +11,8 @@ import {
 } from './_lib/actions'
 import AdminCategoriesClient from './_components/AdminCategoriesClient'
 
+type LigneCommande = { commande_id: string; beat_id: string; licence_id: string; prix_paye: number; reduction_montant: number | null; commandes: { beatmaker_id: string } }
+
 export default async function AdminCategoriesPage() {
   // Vue plateforme-wide (toutes boutiques) — nécessite le service_role, la
   // RLS d'un beatmaker (même admin) ne remonte que ses propres catégories
@@ -18,7 +21,7 @@ export default async function AdminCategoriesPage() {
 
   // Plateforme entière : catégories, beats, ventes et écoutes dépassent vite
   // 1 000 lignes → lecture par pages, écoutes comptées dans la base.
-  const [data, { data: demandesRaw }, beatsData, lignesData, ecoutes] = await Promise.all([
+  const [data, { data: demandesRaw }, beatsData, lignesData, ecoutes, partsTous, beatmakersTva] = await Promise.all([
     toutesLesLignes((debut, fin) => admin.from('categories').select('id, type, nom, source, beatmaker_id, statut, image_url, beatmakers(nom_artiste)').order('nom').order('id').range(debut, fin)),
     // Demandes en attente : nom/type dénormalisés (Phase 7.10) — pas besoin
     // de la catégorie d'origine, elle peut avoir été fusionnée/supprimée.
@@ -27,15 +30,36 @@ export default async function AdminCategoriesPage() {
       .eq('statut', 'en_attente')
       .order('created_at', { ascending: true }),
     toutesLesLignes((debut, fin) => admin.from('beats').select('id, styles, ambiances, instruments, type_beat').order('id').range(debut, fin)),
-    toutesLesLignes((debut, fin) => admin.from('commande_lignes')
-      .select('beat_id, prix_paye, reduction_montant, commandes!inner(statut)')
-      .eq('commandes.statut', 'payee')
+    toutesLesLignes<LigneCommande>((debut, fin) => admin.from('commande_lignes')
+      .select('commande_id, beat_id, licence_id, prix_paye, reduction_montant, commandes!inner(statut, beatmaker_id)')
+      .in('commandes.statut', STATUTS_ANALYTICS)
       .order('id')
-      .range(debut, fin)),
+      .range(debut, fin) as unknown as PromiseLike<{ data: LigneCommande[] | null; error: unknown }>),
     toutesLesLignes<{ beat_id: string; ecoutes: number }>((debut, fin) => admin.rpc('analytics_ecoutes_par_beat_plateforme').order('beat_id').range(debut, fin)),
+    chargerPartsTousVendeurs(admin),
+    toutesLesLignes<{ id: string; tva_active: boolean | null; tva_taux: number | null }>((debut, fin) => admin.from('beatmakers').select('id, tva_active, tva_taux').order('id').range(debut, fin)),
   ])
 
-  const statsParTag = agregerStatsParCategorie(beatsData, lignesData, new Map(ecoutes.map(e => [e.beat_id, Number(e.ecoutes)])))
+  // Ventes et CA net = somme de ce que chaque vendeur voit dans SON Analytics :
+  // mêmes statuts, sa part sur une collab, ce qu'il a rendu au client retiré,
+  // part sous litige en cours retirée, TVA retirée au taux de CE vendeur.
+  const tauxTva = new Map(beatmakersTva.map(b => [b.id, b.tva_active ? (b.tva_taux ?? 20) / 100 : 0]))
+  const ventes: LigneVente[] = []
+  for (const l of lignesData) {
+    const vendeurs = partsTous.vendeursParCommande.get(l.commande_id) ?? [l.commandes.beatmaker_id]
+    let caNet = 0
+    let compte = false
+    for (const v of vendeurs) {
+      const parts = partsTous.parVendeur.get(v)
+      const part = parts ? partDeLigne(l, parts) : l
+      if (!part) continue
+      compte = true
+      caNet += (part.prix_paye - (part.reduction_montant ?? 0)) / (1 + (tauxTva.get(v) ?? 0))
+    }
+    if (compte) ventes.push({ beat_id: l.beat_id, ca_net: caNet })
+  }
+
+  const statsParTag = agregerStatsParCategorie(beatsData, ventes, new Map(ecoutes.map(e => [e.beat_id, Number(e.ecoutes)])))
 
   const categories = ((data ?? []) as unknown as (CategorieRow & { beatmakers: { nom_artiste: string } | null })[])
     .map(c => ({ ...c, nom_artiste: c.beatmakers?.nom_artiste ?? null, ...statsPour(statsParTag, c.type, c.nom) }))

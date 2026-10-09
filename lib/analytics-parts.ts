@@ -34,43 +34,79 @@ export type PartsVendeur = {
   rembourseParCommande: Map<string, number>
 }
 
-export async function chargerPartsVendeur(admin: SupabaseClient, vendeurId: string): Promise<PartsVendeur> {
-  const [data, litiges, solos] = await Promise.all([
-    toutesLesLignes<unknown>((debut, fin) => admin
-      .from('commande_tranches')
-      .select('id, commande_id, montant_ttc_cents, montant_rembourse_cents, detail_lignes, commandes!inner(beatmaker_id, prix_paye, statut)')
-      .eq('vendeur_id', vendeurId)
-      .order('id')
-      .range(debut, fin)),
-    toutesLesLignes<{ commande_id: string; tranche_id: string | null }>((debut, fin) => admin
-      .from('litiges').select('commande_id, tranche_id').eq('beatmaker_id', vendeurId).eq('statut', 'en_cours')
-      .order('id')
-      .range(debut, fin)),
-    // Ventes solo touchées par un remboursement ou un litige (les autres
-    // comptent telles quelles, sans entrée ici).
-    toutesLesLignes<{ id: string; prix_paye: number; montant_rembourse_cents: number | null; statut: string }>((debut, fin) => admin
-      .from('commandes')
-      .select('id, prix_paye, montant_rembourse_cents, statut')
-      .eq('beatmaker_id', vendeurId)
-      .in('statut', ['litige', 'remboursee', 'remboursee_partielle', 'remboursement_incomplet'])
-      .order('id')
-      .range(debut, fin)),
-  ])
+type LigneTranche = {
+  id: string
+  vendeur_id: string
+  commande_id: string
+  montant_ttc_cents: number
+  montant_rembourse_cents: number | null
+  detail_lignes: { beat_id: string; licence_id: string; montant_cents: number }[] | null
+  commandes: { beatmaker_id: string; prix_paye: number; statut: string }
+}
+type LigneLitige = { beatmaker_id: string; commande_id: string; tranche_id: string | null }
+type LigneSolo = { id: string; beatmaker_id: string; prix_paye: number; montant_rembourse_cents: number | null; statut: string }
 
+const SELECT_TRANCHES = 'id, vendeur_id, commande_id, montant_ttc_cents, montant_rembourse_cents, detail_lignes, commandes!inner(beatmaker_id, prix_paye, statut)'
+// Ventes solo touchées par un remboursement ou un litige (les autres
+// comptent telles quelles, sans entrée dans les parts).
+const STATUTS_TOUCHES = ['litige', 'remboursee', 'remboursee_partielle', 'remboursement_incomplet']
+
+export async function chargerPartsVendeur(admin: SupabaseClient, vendeurId: string): Promise<PartsVendeur> {
+  const [tranches, litiges, solos] = await Promise.all([
+    toutesLesLignes<unknown>((debut, fin) => admin
+      .from('commande_tranches').select(SELECT_TRANCHES).eq('vendeur_id', vendeurId)
+      .order('id').range(debut, fin)),
+    toutesLesLignes<LigneLitige>((debut, fin) => admin
+      .from('litiges').select('beatmaker_id, commande_id, tranche_id').eq('beatmaker_id', vendeurId).eq('statut', 'en_cours')
+      .order('id').range(debut, fin)),
+    toutesLesLignes<LigneSolo>((debut, fin) => admin
+      .from('commandes').select('id, beatmaker_id, prix_paye, montant_rembourse_cents, statut')
+      .eq('beatmaker_id', vendeurId).in('statut', STATUTS_TOUCHES)
+      .order('id').range(debut, fin)),
+  ])
+  return construireParts(vendeurId, tranches as LigneTranche[], litiges, solos)
+}
+
+/** Parts de TOUS les vendeurs de la plateforme (vue admin) : mêmes règles
+ *  que chargerPartsVendeur, en trois lectures au lieu de trois par vendeur.
+ *  vendeursParCommande = vendeurs ayant une tranche sur chaque commande. */
+export async function chargerPartsTousVendeurs(admin: SupabaseClient): Promise<{ parVendeur: Map<string, PartsVendeur>; vendeursParCommande: Map<string, string[]> }> {
+  const [tranches, litiges, solos] = await Promise.all([
+    toutesLesLignes<unknown>((debut, fin) => admin
+      .from('commande_tranches').select(SELECT_TRANCHES)
+      .order('id').range(debut, fin)),
+    toutesLesLignes<LigneLitige>((debut, fin) => admin
+      .from('litiges').select('beatmaker_id, commande_id, tranche_id').eq('statut', 'en_cours')
+      .order('id').range(debut, fin)),
+    toutesLesLignes<LigneSolo>((debut, fin) => admin
+      .from('commandes').select('id, beatmaker_id, prix_paye, montant_rembourse_cents, statut')
+      .in('statut', STATUTS_TOUCHES)
+      .order('id').range(debut, fin)),
+  ])
+  const grouper = <T,>(rows: T[], cle: (r: T) => string) => {
+    const m = new Map<string, T[]>()
+    for (const r of rows) m.set(cle(r), [...(m.get(cle(r)) ?? []), r])
+    return m
+  }
+  const tranchesPar = grouper(tranches as LigneTranche[], r => r.vendeur_id)
+  const litigesPar = grouper(litiges, r => r.beatmaker_id)
+  const solosPar = grouper(solos, r => r.beatmaker_id)
+  const parVendeur = new Map<string, PartsVendeur>()
+  for (const v of new Set([...tranchesPar.keys(), ...solosPar.keys()])) {
+    parVendeur.set(v, construireParts(v, tranchesPar.get(v) ?? [], litigesPar.get(v) ?? [], solosPar.get(v) ?? []))
+  }
+  const vendeursParCommande = new Map<string, string[]>()
+  for (const t of tranches as LigneTranche[]) vendeursParCommande.set(t.commande_id, [...(vendeursParCommande.get(t.commande_id) ?? []), t.vendeur_id])
+  return { parVendeur, vendeursParCommande }
+}
+
+function construireParts(vendeurId: string, tranches: LigneTranche[], litiges: LigneLitige[], solos: LigneSolo[]): PartsVendeur {
   const sousLitige = new Set(litiges.map(l => l.tranche_id ?? `solo:${l.commande_id}`))
 
-  type Row = {
-    id: string
-    commande_id: string
-    montant_ttc_cents: number
-    montant_rembourse_cents: number | null
-    detail_lignes: { beat_id: string; licence_id: string; montant_cents: number }[] | null
-    commandes: { beatmaker_id: string; prix_paye: number; statut: string }
-  }
   const parCommande = new Map<string, PartCommande>()
   const rembourseParCommande = new Map<string, number>()
   const autresCommandes: string[] = []
-  for (const r of data as Row[]) {
+  for (const r of tranches) {
     const rembourse = Math.min(r.montant_rembourse_cents ?? 0, r.montant_ttc_cents)
     const garde = sousLitige.has(r.id) ? 0 : r.montant_ttc_cents - rembourse
     const facteur = sousLitige.has(r.id) ? 0 : r.montant_ttc_cents > 0 ? garde / r.montant_ttc_cents : 1
