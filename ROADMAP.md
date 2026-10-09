@@ -585,13 +585,31 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 | T19 | Segment « LTV > X » contient des contacts importés | ✅ Jake (LTV > 1 000 € : Steven Bienvenu 1 229 € et Red Diamond 1 134 €, acheteurs BeatStars, + 2 clients My Producer) |
 | T20 | Ménage : abonnement rejoué pas compté deux fois (`stripe_invoice_id`) ; anciennes colonnes supprimées | ✅ anti-doublon prouvé par le code (recherche par `stripe_invoice_id` avant insertion + index unique) ; migration de ménage exécutée par Jake (0 ancienne colonne, 166 paiements identifiés, index présent) ; Commandes + commande d'abonnement s'ouvrent sans erreur |
 
-**PROCHAIN CHANTIER (demande de Jake, 2026-10-09) — pagination de tous les tableaux du dashboard** — plan PRÉSENTÉ, PAS ENCORE VALIDÉ ni codé (session close avant validation). Détail : `memory/project_pagination_tableaux_2026_10_09.md`.
-- **Pourquoi** : 33 tableaux affichaient toutes leurs lignes (2 000+ depuis l'import BeatStars) ; un seul limité (Commandes importées, « Afficher plus »).
-- **Trouvé à l'inventaire** : (1) la liste **Commandes ne charge que les 500 dernières** (`.limit(500)` ×3 dans `app/dashboard/business/commandes/page.tsx`) → plus anciennes invisibles, sans message ; (2) les journaux emails / décisions / mails plateforme / décisions admin sont DÉJÀ paginés côté serveur (50 fixes, `PAGE_SIZE`) → à passer sur le composant commun ; (3) journal Stripe admin limité aux 100 derniers (`app/dashboard/admin/stripe-events/page.tsx`).
-- **Fonctionnement proposé** : « 1–50 sur 1 517 », choix 20 / 50 / 100 (50 par défaut), précédent/suivant + numéros ; **un seul réglage mémorisé pour tout le dashboard** (cookie lu par le layout Business → pas de saut 50→100 au chargement) — POINT À FAIRE VALIDER ; retour page 1 à chaque recherche/filtre/onglet/tri ; sélection de contacts conservée d'une page à l'autre ; compteurs/totaux calculés sur tout le résultat.
-- **P1** composant commun (mode « dans la page » + mode « par l'adresse ») + mémorisation. **P2** tableaux gérés dans le navigateur : Contacts (Tous/Clients/Leads/Newsletter), détail liste, Doublons, Commandes (+ fin limite 500), Commandes importées (liste + historique), Abonnements, Beats, Codes promo, Litiges, Catégories (+ admin), Campagnes, file d'attente automatisations, Analytics Ventes/Abonnements/Beats/Codes promo/Revenus par jour, ventes du détail d'un beat. **P3** tableaux construits par le serveur (page + taille dans l'adresse) : fiche client (onglet Commandes + historique des paiements d'abonnement), détail segment, détail abonnement, 4 journaux, journal Stripe admin.
-- **Exclus (courts par nature)** : résumés Analytics (Vue d'ensemble, Préférences), lignes d'une commande, encart litige, fiche code promo, classement Analytics admin, exemples de l'écran d'import, 20 dernières commandes de la fiche client admin.
-- **Checklist proposée** : T0 pages OK ; T1 Contacts 50 lignes / page suivante / dernière page ; T2 choix 100 repris partout et après fermeture du navigateur ; T3 recherche en page 5 → page 1 ; T4 onglet/filtre → page 1 ; T5 sélection sur 2 pages → action groupée sur tous ; T6 plus de limite 500 ; T7 Commandes importées + panneau ; T8 fiche client onglet Commandes paginé ; T9 détail segment / liste ; T10 journaux 20/50/100 ; T11 Analytics Ventes totaux inchangés ; T12 tableau < 20 lignes sans barre inutile.
+**CHANTIER EN COURS — pagination de tous les tableaux du dashboard (demande de Jake, 2026-10-09)** — plan validé le 2026-10-09 (reprise), CODÉ le même jour (commits `9a0d2ac`, `8dd58ac`, `efa7250`, `3fc9bcf`, `4e1acc0`), tests en cours. Détail : `memory/project_pagination_tableaux_2026_10_09.md`.
+- **Décision de Jake** : UN SEUL réglage de taille pour tout le dashboard — le dernier choix fait dans n'importe quel tableau s'applique partout, gardé après fermeture du navigateur (cookie `taille_tableaux`, lu par les layouts Business et Admin → pas de saut d'affichage).
+- **Fonctionnement** : « 1–50 sur 1 517 », 20 / 50 / 100 (50 par défaut), ‹ 1 … 4 5 6 … 31 › ; retour page 1 à chaque recherche/filtre/onglet/tri ; changer de taille garde la première ligne visible ; pas de barre sous 21 lignes ; compteurs et totaux toujours calculés sur tout le résultat ; la sélection de contacts est gardée d'une page à l'autre (la case d'en-tête sélectionne TOUT le résultat filtré, comme avant).
+- **Code** : `lib/pagination.ts` (+ `lib/pagination-serveur.ts`), `app/dashboard/_pagination/` (`Pagination` = la barre, `usePagination` = mode « dans la page », `Pagine` = idem après un chargement, `PaginationAdresse` = mode « par l'adresse » `?page=N`, `TaillePage` = réglage partagé).
+- **Plafonds cachés retirés (bugs silencieux trouvés)** : Commandes 500, Beats 500, Abonnements 300, journal Stripe admin 100, commandes d'un code promo 100 (les totaux « CA généré / remise accordée » de la fiche étaient faux au-delà), beats ciblables dans un code promo 200. Journaux emails / mails plateforme : le nombre de pages comptait toujours l'onglet « Tous » (pages vides en fin d'onglet Réussis/Échoués) → corrigé.
+- **Trouvé, PAS corrigé (hors chantier, à décider avec Jake)** : les requêtes des onglets Analytics (`app/api/business/analytics/*`, `lib/analytics-parts.ts`) ne sont pas lues page par page → au-delà de 1 000 lignes sur la période (ventes, lignes de commande, écoutes `beat_plays`…), Supabase coupe sans message et les chiffres sont sous-estimés.
+
+Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
+
+| # | Test | Statut |
+|---|---|---|
+| T0 | Site déployé ; toutes les pages concernées s'ouvrent sans erreur | ✅ build de production OK (Claude) ; pages à ouvrir (Jake) |
+| T1 | Contacts « Tous » : 50 lignes, « 1–50 sur 1 517 », page suivante, dernière page juste | ⬜ |
+| T2 | Choix 100 repris dans les autres tableaux et encore là après fermeture du navigateur | ⬜ |
+| T3 | Recherche lancée depuis la page 5 → page 1 | ⬜ |
+| T4 | Changement d'onglet / filtre / tri → page 1 | ⬜ |
+| T5 | Contacts sélectionnés sur 2 pages → l'action groupée (ajout à une liste) les prend tous | ⬜ |
+| T6 | Commandes : plus de limite à 500 (total = base) | ⬜ |
+| T6b | Beats / Abonnements / code promo : plus de plafond | ✅ prouvé par le code (lecture par lots de 1 000 via `toutesLesLignes`, ordre stable) |
+| T7 | Commandes importées (liste + historique) : pagination, panneau de détail toujours OK | ⬜ |
+| T8 | Fiche client : onglet Commandes paginé, l'onglet reste le même en changeant de page | ⬜ |
+| T9 | Détail d'un segment et d'une liste | ⬜ |
+| T10 | Journaux : 20 / 50 / 100, onglet Échoués sans page vide ; journal Stripe au-delà de 100 | ⬜ |
+| T11 | Analytics Ventes : totaux identiques à avant | ✅ prouvé par le code (seul l'affichage du tableau est découpé, KPI et totaux viennent de l'API inchangée) ; coup d'œil Jake |
+| T12 | Tableau de moins de 21 lignes : pas de barre | ✅ prouvé par le code (`total <= 20` → rien) ; coup d'œil Jake |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
