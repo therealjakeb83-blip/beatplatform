@@ -621,17 +621,18 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 
 | # | Test | Statut |
 |---|---|---|
-| T0 | Build de prod OK ; 7 onglets + fiche d'un beat s'ouvrent sans erreur | |
+| T0 | Build de prod OK ; 7 onglets + fiche d'un beat s'ouvrent sans erreur | 🔄 Claude (build OK ; 8 routes en ligne répondent 401 hors connexion, sans plantage) — reste Jake (pages connectées) |
 | T1 | Migration exécutée : SELECT de contrôle (3 fonctions, 3 index, exécution réservée à service_role, fonction = comptage direct) || ✅ Jake (3 fonctions, 3 index, accès service_role seul ; jakeb-test : 161 écoutes, 42 free DL, 22 favoris = comptage direct) |
 | T2 | Sous 1 000 lignes : relevés avant/après de A identiques (comparaison par script ; seules les durées d'abonnement bougent avec l'heure) | |
 | T3 | Idem pour B (côté collaborateur : « Reçu en collab », parts) | |
 | T4 | 1 500 fausses écoutes (sans client, `pays = 'ZZ-TEST'`) sur un beat de A : Vue d'ensemble / Beats / Préférences = comptage SQL, période complète et « Ce mois » | |
 | T5 | Fiche de ce beat : KPI Écoutes = SQL, tableau des écoutes complet | |
-| T6 | Graphiques : écoutes par jour / semaine / mois = SQL par tranche | |
+| T6 | Graphiques : écoutes par jour / semaine / mois = SQL par tranche | 🔄 Claude (hors base : 7 fuseaux × 13 périodes, 1 311 tranches, 31 435 instants → chaque instant tombe dans la tranche que calcule la base, 0 erreur, changements d'heure compris) — reste la comparaison sur données réelles en T4 |
 | T7 | Nettoyage des fausses écoutes (SELECT filtre exact puis DELETE), retour aux chiffres de T2 | |
-| T8 | Free downloads et favoris au-delà de 1 000 : prouvé par le code (même fonction que les écoutes ; pas de faux free downloads, l'automatisation de relance pourrait écrire à de vrais clients) | |
-| T9 | Ventes / abonnements / codes promo au-delà de 1 000 : prouvé par le code (même `toutesLesLignes` que Commandes et le CRM ; pas de fausses commandes, elles créeraient factures et fiches CRM) | |
-| T10 | Catégories (beatmaker + admin) : chiffres identiques avant/après | |
+| T8 | Free downloads et favoris au-delà de 1 000 : prouvé par le code (même fonction que les écoutes ; pas de faux free downloads, l'automatisation de relance pourrait écrire à de vrais clients) | ✅ prouvé par le code (même fonction SQL, même code JS que les écoutes) — sous réserve de T4 pour ce chemin commun |
+| T9 | Ventes / abonnements / codes promo au-delà de 1 000 : prouvé par le code (même `toutesLesLignes` que Commandes et le CRM ; pas de fausses commandes, elles créeraient factures et fiches CRM) | ✅ prouvé par le code (relecture : toute lecture de liste qui peut grossir passe par `toutesLesLignes`/`parLots` ; restent en lecture unique seulement des lignes uniques et petites listes bornées) |
+| T10 | Catégories (beatmaker + admin) : chiffres justes (pas de relevé « avant » pour ces pages → comparaison à un comptage SQL direct) | |
+| T11 | **Bug trouvé en testant (antérieur, introduit avec le fuseau par beatmaker)** : graphiques en boucle sans fin dès qu'une période par jour/semaine contient le passage à l'heure d'hiver (25/10/2026 en France → « Ce mois » et « Ce trimestre » auraient cessé de répondre le 25 octobre) ; « Semaine dernière » décalée d'1 h après un changement d'heure ; `zonedTimeToUtc` faux d'1 h les jours de changement d'heure dans les fuseaux éloignés (Auckland). Corrigé (`periode.ts`, `lib/fuseau-horaire.ts`, utilisés seulement par Analytics) | ✅ Claude (périodes qui bloquaient → 14 et 27 tranches en < 40 ms ; test T6 à 0 erreur) |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 

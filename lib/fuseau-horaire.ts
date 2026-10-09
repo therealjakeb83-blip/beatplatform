@@ -93,7 +93,12 @@ export function zonedTimeToUtc(y: number, m: number, d: number, h: number, mi: n
   const guessedParts = getZonedParts(guess, tz)
   const guessedAsUtc = Date.UTC(guessedParts.year, guessedParts.month - 1, guessedParts.day, guessedParts.hour, guessedParts.minute, guessedParts.second)
   const wantedAsUtc   = Date.UTC(y, m - 1, d, h, mi, s)
-  return new Date(guess.getTime() + (wantedAsUtc - guessedAsUtc))
+  const premier = new Date(guess.getTime() + (wantedAsUtc - guessedAsUtc))
+  // 2e correction : si un changement d'heure tombe entre le guess et la cible
+  // (fuseaux éloignés d'UTC, ex. Auckland), le 1er écart était faux d'une heure.
+  const p2 = getZonedParts(premier, tz)
+  const ecart = wantedAsUtc - Date.UTC(p2.year, p2.month - 1, p2.day, p2.hour, p2.minute, p2.second)
+  return ecart === 0 ? premier : new Date(premier.getTime() + ecart)
 }
 
 export function addDaysInstant(date: Date, days: number): Date {

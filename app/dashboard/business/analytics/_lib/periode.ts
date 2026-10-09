@@ -54,7 +54,8 @@ export function getPeriodDates(request: Request, tz: string): { from: string | n
     }
     case 'semaine-derniere': {
       const lundiCette = startOfWeekInTz(now, tz)
-      const lundiDerniere = addDaysInstant(lundiCette, -7)
+      // Lundi de la semaine qui contient J-3 : -7 jours pile décale d'une heure au changement d'heure.
+      const lundiDerniere = startOfWeekInTz(addDaysInstant(lundiCette, -3), tz)
       const finDerniere = new Date(lundiCette.getTime() - 1)
       return { from: lundiDerniere.toISOString(), to: finDerniere.toISOString(), periode }
     }
@@ -196,7 +197,10 @@ export function getHistoriqueSlots(
     const slots: HistoriqueSlot[] = []
     let i = 1
     while (curr <= fin) {
-      const end          = addDaysInstant(curr, 7)
+      // Lundi suivant = lundi de la semaine qui contient curr + 7,5 jours :
+      // +7 jours pile retombait dans la même semaine (dimanche 23 h) quand la
+      // semaine compte 169 h (passage à l'heure d'hiver) → boucle sans fin.
+      const end          = startOfWeekInTz(addDaysInstant(curr, 7.5), tz)
       const startParts   = getZonedParts(curr, tz)
       const lastDayParts = getZonedParts(new Date(end.getTime() - 1), tz)
       const d1 = startParts.day,   m1 = MOIS_COURTS[startParts.month - 1]
@@ -207,9 +211,7 @@ export function getHistoriqueSlots(
         from:      curr.toISOString(),
         to:        end.toISOString(),
       })
-      // Resnap sur le lundi 00:00 local plutôt que +7 jours fixes, pour ne
-      // pas dériver d'une heure au passage d'un changement d'heure (DST).
-      curr = startOfWeekInTz(end, tz)
+      curr = end
       i++
     }
     return slots
@@ -221,7 +223,11 @@ export function getHistoriqueSlots(
 
   let curr               = startOfDayInTz(debutInstant, tz)
   const finDayStart      = startOfDayInTz(finInstant, tz)
-  const endInclusive     = addDaysInstant(finDayStart, 1) // exclusif
+  // Lendemain = début du jour qui contient +1,5 jour : un jour compte 23 h ou
+  // 25 h au changement d'heure, +24 h pile retombait dans le même jour (25 h)
+  // → boucle sans fin, ou mordait d'une heure sur le lendemain (23 h).
+  const lendemain        = (d: Date) => startOfDayInTz(addDaysInstant(d, 1.5), tz)
+  const endInclusive     = lendemain(finDayStart) // exclusif
 
   const startParts = getZonedParts(curr, tz)
   const finParts    = getZonedParts(finDayStart, tz)
@@ -231,7 +237,7 @@ export function getHistoriqueSlots(
   const slots: HistoriqueSlot[] = []
   while (curr < endInclusive) {
     const p    = getZonedParts(curr, tz)
-    const next = addDaysInstant(curr, 1)
+    const next = lendemain(curr)
     const dow  = p.weekday - 1 // 1=lundi..7=dimanche -> index 0=lundi dans JOURS_COURTS
     slots.push({
       label:     useWeekLabels ? JOURS_COURTS[dow] : multiMonth ? `${p.day} ${MOIS_COURTS[p.month - 1]}` : String(p.day),
@@ -239,8 +245,7 @@ export function getHistoriqueSlots(
       from:      curr.toISOString(),
       to:        next.toISOString(),
     })
-    // Resnap sur minuit local (même raison que pour les semaines ci-dessus).
-    curr = startOfDayInTz(next, tz)
+    curr = next
   }
   return slots
 }
