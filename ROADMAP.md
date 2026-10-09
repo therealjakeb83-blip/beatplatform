@@ -621,7 +621,7 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 
 | # | Test | Statut |
 |---|---|---|
-| T0 | Build de prod OK ; 7 onglets + fiche d'un beat s'ouvrent sans erreur | 🔄 Claude (build OK ; 8 routes en ligne répondent 401 hors connexion, sans plantage) — reste Jake (pages connectées) |
+| T0 | Build de prod OK ; 7 onglets + fiche d'un beat s'ouvrent sans erreur | ✅ Claude (build OK ; 8 routes en ligne répondent 401 hors connexion, sans plantage) + Jake (7 onglets + fiche d'un beat sans erreur, après Ctrl+F5) |
 | T1 | Migration exécutée : SELECT de contrôle (3 fonctions, 3 index, exécution réservée à service_role, fonction = comptage direct) || ✅ Jake (3 fonctions, 3 index, accès service_role seul ; jakeb-test : 161 écoutes, 42 free DL, 22 favoris = comptage direct) |
 | T2 | Sous 1 000 lignes : relevés avant/après de A identiques (comparaison par script ; seules les durées d'abonnement bougent avec l'heure) | |
 | T3 | Idem pour B (côté collaborateur : « Reçu en collab », parts) | |
