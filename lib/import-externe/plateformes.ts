@@ -7,7 +7,7 @@ export function libellePlateforme(p: string | null | undefined): string {
 }
 
 export function libelleTypeBoutique(t: string | null | undefined): string | null {
-  if (t === 'PRO_PAGE') return 'Boutique perso'
+  if (t === 'PRO_PAGE') return 'Pro Page'
   if (t === 'MARKETPLACE') return 'Marketplace'
   return t ?? null
 }
