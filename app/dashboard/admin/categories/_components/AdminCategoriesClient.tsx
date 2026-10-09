@@ -263,7 +263,7 @@ function TableOfficielles({ categories, avecImage, supprimerCategoriePlateforme 
   supprimerCategoriePlateforme: (id: string) => Promise<{ erreur?: string }>
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const pagination = usePagination(categories)
+  const pagination = usePagination(categories, [], { adresse: false })
 
   return (
     <>

@@ -48,7 +48,7 @@ function ClientCell({ client_id, client_nom }: { client_id: string | null; clien
 }
 
 function TableVentes({ rows }: { rows: Vente[] }) {
-  const pagination = usePagination(rows)
+  const pagination = usePagination(rows, [], { adresse: false })
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Achats ({rows.length})</p>
@@ -109,7 +109,7 @@ function countryFlag(code: string): string {
 }
 
 function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
-  const pagination = usePagination(rows)
+  const pagination = usePagination(rows, [], { adresse: false })
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Écoutes ({rows.length})</p>
@@ -152,7 +152,7 @@ function TableEcoutes({ rows }: { rows: EcouteRow[] }) {
 }
 
 function TableFavoris({ rows }: { rows: FavoriRow[] }) {
-  const pagination = usePagination(rows)
+  const pagination = usePagination(rows, [], { adresse: false })
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Favoris ({rows.length})</p>
@@ -179,7 +179,7 @@ function TableFavoris({ rows }: { rows: FavoriRow[] }) {
 }
 
 function TableFreeDl({ rows }: { rows: FreeDlRow[] }) {
-  const pagination = usePagination(rows)
+  const pagination = usePagination(rows, [], { adresse: false })
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <p className="px-4 py-3 text-xs font-semibold text-white border-b border-gray-800">Free Downloads ({rows.length})</p>

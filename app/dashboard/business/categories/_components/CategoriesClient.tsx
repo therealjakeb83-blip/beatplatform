@@ -120,7 +120,7 @@ export default function CategoriesClient({
 
 function TableOfficielles({ categories, avecImage }: { categories: CategorieAvecDonnees[]; avecImage: boolean }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const pagination = usePagination(categories)
+  const pagination = usePagination(categories, [], { adresse: false })
 
   return (
     <>

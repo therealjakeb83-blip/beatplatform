@@ -13,9 +13,7 @@ import { chargerCommandesImporteesClient, versCrmDepuisDetail } from '@/app/dash
 import { LigneTableauImportee, MentionsLigne, MontantLigne } from '@/app/dashboard/business/_components/CommandeImportee'
 import { libelleSource, SOURCE_COLORS } from '@/lib/sources-marketing'
 import { libelleSourceImport } from '@/lib/import-externe/plateformes'
-import { tailleTableaux } from '@/lib/pagination-serveur'
-import { decouperPage, lirePageAdresse } from '@/lib/pagination'
-import PaginationAdresse from '../../../_pagination/PaginationAdresse'
+import TableauPagine from '../../../_pagination/TableauPagine'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,11 +129,10 @@ export default async function FicheClientPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ onglet?: string; page?: string }>
+  searchParams: Promise<{ onglet?: string }>
 }) {
   const { id: clientId }        = await params
-  const { onglet = 'identite', page: pageParam } = await searchParams
-  const taille = await tailleTableaux()
+  const { onglet = 'identite' } = await searchParams
 
   const supabase = await createClient()
   const admin    = createAdminClient()
@@ -393,8 +390,6 @@ export default async function FicheClientPage({
     ...commandesImportees.flatMap(c => c.lignes.map(l => ({ genre: 'importee' as const, date: c.date_vente, commande: c, ligne: l }))),
   ].sort((a, b) => b.date.localeCompare(a.date))
 
-  const historiquePage = decouperPage(historique, lirePageAdresse(pageParam), taille)
-  const paiementsPage  = decouperPage(paiementsAbonnement, lirePageAdresse(pageParam), taille)
 
   // ── Server actions ─────────────────────────────────────────────────────────
 
@@ -936,7 +931,7 @@ export default async function FicheClientPage({
             {paiementsAbonnement.length > 0 && (
               <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
                 <h2 className="font-bold text-sm px-5 pt-4 pb-2">Historique des paiements</h2>
-                <table className="w-full text-sm border-collapse">
+                <TableauPagine classeTable="w-full text-sm border-collapse" classeCorps="[&>tr:last-child]:border-b-0" entete={
                   <thead>
                     <tr className="border-b border-gray-800">
                       <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
@@ -945,11 +940,11 @@ export default async function FicheClientPage({
                       <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Montant</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {paiementsPage.lignes.map((p, i) => {
+                } lignes={
+                    paiementsAbonnement.map(p => {
                       const statut = LIBELLES_STATUT_PAIEMENT[p.statut] ?? { label: p.statut, cls: 'bg-gray-700/60 text-gray-400' }
                       return (
-                        <tr key={p.id} className={`${i < paiementsPage.lignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}>
+                        <tr key={p.id} className="border-b border-gray-800 hover:bg-gray-800/40 transition-colors">
                           <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
                             <Link href={`/dashboard/business/commandes/${p.id}`} className="hover:text-white">{fmtDate(p.created_at)}</Link>
                           </td>
@@ -962,10 +957,8 @@ export default async function FicheClientPage({
                           <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(Number(p.prix_paye))}</td>
                         </tr>
                       )
-                    })}
-                  </tbody>
-                </table>
-                <PaginationAdresse total={paiementsAbonnement.length} page={paiementsPage.page} taille={taille} />
+                    })
+                } />
               </div>
             )}
           </div>
@@ -979,8 +972,7 @@ export default async function FicheClientPage({
             {historique.length === 0 ? (
               <div className="py-10 text-center text-gray-600 text-sm">Aucune commande.</div>
             ) : (
-              <>
-              <table className="w-full text-sm border-collapse">
+              <TableauPagine classeTable="w-full text-sm border-collapse" classeCorps="[&>tr:last-child]:border-b-0" entete={
                 <thead>
                   <tr className="border-b border-gray-800">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
@@ -990,9 +982,9 @@ export default async function FicheClientPage({
                     <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Montant</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {historiquePage.lignes.map((h, i) => {
-                    const bordure = `${i < historiquePage.lignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`
+              } lignes={
+                  historique.map(h => {
+                    const bordure = 'border-b border-gray-800 hover:bg-gray-800/40 transition-colors'
                     if (h.genre === 'importee') {
                       return (
                         <LigneTableauImportee key={`${h.commande.id}:${h.ligne.id}`} commande={h.commande} className={bordure}>
@@ -1028,11 +1020,8 @@ export default async function FicheClientPage({
                         <td className="px-5 py-3 text-right font-semibold text-white whitespace-nowrap">{fmt(a.prix_paye)}</td>
                       </tr>
                     )
-                  })}
-                </tbody>
-              </table>
-              <PaginationAdresse total={historique.length} page={historiquePage.page} taille={taille} />
-              </>
+                  })
+              } />
             )}
           </div>
         )}

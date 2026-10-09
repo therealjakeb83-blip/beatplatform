@@ -69,7 +69,7 @@ export default function CommandesImporteesClient({
   }, [commandes, recherche, plateforme])
 
   const pagination = usePagination(filtrees, [recherche, plateforme])
-  const paginationImports = usePagination(imports)
+  const paginationImports = usePagination(imports, [], { adresse: 'page_imports' })
 
   async function annuler() {
     if (!aAnnuler) return

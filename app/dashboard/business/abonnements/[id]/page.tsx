@@ -4,9 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import StatutButton from './_components/StatutButton'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { tailleTableaux } from '@/lib/pagination-serveur'
-import { decouperPage, lirePageAdresse } from '@/lib/pagination'
-import PaginationAdresse from '../../../_pagination/PaginationAdresse'
+import TableauPagine from '../../../_pagination/TableauPagine'
 
 /* ─── helpers ─────────────────────────────────────────────────────── */
 
@@ -64,14 +62,10 @@ const COMMANDE_STATUT_LABEL: Record<string, string> = {
 
 export default async function AbonnementDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ page?: string }>
 }) {
   const { id } = await params
-  const { page: pageParam } = await searchParams
-  const taille = await tailleTableaux()
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -265,7 +259,6 @@ export default async function AbonnementDetailPage({
       lienCommande: false,
     })),
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  const lignesPage = decouperPage(lignesAssociees, lirePageAdresse(pageParam), taille)
 
   return (
     <div className="flex-1 overflow-auto">
@@ -395,7 +388,7 @@ export default async function AbonnementDetailPage({
                 <span className="text-[10px] text-gray-600">{lignesAssociees.length}</span>
               </div>
               {lignesAssociees.length > 0 ? (
-                <table className="w-full">
+                <TableauPagine classeTable="w-full" classeCorps="divide-y divide-gray-800" entete={
                   <thead>
                     <tr className="border-b border-gray-800">
                       <th className="text-left px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-600">N° commande</th>
@@ -405,8 +398,8 @@ export default async function AbonnementDetailPage({
                       <th className="text-right px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-600">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {lignesPage.lignes.map(c => (
+                } lignes={
+                    lignesAssociees.map(c => (
                       <tr key={c.id} className="hover:bg-gray-800/40 transition-colors">
                         <td className="px-5 py-2.5">
                           {c.lienCommande ? (
@@ -434,13 +427,11 @@ export default async function AbonnementDetailPage({
                           <span className="text-sm font-medium text-white">€{c.prix.toFixed(2)}</span>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    ))
+                } />
               ) : (
                 <p className="px-5 py-8 text-xs text-gray-700 text-center">Aucune commande associée</p>
               )}
-              <PaginationAdresse total={lignesAssociees.length} page={lignesPage.page} taille={taille} />
             </div>
 
             {/* Historique */}

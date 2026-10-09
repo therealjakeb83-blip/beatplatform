@@ -3,20 +3,14 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { evaluerFiltres, couleurCls, type Condition } from '../../_lib/segments'
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '../../_lib/contacts'
-import { tailleTableaux } from '@/lib/pagination-serveur'
-import { decouperPage, lirePageAdresse } from '@/lib/pagination'
-import PaginationAdresse from '../../../_pagination/PaginationAdresse'
+import TableauPagine from '../../../_pagination/TableauPagine'
 
 export default async function SegmentDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ page?: string }>
 }) {
   const { id: segmentId } = await params
-  const { page: pageParam } = await searchParams
-  const taille = await tailleTableaux()
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -43,7 +37,6 @@ export default async function SegmentDetailPage({
   const contacts: ContactEnrichi[] = tousLesContacts
     .filter(c => evaluerFiltres(c, filtres))
     .sort((a, b) => b.ltv - a.ltv)
-  const contactsPage = decouperPage(contacts, lirePageAdresse(pageParam), taille)
 
   const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
   const fmtDateRel = (iso: string | null) => {
@@ -96,7 +89,7 @@ export default async function SegmentDetailPage({
             Aucun contact ne correspond à ce segment pour l&apos;instant.
           </div>
         ) : (
-          <table className="w-full text-sm border-collapse">
+          <TableauPagine classeTable="w-full text-sm border-collapse" entete={
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">NWT</th>
@@ -108,8 +101,8 @@ export default async function SegmentDetailPage({
                 <th className="w-8" />
               </tr>
             </thead>
-            <tbody>
-              {contactsPage.lignes.map((c, i) => {
+          } lignes={
+              contacts.map((c, i) => {
                 const prenomAffiche = nomAffichage(c)
                 return (
                 <tr
@@ -161,11 +154,9 @@ export default async function SegmentDetailPage({
                   </td>
                 </tr>
                 )
-              })}
-            </tbody>
-          </table>
+              })
+          } />
         )}
-        {contacts.length > 0 && <PaginationAdresse total={contacts.length} page={contactsPage.page} taille={taille} />}
       </div>
     </div>
   )

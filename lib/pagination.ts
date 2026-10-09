@@ -26,9 +26,3 @@ export function lirePageAdresse(valeur: string | string[] | undefined): number {
   const n = parseInt(Array.isArray(valeur) ? valeur[0] : (valeur ?? '1'), 10)
   return Number.isFinite(n) && n > 0 ? n : 1
 }
-
-// Mode « par l'adresse » quand le serveur a déjà toutes les lignes : il n'envoie que la page demandée
-export function decouperPage<T>(lignes: T[], pageDemandee: number, taille: number): { page: number; lignes: T[] } {
-  const page = bornerPage(pageDemandee, lignes.length, taille)
-  return { page, lignes: lignes.slice((page - 1) * taille, page * taille) }
-}
