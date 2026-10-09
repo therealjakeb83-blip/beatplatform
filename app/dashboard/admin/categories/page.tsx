@@ -54,7 +54,8 @@ export default async function AdminCategoriesPage() {
       const part = parts ? partDeLigne(l, parts) : l
       if (!part) continue
       compte = true
-      caNet += (part.prix_paye - (part.reduction_montant ?? 0)) / (1 + (tauxTva.get(v) ?? 0))
+      // prix_paye est déjà remise déduite : net HT = payé / (1 + TVA)
+      caNet += part.prix_paye / (1 + (tauxTva.get(v) ?? 0))
     }
     if (compte) ventes.push({ beat_id: l.beat_id, ca_net: caNet })
   }

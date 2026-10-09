@@ -54,7 +54,9 @@ export async function GET(request: Request) {
   // KPIs
   const utilisations  = cmds.length
   const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
-  const ca_brut       = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  // Norme (décision de Jake, 2026-10-09) : prix_paye est DÉJÀ remise déduite.
+  // CA brut = avant remises (payé + remises) ; CA net = brut − remises − TVA.
+  const ca_brut       = cmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
   const ca_net        = netHt(ca_brut, remises_total)
   const actifs        = promos.filter(c => c.statut === 'actif' && (!to || c.created_at <= to)).length
 
@@ -62,7 +64,7 @@ export async function GET(request: Request) {
   const codesEnrichis = promos
     .map(code => {
       const cmdsCode = cmds.filter(c => c.code_promo === code.code)
-      const brut    = cmdsCode.reduce((s, c) => s + c.prix_paye, 0)
+      const brut    = cmdsCode.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
       const remises = cmdsCode.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
       return {
         id:           code.id,
@@ -84,7 +86,7 @@ export async function GET(request: Request) {
   const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => {
     const mCmds  = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
-    const brut   = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const brut   = mCmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
     const remises = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     return {
       label:        slot.label,

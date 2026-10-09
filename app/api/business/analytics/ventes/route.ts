@@ -71,17 +71,19 @@ export async function GET(request: Request) {
   // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
   const netHt = (ttc: number) => tvaRate > 0 ? ttc / (1 + tvaRate) : ttc
 
-  const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  // Norme (décision de Jake, 2026-10-09) : prix_paye est DÉJÀ remise déduite.
+  // CA brut = avant remises (payé + remises) ; CA net = brut − remises − TVA.
+  const ca_brut    = cmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
   const remises    = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net     = netHt(ca_brut - remises)
   const beats_vendus = lignes.length
-  const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
+  const panier_moyen = cmds.length ? (ca_brut - remises) / cmds.length : 0
 
   // Source top
   const srcMap: Record<string, number> = {}
   for (const c of cmds) {
     const src = c.source_marketing ?? 'direct'
-    srcMap[src] = (srcMap[src] ?? 0) + c.prix_paye
+    srcMap[src] = (srcMap[src] ?? 0) + c.prix_paye + (c.reduction_montant ?? 0)
   }
   const srcEntries = Object.entries(srcMap).sort(([, a], [, b]) => b - a)
   // Collaborations : reçu sur la boutique d'un autre / part de mes collaborateurs.
@@ -99,10 +101,11 @@ export async function GET(request: Request) {
     const mCmds    = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const mLignes  = (allLignes    ?? []).filter(l => l.created_at >= slot.from && l.created_at < slot.to)
 
-    const ca_mois     = mCmds.reduce((s, c) => s + c.prix_paye, 0)
-    const ca_net_mois = netHt(mCmds.reduce((s, c) => s + c.prix_paye - (c.reduction_montant ?? 0), 0))
+    const paye_mois   = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const ca_mois     = mCmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
+    const ca_net_mois = netHt(paye_mois)
     const ventes_mois = mLignes.length
-    const panier_mois = mCmds.length ? ca_mois / mCmds.length : 0
+    const panier_mois = mCmds.length ? paye_mois / mCmds.length : 0
 
     const row: Record<string, unknown> = {
       label: slot.label, fullLabel: slot.fullLabel,
@@ -110,7 +113,7 @@ export async function GET(request: Request) {
       recu_collab: sommeFlux(flux.recus, slot.from, slot.to), part_collaborateurs: sommeFlux(flux.collaborateurs, slot.from, slot.to),
     }
     for (const src of SOURCES) {
-      row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye, 0)
+      row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
     }
     return row
   })

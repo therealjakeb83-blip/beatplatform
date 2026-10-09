@@ -83,13 +83,15 @@ export async function GET(request: Request) {
   // CA net = CA HT (TTC après remises, TVA retirée) — la TVA collectée n'appartient pas au beatmaker
   const netHt = (ttc: number) => tvaRate > 0 ? ttc / (1 + tvaRate) : ttc
 
-  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  // Norme (décision de Jake, 2026-10-09) : prix_paye est DÉJÀ remise déduite.
+  // CA brut = avant remises (payé + remises) ; CA net = brut − remises − TVA.
+  const ca_brut   = cmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
   const remises   = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const ca_net    = netHt(ca_brut - remises)
   // "Beats vendus" compte des articles (commande_lignes), pas des commandes —
   // un panier de 3 beats compte pour 3 ici, mais pour 1 seul panier_moyen ci-dessous.
   const beats_vendus = lignes.length
-  const panier_moyen = cmds.length ? ca_brut / cmds.length : 0
+  const panier_moyen = cmds.length ? (ca_brut - remises) / cmds.length : 0
   const ecoutes   = evenements.ecoutes
   const free_dl   = evenements.free_dl
   // Collaborations : reçu sur la boutique d'un autre / part de mes collaborateurs.
@@ -113,7 +115,7 @@ export async function GET(request: Request) {
     const beat = Array.isArray(l.beats) ? l.beats[0] : l.beats
     if (!beat) continue
     const ex = beatMap.get(l.beat_id) ?? { id: (beat as { id: string }).id, titre: (beat as { titre: string }).titre, couleur: (beat as { couleur: string | null }).couleur, ca: 0, ventes: 0 }
-    ex.ca     += l.prix_paye
+    ex.ca     += l.prix_paye + (l.reduction_montant ?? 0)
     ex.ventes += 1
     beatMap.set(l.beat_id, ex)
   }
@@ -129,7 +131,7 @@ export async function GET(request: Request) {
     const mCmds    = allCommandes.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
     const mLignes  = allLignes.filter(l => l.created_at >= slot.from && l.created_at < slot.to)
 
-    const mCa      = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const mCa      = mCmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
     const mRemise  = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
 
     const slotStart = new Date(slot.from)
@@ -149,7 +151,7 @@ export async function GET(request: Request) {
       ca:           mCa,
       ca_net:       netHt(mCa - mRemise),
       mrr:          mMrr,
-      panier_moyen: mCmds.length ? mCa / mCmds.length : 0,
+      panier_moyen: mCmds.length ? (mCa - mRemise) / mCmds.length : 0,
       ventes:       mLignes.length,
       ecoutes:      sommeTranche(evenementsSlots[i], 'ecoutes'),
       free_dl:      sommeTranche(evenementsSlots[i], 'free_dl'),

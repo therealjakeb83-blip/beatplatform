@@ -640,6 +640,7 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 - **C1 — Période « Personnalisé »** (`periode.ts`) : du minuit local du jour de début au dernier instant local du jour de fin (avant : dates lues telles quelles → jour de fin exclu, journées coupées à minuit UTC) ; découpage par jour/semaine/mois inchangé (même nombre de jours que l'écran).
 - **C2 — Fiche d'un beat** : mêmes statuts que l'onglet Beats (`STATUTS_ANALYTICS`, avant : `payee` seul) ; CA net = HT (avant : TVA non retirée) ; libellé « CA Net (HT) ».
 - **C3 — Admin → Catégories** : ventes et CA net = somme de ce que chaque vendeur voit dans son Analytics (mêmes statuts, part de chaque vendeur sur une collab, remboursements et litiges en cours retirés, TVA au taux de chaque vendeur) — `chargerPartsTousVendeurs` (`lib/analytics-parts.ts`, mêmes règles, 3 lectures pour toute la plateforme). Page Catégories beatmaker : n'affiche que le nombre de beats → ventes/écoutes plus lues.
+- **C4 — Norme CA brut / net (trouvé par T5, décision de Jake : « on applique la norme »)** : `prix_paye` est DÉJÀ remise déduite, l'ancien CA net (`brut − remises`) retirait les remises deux fois depuis juillet (jakeb-test : CA net trop bas de 514,49 € ; beat offert = −196 €). Désormais partout : CA brut (TTC) = payé + remises, CA net (HT) = brut − remises − TVA = payé HT, panier moyen = payé / commandes (inchangé), tout « CA » non qualifié = brut. Limite : remises « membre » et « par lot » non enregistrées à part → restent dans le prix.
 - Trouvé, hors lot : erreur de lint antérieure `react-hooks/set-state-in-effect` dans `analytics/beats/[id]/page.tsx` ligne 236 (ne bloque pas le build).
 
 | # | Test | Statut |
@@ -649,7 +650,8 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 | T2 | Personnalisé 1er → 30 septembre = Mois dernier au chiffre près | ✅ prouvé par le code (4 fuseaux : mêmes bornes, même granularité, mêmes 30 tranches ; les routes ne dépendent du nom de période que pour « tout » → résultats forcément identiques) |
 | T3 | Fiche d'un beat = sa ligne dans l'onglet Beats (ventes, CA) pour 3 beats × 7 périodes ; CA net = HT | ✅ prouvé par le code (mêmes lignes : boutique + mêmes statuts + même beat ; mêmes parts `partsDeLignes` ; même filtre de période ; CA net = même formule HT que Ventes/Vue d'ensemble) — recoupé ensuite par le relevé T1 |
 | T4 | Personnalisé : même découpage du graphique qu'avant | ✅ Claude (écran et serveur donnent la même granularité, y compris aux seuils 34/35 jours et 4/5 mois et sur une période contenant le changement d'heure) |
-| T5 | Admin → Catégories : ventes et CA net des 3 premiers styles = calcul SQL indépendant | |
+| T5 | Admin → Catégories : ventes et CA net des 3 premiers styles = calcul SQL indépendant | 🔄 1er passage : Trap 147 / 6 221,02 € et Reggaeton 52 / 4 900,50 € = SQL ; R&B 1 133,60 € (page) ≠ 1 329,60 € (SQL) → cause = double déduction des remises (beat offert à −196 €) → C4 ; à refaire avec la norme |
+| T6 | Norme : nouveau CA brut = ancien brut + remises, nouveau CA net = ancien net + remises HT, panier moyen et remises inchangés, sur toutes les périodes (relevé T1) | |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 

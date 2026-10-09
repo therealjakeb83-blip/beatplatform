@@ -13,7 +13,9 @@ type PrefRow    = { name: string; ca: number; ventes: number; ecoutes: number; f
 type LicenceRow = { name: string; ca: number; ventes: number }
 type HistoPoint    = { label: string; fullLabel: string; ca: number; ventes: number; ecoutes: number; favoris: number; free_dl: number }
 type LicenceHisto  = { label: string; fullLabel: string; ca: number; ventes: number }
-type RawCmd  = { prix_paye: number; created_at: string; licences: unknown; beats: unknown }
+// brut = CA brut de la ligne, avant remises (prix_paye est déjà remise déduite)
+type RawCmd  = { prix_paye: number; reduction_montant: number | null; created_at: string; licences: unknown; beats: unknown }
+const brut = (c: RawCmd) => c.prix_paye + (c.reduction_montant ?? 0)
 // Écoutes / free downloads / favoris d'UN beat, comptés dans la base (lib/analytics-evenements.ts) :
 // chaque compte vaut pour chacune des catégories du beat.
 type EvtBeat = { beats: unknown; ecoutes: number; free_dl: number; favoris: number }
@@ -46,7 +48,7 @@ function buildLicenceGroups(cmds: RawCmd[]): LicenceRow[] {
   for (const c of cmds) {
     for (const label of licenceLabels(c)) {
       const ex = map.get(label) ?? { ca: 0, ventes: 0 }
-      ex.ca     += c.prix_paye
+      ex.ca     += brut(c)
       ex.ventes += 1
       map.set(label, ex)
     }
@@ -60,7 +62,7 @@ function sumLicenceBySlot(cmds: RawCmd[], slots: HistoriqueSlot[], target: strin
     let ca = 0, ventes = 0
     for (const c of mCmds) {
       const n = occ(licenceLabels(c), target)
-      ca += c.prix_paye * n
+      ca += brut(c) * n
       ventes += n
     }
     return { label: slot.label, fullLabel: slot.fullLabel, ca, ventes }
@@ -77,7 +79,7 @@ function buildBeatGroups(cmds: RawCmd[], evts: EvtBeat[], key: string): PrefRow[
   }
   for (const c of cmds) for (const label of beatLabels(key)(c.beats)) {
     const row = get(label)
-    row.ca     += c.prix_paye
+    row.ca     += brut(c)
     row.ventes += 1
   }
   for (const e of evts) for (const label of beatLabels(key)(e.beats)) {
@@ -94,7 +96,7 @@ function sumBeatBySlot(cmds: RawCmd[], evtsSlots: EvenementsTranche[][], tags: M
     const mCmds    = cmds.filter(c => c.created_at >= slot.from && c.created_at < slot.to)
 
     let ca = 0, ventes = 0
-    for (const c of mCmds) { const n = occ(beatLabels(key)(c.beats), target); ca += c.prix_paye * n; ventes += n }
+    for (const c of mCmds) { const n = occ(beatLabels(key)(c.beats), target); ca += brut(c) * n; ventes += n }
     let ecoutes = 0, free_dl = 0, favorisCount = 0
     for (const e of evtsSlots[i] ?? []) {
       const n = occ(beatLabels(key)(tags.get(e.beat_id ?? '')), target)
@@ -121,7 +123,7 @@ export async function GET(request: Request) {
     // Niveau article (commande_lignes) — un panier de plusieurs beats donne
     // plusieurs lignes ici, chacune avec ses propres styles/licence.
     toutesLesLignes((debut, fin) => admin.from('commande_lignes')
-      .select('commande_id, beat_id, licence_id, prix_paye, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
+      .select('commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, licences(nom), beats(styles, ambiances, instruments, type_beat), commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
       .in('commandes.statut', STATUTS_ANALYTICS)
       .order('id')

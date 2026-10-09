@@ -60,7 +60,9 @@ export async function GET(request: Request) {
     return { tva, net: ttc - tva }
   }
 
-  const ventes_brutes = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  // Norme (décision de Jake, 2026-10-09) : prix_paye est DÉJÀ remise déduite.
+  // CA brut = avant remises (payé + remises) ; CA net = brut − remises − TVA.
+  const ventes_brutes = cmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
   const remises_total = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   const { tva, net: ventes_nettes } = splitTva(ventes_brutes - remises_total)
 
@@ -85,7 +87,7 @@ export async function GET(request: Request) {
     const day = dayKeyInTz(c.created_at, tz)
     const ex  = dayMap.get(day) ?? { nb: 0, brut: 0, remises: 0 }
     ex.nb     += 1
-    ex.brut   += c.prix_paye
+    ex.brut   += c.prix_paye + (c.reduction_montant ?? 0)
     ex.remises += c.reduction_montant ?? 0
     dayMap.set(day, ex)
   }
@@ -102,7 +104,7 @@ export async function GET(request: Request) {
   const slots = getHistoriqueSlots(periode, from, to, dataFrom, tz)
   const historique = slots.map(slot => {
     const mCmds = (allCommandes ?? []).filter(c => c.created_at >= slot.from && c.created_at < slot.to)
-    const brut  = mCmds.reduce((s, c) => s + c.prix_paye, 0)
+    const brut  = mCmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
     const rem   = mCmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
     const { tva, net } = splitTva(brut - rem)
     return { label: slot.label, fullLabel: slot.fullLabel, brut, remises: rem, net, tva }

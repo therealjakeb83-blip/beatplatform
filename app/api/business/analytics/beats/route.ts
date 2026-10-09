@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       .range(debut, fin)),
     // Niveau article — un panier de plusieurs beats donne plusieurs lignes, chacune attribuée à son beat
     toutesLesLignes((debut, fin) => admin.from('commande_lignes')
-      .select('commande_id, beat_id, licence_id, prix_paye, created_at, commandes!inner(beatmaker_id, statut)')
+      .select('commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, commandes!inner(beatmaker_id, statut)')
       .eq('commandes.beatmaker_id', user.id)
       .in('commandes.statut', STATUTS_ANALYTICS)
       .order('id')
@@ -53,7 +53,8 @@ export async function GET(request: Request) {
 
   for (const c of cmds) {
     if (!c.beat_id) continue
-    caMap.set(c.beat_id, (caMap.get(c.beat_id) ?? 0) + c.prix_paye)
+    // CA brut du beat = avant remises (prix_paye est déjà remise déduite)
+    caMap.set(c.beat_id, (caMap.get(c.beat_id) ?? 0) + c.prix_paye + (c.reduction_montant ?? 0))
     vMap.set(c.beat_id,  (vMap.get(c.beat_id)  ?? 0) + 1)
   }
 
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
     return {
       label:   slot.label,
       fullLabel: slot.fullLabel,
-      ca:      mCmds.reduce((s, c) => s + c.prix_paye, 0),
+      ca:      mCmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0),
       ventes:  mCmds.length,
       ecoutes: sommeTranche(evenementsSlots[i], 'ecoutes'),
       free_dl: sommeTranche(evenementsSlots[i], 'free_dl'),

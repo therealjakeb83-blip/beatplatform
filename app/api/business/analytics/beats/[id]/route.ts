@@ -102,7 +102,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const freeDl  = allFreeDl.filter(f => inPeriod(f.downloaded_at,  from, to))
   const favoris = allFavoris.filter(f => inPeriod((f as { created_at: string }).created_at, from, to))
 
-  const ca_brut = cmds.reduce((s, c) => s + c.prix_paye, 0)
+  // Norme (décision de Jake, 2026-10-09) : prix_paye est DÉJÀ remise déduite.
+  // CA brut = avant remises (payé + remises) ; CA net = brut − remises − TVA.
+  const ca_brut = cmds.reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
   const remises = cmds.reduce((s, c) => s + (c.reduction_montant ?? 0), 0)
   // Mêmes règles que l'onglet Beats et le reste d'Analytics : CA net = HT
   // (TTC après remises, TVA retirée).
@@ -115,7 +117,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const l   = Array.isArray(c.licences) ? c.licences[0] : c.licences
     const nom = (l as { nom: string } | null)?.nom ?? 'Autre'
     const ex  = licenceMap.get(nom) ?? { ca: 0, ventes: 0 }
-    ex.ca     += c.prix_paye
+    ex.ca     += c.prix_paye + (c.reduction_montant ?? 0)
     ex.ventes += 1
     licenceMap.set(nom, ex)
   }
@@ -127,7 +129,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const srcMap = new Map<string, number>()
   for (const c of cmds) {
     const src = commandeInfo(c.commandes).source_marketing ?? 'direct'
-    srcMap.set(src, (srcMap.get(src) ?? 0) + c.prix_paye)
+    srcMap.set(src, (srcMap.get(src) ?? 0) + c.prix_paye + (c.reduction_montant ?? 0))
   }
   const ca_par_source = [...srcMap.entries()]
     .map(([source, ca]) => ({ source, ca }))
