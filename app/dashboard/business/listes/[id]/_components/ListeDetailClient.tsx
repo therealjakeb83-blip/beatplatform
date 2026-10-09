@@ -661,7 +661,6 @@ export default function ListeDetailClient({
       </div>
 
       {showModal && (
-
         <AjouterModal
           contacts={tousContacts}
           onClose={() => setShowModal(false)}

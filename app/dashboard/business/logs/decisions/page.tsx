@@ -1,6 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import DecisionsClient from './_components/DecisionsClient'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { bornerPage, lirePageAdresse } from '@/lib/pagination'
 
 export type DecisionLogRow = {
   id: string
@@ -14,7 +16,6 @@ export type DecisionLogRow = {
   details: Record<string, unknown> | null
 }
 
-const PAGE_SIZE = 50
 
 export default async function LogsDecisionsPage({
   searchParams,
@@ -22,7 +23,7 @@ export default async function LogsDecisionsPage({
   searchParams: Promise<{ page?: string; entity_type?: string }>
 }) {
   const { page: pageParam, entity_type } = await searchParams
-  const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const taille = await tailleTableaux()
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -41,12 +42,12 @@ export default async function LogsDecisionsPage({
     .eq('beatmaker_id', user.id)
   if (entity_type) requetePage = requetePage.eq('entity_type', entity_type)
 
-  const offset = (page - 1) * PAGE_SIZE
+  const page = bornerPage(lirePageAdresse(pageParam), totalCount ?? 0, taille)
+  const offset = (page - 1) * taille
   const { data } = await requetePage
     .order('created_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE))
+    .order('id')
+    .range(offset, offset + taille - 1)
 
   // Pour afficher "Modification de la licence X" plutôt que "cette licence"
   // — le journal ne stocke que l'id, le nom vit dans licences.
@@ -58,7 +59,8 @@ export default async function LogsDecisionsPage({
       logs={(data ?? []) as DecisionLogRow[]}
       total={totalCount ?? 0}
       page={page}
-      totalPages={totalPages}
+      taille={taille}
+
       filtreEntite={entity_type ?? ''}
       licenceNoms={licenceNoms}
     />

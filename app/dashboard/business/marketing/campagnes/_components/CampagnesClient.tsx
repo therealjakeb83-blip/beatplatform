@@ -237,7 +237,6 @@ export default function CampagnesClient({
           )}
           {envoyees.length > 0 && <Pagination {...paginationEnvoyees.barre} />}
         </Section>
-
       </div>
 
       {showWizard && (

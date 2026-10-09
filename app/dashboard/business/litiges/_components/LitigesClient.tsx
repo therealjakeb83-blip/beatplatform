@@ -101,7 +101,6 @@ export default function LitigesClient({ litiges }: { litiges: LitigeRow[] }) {
           </table>
           <Pagination {...pagination.barre} />
         </div>
-
       </div>
     </div>
   )

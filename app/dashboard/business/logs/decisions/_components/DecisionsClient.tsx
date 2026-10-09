@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { DecisionLogRow } from '../page'
 import { TYPES_PAGES_LEGALES } from '@/lib/pages-legales'
+import PaginationAdresse from '../../../../_pagination/PaginationAdresse'
+import type { TaillePage } from '@/lib/pagination'
 
 const ACTOR_LABEL: Record<string, { label: string; cls: string }> = {
   beatmaker: { label: 'Toi', cls: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20' },
@@ -245,13 +247,13 @@ type Props = {
   logs: DecisionLogRow[]
   total: number
   page: number
-  totalPages: number
+  taille: TaillePage
   filtreEntite: string
   permettreComparaison?: boolean
   licenceNoms?: Record<string, string>
 }
 
-export default function DecisionsClient({ logs, total, page, totalPages, filtreEntite, permettreComparaison = true, licenceNoms = {} }: Props) {
+export default function DecisionsClient({ logs, total, page, taille, filtreEntite, permettreComparaison = true, licenceNoms = {} }: Props) {
   const [detail, setDetail] = useState<DecisionLogRow | null>(null)
 
   return (
@@ -332,25 +334,8 @@ export default function DecisionsClient({ logs, total, page, totalPages, filtreE
               </table>
             </div>
           )}
+          {logs.length > 0 && <PaginationAdresse total={total} page={page} taille={taille} />}
         </div>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <Link
-              href={`?entity_type=${filtreEntite}&page=${Math.max(1, page - 1)}`}
-              className={`px-3 py-1.5 rounded-lg text-sm ${page <= 1 ? 'text-gray-700 pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-            >
-              ← Précédent
-            </Link>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <Link
-              href={`?entity_type=${filtreEntite}&page=${Math.min(totalPages, page + 1)}`}
-              className={`px-3 py-1.5 rounded-lg text-sm ${page >= totalPages ? 'text-gray-700 pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-            >
-              Suivant →
-            </Link>
-          </div>
-        )}
       </div>
 
       {detail && <DetailModal log={detail} permettreComparaison={permettreComparaison} licenceNoms={licenceNoms} onClose={() => setDetail(null)} />}

@@ -174,7 +174,6 @@ function TableOfficielles({ categories, avecImage }: { categories: CategorieAvec
   )
 }
 
-
 function CategoriePersonnelleRow({
   categorie,
   avecImage,

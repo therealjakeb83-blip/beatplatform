@@ -609,7 +609,6 @@ function ContactsTable({ contacts, listes }: { contacts: ContactRow[]; listes: {
       </div>
 
       {/* Modal liste */}
-
       {showListeModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowListeModal(false)}>
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>

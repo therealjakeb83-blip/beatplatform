@@ -13,6 +13,9 @@ import { chargerCommandesImporteesClient, versCrmDepuisDetail } from '@/app/dash
 import { LigneTableauImportee, MentionsLigne, MontantLigne } from '@/app/dashboard/business/_components/CommandeImportee'
 import { libelleSource, SOURCE_COLORS } from '@/lib/sources-marketing'
 import { libelleSourceImport } from '@/lib/import-externe/plateformes'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { decouperPage, lirePageAdresse } from '@/lib/pagination'
+import PaginationAdresse from '../../../_pagination/PaginationAdresse'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,10 +131,11 @@ export default async function FicheClientPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ onglet?: string }>
+  searchParams: Promise<{ onglet?: string; page?: string }>
 }) {
   const { id: clientId }        = await params
-  const { onglet = 'identite' } = await searchParams
+  const { onglet = 'identite', page: pageParam } = await searchParams
+  const taille = await tailleTableaux()
 
   const supabase = await createClient()
   const admin    = createAdminClient()
@@ -388,6 +392,9 @@ export default async function FicheClientPage({
     ...achatsLignes.map(l => ({ genre: 'native' as const, date: l.created_at, ligne: l })),
     ...commandesImportees.flatMap(c => c.lignes.map(l => ({ genre: 'importee' as const, date: c.date_vente, commande: c, ligne: l }))),
   ].sort((a, b) => b.date.localeCompare(a.date))
+
+  const historiquePage = decouperPage(historique, lirePageAdresse(pageParam), taille)
+  const paiementsPage  = decouperPage(paiementsAbonnement, lirePageAdresse(pageParam), taille)
 
   // ── Server actions ─────────────────────────────────────────────────────────
 
@@ -939,10 +946,10 @@ export default async function FicheClientPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {paiementsAbonnement.map((p, i) => {
+                    {paiementsPage.lignes.map((p, i) => {
                       const statut = LIBELLES_STATUT_PAIEMENT[p.statut] ?? { label: p.statut, cls: 'bg-gray-700/60 text-gray-400' }
                       return (
-                        <tr key={p.id} className={`${i < paiementsAbonnement.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}>
+                        <tr key={p.id} className={`${i < paiementsPage.lignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`}>
                           <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
                             <Link href={`/dashboard/business/commandes/${p.id}`} className="hover:text-white">{fmtDate(p.created_at)}</Link>
                           </td>
@@ -958,6 +965,7 @@ export default async function FicheClientPage({
                     })}
                   </tbody>
                 </table>
+                <PaginationAdresse total={paiementsAbonnement.length} page={paiementsPage.page} taille={taille} />
               </div>
             )}
           </div>
@@ -971,6 +979,7 @@ export default async function FicheClientPage({
             {historique.length === 0 ? (
               <div className="py-10 text-center text-gray-600 text-sm">Aucune commande.</div>
             ) : (
+              <>
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-gray-800">
@@ -982,8 +991,8 @@ export default async function FicheClientPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {historique.map((h, i) => {
-                    const bordure = `${i < historique.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`
+                  {historiquePage.lignes.map((h, i) => {
+                    const bordure = `${i < historiquePage.lignes.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors`
                     if (h.genre === 'importee') {
                       return (
                         <LigneTableauImportee key={`${h.commande.id}:${h.ligne.id}`} commande={h.commande} className={bordure}>
@@ -1022,6 +1031,8 @@ export default async function FicheClientPage({
                   })}
                 </tbody>
               </table>
+              <PaginationAdresse total={historique.length} page={historiquePage.page} taille={taille} />
+              </>
             )}
           </div>
         )}

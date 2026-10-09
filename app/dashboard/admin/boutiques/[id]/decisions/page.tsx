@@ -4,8 +4,8 @@ import { estAdmin } from '@/lib/admin'
 import { createAdminClient } from '@/utils/supabase/admin'
 import DecisionsClient from '@/app/dashboard/business/logs/decisions/_components/DecisionsClient'
 import type { DecisionLogRow } from '@/app/dashboard/business/logs/decisions/page'
-
-const PAGE_SIZE = 50
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { bornerPage, lirePageAdresse } from '@/lib/pagination'
 
 export default async function AdminBoutiqueDecisionsPage({
   params,
@@ -18,7 +18,7 @@ export default async function AdminBoutiqueDecisionsPage({
 
   const { id } = await params
   const { page: pageParam, entity_type } = await searchParams
-  const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const taille = await tailleTableaux()
 
   const admin = createAdminClient()
 
@@ -35,12 +35,12 @@ export default async function AdminBoutiqueDecisionsPage({
     .eq('beatmaker_id', id)
   if (entity_type) requetePage = requetePage.eq('entity_type', entity_type)
 
-  const offset = (page - 1) * PAGE_SIZE
+  const page = bornerPage(lirePageAdresse(pageParam), totalCount ?? 0, taille)
+  const offset = (page - 1) * taille
   const { data } = await requetePage
     .order('created_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE))
+    .order('id')
+    .range(offset, offset + taille - 1)
 
   const { data: licences } = await admin.from('licences').select('id, nom').eq('beatmaker_id', id)
   const licenceNoms = Object.fromEntries((licences ?? []).map(l => [l.id, l.nom]))
@@ -56,7 +56,8 @@ export default async function AdminBoutiqueDecisionsPage({
         logs={(data ?? []) as DecisionLogRow[]}
         total={totalCount ?? 0}
         page={page}
-        totalPages={totalPages}
+        taille={taille}
+
         filtreEntite={entity_type ?? ''}
         permettreComparaison={false}
         licenceNoms={licenceNoms}

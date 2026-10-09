@@ -4,6 +4,8 @@ import MailsPlateformeClient from './_components/MailsPlateformeClient'
 import LogsPlateformeClient, { type LogPlateformeRow } from './_components/LogsPlateformeClient'
 import type { TypeTemplatePlateforme } from '@/lib/emails'
 import Link from 'next/link'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { bornerPage, lirePageAdresse } from '@/lib/pagination'
 
 const TYPES: TypeTemplatePlateforme[] = [
   'confirmation_email', 'bienvenue', 'confirmation_essai', 'rappel_fin_essai', 'paiement_echoue', 'annulation',
@@ -16,7 +18,6 @@ const TYPES: TypeTemplatePlateforme[] = [
   'litige_ouvert', 'litige_rappel', 'litige_collaborateur',
 ]
 
-const PAGE_SIZE = 50
 
 const SCOPES = ['destinataire', 'sujet', 'message'] as const
 type Scope = typeof SCOPES[number]
@@ -44,7 +45,7 @@ export default async function MailsPlateformePage({
   const admin = createAdminClient()
 
   if (tab === 'logs') {
-    const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+    const taille = await tailleTableaux()
     const scope: Scope = SCOPES.includes(scopeParam as Scope) ? (scopeParam as Scope) : 'destinataire'
 
     const [{ count: totalCount }, { count: envoyeCount }, { count: echoueCount }] = await Promise.all([
@@ -63,12 +64,13 @@ export default async function MailsPlateformePage({
     )
     if (statut === 'envoye' || statut === 'echoue') requetePage = requetePage.eq('statut', statut)
 
-    const offset = (page - 1) * PAGE_SIZE
+    const total = (statut === 'envoye' ? envoyeCount : statut === 'echoue' ? echoueCount : totalCount) ?? 0
+    const page = bornerPage(lirePageAdresse(pageParam), total, taille)
+    const offset = (page - 1) * taille
     const { data } = await requetePage
       .order('created_at', { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1)
-
-    const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE))
+      .order('id')
+      .range(offset, offset + taille - 1)
 
     return (
       <div className="max-w-screen-2xl mx-auto px-6 py-8">
@@ -77,7 +79,9 @@ export default async function MailsPlateformePage({
           logs={(data ?? []) as unknown as LogPlateformeRow[]}
           counts={{ tous: totalCount ?? 0, envoye: envoyeCount ?? 0, echoue: echoueCount ?? 0 }}
           page={page}
-          totalPages={totalPages}
+          total={total}
+          taille={taille}
+
           filtreStatut={statut ?? ''}
           filtreEvenement={evenement ?? ''}
           q={q ?? ''}

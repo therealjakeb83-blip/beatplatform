@@ -317,7 +317,6 @@ function TableOfficielles({ categories, avecImage, supprimerCategoriePlateforme 
   )
 }
 
-
 function ImageUploader({ categorieId, imageUrl, label }: { categorieId: string; imageUrl: string | null; label: string }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)

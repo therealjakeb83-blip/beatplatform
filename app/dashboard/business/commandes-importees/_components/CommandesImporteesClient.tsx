@@ -50,7 +50,6 @@ export default function CommandesImporteesClient({
   const [assistant, setAssistant] = useState(ouvrirImport && planPayant)
   const [recherche, setRecherche] = useState('')
   const [plateforme, setPlateforme] = useState('')
-
   const [aAnnuler, setAAnnuler] = useState<ImportHistorique | null>(null)
   const [annulationEnCours, setAnnulationEnCours] = useState(false)
   const [erreurAnnulation, setErreurAnnulation] = useState<string | null>(null)
@@ -190,7 +189,6 @@ export default function CommandesImporteesClient({
           </div>
         )}
       </section>
-
 
       {/* ── Liste des commandes ── */}
       <section>

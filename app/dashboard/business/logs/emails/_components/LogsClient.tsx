@@ -6,6 +6,8 @@ import Link from 'next/link'
 import type { EmailLogRow } from '../page'
 import RenvoyerLogButton from './RenvoyerLogButton'
 import { messageErreurNaturel } from '@/lib/email-erreurs'
+import PaginationAdresse from '../../../../_pagination/PaginationAdresse'
+import type { TaillePage } from '@/lib/pagination'
 
 const TYPE_LABEL: Record<string, { label: string; cls: string }> = {
   transactionnel: { label: 'Transactionnel', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
@@ -170,7 +172,8 @@ type Props = {
   logs: EmailLogRow[]
   counts: { tous: number; envoye: number; echoue: number }
   page: number
-  totalPages: number
+  total: number
+  taille: TaillePage
   filtreStatut: string
   filtreType: string
   q: string
@@ -189,7 +192,7 @@ const TABS: Array<{ value: string; label: string; key: 'tous' | 'envoye' | 'echo
   { value: 'echoue',  label: 'Échoués',  key: 'echoue' },
 ]
 
-export default function LogsClient({ logs, counts, page, totalPages, filtreStatut, filtreType, q, scope }: Props) {
+export default function LogsClient({ logs, counts, page, total, taille, filtreStatut, filtreType, q, scope }: Props) {
   const [detail, setDetail] = useState<EmailLogRow | null>(null)
 
   function hrefAvec(overrides: Record<string, string>) {
@@ -345,26 +348,8 @@ export default function LogsClient({ logs, counts, page, totalPages, filtreStatu
               </table>
             </div>
           )}
+          {logs.length > 0 && <PaginationAdresse total={total} page={page} taille={taille} />}
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <Link
-              href={hrefAvec({ page: String(Math.max(1, page - 1)) })}
-              className={`px-3 py-1.5 rounded-lg text-sm ${page <= 1 ? 'text-gray-700 pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-            >
-              ← Précédent
-            </Link>
-            <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-            <Link
-              href={hrefAvec({ page: String(Math.min(totalPages, page + 1)) })}
-              className={`px-3 py-1.5 rounded-lg text-sm ${page >= totalPages ? 'text-gray-700 pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-            >
-              Suivant →
-            </Link>
-          </div>
-        )}
       </div>
 
       {detail && <DetailModal log={detail} onClose={() => setDetail(null)} />}

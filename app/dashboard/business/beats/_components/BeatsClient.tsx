@@ -351,7 +351,6 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
         {displayed.length > 0 && <Pagination {...pagination.barre} />}
       </div>
 
-
     </div>
   )
 }

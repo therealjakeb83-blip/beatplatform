@@ -217,4 +217,3 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
     </>
   )
 }
-

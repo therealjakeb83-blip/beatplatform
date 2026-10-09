@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import LogsClient from './_components/LogsClient'
+import { tailleTableaux } from '@/lib/pagination-serveur'
+import { bornerPage, lirePageAdresse } from '@/lib/pagination'
 
 export type EmailLogRow = {
   id: string
@@ -21,7 +23,6 @@ export type EmailLogRow = {
   clients: { id: string; prenom: string | null; nom: string } | null
 }
 
-const PAGE_SIZE = 50
 
 const SCOPES = ['destinataire', 'sujet', 'message'] as const
 type Scope = typeof SCOPES[number]
@@ -45,7 +46,7 @@ export default async function LogsEmailsPage({
   searchParams: Promise<{ page?: string; statut?: string; type?: string; q?: string; scope?: string }>
 }) {
   const { page: pageParam, statut, type, q, scope: scopeParam } = await searchParams
-  const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const taille = await tailleTableaux()
   const scope: Scope = SCOPES.includes(scopeParam as Scope) ? (scopeParam as Scope) : 'destinataire'
 
   const supabase = await createClient()
@@ -70,19 +71,23 @@ export default async function LogsEmailsPage({
   )
   if (statut === 'envoye' || statut === 'echoue') requetePage = requetePage.eq('statut', statut)
 
-  const offset = (page - 1) * PAGE_SIZE
+  // Total de l'onglet affiché (avant : toujours « Tous », d'où des pages vides en fin d'onglet Réussis/Échoués)
+  const total = (statut === 'envoye' ? envoyeCount : statut === 'echoue' ? echoueCount : totalCount) ?? 0
+  const page = bornerPage(lirePageAdresse(pageParam), total, taille)
+  const offset = (page - 1) * taille
   const { data } = await requetePage
     .order('created_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE))
+    .order('id')
+    .range(offset, offset + taille - 1)
 
   return (
     <LogsClient
       logs={(data ?? []) as unknown as EmailLogRow[]}
       counts={{ tous: totalCount ?? 0, envoye: envoyeCount ?? 0, echoue: echoueCount ?? 0 }}
       page={page}
-      totalPages={totalPages}
+      total={total}
+      taille={taille}
+
       filtreStatut={statut ?? ''}
       filtreType={type ?? ''}
       q={q ?? ''}

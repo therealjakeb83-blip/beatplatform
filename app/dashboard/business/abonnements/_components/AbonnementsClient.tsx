@@ -372,7 +372,6 @@ export default function AbonnementsClient({ abonnements }: { abonnements: AboRow
         </div>
 
       </div>
-
     </div>
   )
 }

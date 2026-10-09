@@ -263,7 +263,6 @@ export default function TabRevenus({ periode, debut, fin }: Props) {
 
     </div>
   )
-
 }
 
 function Skeleton() {

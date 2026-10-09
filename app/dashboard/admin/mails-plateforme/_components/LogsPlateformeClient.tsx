@@ -6,6 +6,8 @@ import Link from 'next/link'
 import RenvoyerLogPlateformeButton from './RenvoyerLogPlateformeButton'
 import { messageErreurNaturel } from '@/lib/email-erreurs'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import PaginationAdresse from '../../../_pagination/PaginationAdresse'
+import type { TaillePage } from '@/lib/pagination'
 
 export type LogPlateformeRow = {
   id: string
@@ -155,7 +157,8 @@ type Props = {
   logs: LogPlateformeRow[]
   counts: { tous: number; envoye: number; echoue: number }
   page: number
-  totalPages: number
+  total: number
+  taille: TaillePage
   filtreStatut: string
   filtreEvenement: string
   q: string
@@ -174,7 +177,7 @@ const TABS: Array<{ value: string; label: string; key: 'tous' | 'envoye' | 'echo
   { value: 'echoue',  label: 'Échoués',  key: 'echoue' },
 ]
 
-export default function LogsPlateformeClient({ logs, counts, page, totalPages, filtreStatut, filtreEvenement, q, scope }: Props) {
+export default function LogsPlateformeClient({ logs, counts, page, total, taille, filtreStatut, filtreEvenement, q, scope }: Props) {
   const [detail, setDetail] = useState<LogPlateformeRow | null>(null)
 
   function hrefAvec(overrides: Record<string, string>) {
@@ -327,25 +330,9 @@ export default function LogsPlateformeClient({ logs, counts, page, totalPages, f
             </table>
           </div>
         )}
+        {logs.length > 0 && <PaginationAdresse total={total} page={page} taille={taille} />}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Link
-            href={hrefAvec({ page: String(Math.max(1, page - 1)) })}
-            className={`px-3 py-1.5 rounded-lg text-sm ${page <= 1 ? 'text-gray-700 pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-          >
-            ← Précédent
-          </Link>
-          <span className="text-sm text-gray-500">Page {page} / {totalPages}</span>
-          <Link
-            href={hrefAvec({ page: String(Math.min(totalPages, page + 1)) })}
-            className={`px-3 py-1.5 rounded-lg text-sm ${page >= totalPages ? 'text-gray-700 pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-          >
-            Suivant →
-          </Link>
-        </div>
-      )}
 
       {detail && <DetailModal log={detail} onClose={() => setDetail(null)} />}
     </div>
