@@ -25,16 +25,17 @@ export type LigneImportee = {
   beat?: { titre: string } | null
 }
 
-// Titre importé + pochette du beat de son catalogue quand le titre a été relié
-// (page « Relier les beats »)
+// Vente reliée à un beat du catalogue (page « Relier les beats ») : titre et
+// pochette du beat de la boutique ; le titre importé reste dans le panneau de
+// détail et au survol. Vente non reliée : titre importé.
 export function TitreLigneImportee({ ligne, classeTitre = 'font-medium text-white' }: { ligne: LigneImportee; classeTitre?: string }) {
   return (
     <span className="inline-flex items-center gap-2.5 align-middle">
       {ligne.image_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={ligne.image_url} alt="" title={ligne.beat ? `Relié à « ${ligne.beat.titre} »` : undefined} className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+        <img src={ligne.image_url} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
       )}
-      <span className={classeTitre}>{ligne.titre}</span>
+      <span className={classeTitre} title={ligne.beat ? `Titre importé : ${ligne.titre}` : undefined}>{ligne.beat?.titre ?? ligne.titre}</span>
     </span>
   )
 }
@@ -136,7 +137,7 @@ function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onCl
                 <MontantLigne ligne={l} devise={d} />
               </div>
               <div className="mt-2">
-                {l.beat && ligne('Beat relié', l.beat.titre)}
+                {l.beat && ligne('Titre importé', l.titre)}
                 {ligne('Licence', l.licence ?? 'Non précisée')}
                 {ligne('Prix catalogue', fmtDevise(l.prix_catalogue, d))}
                 {ligne('Remise', l.remise > 0 ? `− ${fmtDevise(l.remise, d)}` : '–')}

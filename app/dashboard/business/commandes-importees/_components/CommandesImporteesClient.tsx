@@ -66,7 +66,7 @@ export default function CommandesImporteesClient({
       return (c.acheteur_nom ?? '').toLowerCase().includes(q)
         || c.acheteur_email.includes(q)
         || c.numero_externe.toLowerCase().includes(q)
-        || c.lignes.some(l => l.titre.toLowerCase().includes(q))
+        || c.lignes.some(l => l.titre.toLowerCase().includes(q) || (l.beat?.titre.toLowerCase().includes(q) ?? false))
     })
   }, [commandes, recherche, plateforme])
 
