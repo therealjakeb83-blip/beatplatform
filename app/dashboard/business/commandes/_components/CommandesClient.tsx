@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 import Link from 'next/link'
 import type { CommandeRow } from '../page'
 import { SOURCE_LABELS as SOURCE_LABEL } from '@/lib/sources-marketing'
@@ -284,6 +286,8 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
     return list
   }, [commandes, search, scope, activeTab, filtreSource, filtreType, filtrePeriode, filtreClientId])
 
+  const pagination = usePagination(filtered, [search, scope, activeTab, filtreSource, filtreType, filtrePeriode, filtreClientId])
+
   /* context client banner */
   const clientContext = useMemo(() => {
     if (!filtreClientId) return null
@@ -450,7 +454,7 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/50">
-                  {filtered.map(c => {
+                  {pagination.lignes.map(c => {
                     const s = STATUT[c.statut]
                     const nom = nomClient(c)
                     const pays = c.clients?.pays
@@ -570,6 +574,8 @@ export default function CommandesClient({ commandes, initialClientId, initialTyp
               </table>
             </div>
           )}
+          {filtered.length > 0 && <Pagination {...pagination.barre} />}
+
         </div>
       </div>
 

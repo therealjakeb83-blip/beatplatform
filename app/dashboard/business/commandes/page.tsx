@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import CommandesClient from './_components/CommandesClient'
+import { parLots, toutesLesLignes } from '../_lib/requetes'
 
 export type CommandeRow = {
   id: string
@@ -59,7 +60,9 @@ export default async function CommandesPage({
   // Admin client pour bypasser la RLS de la table clients (join)
   const admin = createAdminClient()
 
-  const { data } = await admin
+  // Toutes les commandes, sans plafond (ancien .limit(500) : les plus anciennes
+  // n'apparaissaient jamais) â€” la liste est paginÃ©e Ã  l'affichage.
+  const data = await toutesLesLignes((debut, fin) => admin
     .from('commandes')
     .select(
       `id, created_at, prix_paye, statut,
@@ -71,11 +74,12 @@ export default async function CommandesPage({
     )
     .eq('beatmaker_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(500)
+    .order('id')
+    .range(debut, fin))
 
   // Tentatives non abouties (une tentative réussie devient une vraie commande
   // ci-dessus — inutile de l'afficher deux fois)
-  const { data: tentatives } = await admin
+  const tentatives = await toutesLesLignes((debut, fin) => admin
     .from('tentatives_paiement')
     .select(
       `id, created_at, prix, code_promo, source_marketing, email, statut, type,
@@ -85,7 +89,8 @@ export default async function CommandesPage({
     .eq('beatmaker_id', user.id)
     .neq('statut', 'complete')
     .order('created_at', { ascending: false })
-    .limit(500)
+    .order('id')
+    .range(debut, fin))
 
   type LigneJointe = {
     beat_id: string
@@ -141,9 +146,8 @@ export default async function CommandesPage({
 
   // TVA d'une vente collab = somme des TVA de chaque part (taux de chaque vendeur).
   const idsMulti = ((data ?? []) as unknown as CommandeRawRow[]).filter(c => c.paiement_multi_vendeurs).map(c => c.id)
-  const { data: tvaParts } = idsMulti.length
-    ? await admin.from('commande_tranches').select('commande_id, montant_ttc_cents, montant_tva_cents, tva_taux').in('commande_id', idsMulti)
-    : { data: [] }
+  const tvaParts = await parLots(idsMulti, lot =>
+    admin.from('commande_tranches').select('commande_id, montant_ttc_cents, montant_tva_cents, tva_taux').in('commande_id', lot))
   const tvaMulti = new Map<string, { cents: number; taux: Set<number> }>()
   for (const t of tvaParts ?? []) {
     const e = tvaMulti.get(t.commande_id) ?? { cents: 0, taux: new Set<number>() }
@@ -183,7 +187,7 @@ export default async function CommandesPage({
   // Ventes où je suis vendeur sur la boutique d'un autre (Phase 12 Q19 /
   // Phase 13 lot 3) : ma part seulement, jamais l'email du client ni la
   // source marketing ; le code promo reste visible (il explique une part à 0 €).
-  const { data: mesTranches } = await admin
+  const mesTranches = await toutesLesLignes((debut, fin) => admin
     .from('commande_tranches')
     .select(`montant_ttc_cents, montant_tva_cents, tva_taux, facture_numero,
       commandes!inner (id, created_at, statut, code_promo, beatmaker_id, type_commande, acheteur_nom,
@@ -191,7 +195,9 @@ export default async function CommandesPage({
         commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele)))`)
     .eq('vendeur_id', user.id)
     .neq('commandes.beatmaker_id', user.id)
-    .limit(500)
+    .order('id')
+    .range(debut, fin))
+
 
   type TrancheJointe = {
     montant_ttc_cents: number

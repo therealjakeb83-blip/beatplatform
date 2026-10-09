@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { BeatRow } from '../page'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 /* ─── constantes ────────────────────────────────────────────────── */
 
@@ -125,6 +127,8 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
     })
   }, [beats, filtreStatut, filtreGenre, search, sortDir])
 
+  const pagination = usePagination(displayed, [filtreStatut, filtreGenre, search, sortKey, sortDir])
+
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
     else { setSortKey(key); setSortDir('desc') }
@@ -227,7 +231,7 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
             </thead>
 
             <tbody className="divide-y divide-gray-800">
-              {displayed.map(b => (
+              {pagination.lignes.map(b => (
                 <tr
                   key={b.id}
                   onClick={() => router.push(`/dashboard/business/beats/${b.id}/modifier`)}
@@ -344,7 +348,9 @@ export default function BeatsClient({ beats: beatsInitiaux }: { beats: BeatRow[]
             )}
           </table>
         )}
+        {displayed.length > 0 && <Pagination {...pagination.barre} />}
       </div>
+
 
     </div>
   )

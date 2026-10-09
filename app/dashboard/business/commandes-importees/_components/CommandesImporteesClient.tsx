@@ -7,6 +7,8 @@ import type { CommandeDetail } from '@/app/dashboard/business/_lib/commandes-ext
 import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantLigne, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
 import AssistantImport from './AssistantImport'
+import Pagination from '../../../_pagination/Pagination'
+import { usePagination } from '../../../_pagination/usePagination'
 
 export type ImportHistorique = {
   id: string
@@ -28,8 +30,6 @@ export type ImportHistorique = {
   annulation_rapport: { nb_commandes_supprimees: number; nb_contacts_supprimes: number; nb_contacts_conserves: number } | null
 }
 
-const PAR_PAGE = 50
-
 const pluriel = (n: number, un: string, plusieurs: string) => `${n.toLocaleString('fr-FR')} ${n > 1 ? plusieurs : un}`
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -50,7 +50,7 @@ export default function CommandesImporteesClient({
   const [assistant, setAssistant] = useState(ouvrirImport && planPayant)
   const [recherche, setRecherche] = useState('')
   const [plateforme, setPlateforme] = useState('')
-  const [nbAffiches, setNbAffiches] = useState(PAR_PAGE)
+
   const [aAnnuler, setAAnnuler] = useState<ImportHistorique | null>(null)
   const [annulationEnCours, setAnnulationEnCours] = useState(false)
   const [erreurAnnulation, setErreurAnnulation] = useState<string | null>(null)
@@ -68,6 +68,9 @@ export default function CommandesImporteesClient({
         || c.lignes.some(l => l.titre.toLowerCase().includes(q))
     })
   }, [commandes, recherche, plateforme])
+
+  const pagination = usePagination(filtrees, [recherche, plateforme])
+  const paginationImports = usePagination(imports)
 
   async function annuler() {
     if (!aAnnuler) return
@@ -139,8 +142,9 @@ export default function CommandesImporteesClient({
                 </tr>
               </thead>
               <tbody>
-                {imports.map((i, n) => (
-                  <tr key={i.id} className={n < imports.length - 1 ? 'border-b border-gray-800' : ''}>
+                {paginationImports.lignes.map((i, n, arr) => (
+                  <tr key={i.id} className={n < arr.length - 1 ? 'border-b border-gray-800' : ''}>
+
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <BadgePlateforme plateforme={i.plateforme} />
@@ -182,9 +186,11 @@ export default function CommandesImporteesClient({
                 ))}
               </tbody>
             </table>
+            <Pagination {...paginationImports.barre} />
           </div>
         )}
       </section>
+
 
       {/* ── Liste des commandes ── */}
       <section>
@@ -195,14 +201,14 @@ export default function CommandesImporteesClient({
           <div className="flex items-center gap-2">
             <input
               value={recherche}
-              onChange={e => { setRecherche(e.target.value); setNbAffiches(PAR_PAGE) }}
+              onChange={e => setRecherche(e.target.value)}
               placeholder="Rechercher un client, un titre, un n° de facture…"
               className="w-80 text-sm bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500"
             />
             {plateformes.length > 1 && (
               <select
                 value={plateforme}
-                onChange={e => { setPlateforme(e.target.value); setNbAffiches(PAR_PAGE) }}
+                onChange={e => setPlateforme(e.target.value)}
                 className="text-sm bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white focus:outline-none"
               >
                 <option value="">Toutes les plateformes</option>
@@ -228,7 +234,7 @@ export default function CommandesImporteesClient({
                 </tr>
               </thead>
               <tbody>
-                {filtrees.slice(0, nbAffiches).map((c, n, arr) => (
+                {pagination.lignes.map((c, n, arr) => (
                   <LigneTableauImportee
                     key={c.id}
                     commande={c}
@@ -265,13 +271,8 @@ export default function CommandesImporteesClient({
                 ))}
               </tbody>
             </table>
-            {filtrees.length > nbAffiches && (
-              <div className="border-t border-gray-800 p-3 text-center">
-                <button onClick={() => setNbAffiches(n => n + PAR_PAGE)} className="text-xs text-indigo-300 hover:text-indigo-200">
-                  Afficher {Math.min(PAR_PAGE, filtrees.length - nbAffiches)} de plus ({(filtrees.length - nbAffiches).toLocaleString('fr-FR')} restantes)
-                </button>
-              </div>
-            )}
+            <Pagination {...pagination.barre} />
+
           </div>
         )}
       </section>

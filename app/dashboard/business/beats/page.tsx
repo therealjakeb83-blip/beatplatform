@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import BeatsClient from './_components/BeatsClient'
+import { parLots, toutesLesLignes } from '../_lib/requetes'
 
 export type BeatRow = {
   id: string
@@ -34,13 +35,15 @@ export default async function BeatsPage() {
 
   const admin = createAdminClient()
 
-  const { data: rawBeats } = await admin
+  // Tout le catalogue, sans plafond (ancien .limit(500)) â€” paginÃ© Ã  l'affichage
+  const rawBeats = await toutesLesLignes((debut, fin) => admin
     .from('beats')
     .select('id, titre, bpm, cle, statut, image_url, couleur, created_at, styles, type_beat, mp3_tague_url, mis_en_avant, hors_vente_collab')
     .eq('beatmaker_id', user.id)
     .is('supprime_le', null)
     .order('created_at', { ascending: false })
-    .limit(500)
+    .order('id')
+    .range(debut, fin))
 
   const idsHorsVente = (rawBeats ?? [])
     .filter(b => (b as Record<string, unknown>).hors_vente_collab)
@@ -48,12 +51,13 @@ export default async function BeatsPage() {
 
   const collabBadgeParBeat = new Map<string, NonNullable<BeatRow['collabBadge']>>()
   if (idsHorsVente.length > 0) {
-    const [{ data: splits }, { data: moi }] = await Promise.all([
-      admin
+    const [splits, { data: moi }] = await Promise.all([
+      parLots(idsHorsVente, lot => admin
         .from('beat_splits')
         .select('beat_id, statut, beatmakers(pret_a_vendre_collaborateur)')
-        .in('beat_id', idsHorsVente)
-        .in('statut', ['invitee', 'active', 'refusee']),
+        .in('beat_id', lot)
+        .in('statut', ['invitee', 'active', 'refusee'])),
+
       admin.from('beatmakers').select('pret_a_vendre_concedant').eq('id', user.id).maybeSingle(),
     ])
 
