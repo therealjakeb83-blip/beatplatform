@@ -612,6 +612,27 @@ Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
 | T13 | Ajouté par Jake (segment lent à chaque page) : page gardée dans l'adresse sur tous les tableaux → « Retour » depuis une fiche et F5 reviennent à la même page ; segment / fiche client / abonnement calculés une seule fois, page suivante instantanée (`c2f40b8`) | ✅ Jake (segment : page suivante instantanée ; Contacts page 5 → fiche → Retour = page 5 ; F5 = page 5) |
 | T12 | Tableau de moins de 21 lignes : pas de barre | ✅ prouvé par le code (`total <= 20` → rien) + Jake (recherche « manuel » 6 contacts, liste « Test pagination » 4 contacts : pas de barre) |
 
+**🔄 CHANTIER EN COURS (plan validé le 2026-10-09) — Analytics coupé à 1 000 lignes.** Décision de Jake : calcul dans la base pour écoutes / free downloads / favoris (fonctions SQL d'agrégat), lecture en plusieurs fois (`toutesLesLignes` / `parLots`) pour ventes, abonnements, codes promo, parts et litiges ; limite Supabase laissée à 1 000. Critère : chiffres identiques sous 1 000 lignes (relevé JSON avant/après de toutes les réponses Analytics, comparé par script — `.scratch/analytics-releve.js`), justes au-delà (comparés à un comptage SQL direct).
+- **Inventaire** : aucune lecture d'Analytics n'était paginée — `lib/analytics-parts.ts` (parts, litiges, flux collab + `.in(tranche_id)`), les 7 routes `app/api/business/analytics/*` et `beats/[id]` ; listes `.in()` d'ids non découpées (autres boutiques, commandes remboursées) → plantage silencieux au-delà de ~150 ids. **Trouvé en plus** : pages Catégories beatmaker et admin (écoutes + ventes lues en une fois ; admin = toute la plateforme).
+- **Étapes** : E1 migration `supabase/analytics_agregats.sql` (3 fonctions `analytics_evenements_par_beat`, `analytics_evenements_par_tranche` — tranches jour/semaine/mois dans le fuseau du beatmaker —, `analytics_ecoutes_par_beat_plateforme` ; 3 index ; réservées à `service_role`) → E2 lecture en plusieurs fois → E3 écoutes/free DL/favoris en base (Vue d'ensemble, Beats, Préférences ; fiche d'un beat = lecture complète car elle affiche chaque écoute) → E4 Catégories (validé par Jake).
+- **Décidé par Jake, à faire JUSTE APRÈS (lot « cohérence des chiffres », « il faut que tout soit cohérent »)** : (1) période « Personnalisé » : le dernier jour est exclu et les journées sont coupées à minuit UTC → inclure le dernier jour, fuseau du beatmaker ; (2) fiche d'un beat : ne compte que les ventes `payee` (l'onglet Beats compte aussi litige / remboursée partielle) et son « CA net » ne retire pas la TVA → mêmes règles que le reste d'Analytics. Pas dans ce chantier pour que la comparaison avant/après reste à 0 différence.
+
+Checklist (A = jakeb-test, B = nic-beat-2809) :
+
+| # | Test | Statut |
+|---|---|---|
+| T0 | Build de prod OK ; 7 onglets + fiche d'un beat s'ouvrent sans erreur | |
+| T1 | Migration exécutée : SELECT de contrôle (3 fonctions, 3 index, exécution réservée à service_role, fonction = comptage direct) | |
+| T2 | Sous 1 000 lignes : relevés avant/après de A identiques (comparaison par script ; seules les durées d'abonnement bougent avec l'heure) | |
+| T3 | Idem pour B (côté collaborateur : « Reçu en collab », parts) | |
+| T4 | 1 500 fausses écoutes (sans client, `pays = 'ZZ-TEST'`) sur un beat de A : Vue d'ensemble / Beats / Préférences = comptage SQL, période complète et « Ce mois » | |
+| T5 | Fiche de ce beat : KPI Écoutes = SQL, tableau des écoutes complet | |
+| T6 | Graphiques : écoutes par jour / semaine / mois = SQL par tranche | |
+| T7 | Nettoyage des fausses écoutes (SELECT filtre exact puis DELETE), retour aux chiffres de T2 | |
+| T8 | Free downloads et favoris au-delà de 1 000 : prouvé par le code (même fonction que les écoutes ; pas de faux free downloads, l'automatisation de relance pourrait écrire à de vrais clients) | |
+| T9 | Ventes / abonnements / codes promo au-delà de 1 000 : prouvé par le code (même `toutesLesLignes` que Commandes et le CRM ; pas de fausses commandes, elles créeraient factures et fiches CRM) | |
+| T10 | Catégories (beatmaker + admin) : chiffres identiques avant/après | |
+
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.
