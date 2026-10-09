@@ -1,4 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { chargerGroupesTitres } from '@/lib/import-externe/liens-beats'
 import { redirect } from 'next/navigation'
 import { aAccesPlanPayant } from '@/lib/acces-plan'
 import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
@@ -19,8 +21,9 @@ export default async function CommandesImporteesPage({
   if (!user) redirect('/connexion')
   const beatmakerId = user.id
 
-  const [planPayant, importsRes, brutes] = await Promise.all([
+  const [planPayant, { groupes }, importsRes, brutes] = await Promise.all([
     aAccesPlanPayant(supabase, beatmakerId),
+    chargerGroupesTitres(createAdminClient(), beatmakerId),
     supabase
       .from('imports_externes')
       .select('id, created_at, plateforme, nom_fichier, nom_vendeur, devise, periode_debut, periode_fin, nb_commandes, nb_lignes, nb_contacts_crees, nb_rejetees, total_depense, total_depense_eur, statut, annule_at, annulation_rapport')
@@ -49,6 +52,8 @@ export default async function CommandesImporteesPage({
       commandes={brutes.map(versDetail)}
       imports={imports}
       planPayant={planPayant}
+      nbTitresNonRelies={groupes.filter(g => g.decision === 'a_traiter').length}
+      nbTitres={groupes.length}
       ouvrirImport={importer === '1'}
     />
   )

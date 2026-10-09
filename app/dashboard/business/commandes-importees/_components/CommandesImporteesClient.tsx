@@ -39,12 +39,14 @@ function Roue() {
 }
 
 export default function CommandesImporteesClient({
-  commandes, imports, planPayant, ouvrirImport,
+  commandes, imports, planPayant, ouvrirImport, nbTitresNonRelies, nbTitres,
 }: {
   commandes: CommandeDetail[]
   imports: ImportHistorique[]
   planPayant: boolean
   ouvrirImport: boolean
+  nbTitresNonRelies: number
+  nbTitres: number
 }) {
   const router = useRouter()
   const [assistant, setAssistant] = useState(ouvrirImport && planPayant)
@@ -119,6 +121,23 @@ export default function CommandesImporteesClient({
           </Link>
         )}
       </div>
+
+      {nbTitres > 0 && (
+        <Link
+          href="/dashboard/business/commandes-importees/relier-beats"
+          className="flex items-center justify-between gap-4 mb-10 px-5 py-4 rounded-2xl bg-gray-900 border border-gray-800 hover:border-gray-700 transition-colors"
+        >
+          <div>
+            <p className="text-sm font-semibold text-white">{planPayant ? '' : '🔒 '}Relier les beats</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {nbTitresNonRelies > 0
+                ? `${pluriel(nbTitresNonRelies, 'titre non relié', 'titres non reliés')} à ton catalogue sur ${nbTitres.toLocaleString('fr-FR')}`
+                : `Les ${nbTitres.toLocaleString('fr-FR')} titres ont été traités`}
+            </p>
+          </div>
+          <span className="text-sm text-indigo-400">→</span>
+        </Link>
+      )}
 
       {/* ── Historique des imports ── */}
       <section className="mb-10">

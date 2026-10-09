@@ -11,7 +11,7 @@ import { BadgePlateforme, MentionsLigne, MontantLigne, fmtDevise } from '@/app/d
 // à l'étape d'import : il relit et recalcule tout lui-même.
 
 type Etape = 'choix' | 'analyse' | 'verification' | 'import' | 'termine'
-type Resultat = { nb_commandes: number; nb_lignes: number; nb_contacts_crees: number }
+type Resultat = { nb_commandes: number; nb_lignes: number; nb_contacts_crees: number; nb_titres_non_relies?: number }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 const nb = (n: number) => n.toLocaleString('fr-FR')
@@ -268,6 +268,14 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
               <p className="text-sm text-gray-400 mt-2">
                 {nb(resultat.nb_commandes)} commandes ({nb(resultat.nb_lignes)} beats vendus) importées · {nb(resultat.nb_contacts_crees)} contacts ajoutés à ton CRM.
               </p>
+              {!!resultat.nb_titres_non_relies && (
+                <p className="text-sm text-gray-400 mt-4">
+                  {nb(resultat.nb_titres_non_relies)} titre{resultat.nb_titres_non_relies > 1 ? 's' : ''} non relié{resultat.nb_titres_non_relies > 1 ? 's' : ''} à ton catalogue ·{' '}
+                  <Link href="/dashboard/business/commandes-importees/relier-beats" className="text-indigo-400 hover:text-indigo-300 font-semibold">
+                    Relier les beats →
+                  </Link>
+                </p>
+              )}
               <div className="flex justify-center gap-3 mt-6">
                 <Link href="/dashboard/business/contacts" className="text-sm px-4 py-2 rounded-xl border border-gray-700 text-gray-300 hover:text-white">
                   Voir mes contacts

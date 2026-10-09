@@ -24,6 +24,7 @@ type LignePayload = {
   offert: boolean
   vendeur_principal: string | null
   collaborateurs: string[]
+  beat_id?: string | null
 }
 
 export type CommandePayload = {
