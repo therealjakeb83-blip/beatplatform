@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CommandeDetail } from '@/app/dashboard/business/_lib/commandes-externes'
-import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantLigne, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'
+import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantLigne, TitreLigneImportee, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
 import AssistantImport from './AssistantImport'
 import Pagination from '../../../_pagination/Pagination'
@@ -274,7 +274,7 @@ export default function CommandesImporteesClient({
                     <td className="px-5 py-3">
                       {c.lignes.map(l => (
                         <div key={l.id} className="mb-1.5 last:mb-0">
-                          <span className="text-gray-200">{l.titre}</span>
+                          <TitreLigneImportee ligne={l} classeTitre="text-gray-200" />
                           <MentionsLigne ligne={l} typeBoutique={l === c.lignes[0] ? c.type_boutique : null} />
                         </div>
                       ))}

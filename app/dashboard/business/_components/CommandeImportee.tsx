@@ -22,6 +22,21 @@ export type LigneImportee = {
   vendeur_principal: string | null
   collaborateurs: string[]
   image_url: string | null
+  beat?: { titre: string } | null
+}
+
+// Titre importé + pochette du beat de son catalogue quand le titre a été relié
+// (page « Relier les beats »)
+export function TitreLigneImportee({ ligne, classeTitre = 'font-medium text-white' }: { ligne: LigneImportee; classeTitre?: string }) {
+  return (
+    <span className="inline-flex items-center gap-2.5 align-middle">
+      {ligne.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ligne.image_url} alt="" title={ligne.beat ? `Relié à « ${ligne.beat.titre} »` : undefined} className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+      )}
+      <span className={classeTitre}>{ligne.titre}</span>
+    </span>
+  )
 }
 
 export type CommandeImporteeDetail = {
@@ -115,12 +130,13 @@ function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onCl
             <div key={l.id} className="bg-gray-950/60 border border-gray-800 rounded-xl p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-white">{l.titre}</p>
+                  <p className="text-sm"><TitreLigneImportee ligne={l} classeTitre="font-semibold text-white" /></p>
                   <MentionsLigne ligne={l} />
                 </div>
                 <MontantLigne ligne={l} devise={d} />
               </div>
               <div className="mt-2">
+                {l.beat && ligne('Beat relié', l.beat.titre)}
                 {ligne('Licence', l.licence ?? 'Non précisée')}
                 {ligne('Prix catalogue', fmtDevise(l.prix_catalogue, d))}
                 {ligne('Remise', l.remise > 0 ? `− ${fmtDevise(l.remise, d)}` : '–')}

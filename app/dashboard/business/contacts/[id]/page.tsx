@@ -10,7 +10,7 @@ import { statutFusionne, changerStatutParBeatmaker, LIBELLE_STATUT_NEWSLETTER } 
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants, montantDepense } from '@/app/dashboard/business/_lib/ltv'
 import { chargerCommandesImporteesClient, versCrmDepuisDetail } from '@/app/dashboard/business/_lib/commandes-externes'
-import { LigneTableauImportee, MentionsLigne, MontantLigne } from '@/app/dashboard/business/_components/CommandeImportee'
+import { LigneTableauImportee, MentionsLigne, MontantLigne, TitreLigneImportee } from '@/app/dashboard/business/_components/CommandeImportee'
 import { libelleSource, SOURCE_COLORS } from '@/lib/sources-marketing'
 import { libelleSourceImport } from '@/lib/import-externe/plateformes'
 import TableauPagine from '../../../_pagination/TableauPagine'
@@ -990,7 +990,7 @@ export default async function FicheClientPage({
                         <LigneTableauImportee key={`${h.commande.id}:${h.ligne.id}`} commande={h.commande} className={bordure}>
                           <td className="px-5 py-3 text-xs text-amber-200/80 whitespace-nowrap">{libelleSourceImport(h.commande.plateforme, h.commande.type_boutique)}</td>
                           <td className="px-5 py-3">
-                            <span className="font-medium text-white">{h.ligne.titre}</span>
+                            <TitreLigneImportee ligne={h.ligne} />
                             <MentionsLigne ligne={h.ligne} />
                           </td>
                           <td className="px-5 py-3 text-xs text-gray-500">{h.ligne.licence ?? 'Non précisée'}</td>
