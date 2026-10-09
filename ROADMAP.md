@@ -562,7 +562,7 @@ Checklist lot 2 (A = jakeb-test, B = nic-beat-2809, fichier = vrai export BeatSt
 
 | # | Test | Statut |
 |---|---|---|
-| T0 | Migration exécutée + contrôle ; site déployé ; Commandes / fiche commande / Contacts / fiche client s'ouvrent sans erreur | ✅ migration (Jake) + déploiement (Claude : routes 401 hors connexion) ; pages à ouvrir (Jake) |
+| T0 | Migration exécutée + contrôle ; site déployé ; Commandes / fiche commande / Contacts / fiche client s'ouvrent sans erreur | ✅ migration (Jake) + déploiement (Claude : routes 401 hors connexion) + pages OK (Jake). Trouvé en passant (défaut antérieur) : fiche client, un abonnement affichait « Beat supprimé » → nom de l'abonnement (`db5264f`) |
 | T1 | Lecteur sur le vrai fichier = Sales Report | ✅ Claude (janvier : 2 058 beats, 93 312,89 $, remises 4 880,22 $ ; février : 2 035 commandes, 0 rejet) |
 | T2 | Plan Free : page ouverte, Importer 🔒, API refuse | ✅ prouvé par le code : page dans `PREFIXES_LIBRES` (`lib/acces-plan.ts`) ; bouton 🔒 si `planPayant` faux ; `importer`/`analyser` exigent `aAccesPlanPayant` (même règle que `proxy.ts` : admin, exempté ou abonnement actif/essai) ; `annuler` ne l'exige pas |
 | T3 | Écran de vérification sur A : BeatStars, « Jake B », oct. 2020 → févr. 2026, 2 035 commandes, 0 rejet, nouveaux/existants, $ ≈ €, 5 exemples | ✅ Claude (vrai code de préparation, base simulée : 95 847,50 $ ≈ 88 623,17 €, 1 517 acheteurs) ; écran réel à voir (Jake) |
