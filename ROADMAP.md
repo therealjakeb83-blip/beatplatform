@@ -604,7 +604,7 @@ Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
 | T5 | Contacts sélectionnés sur 2 pages → l'action groupée (ajout à une liste) les prend tous | ✅ Claude (code : sélection indépendante de la page, l'action envoie toute la sélection) + Jake (2 + 2 contacts sur pages 1 et 2 → « 4 sélectionnés » → liste « Test pagination » avec les 4) |
 | T6 | Commandes : plus de limite à 500 (total = base) | ✅ Jake (base : 539 commandes + 37 tentatives + 0 vente collab = 576 ; écran : « … sur 576 ». L'ancienne limite cachait les 39 plus anciennes) |
 | T6b | Beats / Abonnements / code promo : plus de plafond | ✅ prouvé par le code (lecture par lots de 1 000 via `toutesLesLignes`, ordre stable) |
-| T7 | Commandes importées (liste + historique) : pagination, panneau de détail toujours OK | ⬜ |
+| T7 | Commandes importées (liste + historique) : pagination, panneau de détail toujours OK | ✅ Jake (page suivante → clic sur une commande de mars 2025 → panneau complet : prix, taux BCE, n° de facture, import d'origine) |
 | T8 | Fiche client : onglet Commandes paginé, l'onglet reste le même en changeant de page | ⬜ |
 | T9 | Détail d'un segment et d'une liste | ⬜ |
 | T10 | Journaux : 20 / 50 / 100, onglet Échoués sans page vide ; journal Stripe au-delà de 100 | ⬜ |
