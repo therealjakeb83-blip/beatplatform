@@ -1,6 +1,6 @@
 # My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-10-09 (fin de session) — Analytics 1 000 lignes ✅, cohérence des chiffres ✅ (+ retouches R1-R4 ✅). **Lot 3 de l'import : plan + checklist T0-T12 présentés, NON validés, 3 questions ouvertes, rien de codé** (bloc « ⏸ LOT 3 » de la section « Détail — Import de commandes externes »). Noté hors lot : relance d'inactivité lue en une fois (> 1 000 lignes).
+> Dernière mise à jour : 2026-10-09 (fin de session) — Analytics 1 000 lignes ✅, cohérence des chiffres ✅ (+ retouches R1-R4 ✅). **Lot 3 de l'import : plan validé, en cours de code** (bloc « 🔄 LOT 3 » de la section « Détail — Import de commandes externes »). Noté hors lot : relance d'inactivité lue en une fois (> 1 000 lignes).
 >
 > Dernière mise à jour : 2026-10-09 (suite x2) — **Lot « cohérence des chiffres » ✅ CLOS (T0-T6)** : période Personnalisé (jour de fin inclus, fuseau du beatmaker), fiche d'un beat alignée sur l'onglet Beats, Admin → Catégories exact (parts, remboursements, litiges, TVA par vendeur) ; **norme CA brut / net** appliquée partout (les remises étaient retirées deux fois depuis juillet). **Prochain : lot 3 de l'import (inscription groupée + relier les beats).**
 >
@@ -666,26 +666,26 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 | T5 | Admin → Catégories : ventes et CA net des 3 premiers styles = calcul SQL indépendant | ✅ Jake (1er passage : R&B 1 133,60 € page ≠ 1 329,60 € SQL → double déduction des remises trouvée → C4 ; après la norme : page = SQL indépendant au centime sur les 3 styles officiels du haut — Trap 147 / 6 354,36 €, Reggaeton 52 / 4 944,25 €, R&B 40 / 1 347,85 €) |
 | T6 | Norme : nouveau CA brut = ancien brut + remises, nouveau CA net = ancien net + remises HT, panier moyen et remises inchangés, sur toutes les périodes (relevé T1) || ✅ Claude (132/132 vérifications : Vue d'ensemble, Ventes, Revenus, Codes promo × 6 périodes → brut = payé + remises, net = payé HT, panier moyen / remises / beats vendus / utilisations inchangés ; somme CA par beat = somme CA par licence) |
 
-**⏸ LOT 3 — PLAN PRÉSENTÉ le 2026-10-09, NON VALIDÉ, rien de codé** (inscription groupée à la newsletter + relier les beats importés). Détail complet : `memory/project_import_lot3_plan_2026_10_09.md`.
-- **Déjà en place (vérifié)** : `commandes_externes_lignes.beat_id` existe et le CRM le lit (préférences musicales, pochette) → relier un titre met le CRM à jour sans autre code ; une inscription newsletter ne déclenche aucun email ; `changerStatutParBeatmaker` refuse déjà de réinscrire un désinscrit.
-- **L3a** migration (mémoire des liens par beatmaker + trace des inscriptions groupées + 2 fonctions SQL en une transaction) → **L3b** bouton « Inscrire à la newsletter » dans la sélection Contacts (décompte avant validation, case obligatoire, désinscrits ignorés) → **L3c** page « Relier les beats » (titres triés par ventes, proposition seulement si correspondance exacte et unique, valider / autre beat / ne pas relier / défaire, « valider toutes », mémoire réappliquée aux imports suivants, compteur « X titres non reliés », plan Free 🔒).
-- **3 questions à poser en premier** : (1) texte de la case (proposé : « Je confirme que ces contacts m'ont donné leur accord pour recevoir ma newsletter, et que je peux le prouver si besoin. ») ; (2) « Valider toutes les propositions » = tout le filtre en cours, nombre dans le bouton (recommandé) ou la page affichée ; (3) beats supprimés jamais proposés, choisissables à la main « (supprimé) » (recommandé).
+**🔄 LOT 3 — PLAN VALIDÉ le 2026-10-09 (reprise), en cours de code** (inscription groupée à la newsletter + relier les beats importés). Détail : `memory/project_import_lot3_plan_2026_10_09.md`.
+- **Réponses de Jake** : (1) case = « Je confirme que ces contacts m'ont donné leur accord pour recevoir ma newsletter, et que je peux le prouver si besoin. » ; (2) « Valider les N propositions » = tout le filtre en cours (toutes pages), nombre dans le bouton ; (3) beats supprimés (suppression douce) jamais proposés, choisissables à la main marqués « (supprimé) ».
+- **L3a** migration `supabase/import_externe_lot3.sql` (tables `liens_titres_externes` + `inscriptions_newsletter_groupees`, fonctions `relier_titres_externes`, `inscrire_newsletter_groupe` — décompte à blanc + écriture, fiches fusionnées comprises —, `importer_commandes_externes` reprend le `beat_id` de la mémoire) → **L3b** bouton « Inscrire à la newsletter » dans la sélection Contacts → **L3c** page « Relier les beats » (Commandes importées).
 
 | # | Test | Statut |
 |---|---|---|
 | T0 | Migration + SELECT de contrôle ; build ; Contacts, Commandes importées, Relier les beats sans erreur | |
 | T1 | Inscription groupée de 3 contacts de test (adresses de Jake) dont 1 désinscrit : « 2 inscrits · 1 ignoré », case obligatoire, base | |
-| T2 | Le désinscrit reste désinscrit ; trace enregistrée | |
+| T2 | Le désinscrit reste désinscrit ; trace enregistrée avec le texte de la case | |
 | T3 | Sélection de plus de 1 000 contacts : décompte = SQL | |
 | T4 | Aucun email envoyé par l'inscription (code + journal des emails) | |
 | T5 | Une campagne voit les nouveaux inscrits (code) | |
-| T6 | Relier les beats : titres et ventes = SQL ; propositions seulement exactes et uniques | |
+| T6 | Relier les beats : titres et ventes = SQL ; propositions seulement exactes et uniques, jamais un beat supprimé | |
 | T7 | Valider une proposition : toutes les lignes du titre reliées (SQL), pochette + préférences CRM | |
 | T8 | Autre beat / Ne pas relier / Défaire : la base suit | |
-| T9 | « Valider toutes les propositions » : nombre = SQL | |
-| T10 | Mémoire : fichier de test réimporté avec un titre déjà relié → relié tout seul | |
-| T11 | Plan Free : actions 🔒 (code) | |
-| T12 | Analytics inchangé (code) | |
+| T9 | Beat supprimé : absent des propositions, trouvable dans la recherche « (supprimé) » et reliable | |
+| T10 | « Valider les N propositions » sur « À traiter » : N = SQL, toutes pages | |
+| T11 | Mémoire : fichier de test réimporté avec un titre déjà relié → relié tout seul | |
+| T12 | Plan Free : actions 🔒 (code) | |
+| T13 | Analytics inchangé (code) | |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
