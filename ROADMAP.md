@@ -609,6 +609,7 @@ Checklist (A = jakeb-test, 2 035 commandes importées + 1 517 contacts) :
 | T9 | Détail d'un segment et d'une liste | ✅ Jake (segment de plus de 20 contacts : page 2 OK) ; liste = même composant que Contacts (T1) + liste de 4 contacts sans barre (T12) |
 | T10 | Journaux : 20 / 50 / 100, onglet Échoués sans page vide ; journal Stripe au-delà de 100 | ⬜ |
 | T11 | Analytics Ventes : totaux identiques à avant | ✅ prouvé par le code (seul l'affichage du tableau est découpé, KPI et totaux viennent de l'API inchangée) ; coup d'œil Jake |
+| T13 | Ajouté par Jake (segment lent à chaque page) : page gardée dans l'adresse sur tous les tableaux → « Retour » depuis une fiche et F5 reviennent à la même page ; segment / fiche client / abonnement calculés une seule fois, page suivante instantanée (`c2f40b8`) | ⬜ |
 | T12 | Tableau de moins de 21 lignes : pas de barre | ✅ prouvé par le code (`total <= 20` → rien) + Jake (recherche « manuel » 6 contacts, liste « Test pagination » 4 contacts : pas de barre) |
 
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
