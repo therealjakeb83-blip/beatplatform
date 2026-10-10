@@ -64,6 +64,8 @@ export type CommandeImporteeDetail = {
   total_depense_eur: number | null
   type_boutique: string | null
   reference_paiement: string | null
+  moyen_paiement?: string | null
+  montant_tva?: number | null
   acheteur_nom: string | null
   acheteur_email: string
   import_date: string | null
@@ -179,7 +181,9 @@ function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onCl
 
           <div>
             {ligne('Total dépensé', <MontantCommande commande={commande} classe="text-gray-200" />)}
+            {commande.montant_tva != null && ligne('dont TVA', fmtDevise(commande.montant_tva, d))}
             {commande.total_remise !== null && commande.plateforme !== 'beatstars' && ligne('Remise indiquée dans le fichier', fmtDevise(commande.total_remise, d))}
+            {commande.moyen_paiement && ligne('Moyen de paiement', commande.moyen_paiement)}
             {d !== 'EUR' && commande.taux_change !== null && ligne('Taux de change', `1 € = ${commande.taux_change} ${d} (BCE${commande.date_taux ? `, ${date(commande.date_taux)}` : ''})`)}
             {commande.numero_externe.startsWith('emp-')
               ? ligne('N° de commande', 'Absent du fichier')

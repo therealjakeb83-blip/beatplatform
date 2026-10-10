@@ -9,9 +9,9 @@ import {
 import { chargerTauxBce, convertirEnEuros } from '../taux-bce'
 import type { LigneRejetee } from '../beatstars'
 import type { Tableau } from './tableau'
-import { cleLicence, cleStatut, type Association, type Role } from './association'
+import { ROLES_COORDONNEES, cleLicence, cleStatut, type Association, type Role } from './association'
 import { decouperCase, extraireLicence, nettoyerLicence, titresAvecQuantite } from './articles'
-import { deviseEcrite, instantDate, lireDate, lireMontant } from './valeurs'
+import { codePays, deviseEcrite, instantDate, lireDate, lireMontant, moyenPaiement } from './valeurs'
 
 // Préparation d'un import « format libre » à partir des réponses validées de
 // l'assistant, SANS RIEN ÉCRIRE (aperçu ET import : le serveur refait tout).
@@ -39,8 +39,14 @@ type LigneLue = {
   montantLigne: number | null
   quantite: number | null
   remise: number | null
+  tva: number | null
   nom: string | null
+  moyen: string | null
+  coordonnees: Coordonnees
 }
+
+type RoleCoordonnee = (typeof ROLES_COORDONNEES)[number]
+type Coordonnees = Partial<Record<RoleCoordonnee, string>>
 
 type Article = { titre: string | null; licence: string | null; licence_id: string | null; prix: number | null; titreOriginal: string | null }
 
@@ -66,6 +72,7 @@ export async function preparerImportLibre(
   let nbLignesEcartees = 0
   const statutsRegles = a.statutsRegles ? new Set(a.statutsRegles) : null
   const avecQuantite = a_('titre') && titresAvecQuantite(tableau.lignes.map(l => val(l.cellules, 'titre')))
+  const lireCoordonnees = (cellules: string[]) => lireCoordonneesAvec(a, cellules)
 
   // ── Lecture ligne à ligne ─────────────────────────────────────────────
   const groupes = new Map<string, LigneLue[]>()
@@ -94,9 +101,9 @@ export async function preparerImportLibre(
     const dateLue = lireDate(dateBrute, a.ordreDate)
     if (dateLue === undefined) { rejeter(`Date illisible (« ${dateBrute} »)`); continue }
 
-    const montants: Partial<Record<'montant_commande' | 'montant_ligne' | 'remise' | 'quantite', number | null>> = {}
+    const montants: Partial<Record<'montant_commande' | 'montant_ligne' | 'remise' | 'quantite' | 'tva', number | null>> = {}
     let illisible: string | null = null
-    for (const role of ['montant_commande', 'montant_ligne', 'remise', 'quantite'] as const) {
+    for (const role of ['montant_commande', 'montant_ligne', 'remise', 'quantite', 'tva'] as const) {
       const brut = val(l.cellules, role)
       const m = lireMontant(brut)
       if (m === undefined) { illisible = `${role === 'quantite' ? 'Quantité' : 'Montant'} illisible (« ${brut} »)`; break }
@@ -118,7 +125,10 @@ export async function preparerImportLibre(
       montantLigne: montants.montant_ligne ?? null,
       quantite: montants.quantite ?? null,
       remise: montants.remise ?? null,
+      tva: montants.tva ?? null,
       nom: nomAcheteur,
+      moyen: moyenPaiement(val(l.cellules, 'moyen_paiement')),
+      coordonnees: lireCoordonnees(l.cellules),
     }
     const g = groupes.get(cleGroupe) ?? []
     g.push(lue)
@@ -132,7 +142,7 @@ export async function preparerImportLibre(
   // ── Commandes ─────────────────────────────────────────────────────────
   let nbLignesSansArticle = 0
   const occurrences = new Map<string, number>()
-  type CommandeLue = { numero: string; lignes: LigneLue[]; articles: Article[]; total: number | null; remise: number | null; date: Date | null }
+  type CommandeLue = { numero: string; lignes: LigneLue[]; articles: Article[]; total: number | null; remise: number | null; date: Date | null; tva: number | null; moyen: string | null }
   const lues: CommandeLue[] = []
 
   for (const [cle, lignes] of groupes) {
@@ -157,6 +167,8 @@ export async function preparerImportLibre(
     const total = lignes.find(l => l.montantCommande !== null)?.montantCommande ?? null
     const remise = lignes.find(l => l.remise !== null)?.remise ?? null
     const date = lignes.find(l => l.date)?.date ?? null
+    const tva = lignes.find(l => l.tva !== null)?.tva ?? null
+    const moyen = lignes.find(l => l.moyen)?.moyen ?? null
 
     let numero = cle.startsWith('n:') ? cle.slice(2) : ''
     if (!numero) {
@@ -166,7 +178,7 @@ export async function preparerImportLibre(
       occurrences.set(empreinte, n)
       numero = `emp-${empreinte}${n > 1 ? `-${n}` : ''}`
     }
-    lues.push({ numero, lignes, articles, total, remise, date })
+    lues.push({ numero, lignes, articles, total, remise, date, tva, moyen })
   }
 
   // ── Déjà importées, montants, conversion ──────────────────────────────
@@ -222,6 +234,8 @@ export async function preparerImportLibre(
       acheteur_nom: x.lignes.find(l => l.nom)?.nom ?? null,
       type_boutique: null,
       reference_paiement: null,
+      moyen_paiement: x.moyen,
+      montant_tva: x.tva,
       devise: a.devise,
       taux_change: taux,
       date_taux: dateTaux,
@@ -235,6 +249,15 @@ export async function preparerImportLibre(
   })
 
   // ── Contacts ──────────────────────────────────────────────────────────
+  // Coordonnées : celles de la commande la plus récente qui en a (commandes
+  // triées de la plus récente à la plus ancienne), champ par champ
+  const coordParNumero = new Map(nouvelles.map(x => [x.numero, Object.assign({}, ...x.lignes.map(l => l.coordonnees).reverse()) as Coordonnees]))
+  const coordParEmail = new Map<string, Coordonnees>()
+  for (const cmd of commandes) {
+    const acc = coordParEmail.get(cmd.acheteur_email) ?? {}
+    for (const [k, v] of Object.entries(coordParNumero.get(cmd.numero_externe) ?? {}) as [RoleCoordonnee, string][]) if (v && !acc[k]) acc[k] = v
+    coordParEmail.set(cmd.acheteur_email, acc)
+  }
   const parEmail = new Map<string, { nom: string | null; premiere: string | null }>()
   for (const cmd of commandes) {
     const ex = parEmail.get(cmd.acheteur_email)
@@ -248,7 +271,11 @@ export async function preparerImportLibre(
   const existants = await emailsDejaContacts(admin, beatmakerId, emails)
   const contacts: ContactPayload[] = emails.map(email => {
     const v = parEmail.get(email)!
-    return { email, ...decouperNom(v.nom, email), premiere_date: v.premiere }
+    const co = coordParEmail.get(email) ?? {}
+    return {
+      email, ...decouperNom(v.nom, email), premiere_date: v.premiere,
+      adresse: co.adresse ?? null, ville: co.ville ?? null, code_postal: co.code_postal ?? null, pays: co.pays ?? null, telephone: co.telephone ?? null,
+    }
   })
 
   // ── Aperçu ────────────────────────────────────────────────────────────
@@ -315,6 +342,20 @@ export async function preparerImportLibre(
     contacts,
     commandes,
   }
+}
+
+// Coordonnées d'une ligne (adresse, ville, code postal, pays en code ISO, téléphone)
+function lireCoordonneesAvec(a: Association, cellules: string[]): Coordonnees {
+  const co: Coordonnees = {}
+  for (const role of ROLES_COORDONNEES) {
+    const i = a.colonnes.indexOf(role)
+    if (i < 0) continue
+    const brut = (cellules[i] ?? '').replace(/\s+/g, ' ').trim()
+    if (!brut) continue
+    const v = role === 'pays' ? codePays(brut) : brut.slice(0, 200)
+    if (v) co[role] = v
+  }
+  return co
 }
 
 // Total réparti au prorata des prix, au centime ; le reste sur le dernier article

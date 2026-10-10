@@ -19,6 +19,7 @@ type Profil = {
   pSymbole: number
   pDevise: number
   pCode3: number
+  pTelephone: number
   pLettres: number
   longueurMoy: number
   maxEntier: number
@@ -55,6 +56,7 @@ function profil(valeurs: string[], numeros: string[] | null): Profil {
     pSymbole: part(x => /[€$]|\b(eur|usd)\b/i.test(x)),
     pDevise: part(x => deviseEcrite(x) !== null && x.trim().length <= 5),
     pCode3: part(x => /^[A-Z]{3}$/.test(x.trim()) || /^[€$£¥]$/.test(x.trim())),
+    pTelephone: part(x => /^\+?[\d\s().-]{6,20}$/.test(x.trim())),
     pLettres: part(x => /\p{L}/u.test(x)),
     longueurMoy: v.reduce((s, x) => s + x.length, 0) / n,
     maxEntier: entiers.length ? Math.max(...entiers) : 0,
@@ -77,10 +79,16 @@ const INDICES: Partial<Record<Role, RegExp>> = {
   remise: /(remise|discount|reduction|coupon amount|rabais)/,
   statut: /(statut|status|etat|state)/,
   devise: /(devise|currency|monnaie)/,
+  adresse: /(adresse|address|rue\b|street)/,
+  ville: /(ville|city|town|localite)/,
+  code_postal: /(code postal|postcode|postal|zip)/,
+  pays: /(pays|country)/,
+  telephone: /(telephone|phone|\btel\b|mobile|portable)/,
+  moyen_paiement: /(paiement|payment|moyen de|gateway|passerelle)/,
 }
 
 // Colonnes qui ressemblent à une info utile mais n'en sont pas une
-const PAS_UTILE = /(adresse|address|ville|city|code postal|postcode|zip|pays|country|telephone|phone|societe|company|note|comment|paiement|payment|methode|method|livraison|shipping|tax|tva|vat|frais|fee|rembours|refund|sous-total|subtotal|ugs|sku|attribution|referent|source|type de client|code promo|coupon(?! amount)|ip\b)/
+const PAS_UTILE = /(societe|company|note|comment|livraison|shipping|tax|tva|vat|frais|fee|rembours|refund|sous-total|subtotal|ugs|sku|attribution|referent|source|type de client|code promo|coupon(?! amount)|ip\b|etat \(|state\b|region|province)/
 
 function scores(enTete: string, p: Profil): Partial<Record<Role, number>> {
   const h = sansAccents(enTete)
@@ -90,6 +98,18 @@ function scores(enTete: string, p: Profil): Partial<Record<Role, number>> {
   if (p.remplies === 0) return s
   const tauxDistinct = p.distinctes / p.remplies
 
+  // Coordonnées (facturation) : reconnues au nom de la colonne, vérifiées par
+  // le contenu ; une colonne « livraison / shipping » reste ignorée (doublon)
+  if (!inutile && indice('moyen_paiement') && p.pLettres > 0.8 && p.distinctes <= 2000 && !/(date|montant|amount|total|frais|fee|statut|status|etat)/.test(h)) return { moyen_paiement: 70 }
+  if (!inutile && p.pEmail < 0.05 && p.pDate < 0.5) {
+    if (indice('pays') && p.longueurMoy <= 30) s.pays = 72
+    else if (indice('code_postal') && p.longueurMoy <= 10) s.code_postal = 72
+    else if (indice('telephone') && p.pTelephone > 0.8) s.telephone = 72
+    else if (indice('ville') && p.pLettres > 0.8) s.ville = 70
+    else if (indice('adresse') && p.pLettres > 0.8) s.adresse = 70
+    if (s.pays || s.code_postal || s.telephone || s.ville || s.adresse) return s
+  }
+
   if (p.pEmail > 0.8) s.email = 100 + indice('email') * 10 - (/livraison|shipping/.test(h) ? 20 : 0)
   if (p.pDate > 0.8) s.date = 90 + indice('date') * 10 - (/modif|update|paiement|payment|termin|complet/.test(h) ? 15 : 0)
   if ((p.pDevise > 0.9 || p.pCode3 > 0.9) && p.distinctes <= 5) s.devise = 80 + indice('devise') * 10
@@ -97,6 +117,15 @@ function scores(enTete: string, p: Profil): Partial<Record<Role, number>> {
   // la quantité passe avant la liste des colonnes inutiles (« Quantité (- Remboursement) »)
   if (indice('quantite') && p.pEntier > 0.95 && p.maxEntier <= 50) s.quantite = 75
   const montant = p.pMontant > 0.9 && p.pEmail === 0 && p.pDate < 0.5 && !h.includes('#')
+  // remise : la version TVA comprise est préférée (cohérente avec le montant
+  // payé) ; « Taxe de la réduction » n'est pas une remise
+  // TVA payée sur la commande (pas la taxe d'une remise ni de la livraison)
+  if (montant && /(taxe|\btax\b|tva|vat)/.test(h) && !/(reduction|discount|remise|coupon|inc\.?|ttc|livraison|shipping|taux|rate|%)/.test(h)) {
+    return { tva: 70 }
+  }
+  if (montant && !s.quantite && indice('remise') && !/^(taxe|tax)\b/.test(h)) {
+    return { remise: 70 + (/(inc\.? ?tax|ttc|tva comprise|incl)/.test(h) ? 10 : 0) }
+  }
   if (montant && !inutile && !s.quantite) {
     const decimaux = p.pDecimal > 0.2 || p.pSymbole > 0.5
     if (indice('remise')) s.remise = 70

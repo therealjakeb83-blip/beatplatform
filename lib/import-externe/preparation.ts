@@ -36,6 +36,8 @@ export type CommandePayload = {
   acheteur_nom: string | null
   type_boutique: string | null
   reference_paiement: string | null
+  moyen_paiement?: string | null
+  montant_tva?: number | null
   devise: string
   taux_change: number | null
   date_taux: string | null
@@ -47,7 +49,11 @@ export type CommandePayload = {
   lignes: LignePayload[]
 }
 
-export type ContactPayload = { email: string; prenom: string; nom: string; premiere_date: string | null }
+export type ContactPayload = {
+  email: string; prenom: string; nom: string; premiere_date: string | null
+  // format libre : coordonnées, enregistrées seulement si l'import CRÉE la fiche
+  adresse?: string | null; ville?: string | null; code_postal?: string | null; pays?: string | null; telephone?: string | null
+}
 
 export type Apercu = {
   plateforme: string

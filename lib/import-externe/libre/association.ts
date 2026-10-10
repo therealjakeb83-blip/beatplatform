@@ -7,8 +7,14 @@ import type { Devise, OrdreDate } from './valeurs'
 
 export const ROLES = [
   'email', 'date', 'numero', 'nom_complet', 'prenom', 'nom', 'titre', 'licence',
-  'montant_commande', 'montant_ligne', 'quantite', 'remise', 'statut', 'devise', 'ignorer',
+  'montant_commande', 'montant_ligne', 'quantite', 'remise', 'statut', 'devise',
+  'adresse', 'ville', 'code_postal', 'pays', 'telephone', 'moyen_paiement', 'tva', 'ignorer',
 ] as const
+
+// Coordonnées : enregistrées seulement sur les fiches CRÉÉES par l'import (une
+// fiche client est commune à toutes les boutiques : on ne remplit jamais celle
+// d'un client existant avec les données du fichier d'un beatmaker)
+export const ROLES_COORDONNEES = ['adresse', 'ville', 'code_postal', 'pays', 'telephone'] as const
 export type Role = (typeof ROLES)[number]
 
 export const LIBELLES_ROLES: Record<Role, string> = {
@@ -26,6 +32,13 @@ export const LIBELLES_ROLES: Record<Role, string> = {
   remise: 'Remise (montant)',
   statut: 'Statut de la commande',
   devise: 'Devise',
+  adresse: 'Adresse de l’acheteur',
+  ville: 'Ville',
+  code_postal: 'Code postal',
+  pays: 'Pays',
+  telephone: 'Téléphone',
+  moyen_paiement: 'Moyen de paiement',
+  tva: 'TVA payée (montant)',
   ignorer: 'Ignorer cette colonne',
 }
 
@@ -34,6 +47,13 @@ export const AIDES_ROLES: Partial<Record<Role, string>> = {
   montant_ligne: 'Le prix d’un seul article. Sert à répartir le total entre les beats d’une commande.',
   numero: 'Les lignes qui ont le même numéro forment une seule commande.',
   statut: 'Tu choisiras ensuite quelles valeurs veulent dire « commande réglée ».',
+  adresse: 'Ajoutée à la fiche des nouveaux contacts créés par cet import (jamais à un contact déjà dans ton CRM).',
+  ville: 'Ajoutée à la fiche des nouveaux contacts créés par cet import.',
+  code_postal: 'Ajouté à la fiche des nouveaux contacts créés par cet import.',
+  pays: 'Ajouté à la fiche des nouveaux contacts créés par cet import (code à 2 lettres ou nom du pays).',
+  telephone: 'Ajouté à la fiche des nouveaux contacts créés par cet import.',
+  moyen_paiement: 'Affiché sur chaque commande importée (carte, PayPal, Apple Pay…).',
+  tva: 'Montant de TVA de la commande, affiché dans son détail. Le total dépensé reste le montant payé, TVA comprise.',
 }
 
 // Séparateurs d'articles dans une même case (plusieurs beats achetés)

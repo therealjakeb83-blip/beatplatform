@@ -1,4 +1,5 @@
 import { zonedTimeToUtc } from '@/lib/fuseau-horaire'
+import { listePays } from '@/lib/pays-iso'
 
 // Lecture des montants et des dates d'un fichier « format libre ».
 
@@ -116,4 +117,30 @@ export function lireDate(brut: string, ordre: OrdreDate | null): DateLue | null 
 export function instantDate(d: DateLue, fuseau: string): Date {
   if (d.isoAvecFuseau) return new Date(d.isoAvecFuseau)
   return zonedTimeToUtc(d.annee, d.mois, d.jour, d.heure, d.minute, d.seconde, fuseau)
+}
+
+// Pays → code ISO à 2 lettres (celui des fiches clients) : « FR », « fr »,
+// « France », « Germany »… ; null si non reconnu (le champ reste vide)
+let parNom: Map<string, string> | null = null
+export function codePays(brut: string): string | null {
+  const s = brut.trim()
+  if (!s) return null
+  if (!parNom) {
+    parNom = new Map()
+    const fr = new Intl.DisplayNames(['fr'], { type: 'region' })
+    const en = new Intl.DisplayNames(['en'], { type: 'region' })
+    for (const { code } of listePays()) {
+      parNom.set(code.toLowerCase(), code)
+      for (const nom of [fr.of(code), en.of(code)]) if (nom) parNom.set(sansAccents(nom), code)
+    }
+  }
+  return parNom.get(sansAccents(s)) ?? null
+}
+
+const sansAccents = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+
+// « PayPal (client@mail.com) » → « PayPal » : pas d'email de plus stocké
+export function moyenPaiement(brut: string): string | null {
+  const s = brut.replace(/\s*\(?[^\s@()]+@[^\s@()]+\.[^\s@()]+\)?/g, '').replace(/\s+/g, ' ').trim()
+  return s ? s.slice(0, 60) : null
 }
