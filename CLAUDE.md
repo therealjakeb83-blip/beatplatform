@@ -4,6 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## État de clôture — 2026-10-10, session Codex
+
+**Import de commandes externes (lots 1 à 4) ET « Petites améliorations notées en testant » terminés.** Les améliorations sont déployées sur `beatplatform.vercel.app` (commit `b250bd2`, Ready confirmé par Jake), testées et closes. Lire `HANDOFF_CLAUDE_PETITES_AMELIORATIONS_2026-10-10.md`, la dernière entrée de `ROADMAP.md` et la mémoire `project_petites_ameliorations_2026_10_10.md`. Cet état remplace les anciens « suite proposée », « relance lue en une fois » et « tests interface en attente » encore présents dans les historiques.
+
+- Relier les beats : sélection multiple, validation des propositions sélectionnées, choix d'un même beat pour plusieurs titres, Ne pas relier groupé ; sélection entre pages, remise à zéro sur recherche/filtre, actions réversibles. Validation globale des propositions sûres conservée ; ressemblances seulement sur sélection explicite avec avertissement.
+- Doublons : recherche sur les noms/emails/téléphones des deux contacts, accents/casse ignorés, combinée à la confiance ; retour page 1 à chaque recherche/filtre.
+- Relance d'inactivité : commandes NATIVES, historique des relances et automatisations actives lus par lots de 1 000 avec ordre stable via `_lib/requetes.ts`. Commandes importées toujours exclues. Test local reproductible : `node scripts/test-scans-inactivite.mjs` (2 208 commandes, 1 505 relances historiques, 697 nouvelles puis 0 au second passage ; aucun email réel).
+- Aucune migration. Build/TypeScript/lint ciblé réussis. Tests interface par Jake : actions groupées, Défaire, conservation, recherche et filtres Doublons, retour depuis page 2. Téléphone/Free/erreurs UI contrôlés par code, pas simulés visuellement ; cron réel et envoi d'emails non déclenchés en production.
+- Ancien déploiement `01bf4ac` échoué dans Turbopack sur Syne (`next/font/google queries have exactly one entry`), puis redéploiement sans cache réussi selon Jake. Cause précise non prouvée ; aucune modification du code des polices.
+
+**Prochain chantier : rang 10 de la roadmap, refonte UX/UI, étape 5v2 boutiques. Aucun code de cette refonte écrit dans cette session.** Méthode : plan + checklist T0-TN AVANT code, sur `main`, Jake teste sur Vercel. Ne pas rouvrir les décisions de l'import.
+
 # Règle de début de session
 
 Au début de chaque session (sauf si Jake dit explicitement de ne pas le faire), lire en profondeur avant de répondre :

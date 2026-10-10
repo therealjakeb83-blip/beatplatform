@@ -1,6 +1,6 @@
-# My Producer — Roadmap V1
+﻿# My Producer — Roadmap V1
 
-> Dernière mise à jour : 2026-10-10 (reprise Codex) — **Petites améliorations notées en testant : CODÉES, validation interface par Jake en attente**. « Relier les beats » : sélection multiple, validation des propositions sélectionnées, choix d'un même beat pour plusieurs titres, « Ne pas relier » groupé. Doublons : recherche noms/emails/téléphones combinée au filtre de confiance. Relance d'inactivité : commandes, historique anti-relance et automatisations actives lus par lots. Test local du vrai handler sur base simulée : 2 208 commandes, 1 505 relances historiques, aucun doublon au second scan ; aucun email réel envoyé. Aucune migration. Après validation de ce lot : rang 10, refonte UX/UI, étape 5v2 boutiques.
+> Dernière mise à jour : 2026-10-10 (reprise Codex) — **Petites améliorations notées en testant : ✅ TERMINÉES, déployées et validées par Jake**. « Relier les beats » : sélection multiple, validation des propositions sélectionnées, choix d'un même beat pour plusieurs titres, « Ne pas relier » groupé. Doublons : recherche noms/emails/téléphones combinée au filtre de confiance. Relance d'inactivité : commandes, historique anti-relance et automatisations actives lus par lots. Test local du vrai handler sur base simulée : 2 208 commandes, 1 505 relances historiques, aucun doublon au second scan ; aucun email réel envoyé. Aucune migration. Commit applicatif b250bd2, déploiement Ready confirmé par Jake. Prochain chantier : rang 10, refonte UX/UI, étape 5v2 boutiques.
 
 > Dernière mise à jour : 2026-10-10 (soir) — **CHANTIER « IMPORT DE COMMANDES EXTERNES » (rang 8 / étape 11.5) ENTIÈREMENT TERMINÉ : lot 4 (format libre) ✅ CLOS (T0-T16)**. Tout fichier CSV/Excel non BeatStars passe par un assistant colonne par colonne ; obligatoires = email + date + montant ; licences et sources reliées à la main (évidences de source pré-remplies) ; coordonnées seulement sur les fiches créées ; moyen de paiement, TVA, source sur la commande ; devise contredite = confirmation ; n° de commande déjà pris = signalé. Simulé puis testé sur le vrai export WooCommerce de Jake (rapprochement exact avec son rapport de ventes, CSV et Excel) et sur un fichier inventé par ChatGPT. Bug Vercel trouvé : gros envoi + petite réponse = réponse illisible → fichier compressé (Excel converti en CSV) dans le navigateur. 3 migrations exécutées et vérifiées (`import_externe_lot4.sql`, `lot4b`, `lot4c`). **Suite proposée : « Petites améliorations notées en testant » (Relier les beats par lots, recherche sur la page Doublons, relance d'inactivité > 1 000 commandes ; 2,5-4 h), puis rang 10 (refonte UX/UI, Étape 5v2).** Page « Où on en est » : version 54.
 >
@@ -751,22 +751,22 @@ Checklist (passe 1 = vrai fichier T0-T10, passe 2 = fichiers fabriqués T11-T16)
 - ⏭ APRÈS le lot 4, hors chantier : **recherche sur la page Doublons** (comme les autres pages ; utile dès qu'il y a plusieurs pages de doublons).
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
-### Petites améliorations notées en testant — codées le 2026-10-10, tests interface en attente
+### Petites améliorations notées en testant — ✅ closes le 2026-10-10
 
 Plan et checklist présentés avant code, feu vert de Jake (« c'est partis »), travail sur `main`. Aucune migration : les liens groupés utilisent la transaction SQL existante. La sélection reste d'une page à l'autre ; changer la recherche ou les filtres la vide. La validation globale des propositions sûres reste disponible ; valider les propositions ressemblantes en groupe exige une sélection explicite et affiche un avertissement. Les ventes importées restent exclues du scan d'inactivité.
 
 | Test | Vérification | État |
 |---|---|---|
 | T0 | Build, TypeScript et lint des fichiers modifiés | ✅ Build Next.js 16.2.4, TypeScript et lint ciblé réussis |
-| T1 | Cocher/décocher plusieurs titres, sélectionner la page, changer de page | À tester par Jake |
-| T2 | Recherche/filtre vide la sélection ; aucun titre caché traité | À tester par Jake |
-| T3 | Valider plusieurs propositions : chaque titre rejoint son beat affiché | À tester par Jake |
-| T4 | Choisir un beat pour plusieurs titres : tous rejoignent le même beat | À tester par Jake |
-| T5 | « Ne pas relier » groupé : compteurs et ventes actualisés | À tester par Jake |
-| T6 | Recharger, changer ou défaire : décisions conservées et réversibles | À tester par Jake |
-| T7 | Plan Free verrouillé, boutons bloqués pendant l'enregistrement, erreur visible | Verrouillage contrôlé par code ; interface à tester |
-| T8 | Recherche Doublons par nom (accents/casse ignorés), email et téléphone des deux contacts | À tester par Jake |
-| T9 | Recherche + confiance + pagination ; retour page 1, résultat vide explicite | À tester par Jake |
+| T1 | Cocher/décocher plusieurs titres, sélectionner la page, changer de page | ✅ Jake : sélection et case de page ; conservation entre pages contrôlée par code |
+| T2 | Recherche/filtre vide la sélection ; aucun titre caché traité | ✅ Jake |
+| T3 | Valider plusieurs propositions : chaque titre rejoint son beat affiché | ✅ Jake : 4 titres, Reliés 2 → 6, À traiter 638 → 634 (captures) |
+| T4 | Choisir un beat pour plusieurs titres : tous rejoignent le même beat | ✅ Jake : simulation Melancholia + Mélancolie → Mélancholia, Reliés 6 → 8 (capture), liens de test défaits |
+| T5 | « Ne pas relier » groupé : compteurs et ventes actualisés | ✅ Jake |
+| T6 | Recharger, changer ou défaire : décisions conservées et réversibles | ✅ Jake : Défaire et conservation après rechargement ; Changer utilise le flux existant |
+| T7 | Plan Free verrouillé, boutons bloqués pendant l'enregistrement, erreur visible | ✅ Contrôle par code : garde plan payant existante, boutons désactivés, erreurs affichées ; pas de simulation visuelle Free/erreur réseau |
+| T8 | Recherche Doublons par nom (accents/casse ignorés), email et téléphone des deux contacts | ✅ Jake : kais retrouve Kaïs et email du second contact (captures) ; téléphone contrôlé par code |
+| T9 | Recherche + confiance + pagination ; retour page 1, résultat vide explicite | ✅ Jake : Probable vide, Confiance haute retrouve la paire, recherche depuis page 2 revient page 1 |
 | T10 | Plus de 1 000 commandes : dernière commande correcte par client | ✅ Test local du vrai handler, 2 208 commandes |
 | T11 | Plus de 1 000 relances historiques : aucun événement répété | ✅ 1 505 relances historiques ; 697 nouvelles, puis 0 au second scan |
 | T12 | Achat/abonnement récent exclu, commandes importées jamais lues, erreur de lecture interrompt le scan | ✅ Test local sans email ; pagination aussi vérifiée pour 1 001 boutiques actives |
@@ -1942,6 +1942,7 @@ Détail complet des 21 scénarios (toutes les paires possibles entre les 7 signa
 
 | Date | Étapes travaillées | Résumé |
 |------|--------------------|--------|
+| 2026-10-10 (Codex, clôture) | Petites améliorations après import ✅ | Plan + T0-T12, feu vert de Jake, commit b250bd2 déployé Ready. Liens beats groupés (propositions, même beat, Ne pas relier), recherche Doublons (noms/emails/téléphones, confiance, page 1), scan inactivité paginé (commandes natives + historique + automatisations). Tests interface par Jake ; scan local 2 208 commandes / 1 505 relances, 697 puis 0, aucun email réel. Aucune migration, build/TypeScript/lint OK. Deux liens simulés défaits. Documentation et mémoire Claude sauvegardées ; passation HANDOFF_CLAUDE_PETITES_AMELIORATIONS_2026-10-10.md. Suite : rang 10, étape 5v2 boutiques, non commencée. |
 | 2026-05-02 | Étape 1 | Setup Next.js, apprentissage Git/GitHub, initialisation du projet beatplatform |
 | 2026-05-13 | Étape 1 | ✅ Étape 1 complète. Supabase configuré, Vercel déployé (beatplatform.vercel.app), compte Cloudflare créé. |
 | 2026-05-13 | Étape 2 | Début étape 2 : schéma de la base de données conçu. Tables beatmakers et beats entièrement définies. |

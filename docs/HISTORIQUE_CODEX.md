@@ -1,6 +1,10 @@
 # Historique consolidé Beatplatform × Codex
 
-Dernière consolidation : 18 septembre 2026.
+Dernière consolidation : 10 octobre 2026 (ajout de la clôture des petites améliorations).
+
+## 10 octobre 2026 — Petites améliorations après l'import externe
+
+Import externe déjà clos à la reprise. Plan et checklist T0-T12 présentés puis feu vert de Jake : actions groupées Relier les beats (validation des propositions sélectionnées, même beat pour plusieurs titres, Ne pas relier), recherche sur Doublons et lecture paginée de la relance d'inactivité (commandes, historique anti-relance, automatisations actives). Aucune migration. Commit applicatif `b250bd2`, déployé Ready sur Vercel, tests interface validés par Jake. Deux associations simulées ensuite défaites. Scan vérifié localement sur 2 208 commandes et 1 505 relances historiques, 697 nouvelles puis 0 au second scan ; aucun email réel ni cron production déclenché. Build, TypeScript et lint ciblé réussis. Téléphone/Free/erreurs UI contrôlés par code, pas simulés manuellement. Ancien déploiement documentaire `01bf4ac` échoué sur Syne/Turbopack, puis réussi après redéploiement sans cache ; aucune modification des polices. Passation complète : `HANDOFF_CLAUDE_PETITES_AMELIORATIONS_2026-10-10.md`. Prochain : rang 10, refonte UX/UI, étape 5v2 boutiques ; non commencée pendant cette session.
 
 Ce document donne une vue lisible du travail enregistré depuis le début de l'utilisation de Codex sur Beatplatform. Le détail opérationnel et les décisions session par session restent dans `ROADMAP.md`; l'historique Git reste la source exacte des changements de code.
 
