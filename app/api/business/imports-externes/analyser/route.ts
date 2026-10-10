@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if ('refus' in fichier) return fichier.refus
 
   try {
-    const r = await preparerFichier(createAdminClient(), acces.beatmakerId, fichier.octets, fichier.nom, fichier.association)
+    const r = await preparerFichier(createAdminClient(), acces.beatmakerId, fichier.octets, fichier.nom, fichier.association, fichier.nomAffiche)
     if (r.type === 'assistant') return reponseJson({ assistant: r.besoin })
     return reponseJson({ apercu: r.preparation.apercu })
   } catch (e) {

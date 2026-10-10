@@ -6,7 +6,7 @@ import type { Apercu } from '@/lib/import-externe/preparation'
 import { ecrireCsv } from '@/lib/import-externe/csv'
 import type { BesoinAssistant } from '@/lib/import-externe/entree'
 import type { Association, Role } from '@/lib/import-externe/libre/association'
-import { lireTableau, type Tableau } from '@/lib/import-externe/libre/tableau'
+import { estExcel, lireTableau, type Tableau } from '@/lib/import-externe/libre/tableau'
 import { devinerColonnes } from '@/lib/import-externe/libre/devinette'
 import { BadgePlateforme, MentionsLigne, MontantLigne, TitreLigneImportee, fmtDevise, fmtDateImport } from '@/app/dashboard/business/_components/CommandeImportee'
 import AssistantFormatLibre from './AssistantFormatLibre'
@@ -56,14 +56,23 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
 
   async function envoyer(url: string, f: File, a: Association | null = null) {
     const form = new FormData()
-    // fichier compressé avant l'envoi (gzip) : un gros envoi faisait arriver la
-    // réponse illisible chez Vercel ; le serveur le décompresse
+    // Envoi toujours compact : un gros envoi faisait arriver la réponse
+    // illisible chez Vercel. Excel (.xlsx, déjà compressé) est converti ici en
+    // CSV, puis tout est compressé en gzip ; le serveur décompresse et lit un CSV
+    let source: Blob = f
+    let nomEnvoi = f.name
+    if (estExcel(f.name)) {
+      const t = await lireTableau(f.name, await f.arrayBuffer())
+      source = new Blob([ecrireCsv([t.enTetes, ...t.lignes.map(l => l.cellules)], ',')], { type: 'text/csv' })
+      nomEnvoi = `${f.name}.csv`
+      form.append('nom_original', f.name)
+    }
     if (typeof CompressionStream !== 'undefined') {
-      const compresse = await new Response(f.stream().pipeThrough(new CompressionStream('gzip'))).blob()
-      form.append('fichier', compresse, f.name)
+      const compresse = await new Response(source.stream().pipeThrough(new CompressionStream('gzip'))).blob()
+      form.append('fichier', compresse, nomEnvoi)
       form.append('compression', 'gzip')
     } else {
-      form.append('fichier', f)
+      form.append('fichier', source, nomEnvoi)
     }
     if (a) form.append('association', JSON.stringify(a))
     const res = await fetch(url, { method: 'POST', body: form })

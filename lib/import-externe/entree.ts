@@ -37,11 +37,12 @@ export async function preparerFichier(
   octets: ArrayBuffer,
   nomFichier: string,
   associationBrute: unknown | null,
+  nomAffiche: string = nomFichier,
 ): Promise<ResultatPreparation> {
   if (!estExcel(nomFichier)) {
     const texte = decoderTexte(octets)
     if (lireBeatStars(texte)) {
-      return { type: 'preparation', preparation: await preparerImport(admin, beatmakerId, texte, nomFichier), signature: null, enTetes: null, association: null }
+      return { type: 'preparation', preparation: await preparerImport(admin, beatmakerId, texte, nomAffiche), signature: null, enTetes: null, association: null }
     }
   }
   const tableau = await lireTableau(nomFichier, octets)
@@ -54,6 +55,6 @@ export async function preparerFichier(
     return { type: 'assistant', besoin: { formatMemorise: memorise, licences } }
   }
   const association = verifierAssociation(associationBrute, tableau.enTetes.length)
-  const preparation = await preparerImportLibre(admin, beatmakerId, tableau, association, nomFichier)
+  const preparation = await preparerImportLibre(admin, beatmakerId, tableau, association, nomAffiche)
   return { type: 'preparation', preparation, signature, enTetes: tableau.enTetes, association }
 }

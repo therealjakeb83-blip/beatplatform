@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient()
   try {
-    const r = await preparerFichier(admin, acces.beatmakerId, fichier.octets, fichier.nom, fichier.association)
+    const r = await preparerFichier(admin, acces.beatmakerId, fichier.octets, fichier.nom, fichier.association, fichier.nomAffiche)
     if (r.type === 'assistant') {
       return reponseJson({ error: 'Réponds d’abord aux questions de l’assistant.' }, 422)
     }

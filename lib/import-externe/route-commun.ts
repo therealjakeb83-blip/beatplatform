@@ -19,7 +19,7 @@ export async function beatmakerImport(exigerPlanPayant: boolean): Promise<{ beat
 }
 
 // Fichier + réponses de l'assistant (format libre, absentes au 1er envoi)
-export async function lireFichierRequete(req: Request): Promise<{ octets: ArrayBuffer; nom: string; association: unknown | null } | { refus: NextResponse }> {
+export async function lireFichierRequete(req: Request): Promise<{ octets: ArrayBuffer; nom: string; nomAffiche: string; association: unknown | null } | { refus: NextResponse }> {
   const form = await req.formData().catch(() => null)
   const fichier = form?.get('fichier')
   if (!(fichier instanceof File)) return { refus: NextResponse.json({ error: 'Aucun fichier reçu.' }, { status: 400 }) }
@@ -41,7 +41,9 @@ export async function lireFichierRequete(req: Request): Promise<{ octets: ArrayB
   if (typeof brut === 'string' && brut) {
     try { association = JSON.parse(brut) } catch { return { refus: NextResponse.json({ error: 'Réponses de l’assistant illisibles.' }, { status: 400 }) } }
   }
-  return { octets, nom: fichier.name, association }
+  // Excel converti en CSV par le navigateur : lu comme un CSV, affiché sous son vrai nom
+  const original = form?.get('nom_original')
+  return { octets, nom: fichier.name, nomAffiche: typeof original === 'string' && original ? original : fichier.name, association }
 }
 
 // Réponses de l'import jamais retouchées en route : une petite réponse
