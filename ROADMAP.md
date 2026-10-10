@@ -720,7 +720,7 @@ Règles du lot (en plus du point 19) :
 Plan : (1) migration SQL (date / montants / titre facultatifs = inconnu, `licence_id` sur les lignes, table des formats mémorisés, fonction d'import adaptée) → (2) lecteur commun navigateur/serveur (CSV, xlsx, montants, dates, devinettes, découpage, licences) → (3) assistant à l'écran → (4) préparation (statuts, regroupement, prorata, empreinte, BCE pour le $) → (5) affichage CRM (Date inconnue, Montant inconnu, licence reliée, badge plateforme) + vérification des 7 écrans LTV.
 
 Checklist (passe 1 = vrai fichier T0-T10, passe 2 = fichiers fabriqués T11-T16) :
-- [ ] T0 — Migration exécutée, SELECT de contrôle OK
+- [x] T0 — Migration exécutée, SELECT de contrôle OK ✅ Jake (2026-10-10 : 7 colonnes facultatives, droits service_role/authenticated, fonction avec licence_id)
 - [ ] T1 — Vrai export BeatStars : reconnu automatiquement, sans assistant, mêmes chiffres qu'avant
 - [ ] T2 — Export WooCommerce : assistant, 38 colonnes une à une, devinettes justes sur les colonnes clés, colonnes ignorables
 - [ ] T3 — Statuts : Terminée / Attente paiement / En attente proposés ; seule Terminée cochée → 29 lignes écartées, comptées à part
