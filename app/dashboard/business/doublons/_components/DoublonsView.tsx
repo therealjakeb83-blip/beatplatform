@@ -70,13 +70,17 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
   const probable       = paires.filter(p => p.confiance === 'probable').length
 
   const [filtre, setFiltre] = useState<'haute' | 'probable' | ''>('')
+  const [recherche, setRecherche] = useState('')
 
   function toggleFiltre(val: 'haute' | 'probable') {
     setFiltre(prev => prev === val ? '' : val)
   }
 
-  const displayed = filtre ? paires.filter(p => p.confiance === filtre) : paires
-  const pagination = usePagination(displayed, [filtre])
+  const normaliser = (texte: string) => texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const q = normaliser(recherche.trim())
+  const displayed = paires.filter(p => (!filtre || p.confiance === filtre) && (!q ||
+    [p.a, p.b].some(c => normaliser([c.prenom, c.nom, c.email, c.telephone].filter(Boolean).join(' ')).includes(q))))
+  const pagination = usePagination(displayed, [filtre, recherche])
 
   const kpiBase = 'bg-gray-900 border rounded-xl p-4 cursor-pointer transition-all select-none'
 
@@ -110,12 +114,24 @@ export default function DoublonsView({ paires }: { paires: DoublonPairData[] }) 
         </div>
       </div>
 
+      <div className="mb-4">
+        <input
+          type="search"
+          aria-label="Rechercher parmi les doublons"
+          value={recherche}
+          onChange={e => setRecherche(e.target.value)}
+          placeholder="Rechercher un nom, un email, un téléphone…"
+          className="w-full max-w-md bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none transition-colors"
+        />
+        {q && <p className="text-xs text-gray-500 mt-2">{displayed.length} correspondance{displayed.length > 1 ? 's' : ''}</p>}
+      </div>
+
       {/* Liste */}
       {displayed.length === 0 ? (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl py-16 text-center text-gray-600 text-sm">
           {paires.length === 0
             ? 'Aucun doublon détecté — tes contacts sont tous distincts.'
-            : 'Aucun doublon dans cette catégorie.'}
+            : q ? 'Aucun doublon ne correspond à cette recherche.' : 'Aucun doublon dans cette catégorie.'}
         </div>
       ) : (
         <div className="space-y-4">

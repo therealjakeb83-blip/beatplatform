@@ -63,6 +63,8 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
   const [enCours, setEnCours] = useState<string | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
   const [choix, setChoix] = useState<GroupeTitre | null>(null)
+  const [selection, setSelection] = useState<Set<string>>(new Set())
+  const [choixGroupe, setChoixGroupe] = useState(false)
   const [rafraichissement, demarrerRafraichissement] = useTransition()
 
   const beatsParId = useMemo(() => new Map(beats.map(b => [b.id, b])), [beats])
@@ -86,10 +88,28 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
   }, [groupes, filtre, recherche, beatsParId, filtrerPropositions])
 
   // « Valider les N » : seulement les propositions sûres (titre identique ou
-  // début du titre identique) ; les « ressemblant » se valident une par une
+  // début du titre identique) ; les « ressemblant » demandent un choix individuel
+  // ou une sélection explicite, avec avertissement avant la validation groupée.
   const propositions = filtres.filter(g => g.decision === 'a_traiter' && g.propositionId && g.propositionNiveau !== 'ressemblant')
   const pagination = usePagination(filtres, [filtre, recherche, filtrerPropositions])
   const occupe = enCours !== null || rafraichissement
+  const selectionnes = filtres.filter(g => selection.has(g.cle))
+  const propositionsSelectionnees = selectionnes.filter(g => g.decision === 'a_traiter' && g.propositionId)
+  const touteLaPage = pagination.lignes.length > 0 && pagination.lignes.every(g => selection.has(g.cle))
+
+  function viderSelection() {
+    setSelection(new Set())
+    setChoixGroupe(false)
+  }
+
+  function cocher(cle: string) {
+    setSelection(prev => {
+      const suivant = new Set(prev)
+      if (suivant.has(cle)) suivant.delete(cle)
+      else suivant.add(cle)
+      return suivant
+    })
+  }
 
   async function envoyer(liens: Action[], cle: string) {
     if (!planPayant) return
@@ -104,9 +124,10 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
       const json = await res.json().catch(() => ({}))
       if (!res.ok) { setErreur(json.error ?? 'L’enregistrement a échoué.'); return }
       setChoix(null)
+      viderSelection()
       demarrerRafraichissement(() => router.refresh())
     } catch {
-      setErreur('Erreur réseau : rien n’a été modifié.')
+      setErreur('Erreur réseau : recharge la page pour vérifier l’enregistrement avant de réessayer.')
     } finally {
       setEnCours(null)
     }
@@ -141,7 +162,8 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
           {FILTRES.map(f => (
             <button
               key={f.cle}
-              onClick={() => setFiltre(f.cle)}
+              onClick={() => { setFiltre(f.cle); viderSelection() }}
+              disabled={occupe}
               className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${filtre === f.cle ? 'bg-gray-800 text-white font-semibold' : 'text-gray-500 hover:text-gray-300'}`}
             >
               {f.libelle} <span className="text-gray-500 font-normal">({nb(compteurs[f.cle])})</span>
@@ -151,7 +173,8 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
         <div className="flex items-center gap-2">
           {filtre === 'a_traiter' && nbPropositions > 0 && (
             <button
-              onClick={() => setSeulementPropositions(v => !v)}
+              onClick={() => { setSeulementPropositions(v => !v); viderSelection() }}
+              disabled={occupe}
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${seulementPropositions
                 ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-200'
                 : 'border-gray-700 text-gray-400 hover:text-white'}`}
@@ -162,7 +185,8 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
           <input
             type="text"
             value={recherche}
-            onChange={e => setRecherche(e.target.value)}
+            onChange={e => { setRecherche(e.target.value); viderSelection() }}
+            disabled={occupe}
             placeholder="Rechercher un titre…"
             className="w-56 bg-gray-800 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none transition-colors"
           />
@@ -182,10 +206,38 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
       {erreur && <p className="text-red-400 text-xs mb-3">{erreur}</p>}
       {rafraichissement && <p className="text-xs text-gray-400 mb-3 flex items-center gap-2"><Roue petite /> Mise à jour de la liste…</p>}
 
+      {selectionnes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 bg-gray-800 border border-gray-700 rounded-xl p-3 mb-3">
+          <span className="text-sm text-white mr-2">{nb(selectionnes.length)} titre{selectionnes.length > 1 ? 's' : ''} sélectionné{selectionnes.length > 1 ? 's' : ''}</span>
+          {enCours === '__selection__' && <span className="text-xs text-gray-400"><Roue petite /> Enregistrement…</span>}
+          {propositionsSelectionnees.length > 0 && (
+            <button disabled={!planPayant || occupe}
+              onClick={() => envoyer(propositionsSelectionnees.map(g => ({ cle: g.cle, action: 'relier', beat_id: g.propositionId as string })), '__selection__')}
+              className={`${bouton} bg-indigo-600 hover:bg-indigo-500 text-white`}
+            >Valider les {nb(propositionsSelectionnees.length)} propositions sélectionnées</button>
+          )}
+          <button disabled={!planPayant || occupe} onClick={() => { setErreur(null); setChoixGroupe(true) }} className={`${bouton} border border-gray-600 text-gray-300 hover:text-white`}>Choisir un beat pour la sélection</button>
+          <button disabled={!planPayant || occupe} onClick={() => envoyer(selectionnes.map(g => ({ cle: g.cle, action: 'ne_pas_relier' })), '__selection__')} className={`${bouton} border border-gray-600 text-gray-300 hover:text-white`}>Ne pas relier</button>
+          <button disabled={occupe} onClick={viderSelection} className={`${bouton} text-gray-400 hover:text-white`}>Désélectionner</button>
+          {propositionsSelectionnees.some(g => g.propositionNiveau === 'ressemblant') && <p className="w-full text-xs text-amber-300">La sélection contient des propositions par ressemblance : vérifie les beats affichés avant de valider.</p>}
+        </div>
+      )}
+
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wide">
+              <th className="pl-5 py-3 w-10">
+                <input type="checkbox" aria-label="Sélectionner les titres de cette page" checked={touteLaPage} disabled={!planPayant || occupe || pagination.lignes.length === 0}
+                  onChange={() => setSelection(prev => {
+                    const suivant = new Set(prev)
+                    for (const g of pagination.lignes) {
+                      if (touteLaPage) suivant.delete(g.cle)
+                      else suivant.add(g.cle)
+                    }
+                    return suivant
+                  })} />
+              </th>
               <th className="text-left px-5 py-3 font-semibold">Titre importé</th>
               <th className="text-right px-5 py-3 font-semibold">Ventes</th>
               <th className="text-left px-5 py-3 font-semibold">Beat de ton catalogue</th>
@@ -199,6 +251,7 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
               const ceTitre = enCours === g.cle
               return (
                 <tr key={g.cle} className={i < arr.length - 1 ? 'border-b border-gray-800' : ''}>
+                  <td className="pl-5 py-3"><input type="checkbox" aria-label={`Sélectionner ${g.libelle}`} checked={selection.has(g.cle)} disabled={!planPayant || occupe} onChange={() => cocher(g.cle)} /></td>
                   <td className="px-5 py-3 max-w-[280px]">
                     <p className="text-white truncate">{g.libelle}</p>
                     {g.titres.length > 1 && (
@@ -263,7 +316,7 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
               )
             })}
             {filtres.length === 0 && (
-              <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-600 text-sm">
+              <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-600 text-sm">
                 {groupes.length === 0 ? 'Aucune commande importée pour l’instant.' : 'Aucun titre dans cette vue.'}
               </td></tr>
             )}
@@ -271,6 +324,18 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
         </table>
         <Pagination {...pagination.barre} />
       </div>
+
+      {choixGroupe && selectionnes.length > 0 && (
+        <ChoixBeat
+          groupe={selectionnes[0]}
+          description={`${nb(selectionnes.length)} titres sélectionnés seront reliés au même beat.`}
+          beats={beats}
+          enCours={occupe}
+          erreur={erreur}
+          onChoisir={beatId => envoyer(selectionnes.map(g => ({ cle: g.cle, action: 'relier', beat_id: beatId })), '__selection__')}
+          onFermer={() => { if (!occupe) setChoixGroupe(false) }}
+        />
+      )}
 
       {choix && (
         <ChoixBeat
@@ -286,8 +351,9 @@ export default function RelierBeatsClient({ groupes, beats, planPayant }: { grou
   )
 }
 
-function ChoixBeat({ groupe, beats, enCours, erreur, onChoisir, onFermer }: {
+function ChoixBeat({ groupe, description, beats, enCours, erreur, onChoisir, onFermer }: {
   groupe: GroupeTitre
+  description?: string
   beats: BeatCatalogue[]
   enCours: boolean
   erreur: string | null
@@ -306,7 +372,7 @@ function ChoixBeat({ groupe, beats, enCours, erreur, onChoisir, onFermer }: {
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
         <h2 className="font-bold text-white mb-1">Choisir un beat</h2>
         <p className="text-xs text-gray-500 mb-4">
-          Pour « {groupe.libelle} » · {nb(groupe.nbVentes)} vente{groupe.nbVentes > 1 ? 's' : ''}
+          {description ?? `Pour « ${groupe.libelle} » · ${nb(groupe.nbVentes)} vente${groupe.nbVentes > 1 ? 's' : ''}`}
         </p>
         <input
           autoFocus

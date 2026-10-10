@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
+import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,11 +45,13 @@ export async function GET(request: Request) {
 // sans jamais acheter de licence à l'unité se faisait quand même flaguer
 // "inactif" et recevait un code promo — absurde pour quelqu'un qui paie déjà.
 async function scannerRelanceInactivite(admin: Admin): Promise<number> {
-  const { data: automatisationsActives } = await admin
+  const automatisationsActives = await toutesLesLignes((debut, fin) => admin
     .from('automatisations')
     .select('beatmaker_id, config')
     .eq('type', 'relance_inactivite')
     .eq('actif', true)
+    .order('id')
+    .range(debut, fin))
 
   let deposes = 0
 
@@ -57,13 +60,15 @@ async function scannerRelanceInactivite(admin: Admin): Promise<number> {
     const seuil = new Date()
     seuil.setMonth(seuil.getMonth() - moisInactivite)
 
-    const { data: commandes } = await admin
+    const commandes = await toutesLesLignes((debut, fin) => admin
       .from('commandes')
       .select('id, client_id, created_at')
       .eq('beatmaker_id', auto.beatmaker_id)
       .in('type_commande', ['LICENCE', 'CREATION_ABONNEMENT', 'RENOUVELLEMENT'])
       .not('client_id', 'is', null)
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(debut, fin))
 
     const derniereParClient = new Map<string, { id: string; created_at: string }>()
     for (const c of commandes ?? []) {
@@ -81,11 +86,13 @@ async function scannerRelanceInactivite(admin: Admin): Promise<number> {
     // du lendemain le redéposerait, un envoi par jour à l'infini (bug
     // découvert avec Jake, 2026-07-16, juste après avoir posé l'index
     // partiel pour un autre besoin).
-    const { data: dejaRelances } = await admin
+    const dejaRelances = await toutesLesLignes((debut, fin) => admin
       .from('automatisation_evenements')
       .select('reference_id')
       .eq('beatmaker_id', auto.beatmaker_id)
       .eq('type', 'relance_inactivite')
+      .order('id')
+      .range(debut, fin))
     const referencesDejaRelancees = new Set((dejaRelances ?? []).map(e => e.reference_id))
 
     for (const [clientId, derniere] of derniereParClient) {
