@@ -59,9 +59,15 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
     form.append('fichier', f)
     if (a) form.append('association', JSON.stringify(a))
     const res = await fetch(url, { method: 'POST', body: form })
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(json.error ?? 'Une erreur est survenue.')
-    return json
+    const texte = await res.text()
+    let json: Record<string, unknown> | null = null
+    try { json = JSON.parse(texte) } catch { json = null }
+    if (!res.ok) throw new Error((json?.error as string | undefined) ?? `Une erreur est survenue (code ${res.status}).`)
+    // jamais d'écran vide : une réponse inattendue est affichée telle quelle
+    if (!json || (!json.apercu && !json.assistant && !json.resultat)) {
+      throw new Error(`Réponse inattendue du serveur (code ${res.status}${res.redirected ? `, redirigé vers ${res.url}` : ''}) : ${texte.slice(0, 200) || 'vide'}`)
+    }
+    return json as { apercu?: Apercu; assistant?: BesoinAssistant; resultat?: Resultat }
   }
 
   async function analyser(f: File) {
@@ -79,7 +85,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
         setEtape('libre')
         return
       }
-      setApercu(json.apercu)
+      setApercu(json.apercu ?? null)
       setEtape('verification')
     } catch (e) {
       setErreur((e as Error).message)
@@ -94,7 +100,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
     setEtape('analyse')
     try {
       const json = await envoyer('/api/business/imports-externes/analyser', fichier, a)
-      setApercu(json.apercu)
+      setApercu(json.apercu ?? null)
       setEtape('verification')
     } catch (e) {
       setErreur((e as Error).message)
@@ -108,7 +114,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
     setEtape('import')
     try {
       const json = await envoyer('/api/business/imports-externes/importer', fichier, association)
-      setResultat(json.resultat)
+      setResultat(json.resultat ?? null)
       setEtape('termine')
       onTermine()
     } catch (e) {
