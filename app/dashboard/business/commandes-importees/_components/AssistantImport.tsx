@@ -172,8 +172,8 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
               </p>
               <p className="text-xs text-gray-500 mb-5">
                 L’export <strong className="text-gray-300">« Transactions »</strong> de BeatStars (BeatStars → Sales → Transactions → Export CSV)
-                est reconnu automatiquement. Pour tout autre fichier CSV ou Excel, un assistant te fait valider chaque colonne : seul
-                l’email de l’acheteur est obligatoire.
+                est reconnu automatiquement. Pour tout autre fichier CSV ou Excel, un assistant te fait valider chaque colonne : il faut
+                au minimum l’email de l’acheteur, la date et le montant payé.
               </p>
               <button
                 onClick={() => input.current?.click()}

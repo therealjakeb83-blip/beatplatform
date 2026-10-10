@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { Tableau } from '@/lib/import-externe/libre/tableau'
 import {
-  AIDES_ROLES, LIBELLES_ROLES, LIBELLES_SEPARATEURS, ROLES, SEPARATEURS_ARTICLES, cleLicence, cleStatut,
+  AIDES_ROLES, LIBELLES_ROLES, LIBELLES_SEPARATEURS, ROLES, SEPARATEURS_ARTICLES, cleLicence, cleStatut, colonnesObligatoiresManquantes,
   type Association, type ChoixLicence, type FormeLicence, type Role, type SeparateurArticles,
 } from '@/lib/import-externe/libre/association'
 import {
@@ -252,7 +252,8 @@ export default function AssistantFormatLibre({
   }
 
   const licencesNonTranchees = valeursLic.filter(v => !licences[v.cle])
-  const emailManquant = col('email') < 0
+  const manquantes = colonnesObligatoiresManquantes(roles)
+  const emailManquant = manquantes.length > 0
 
   // ── Rendu ──────────────────────────────────────────────────────────────
   if (etape.type === 'recap' && memo) {
@@ -376,8 +377,8 @@ export default function AssistantFormatLibre({
     return (
       <div>
         <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-          Aucune colonne n’est indiquée comme « {LIBELLES_ROLES.email} ». C’est la seule information obligatoire : sans elle,
-          impossible de rattacher une vente à un client.
+          Il manque {manquantes.join(', ')}. L’email, la date et le montant payé sont obligatoires pour importer des commandes :
+          indique la colonne qui les contient. Si ton fichier ne les a pas, il ne peut pas être importé.
         </p>
         <Pied onPrecedent={() => ouvrirColonne(0)} onSuivant={() => ouvrirColonne(0)} suivant="Revoir les colonnes" />
       </div>
@@ -597,7 +598,7 @@ export default function AssistantFormatLibre({
         onSuivant={() => onValide(association())}
         suivant="Voir l’aperçu →"
         desactive={!deviseChoisie || !plateforme.trim() || emailManquant}
-        aide={emailManquant ? 'Il manque la colonne email' : !deviseChoisie ? 'Choisis la devise' : 'Indique la plateforme'}
+        aide={emailManquant ? `Il manque ${manquantes.join(', ')}` : !deviseChoisie ? 'Choisis la devise' : 'Indique la plateforme'}
       />
     </div>
   )

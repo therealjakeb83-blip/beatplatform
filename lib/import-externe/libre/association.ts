@@ -45,7 +45,7 @@ export const LIBELLES_ROLES: Record<Role, string> = {
 export const AIDES_ROLES: Partial<Record<Role, string>> = {
   montant_commande: 'Ce que le client a payé au total (TVA comprise si elle est incluse). Si la commande a plusieurs lignes, ce montant est répété sur chacune.',
   montant_ligne: 'Le prix d’un seul article. Sert à répartir le total entre les beats d’une commande.',
-  numero: 'Les lignes qui ont le même numéro forment une seule commande.',
+  numero: 'Les lignes qui ont le même numéro forment une seule commande. Sans numéro, chaque ligne devient une commande.',
   statut: 'Tu choisiras ensuite quelles valeurs veulent dire « commande réglée ».',
   adresse: 'Ajoutée à la fiche des nouveaux contacts créés par cet import (jamais à un contact déjà dans ton CRM).',
   ville: 'Ajoutée à la fiche des nouveaux contacts créés par cet import.',
@@ -103,6 +103,15 @@ export function cleStatut(valeur: string): string {
 
 export class ErreurAssociation extends Error {}
 
+// Email, date et montant (de la commande ou de chaque article) sont obligatoires
+export function colonnesObligatoiresManquantes(colonnes: Role[]): string[] {
+  const m: string[] = []
+  if (!colonnes.includes('email')) m.push('l’email de l’acheteur')
+  if (!colonnes.includes('date')) m.push('la date de la vente')
+  if (!colonnes.includes('montant_commande') && !colonnes.includes('montant_ligne')) m.push('le montant payé')
+  return m
+}
+
 const PLATEFORMES_RESERVEES = new Set(['beatstars', 'my producer', 'myproducer'])
 
 // Contrôle serveur : rien n'est repris du navigateur sans vérification
@@ -114,7 +123,9 @@ export function verifierAssociation(brut: unknown, nbColonnes: number): Associat
   for (const r of ROLES) {
     if (r !== 'ignorer' && a.colonnes.filter(c => c === r).length > 1) throw new ErreurAssociation(`« ${LIBELLES_ROLES[r]} » est choisi pour plusieurs colonnes : une seule colonne par information.`)
   }
-  if (!a.colonnes.includes('email')) throw new ErreurAssociation('Il faut une colonne avec l’email de l’acheteur : c’est la seule information obligatoire.')
+  // Obligatoires (décision de Jake, 2026-10-10, en testant T12) : email, date, montant
+  const manquantes = colonnesObligatoiresManquantes(a.colonnes)
+  if (manquantes.length) throw new ErreurAssociation(`Il manque ${manquantes.join(', ')} : ces informations sont obligatoires pour importer des commandes.`)
   if (a.devise !== 'EUR' && a.devise !== 'USD') throw new ErreurAssociation('Seuls les fichiers en euros (€) ou en dollars ($) sont acceptés pour l’instant.')
   const plateforme = String(a.plateforme ?? '').trim().replace(/\s+/g, ' ')
   if (!plateforme || plateforme.length > 40) throw new ErreurAssociation('Indique le nom de la plateforme (40 caractères maximum).')

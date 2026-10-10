@@ -100,6 +100,7 @@ export async function preparerImportLibre(
     const dateBrute = val(l.cellules, 'date')
     const dateLue = lireDate(dateBrute, a.ordreDate)
     if (dateLue === undefined) { rejeter(`Date illisible (« ${dateBrute} »)`); continue }
+    if (dateLue === null) { rejeter('Date manquante'); continue }
 
     const montants: Partial<Record<'montant_commande' | 'montant_ligne' | 'remise' | 'quantite' | 'tva', number | null>> = {}
     let illisible: string | null = null
@@ -146,6 +147,15 @@ export async function preparerImportLibre(
   const lues: CommandeLue[] = []
 
   for (const [cle, lignes] of groupes) {
+    // montant obligatoire : celui de la commande, sinon la somme des prix de tous ses articles
+    const avecTitreM = lignes.filter(l => l.titre)
+    const totalConnu = lignes.some(l => l.montantCommande !== null)
+      || ((avecTitreM.length ? avecTitreM : lignes).every(l => l.montantLigne !== null))
+    if (!totalConnu) {
+      for (const l of lignes) rejets.push({ numero: l.numero, raison: 'Montant manquant', cellules: l.cellules })
+      lignesRejeteesParGroupe.add(cle)
+      continue
+    }
     const avecTitre = lignes.filter(l => l.titre)
     nbLignesSansArticle += avecTitre.length > 0 ? lignes.length - avecTitre.length : 0
     const articles: Article[] = []
@@ -280,14 +290,9 @@ export async function preparerImportLibre(
 
   // ── Aperçu ────────────────────────────────────────────────────────────
   const datees = lues.filter(x => x.date).map(x => x.date!.getTime()).sort((p, q) => p - q)
-  const sansDate = !a_('date'), sansNumero = !a_('numero')
-  const sansMontant = !a_('montant_commande') && !a_('montant_ligne')
+  const sansNumero = !a_('numero')
   const avertissements: string[] = []
-  if (sansNumero && sansDate) avertissements.push('Ni date ni n° de commande : impossible de reconnaître une commande déjà importée. Réimporter ce fichier (ou un fichier qui le contient) créera des doublons.')
-  else if (sansNumero) avertissements.push('Pas de n° de commande : chaque ligne du fichier devient une commande.')
-  if (sansDate) avertissements.push('Pas de date : ces commandes ne compteront ni dans l’ancienneté ni dans le dernier achat de tes clients.')
-  if (sansMontant) avertissements.push('Pas de montant : ces commandes compteront dans le nombre de commandes, mais pas dans le total dépensé ni dans le panier moyen.')
-  else if (nbMontantsInconnus > 0) avertissements.push(`${nbMontantsInconnus.toLocaleString('fr-FR')} commande(s) sans montant : comptées dans le nombre de commandes, pas dans le total dépensé.`)
+  if (sansNumero) avertissements.push('Pas de n° de commande : chaque ligne du fichier devient une commande. Une vente déjà importée est reconnue grâce à son email, sa date, son titre et son montant : si tu corriges l’une de ces informations dans ton fichier, elle sera importée une deuxième fois.')
   if (!a_('titre')) avertissements.push('Pas de titre : chaque vente apparaîtra comme « Beat non précisé » et ne pourra pas être reliée à un beat.')
   if (!a_('prenom') && !a_('nom') && !a_('nom_complet')) avertissements.push('Pas de nom : l’email tiendra lieu de nom pour les nouveaux contacts.')
   if (a.devise !== 'EUR' && commandes.some(cmd => !cmd.date_vente && cmd.total_depense !== null)) avertissements.push('Montants en dollars sans date : impossible de les convertir en euros, ils compteront comme montant inconnu dans le CRM.')
