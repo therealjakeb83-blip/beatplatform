@@ -1,10 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { RECETTES, categorieDepuisSlug } from '../_lib/recettes'
-import type { AutomatisationRow } from '../_lib/types'
-import { sauvegarderAutomatisation } from '../_lib/actions'
-import RecetteCard from '../_components/RecetteCard'
+import { RECETTES, categorieDepuisSlug } from '../../_lib/recettes'
+import type { AutomatisationRow } from '../../_lib/types'
+import { sauvegarderAutomatisation } from '../../_lib/actions'
+import RecetteCard from '../../_components/RecetteCard'
 
 export default async function CategorieAutomatisationsPage({
   params,
@@ -34,10 +34,10 @@ export default async function CategorieAutomatisationsPage({
       <div className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
         <div>
           <Link
-            href="/dashboard/business/marketing/automatisations"
+            href="/dashboard/business/marketing/automatisations/mailing"
             className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
           >
-            ← Automatisations
+            ← Mailing
           </Link>
           <h1 className="text-xl font-bold text-white mt-1">{categorie}</h1>
         </div>

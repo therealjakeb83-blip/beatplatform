@@ -695,10 +695,11 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 
 | # | Test | Statut |
 |---|---|---|
-| T0 | Types + lint OK ; « Commandes importées » et « Automatisations » s'affichent | 🔄 code (`tsc` et `eslint` = 0 erreur) — reste l'écran |
-| T1 | Rappel visible sous le titre de « Commandes importées » et dans la fenêtre d'import (« Tu peux redéposer un fichier complet… ») | ⏳ |
-| T2 | Carte « Import ventes externes · Bientôt » en bas des catégories d'Automatisations, grisée, non cliquable | ⏳ |
-| T3 | Réimport du fichier des 90 jours déjà importé (`Downloads/cfbe0ec0822bfef3674d2649618a754b.csv`) : « 12 déjà importées (ignorées) » + bouton « Rien de nouveau à importer » | ⏳ |
+| T0 | Types + lint OK ; « Commandes importées » et « Automatisations » s'affichent | ✅ code (`tsc` et `eslint` = 0 erreur hors types périmés de `.next`) + Jake (pages affichées) |
+| T1 | Rappel visible sous le titre de « Commandes importées » et dans la fenêtre d'import (« Tu peux redéposer un fichier complet… ») | ✅ Jake |
+| T2 | **Revu par Jake** : « Automatisations » = 2 cartes, **Mailing** (nombre de recettes actives) et **Import de commandes · Bientôt** (grisée, non cliquable) ; les workflows d'emails passent sous `/automatisations/mailing` (même page qu'avant, titre « Mailing », lien « ← Automatisations ») | ⏳ |
+| T3 | Réimport du fichier des 90 jours déjà importé (`Downloads/cfbe0ec0822bfef3674d2649618a754b.csv`) : « 12 déjà importées (ignorées) » + bouton « Rien de nouveau à importer » | ✅ Jake (0 à importer, 12 déjà importées, bouton grisé) |
+| T4 | Une catégorie de Mailing s'ouvre, « ← Mailing » ramène à Mailing ; activer/désactiver une recette met bien la page à jour | ⏳ |
 
 **⏭ LOT 4 — PROCHAIN (rien de cadré en détail, rien de codé) : assistant d'association de colonnes pour les autres plateformes** (Airbit, Instrurap, fichier Excel/CSV maison). Règles DÉJÀ décidées au grill-me (point 19 de `memory/project_import_commandes_externes_grillme_2026_10_06.md`, à ne pas rouvrir) :
 - Seul l'**email** est obligatoire. Absent → nom : l'email affiché ; titre : « Beat non précisé », **non reliable** (à exclure de « Relier les beats ») ; montant : **inconnu** (pas 0 : compte dans le nombre de commandes, pas dans le total ni le panier) ; date : inconnue (ne touche ni l'ancienneté ni le dernier achat, montant non-EUR non converti) ; n° de commande : empreinte email + date + titre + montant ; licence / remise : non affichées.

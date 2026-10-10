@@ -6,8 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { traiterGroupeAutomatisations, genererApercuGroupe, jourParisISO, type EvenementAutomatisation } from '@/lib/automatisations'
 import { RECETTES } from './recettes'
 
-const CHEMIN_INDEX = '/dashboard/business/marketing/automatisations'
-const PATTERN_CATEGORIE = '/dashboard/business/marketing/automatisations/[categorie]'
+const CHEMIN_INDEX = '/dashboard/business/marketing/automatisations/mailing'
+const PATTERN_CATEGORIE = '/dashboard/business/marketing/automatisations/mailing/[categorie]'
 
 // "Tout activer" — évite aux beatmakers d'activer les recettes une par une
 // (et d'en oublier une) s'ils veulent faire confiance au réglage par défaut.
