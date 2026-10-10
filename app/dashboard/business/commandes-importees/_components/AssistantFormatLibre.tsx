@@ -295,13 +295,20 @@ export default function AssistantFormatLibre({
           }).join(' · ')}</li>}
           {licencesNonTranchees.length > 0 && <li className="text-amber-300/90">Nouvelle(s) licence(s) dans ce fichier : {licencesNonTranchees.map(v => v.libelle).join(', ')}. Tu vas pouvoir les relier.</li>}
         </ul>
+        {emailManquant && (
+          <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+            Il manque {manquantes.join(', ')}. L’email, la date et le montant payé sont obligatoires pour importer des commandes :
+            revalide les colonnes pour les indiquer. Si ton fichier ne les a pas, il ne peut pas être importé.
+          </p>
+        )}
         <div className="flex items-center justify-between gap-4 pt-2">
           <button onClick={() => ouvrirColonne(0)} className="text-sm font-semibold px-4 py-2.5 rounded-xl border border-gray-700 text-gray-200 hover:border-gray-500">
             Tout revalider colonne par colonne
           </button>
           <button
             onClick={() => (licencesNonTranchees.length > 0 ? allerQuestion('licences') : onValide(association()))}
-            className="text-sm font-semibold px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white"
+            disabled={emailManquant}
+            className="text-sm font-semibold px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed"
           >
             C’est bon, continuer →
           </button>
