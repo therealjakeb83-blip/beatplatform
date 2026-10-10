@@ -737,6 +737,11 @@ Checklist (passe 1 = vrai fichier T0-T10, passe 2 = fichiers fabriqués T11-T16)
 - [x] T14 — Fichier sans email (rapport Statistiques) refusé avec message clair ; devise autre que € / $ refusée ✅ Claude, 2026-10-10 (écran : message rouge sans colonne email + message GBP ; moteur : ligne GBP rejetée ; serveur : `verifierAssociation` exige l'email)
 - [x] T15 — Relier les beats : pas de « Beat non précisé » ; « Ambitieux » proposé grâce au titre nettoyé ; « Abonnements - Pro » marquable « ne pas relier » ✅ Jake, 2026-10-10 (titres courts, « Reflexions » proposé « titre identique », « Abonnements - Studio » passé en « Ne pas relier » : 639 → 638 / 3 → 4)
 - [x] T16 — Plan Free : Importer 🔒, consultation et Annuler possibles ✅ Claude, 2026-10-10 (code : routes analyser/importer/relier en `beatmakerImport(true)`, annuler en `false` ; affichage 🔒 inchangé depuis le lot 2, déjà testé)
+
+**Notés par Jake pendant les tests (2026-10-10)** :
+- 🔄 DANS le lot 4 (décidé en testant T7) : le format libre enregistre aussi **adresse, ville, code postal, pays, téléphone** (seulement sur les fiches CRÉÉES par l'import — une fiche client est commune à toutes les boutiques), le **moyen de paiement** (sur la commande, email retiré) et la **TVA payée** (affichée dans le détail, n'entre pas dans les calculs). Retest après T9.
+- ⏭ APRÈS le lot 4 : **actions groupées sur « Relier les beats »** (sélection multiple → relier / ne pas relier en une fois ; trop long ligne par ligne).
+- ⏭ APRÈS le lot 4, hors chantier : **recherche sur la page Doublons** (comme les autres pages ; utile dès qu'il y a plusieurs pages de doublons).
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.
