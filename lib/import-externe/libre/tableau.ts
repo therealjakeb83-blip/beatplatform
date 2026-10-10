@@ -92,9 +92,11 @@ const deux = (n: number) => String(n).padStart(2, '0')
 function celluleEnTexte(v: unknown): string {
   if (v === null || v === undefined) return ''
   if (v instanceof Date) {
-    // Date Excel = heure « murale », sans fuseau : lue en UTC par la bibliothèque
-    const base = `${v.getUTCFullYear()}-${deux(v.getUTCMonth() + 1)}-${deux(v.getUTCDate())}`
-    return v.getUTCHours() || v.getUTCMinutes() ? `${base} ${deux(v.getUTCHours())}:${deux(v.getUTCMinutes())}` : base
+    // Date Excel = heure « murale », sans fuseau : lue en UTC par la bibliothèque ;
+    // arrondie à la seconde (Excel stocke 11:24 comme 11:23:59,999)
+    const d = new Date(Math.round(v.getTime() / 1000) * 1000)
+    const base = `${d.getUTCFullYear()}-${deux(d.getUTCMonth() + 1)}-${deux(d.getUTCDate())}`
+    return d.getUTCHours() || d.getUTCMinutes() ? `${base} ${deux(d.getUTCHours())}:${deux(d.getUTCMinutes())}` : base
   }
   if (typeof v === 'number') return String(Math.round(v * 1e6) / 1e6)
   return String(v)
