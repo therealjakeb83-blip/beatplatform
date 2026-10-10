@@ -56,7 +56,15 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
 
   async function envoyer(url: string, f: File, a: Association | null = null) {
     const form = new FormData()
-    form.append('fichier', f)
+    // fichier compressé avant l'envoi (gzip) : un gros envoi faisait arriver la
+    // réponse illisible chez Vercel ; le serveur le décompresse
+    if (typeof CompressionStream !== 'undefined') {
+      const compresse = await new Response(f.stream().pipeThrough(new CompressionStream('gzip'))).blob()
+      form.append('fichier', compresse, f.name)
+      form.append('compression', 'gzip')
+    } else {
+      form.append('fichier', f)
+    }
     if (a) form.append('association', JSON.stringify(a))
     const res = await fetch(url, { method: 'POST', body: form })
     const texte = await res.text()

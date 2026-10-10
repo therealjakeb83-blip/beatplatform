@@ -1,3 +1,4 @@
+import { gunzipSync } from 'node:zlib'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { aAccesPlanPayant } from '@/lib/acces-plan'
@@ -23,12 +24,24 @@ export async function lireFichierRequete(req: Request): Promise<{ octets: ArrayB
   const fichier = form?.get('fichier')
   if (!(fichier instanceof File)) return { refus: NextResponse.json({ error: 'Aucun fichier reçu.' }, { status: 400 }) }
   if (fichier.size > TAILLE_MAX_FICHIER) return { refus: NextResponse.json({ error: 'Fichier trop lourd (4 Mo maximum).' }, { status: 400 }) }
+  // Fichier compressé par le navigateur (gzip) : un gros envoi faisait arriver
+  // la réponse illisible chez Vercel (vu en testant le lot 4, export de 863 Ko)
+  let octets: ArrayBuffer = await fichier.arrayBuffer()
+  if (form?.get('compression') === 'gzip') {
+    try {
+      const brutDecompresse = gunzipSync(Buffer.from(octets), { maxOutputLength: TAILLE_MAX_FICHIER + 1 })
+      if (brutDecompresse.byteLength > TAILLE_MAX_FICHIER) return { refus: NextResponse.json({ error: 'Fichier trop lourd (4 Mo maximum).' }, { status: 400 }) }
+      octets = brutDecompresse.buffer.slice(brutDecompresse.byteOffset, brutDecompresse.byteOffset + brutDecompresse.byteLength) as ArrayBuffer
+    } catch {
+      return { refus: NextResponse.json({ error: 'Fichier trop lourd (4 Mo maximum) ou illisible.' }, { status: 400 }) }
+    }
+  }
   const brut = form?.get('association')
   let association: unknown | null = null
   if (typeof brut === 'string' && brut) {
     try { association = JSON.parse(brut) } catch { return { refus: NextResponse.json({ error: 'Réponses de l’assistant illisibles.' }, { status: 400 }) } }
   }
-  return { octets: await fichier.arrayBuffer(), nom: fichier.name, association }
+  return { octets, nom: fichier.name, association }
 }
 
 // Réponses de l'import jamais retouchées en route : une petite réponse
