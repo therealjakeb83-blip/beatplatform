@@ -122,6 +122,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
               >
                 <p className="text-white font-semibold group-hover:text-indigo-300">Choisir le fichier CSV</p>
                 <p className="text-xs text-gray-500 mt-1">Rien n’est enregistré avant ta validation, sur l’écran suivant.</p>
+                <p className="text-xs text-gray-500 mt-1">Tu peux redéposer un fichier complet : seules les nouvelles ventes seront ajoutées.</p>
               </button>
               <input
                 ref={input}

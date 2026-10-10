@@ -145,6 +145,22 @@ export default async function AutomatisationsPage() {
               </Link>
             )
           })}
+
+          <div className="flex items-center gap-3 bg-gray-900/50 border border-dashed border-gray-800 rounded-2xl px-5 py-4 opacity-70 cursor-default">
+            <svg className="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-300">
+                Import ventes externes
+                <span className="ml-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 align-middle">Bientôt</span>
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Tes nouvelles ventes faites sur d’autres plateformes (BeatStars…) arriveront toutes seules et pourront déclencher
+                tes automatisations (remerciement après achat…). Pour l’instant, les commandes importées par CSV ne déclenchent aucun email.
+              </p>
+            </div>
+          </div>
         </div>
 
         <FileAttenteTable

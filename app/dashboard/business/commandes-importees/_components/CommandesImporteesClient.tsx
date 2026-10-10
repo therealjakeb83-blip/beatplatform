@@ -103,6 +103,10 @@ export default function CommandesImporteesClient({
             Tes ventes réalisées sur d’autres plateformes (BeatStars, Airbit, Instrurap…). Elles complètent ton CRM
             (total dépensé, achats, ancienneté de tes clients) sans jamais toucher tes Analytics ni tes factures.
           </p>
+          <p className="text-sm text-gray-400 mt-3 max-w-2xl">
+            Tu vends encore sur BeatStars ? Réimporte ton CSV quand tu veux, par exemple chaque mois. Les ventes déjà
+            importées sont reconnues et ignorées : jamais de doublon, même si ton fichier reprend des ventes déjà importées.
+          </p>
         </div>
         {planPayant ? (
           <button
