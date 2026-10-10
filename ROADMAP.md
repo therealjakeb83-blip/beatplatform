@@ -703,14 +703,40 @@ Checklist (A = jakeb-test, B = nic-beat-2809) :
 | T3 | Réimport du fichier des 90 jours déjà importé (`Downloads/cfbe0ec0822bfef3674d2649618a754b.csv`) : « 12 déjà importées (ignorées) » + bouton « Rien de nouveau à importer » | ✅ Jake (0 à importer, 12 déjà importées, bouton grisé) |
 | T4 | Une catégorie de Mailing s'ouvre, « ← Mailing » ramène à Mailing ; activer/désactiver une recette met bien la page à jour | ✅ Jake (Achats 4 → 3 actives → 4) |
 
-**⏭ LOT 4 — PROCHAIN (rien de cadré en détail, rien de codé) : assistant d'association de colonnes pour les autres plateformes** (Airbit, Instrurap, fichier Excel/CSV maison). Règles DÉJÀ décidées au grill-me (point 19 de `memory/project_import_commandes_externes_grillme_2026_10_06.md`, à ne pas rouvrir) :
-- Seul l'**email** est obligatoire. Absent → nom : l'email affiché ; titre : « Beat non précisé », **non reliable** (à exclure de « Relier les beats ») ; montant : **inconnu** (pas 0 : compte dans le nombre de commandes, pas dans le total ni le panier) ; date : inconnue (ne touche ni l'ancienneté ni le dernier achat, montant non-EUR non converti) ; n° de commande : empreinte email + date + titre + montant ; licence / remise : non affichées.
-- **Assistant guidé, règles dans le code, pas d'IA** : colonnes devinées par leur CONTENU (@, dates, prix), puis confirmées question par question sur des exemples réels du fichier, « ce fichier n'en a pas » toujours possible ; date ambiguë → demander jour/mois ou mois/jour ; devise + nom de plateforme demandés ; association mémorisée pour un fichier aux mêmes colonnes ; pas de collabs (chaque ligne = une vente simple) ; lignes au même n° de commande = une commande.
-- L'écran de vérification prévient de chaque donnée manquante ; sans date ni n° de commande → pas de détection de doublons, avertissement « réimporter créera des doublons ».
-- Hérité du lot 3 : titre gardé tel quel (pas de coupe), mémoire des liens réappliquée, propositions par ressemblance.
-- **À préparer AVANT de coder** (règle « valider sur un vrai fichier », [[feedback_import_valider_sur_vrai_fichier]]) : demander à Jake un vrai export d'une autre plateforme (Airbit, Instrurap…) ou un CSV/Excel maison ; simuler la lecture sur ce fichier dans un script jetable avant d'écrire le plan.
-- Questions probables à poser en début de session : quelles plateformes Jake a réellement utilisées et peut exporter ; format Excel (.xlsx) à accepter ou seulement CSV ; où mémoriser une association (par beatmaker, par jeu d'en-têtes) ; plan Free (import 🔒 comme BeatStars).
+**🔄 LOT 4 — FORMAT LIBRE (assistant d'association de colonnes) — plan + checklist VALIDÉS le 2026-10-10, en cours de code.** Pas de fichier Airbit/Instrurap disponible → on construit l'assistant générique (valable pour toute plateforme), simulé sur un vrai export WooCommerce du site de Jake (extension gratuite « Advanced Order Export For WooCommerce ») : 3 020 lignes, 2 747 commandes, 1 193 clients ; **rapprochement EXACT avec le rapport Statistiques WooCommerce** (Terminée, 01/09→10/10/2026 : 152 commandes, 164 articles, 5 746,07 € TTC, 4 791,00 € ventes nettes). Toutes les décisions (a → n) : `memory/project_import_commandes_externes_grillme_2026_10_06.md`.
 
+Règles du lot (en plus du point 19) :
+- **1re étape = détection du format** : export BeatStars reconnu → règles BeatStars (inchangées) ; tout autre fichier → format libre.
+- CSV (`,` `;` tabulation) **et Excel .xlsx** ; devises **€ et $ seulement** ; date sans fuseau = fuseau de la boutique.
+- Assistant **une colonne à la fois** (barre « 3/38 », exemples réels, Oui / Non → choisir / Ignorer) ; **le beatmaker valide CHAQUE colonne**, rien n'est importé sur une devinette. Devinette par CONTENU d'abord (le nom de colonne n'est qu'un indice).
+- **Statuts** : seules les commandes réglées ; le beatmaker coche les valeurs qui veulent dire « réglée », le reste est écarté et compté à part.
+- **Plusieurs articles dans une case** : détectés (séparateurs, quantités 1× / x1), jamais découpés sans validation ; total seul = total gardé sur la commande, articles sans prix.
+- **Licence dans le titre** (« Ambitieux - Licence WAV ») : détectée, chaque valeur RELIÉE à la main à une licence My Producer (jamais présélectionné) / licence sans équivalent / pas une licence (« Abonnements - Pro » garde son titre entier).
+- Abonnements vendus ailleurs = lignes d'achat normales, jamais reliées à un beat.
+- Prix par article présent → total payé réparti au prorata (Σ articles = total) ; commande à 0 € = comme sur My Producer.
+- Ligne sans titre dans une commande qui a des articles = ignorée (2e code promo WooCommerce) ; « Beat non précisé » seulement si toute la commande n'a aucun titre.
+- **Format mémorisé** par beatmaker et jeu exact de colonnes → récap en 1 clic PROPOSÉ + bouton « Tout revalider » (remplace l'ancien).
+
+Plan : (1) migration SQL (date / montants / titre facultatifs = inconnu, `licence_id` sur les lignes, table des formats mémorisés, fonction d'import adaptée) → (2) lecteur commun navigateur/serveur (CSV, xlsx, montants, dates, devinettes, découpage, licences) → (3) assistant à l'écran → (4) préparation (statuts, regroupement, prorata, empreinte, BCE pour le $) → (5) affichage CRM (Date inconnue, Montant inconnu, licence reliée, badge plateforme) + vérification des 7 écrans LTV.
+
+Checklist (passe 1 = vrai fichier T0-T10, passe 2 = fichiers fabriqués T11-T16) :
+- [ ] T0 — Migration exécutée, SELECT de contrôle OK
+- [ ] T1 — Vrai export BeatStars : reconnu automatiquement, sans assistant, mêmes chiffres qu'avant
+- [ ] T2 — Export WooCommerce : assistant, 38 colonnes une à une, devinettes justes sur les colonnes clés, colonnes ignorables
+- [ ] T3 — Statuts : Terminée / Attente paiement / En attente proposés ; seule Terminée cochée → 29 lignes écartées, comptées à part
+- [ ] T4 — Licences : WAV, MP3, STEMS, ILLIMITÉ, Pro, Studio, Street détectées ; rien de présélectionné ; Pro/Studio/Street → « pas une licence »
+- [ ] T5 — Devise demandée (€), nom de plateforme « WooCommerce »
+- [ ] T6 — Rapprochement : export 01/09→10/10 → aperçu 152 commandes, 164 articles, 5 746,07 €
+- [ ] T7 — Import réel : n°12551 = 1 article ; commande à 2 articles = somme des articles = total ; commande à 0 € = commande, pas achat ; licence reliée visible ; badge WooCommerce
+- [ ] T8 — Réimport du même fichier : 0 nouvelle ; récap 1 clic proposé ; « Tout revalider » remplace l'ancien format
+- [ ] T9 — Historique complet (2 747 commandes, 1 193 clients) puis Annuler : CRM revenu exactement à l'état d'avant
+- [ ] T10 — Même export en XLS : mêmes chiffres qu'en CSV
+- [ ] T11 — Fichier fabriqué `;`, dates `03/04/2026`, montants `1 234,56 €` : question jour/mois, lecture juste
+- [ ] T12 — Fichier fabriqué sans date ni n° : avertissement doublons ; « Date inconnue » / « Montant inconnu » ; CRM : comptée, hors total / panier / ancienneté
+- [ ] T13 — Fichier fabriqué plusieurs articles dans une case (`, 1×`) : découpage proposé et appliqué après validation ; refusé = case entière ; total seul = garde-fou
+- [ ] T14 — Fichier sans email (rapport Statistiques) refusé avec message clair ; devise autre que € / $ refusée
+- [ ] T15 — Relier les beats : pas de « Beat non précisé » ; « Ambitieux » proposé grâce au titre nettoyé ; « Abonnements - Pro » marquable « ne pas relier »
+- [ ] T16 — Plan Free : Importer 🔒, consultation et Annuler possibles
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.
