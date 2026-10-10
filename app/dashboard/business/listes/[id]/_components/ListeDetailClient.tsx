@@ -119,7 +119,7 @@ function fmt(euros: number): string {
 
 function joursDepuis(iso: string | null): number {
   if (!iso) return Infinity
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000))
 }
 
 function scoreRF(nb_achats: number, dernier_achat_iso: string | null): { label: string; cls: string } {

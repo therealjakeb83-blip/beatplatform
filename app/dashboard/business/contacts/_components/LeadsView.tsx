@@ -51,7 +51,7 @@ function initiales(prenom: string | null, nom: string | null) {
 }
 
 function daysAgo(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000))
 }
 
 function dateRel(iso: string): string {

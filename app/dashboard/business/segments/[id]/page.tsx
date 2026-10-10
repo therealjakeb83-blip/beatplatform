@@ -41,7 +41,7 @@ export default async function SegmentDetailPage({
   const fmt        = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
   const fmtDateRel = (iso: string | null) => {
     if (!iso) return '–'
-    const j = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+    const j = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000))
     if (j === 0) return "Aujourd'hui"
     if (j < 7)   return `Il y a ${j}j`
     if (j < 30)  return `Il y a ${Math.floor(j / 7)} sem`

@@ -549,7 +549,7 @@ export default async function FicheClientPage({
   const fmtDate    = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: tz })
   const fmtDateRel = (iso: string | null) => {
     if (!iso) return '–'
-    const j = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+    const j = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000))
     if (j === 0) return "Aujourd'hui"
     if (j === 1) return 'Hier'
     if (j < 7)   return `Il y a ${j}j`
