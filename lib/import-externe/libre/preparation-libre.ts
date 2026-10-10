@@ -3,14 +3,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { normaliserEmail } from '@/lib/email'
 import { dayKeyInTz, fuseauSur } from '@/lib/fuseau-horaire'
 import {
-  choisirEchantillon, decouperNom, emailsDejaContacts, numerosDejaImportes, r2,
-  type Apercu, type CommandePayload, type ContactPayload, type LignePayload, type Preparation,
+  choisirEchantillon, commandesDejaImportees, decouperNom, emailsDejaContacts, r2,
+  ErreurImport, type Apercu, type CommandePayload, type ContactPayload, type LignePayload, type Preparation,
 } from '../preparation'
 import { chargerTauxBce, convertirEnEuros } from '../taux-bce'
 import type { LigneRejetee } from '../beatstars'
 import type { Tableau } from './tableau'
 import { ROLES_COORDONNEES, cleLicence, cleStatut, type Association, type Role } from './association'
 import { decouperCase, extraireLicence, nettoyerLicence, titresAvecQuantite } from './articles'
+import { cleSource } from './sources'
 import { codePays, deviseEcrite, instantDate, lireDate, lireMontant, moyenPaiement } from './valeurs'
 
 // Préparation d'un import « format libre » à partir des réponses validées de
@@ -42,6 +43,7 @@ type LigneLue = {
   tva: number | null
   nom: string | null
   moyen: string | null
+  source: string
   coordonnees: Coordonnees
 }
 
@@ -70,6 +72,7 @@ export async function preparerImportLibre(
   const rejets: LigneRejetee[] = []
   const lignesRejeteesParGroupe = new Set<string>()
   let nbLignesEcartees = 0
+  let nbDevisesContraires = 0
   const statutsRegles = a.statutsRegles ? new Set(a.statutsRegles) : null
   const avecQuantite = a_('titre') && titresAvecQuantite(tableau.lignes.map(l => val(l.cellules, 'titre')))
   const lireCoordonnees = (cellules: string[]) => lireCoordonneesAvec(a, cellules)
@@ -108,6 +111,10 @@ export async function preparerImportLibre(
       const brut = val(l.cellules, role)
       const m = lireMontant(brut)
       if (m === undefined) { illisible = `${role === 'quantite' ? 'Quantité' : 'Montant'} illisible (« ${brut} »)`; break }
+      // un montant qui écrit lui-même une autre devise que celle choisie n'est
+      // jamais converti à tort (test de Jake : « 29,90 € » déclaré en $)
+      const ecrite = role === 'quantite' ? null : deviseEcrite(brut)
+      if (ecrite && ecrite !== a.devise) nbDevisesContraires++
       montants[role] = m
     }
     if (illisible) { rejeter(illisible); continue }
@@ -129,11 +136,19 @@ export async function preparerImportLibre(
       tva: montants.tva ?? null,
       nom: nomAcheteur,
       moyen: moyenPaiement(val(l.cellules, 'moyen_paiement')),
+      source: val(l.cellules, 'source'),
       coordonnees: lireCoordonnees(l.cellules),
     }
     const g = groupes.get(cleGroupe) ?? []
     g.push(lue)
     groupes.set(cleGroupe, g)
+  }
+
+  // Devise choisie contredite par les montants eux-mêmes : tout le fichier est
+  // bloqué (le choix est faux, même les montants sans symbole seraient convertis à tort)
+  if (nbDevisesContraires > 0 && !a.deviseConfirmee) {
+    const autre = a.devise === 'EUR' ? 'dollars ($)' : 'euros (€)'
+    throw new ErreurImport(`${nbDevisesContraires.toLocaleString('fr-FR')} montant(s) de ton fichier sont écrits en ${autre}, alors que tu as choisi ${a.devise === 'EUR' ? 'euros (€)' : 'dollars ($)'}. Reviens aux questions et corrige la devise.`)
   }
 
   // Une ligne rejetée = toute sa commande non importée (jamais une commande à moitié)
@@ -143,7 +158,7 @@ export async function preparerImportLibre(
   // ── Commandes ─────────────────────────────────────────────────────────
   let nbLignesSansArticle = 0
   const occurrences = new Map<string, number>()
-  type CommandeLue = { numero: string; lignes: LigneLue[]; articles: Article[]; total: number | null; remise: number | null; date: Date | null; tva: number | null; moyen: string | null }
+  type CommandeLue = { numero: string; lignes: LigneLue[]; articles: Article[]; total: number | null; remise: number | null; date: Date | null; tva: number | null; moyen: string | null; source: string | null }
   const lues: CommandeLue[] = []
 
   for (const [cle, lignes] of groupes) {
@@ -179,6 +194,10 @@ export async function preparerImportLibre(
     const date = lignes.find(l => l.date)?.date ?? null
     const tva = lignes.find(l => l.tva !== null)?.tva ?? null
     const moyen = lignes.find(l => l.moyen)?.moyen ?? null
+    // source : reliée par le beatmaker à l'une des 9 sources du CRM (« aucune » = rien)
+    const brutSource = lignes.find(l => l.source)?.source
+    const choixSource = brutSource ? a.sources?.[cleSource(brutSource)] : undefined
+    const source = choixSource && choixSource !== 'aucune' ? choixSource : null
 
     let numero = cle.startsWith('n:') ? cle.slice(2) : ''
     if (!numero) {
@@ -188,12 +207,22 @@ export async function preparerImportLibre(
       occurrences.set(empreinte, n)
       numero = `emp-${empreinte}${n > 1 ? `-${n}` : ''}`
     }
-    lues.push({ numero, lignes, articles, total, remise, date, tva, moyen })
+    lues.push({ numero, lignes, articles, total, remise, date, tva, moyen, source })
   }
 
   // ── Déjà importées, montants, conversion ──────────────────────────────
-  const deja = await numerosDejaImportes(admin, beatmakerId, a.plateforme)
-  const nouvelles = lues.filter(x => !deja.has(x.numero))
+  // Déjà importées : même n° ET même acheteur. Même n° pour un AUTRE acheteur =
+  // deux fichiers différents importés sous le même nom de plateforme → la
+  // commande est rejetée et signalée, jamais ignorée en silence
+  const deja = await commandesDejaImportees(admin, beatmakerId, a.plateforme)
+  let nbConflits = 0
+  const conflit = (x: { numero: string; lignes: LigneLue[] }) => deja.has(x.numero) && deja.get(x.numero) !== x.lignes[0].email
+  for (const x of lues.filter(conflit)) {
+    nbConflits++
+    for (const l of x.lignes) rejets.push({ numero: l.numero, raison: `N° de commande « ${x.numero} » déjà utilisé par une autre vente (autre acheteur) sur « ${a.plateforme} »`, cellules: l.cellules })
+  }
+  const lesLues = lues.filter(x => !conflit(x))
+  const nouvelles = lesLues.filter(x => !deja.has(x.numero))
   nouvelles.sort((x, y) => (y.date?.getTime() ?? -Infinity) - (x.date?.getTime() ?? -Infinity))
 
   const jours = nouvelles.filter(x => x.date).map(x => dayKeyInTz(x.date!.toISOString(), fuseau)).sort()
@@ -246,6 +275,7 @@ export async function preparerImportLibre(
       reference_paiement: null,
       moyen_paiement: x.moyen,
       montant_tva: x.tva,
+      source_marketing: x.source,
       devise: a.devise,
       taux_change: taux,
       date_taux: dateTaux,
@@ -292,6 +322,8 @@ export async function preparerImportLibre(
   const datees = lues.filter(x => x.date).map(x => x.date!.getTime()).sort((p, q) => p - q)
   const sansNumero = !a_('numero')
   const avertissements: string[] = []
+  if (nbConflits > 0) avertissements.push(`${nbConflits.toLocaleString('fr-FR')} commande(s) portent un n° déjà utilisé par une AUTRE vente importée sous le nom « ${a.plateforme} ». Si ce fichier vient d’une autre source (un autre tableau, une autre boutique), reviens aux questions et donne-lui un autre nom de plateforme : sinon ces commandes ne seront pas importées.`)
+  if (nbDevisesContraires > 0) avertissements.push(`Devise confirmée par toi : ${nbDevisesContraires.toLocaleString('fr-FR')} montant(s) écrits en ${a.devise === 'EUR' ? 'dollars ($)' : 'euros (€)'} sont importés comme des ${a.devise === 'EUR' ? 'euros (€)' : 'dollars ($)'}.`)
   if (sansNumero) avertissements.push('Pas de n° de commande : chaque ligne du fichier devient une commande. Une vente déjà importée est reconnue grâce à son email, sa date, son titre et son montant : si tu corriges l’une de ces informations dans ton fichier, elle sera importée une deuxième fois.')
   if (!a_('titre')) avertissements.push('Pas de titre : chaque vente apparaîtra comme « Beat non précisé » et ne pourra pas être reliée à un beat.')
   if (!a_('prenom') && !a_('nom') && !a_('nom_complet')) avertissements.push('Pas de nom : l’email tiendra lieu de nom pour les nouveaux contacts.')
@@ -306,7 +338,7 @@ export async function preparerImportLibre(
     periodeDebut: datees.length ? new Date(datees[0]).toISOString() : null,
     periodeFin: datees.length ? new Date(datees[datees.length - 1]).toISOString() : null,
     nbCommandesFichier: lues.length,
-    nbDejaImportees: lues.length - nouvelles.length,
+    nbDejaImportees: lesLues.length - nouvelles.length,
     nbNouvelles: commandes.length,
     nbBeats: commandes.reduce((s, cmd) => s + cmd.lignes.length, 0),
     nbAcheteurs: emails.length,
@@ -322,7 +354,7 @@ export async function preparerImportLibre(
     ]),
     rejets,
     enTetes: tableau.enTetes,
-    nbCommandesRejetees: lignesRejeteesParGroupe.size,
+    nbCommandesRejetees: lignesRejeteesParGroupe.size + nbConflits,
     format: 'libre',
     nbLignesEcartees,
     nbCommandesEcartees,

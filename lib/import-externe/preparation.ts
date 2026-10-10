@@ -38,6 +38,7 @@ export type CommandePayload = {
   reference_paiement: string | null
   moyen_paiement?: string | null
   montant_tva?: number | null
+  source_marketing?: string | null
   devise: string
   taux_change: number | null
   date_taux: string | null
@@ -96,17 +97,23 @@ export type Preparation = {
 export const r2 = (n: number) => Math.round(n * 100) / 100
 
 export async function numerosDejaImportes(admin: SupabaseClient, beatmakerId: string, plateforme: string): Promise<Set<string>> {
-  const vus = new Set<string>()
+  return new Set((await commandesDejaImportees(admin, beatmakerId, plateforme)).keys())
+}
+
+// n° déjà importé → email de l'acheteur de cette commande (format libre : un
+// même n° pour un autre acheteur = conflit, jamais ignoré en silence)
+export async function commandesDejaImportees(admin: SupabaseClient, beatmakerId: string, plateforme: string): Promise<Map<string, string>> {
+  const vus = new Map<string, string>()
   for (let debut = 0; ; debut += 1000) {
     const { data, error } = await admin
       .from('commandes_externes')
-      .select('numero_externe')
+      .select('numero_externe, acheteur_email')
       .eq('beatmaker_id', beatmakerId)
       .eq('plateforme', plateforme)
       .order('numero_externe')
       .range(debut, debut + 999)
     if (error) { console.error('[import-externe] lecture des numéros déjà importés:', error); throw new ErreurImport('Lecture des imports précédents impossible.') }
-    for (const d of data ?? []) vus.add(d.numero_externe)
+    for (const d of data ?? []) vus.set(d.numero_externe, d.acheteur_email)
     if (!data || data.length < 1000) break
   }
   return vus

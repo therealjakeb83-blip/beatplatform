@@ -12,6 +12,8 @@ import {
 } from '@/lib/import-externe/libre/articles'
 import { deviseEcrite, formeDate, lireMontant, ordreDateImpose, type Devise, type OrdreDate } from '@/lib/import-externe/libre/valeurs'
 import type { BesoinAssistant } from '@/lib/import-externe/entree'
+import { suggererSource, valeursSource } from '@/lib/import-externe/libre/sources'
+import { SOURCES_MARKETING, SOURCE_LABELS } from '@/lib/sources-marketing'
 
 // Assistant « format libre » (lot 4) : le beatmaker valide CHAQUE colonne de
 // son fichier, une à la fois, puis les questions qui en découlent (statuts
@@ -26,6 +28,7 @@ type Etape =
   | { type: 'dates' }
   | { type: 'decoupage' }
   | { type: 'licences' }
+  | { type: 'sources' }
   | { type: 'final' }
 
 const STATUT_REGLE = /termin|complet|pay|paid|regl|succe|valid|livr|confirm/
@@ -120,7 +123,9 @@ export default function AssistantFormatLibre({
   const [modeDecoupage, setModeDecoupage] = useState<'propose' | 'autre' | 'non' | null>(null)
   const [formeLicence, setFormeLicence] = useState<FormeLicence | null | undefined>(memo ? memo.formeLicence : undefined)
   const [licences, setLicences] = useState<Record<string, ChoixLicence>>(memo?.licences ?? {})
+  const [sourcesChoisies, setSourcesChoisies] = useState<Record<string, string>>(memo?.sources ?? {})
   const [devise, setDevise] = useState<Devise | null>(memo?.devise ?? null)
+  const [deviseConfirmee, setDeviseConfirmee] = useState(memo?.deviseConfirmee === true)
   const [plateforme, setPlateforme] = useState(memo?.plateforme ?? '')
 
   const col = (r: Role) => roles.indexOf(r)
@@ -171,14 +176,15 @@ export default function AssistantFormatLibre({
   }, [colonneLicence, detectionLicence, formeLicence, titresArticles, roles, valeursCol])
   const questionLicences = colonneLicence || !!detectionLicence
 
-  const deviseDevinee = useMemo<Devise | null>(() => {
-    const echant = [...vals('devise'), ...vals('montant_commande'), ...vals('montant_ligne')].slice(0, 2000)
+  // devise écrite dans les montants (« 29,90 € », « $12 ») : sert à proposer la
+  // devise ET à prévenir si le choix la contredit
+  const compteDevises = useMemo(() => {
     const compte = { EUR: 0, USD: 0 }
-    for (const v of echant) { const d = deviseEcrite(v); if (d) compte[d]++ }
-    if (compte.EUR === 0 && compte.USD === 0) return null
-    return compte.EUR >= compte.USD ? 'EUR' : 'USD'
+    for (const v of [...vals('devise'), ...vals('montant_commande'), ...vals('montant_ligne')]) { const d = deviseEcrite(v); if (d) compte[d]++ }
+    return compte
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles, valeursCol])
+  const deviseDevinee: Devise | null = compteDevises.EUR === 0 && compteDevises.USD === 0 ? null : compteDevises.EUR >= compteDevises.USD ? 'EUR' : 'USD'
   const autresDevises = useMemo(() => [...new Set(vals('devise').map(v => v.trim().toUpperCase()).filter(v => v && !deviseEcrite(v)))], [roles, valeursCol]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const statutsDefaut = useMemo(
@@ -187,14 +193,21 @@ export default function AssistantFormatLibre({
   )
   const statutsChoisis = statuts ?? statutsDefaut
   const deviseChoisie = devise ?? deviseDevinee
+  const deviseContredite = !!deviseChoisie && compteDevises[deviseChoisie === 'EUR' ? 'USD' : 'EUR'] > 0
 
-  type Question = 'statuts' | 'dates' | 'decoupage' | 'licences' | 'final'
+  // Sources : choix du beatmaker, sinon correspondance évidente pré-remplie
+  const valeursSrc = useMemo(() => valeursSource(vals('source').filter(Boolean)), [roles, valeursCol]) // eslint-disable-line react-hooks/exhaustive-deps
+  const sourceDe = (cle: string): string | undefined => sourcesChoisies[cle] ?? suggererSource(cle) ?? undefined
+  const sourcesNonTranchees = valeursSrc.filter(v => !sourceDe(v.cle))
+
+  type Question = 'statuts' | 'dates' | 'decoupage' | 'licences' | 'sources' | 'final'
   const questions = useMemo(() => {
     const q: Question[] = []
     if (col('statut') >= 0) q.push('statuts')
     if (questionDates) q.push('dates')
     if (detectionSep) q.push('decoupage')
     if (questionLicences) q.push('licences')
+    if (col('source') >= 0 && valeursSrc.length > 0) q.push('sources')
     q.push('final')
     return q
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +259,9 @@ export default function AssistantFormatLibre({
       separateurArticles: sepEffectif,
       formeLicence: colonneLicence ? null : formeLicence === undefined ? detectionLicence?.forme ?? null : formeLicence,
       licences,
+      sources: Object.fromEntries(valeursSrc.map(v => [v.cle, sourceDe(v.cle)]).filter(([, x]) => x)) as Record<string, string>,
       devise: deviseChoisie ?? 'EUR',
+      deviseConfirmee: deviseContredite && deviseConfirmee,
       plateforme: plateforme.trim(),
     }
   }
@@ -293,6 +308,8 @@ export default function AssistantFormatLibre({
             const cible = !c ? 'à choisir' : c.choix === 'licence' ? besoin.licences.find(l => l.id === c.licence_id)?.nom ?? 'licence supprimée' : c.choix === 'sans_equivalent' ? 'sans équivalent' : 'pas une licence'
             return `${v.libelle} → ${cible}`
           }).join(' · ')}</li>}
+          {valeursSrc.length > 0 && <li><span className="text-gray-500">Sources :</span> {valeursSrc.map(v => `${v.libelle} → ${sourceDe(v.cle) ? (sourceDe(v.cle) === 'aucune' ? 'rien' : SOURCE_LABELS[sourceDe(v.cle)!]) : 'à choisir'}`).join(' · ')}</li>}
+          {sourcesNonTranchees.length > 0 && <li className="text-amber-300/90">Nouvelle(s) source(s) dans ce fichier : {sourcesNonTranchees.map(v => v.libelle).join(', ')}. Tu vas pouvoir les relier.</li>}
           {licencesNonTranchees.length > 0 && <li className="text-amber-300/90">Nouvelle(s) licence(s) dans ce fichier : {licencesNonTranchees.map(v => v.libelle).join(', ')}. Tu vas pouvoir les relier.</li>}
         </ul>
         {emailManquant && (
@@ -306,7 +323,7 @@ export default function AssistantFormatLibre({
             Tout revalider colonne par colonne
           </button>
           <button
-            onClick={() => (licencesNonTranchees.length > 0 ? allerQuestion('licences') : onValide(association()))}
+            onClick={() => (licencesNonTranchees.length > 0 ? allerQuestion('licences') : sourcesNonTranchees.length > 0 ? allerQuestion('sources') : onValide(association()))}
             disabled={emailManquant}
             className="text-sm font-semibold px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed"
           >
@@ -494,6 +511,50 @@ export default function AssistantFormatLibre({
     )
   }
 
+  if (t === 'sources') {
+    return (
+      <div>
+        {enteteQuestions}
+        <h3 className="text-white font-semibold text-base mb-1">D’où viennent ces ventes ?</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Relie chaque valeur de la colonne « {tableau.enTetes[col('source')]} » à l’une des sources de ton CRM. Les correspondances
+          évidentes sont déjà remplies : vérifie-les. « Ne rien enregistrer » laisse la source vide.
+        </p>
+        <div className="bg-gray-950/60 border border-gray-800 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody>
+              {valeursSrc.map(v => (
+                <tr key={v.cle} className="border-b border-gray-800 last:border-0">
+                  <td className="px-4 py-2.5">
+                    <span className="text-white">{v.libelle}</span>
+                    <span className="text-xs text-gray-500"> · {nb(v.nb)} vente{v.nb > 1 ? 's' : ''}</span>
+                  </td>
+                  <td className="px-4 py-2.5 w-1/2">
+                    <select
+                      value={sourceDe(v.cle) ?? ''}
+                      onChange={e => setSourcesChoisies(prev => ({ ...prev, [v.cle]: e.target.value }))}
+                      className={`w-full text-sm bg-gray-950 border rounded-lg px-2.5 py-2 focus:outline-none focus:border-indigo-500 ${sourceDe(v.cle) ? 'border-gray-700 text-white' : 'border-amber-500/40 text-gray-400'}`}
+                    >
+                      <option value="" disabled>Choisir…</option>
+                      {SOURCES_MARKETING.map(x => <option key={x} value={x}>{SOURCE_LABELS[x]}</option>)}
+                      <option value="aucune">Ne rien enregistrer</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pied
+          onPrecedent={() => precedentDepuisQuestion('sources')}
+          onSuivant={() => suivantDepuisQuestion('sources')}
+          desactive={sourcesNonTranchees.length > 0}
+          aide={`${sourcesNonTranchees.length} valeur(s) à choisir`}
+        />
+      </div>
+    )
+  }
+
   if (t === 'licences') {
     const forme = colonneLicence ? null : formeLicence === undefined ? detectionLicence?.forme ?? null : formeLicence
     const exemple = !colonneLicence && detectionLicence ? titresArticles.find(t => extraireLicence(t, detectionLicence.forme)) : null
@@ -584,9 +645,19 @@ export default function AssistantFormatLibre({
         <p className="text-xs text-red-300 mb-2">Ton fichier contient d’autres devises ({autresDevises.slice(0, 5).join(', ')}) : seuls les euros et les dollars sont acceptés pour l’instant. Ces lignes seront refusées par l’aperçu si leurs montants ne sont pas en € ou $.</p>
       )}
       <div className="grid grid-cols-2 gap-2 mb-5">
-        <Choix actif={deviseChoisie === 'EUR'} onClick={() => setDevise('EUR')}>Euros (€)</Choix>
-        <Choix actif={deviseChoisie === 'USD'} onClick={() => setDevise('USD')}>Dollars ($)</Choix>
+        <Choix actif={deviseChoisie === 'EUR'} onClick={() => { setDevise('EUR'); setDeviseConfirmee(false) }}>Euros (€)</Choix>
+        <Choix actif={deviseChoisie === 'USD'} onClick={() => { setDevise('USD'); setDeviseConfirmee(false) }}>Dollars ($)</Choix>
       </div>
+      {deviseContredite && (
+        <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 -mt-3 mb-5">
+          {nb(compteDevises[deviseChoisie === 'EUR' ? 'USD' : 'EUR'])} montant(s) de ton fichier sont écrits en {deviseChoisie === 'EUR' ? 'dollars ($)' : 'euros (€)'} :
+          tu as choisi {deviseChoisie === 'EUR' ? 'euros (€)' : 'dollars ($)'}. Vérifie la devise : si tu te trompes, tous les montants de ces clients seront faux.
+          <label className="flex items-start gap-2 mt-2 text-gray-200 cursor-pointer">
+            <input type="checkbox" checked={deviseConfirmee} onChange={e => setDeviseConfirmee(e.target.checked)} className="mt-0.5 accent-indigo-500" />
+            <span>Je confirme : mes montants sont bien en {deviseChoisie === 'EUR' ? 'euros (€)' : 'dollars ($)'}, même s’ils sont écrits en {deviseChoisie === 'EUR' ? '$' : '€'}.</span>
+          </label>
+        </p>
+      )}
       {deviseChoisie === 'USD' && <p className="text-xs text-gray-500 -mt-3 mb-5">Convertis en euros au taux officiel de la BCE du jour de chaque vente, figé à l’import.</p>}
       <p className="text-sm text-gray-300 mb-2">D’où viennent ces ventes ?</p>
       <input
@@ -604,8 +675,8 @@ export default function AssistantFormatLibre({
         onPrecedent={() => precedentDepuisQuestion('final')}
         onSuivant={() => onValide(association())}
         suivant="Voir l’aperçu →"
-        desactive={!deviseChoisie || !plateforme.trim() || emailManquant}
-        aide={emailManquant ? `Il manque ${manquantes.join(', ')}` : !deviseChoisie ? 'Choisis la devise' : 'Indique la plateforme'}
+        desactive={!deviseChoisie || !plateforme.trim() || emailManquant || (deviseContredite && !deviseConfirmee)}
+        aide={emailManquant ? `Il manque ${manquantes.join(', ')}` : deviseContredite && !deviseConfirmee ? 'Confirme la devise' : !deviseChoisie ? 'Choisis la devise' : 'Indique la plateforme'}
       />
     </div>
   )

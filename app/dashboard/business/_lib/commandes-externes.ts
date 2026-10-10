@@ -90,14 +90,14 @@ export type CommandeDetailBrute = {
   total_catalogue: number | string | null; total_remise: number | string | null; total_depense: number | string | null
   total_paye: number | string | null; total_depense_eur: number | string | null; type_boutique: string | null
   reference_paiement: string | null; acheteur_nom: string | null; acheteur_email: string; import_id: string
-  moyen_paiement: string | null; montant_tva: number | string | null
+  moyen_paiement: string | null; montant_tva: number | string | null; source_marketing: string | null
   imports_externes: { created_at: string; nom_fichier: string | null } | null
   commandes_externes_lignes: LigneDetailBrute[] | null
 }
 
 export const SELECT_DETAIL = `id, client_id, plateforme, numero_externe, date_vente, devise, taux_change, date_taux,
   total_catalogue, total_remise, total_depense, total_paye, total_depense_eur, type_boutique, reference_paiement,
-  acheteur_nom, acheteur_email, import_id, moyen_paiement, montant_tva, imports_externes(created_at, nom_fichier),
+  acheteur_nom, acheteur_email, import_id, moyen_paiement, montant_tva, source_marketing, imports_externes(created_at, nom_fichier),
   commandes_externes_lignes(id, ordre, titre, titre_original, licence, prix_catalogue, remise, montant_depense,
     montant_paye, montant_depense_eur, offert, vendeur_principal, collaborateurs, beat_id, licence_id,
     beats(titre, image_url, styles, type_beat, ambiances, instruments), licences(nom))`
@@ -107,7 +107,7 @@ export type CommandeDetail = {
   devise: string; taux_change: number | null; date_taux: string | null
   total_catalogue: number | null; total_remise: number | null; total_depense: number | null; total_paye: number | null; total_depense_eur: number | null
   type_boutique: string | null; reference_paiement: string | null; acheteur_nom: string | null; acheteur_email: string
-  moyen_paiement: string | null; montant_tva: number | null
+  moyen_paiement: string | null; montant_tva: number | null; source_marketing: string | null
   import_id: string; import_date: string | null; import_fichier: string | null
   lignes: {
     id: string; titre: string | null; titre_original: string | null; licence: string | null
@@ -126,7 +126,7 @@ export function versDetail(c: CommandeDetailBrute): CommandeDetail {
     total_depense: nombre(c.total_depense), total_paye: nombre(c.total_paye), total_depense_eur: nombre(c.total_depense_eur),
     type_boutique: c.type_boutique, reference_paiement: c.reference_paiement,
     acheteur_nom: c.acheteur_nom, acheteur_email: c.acheteur_email, import_id: c.import_id,
-    moyen_paiement: c.moyen_paiement, montant_tva: nombre(c.montant_tva),
+    moyen_paiement: c.moyen_paiement, montant_tva: nombre(c.montant_tva), source_marketing: c.source_marketing,
     import_date: c.imports_externes?.created_at ?? null, import_fichier: c.imports_externes?.nom_fichier ?? null,
     lignes: [...(c.commandes_externes_lignes ?? [])].sort((a, b) => a.ordre - b.ordre).map(l => ({
       id: l.id, titre: l.titre, titre_original: l.titre_original, licence: l.licence,

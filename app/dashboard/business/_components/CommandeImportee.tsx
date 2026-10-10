@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { libellePlateforme, libelleTypeBoutique } from '@/lib/import-externe/plateformes'
+import { libelleSource } from '@/lib/sources-marketing'
 
 // Commande importée d'une autre plateforme : ligne cliquable + petit panneau
 // de détail. Volontairement AUCUN bouton facture / contrat / téléchargement /
@@ -66,6 +67,7 @@ export type CommandeImporteeDetail = {
   reference_paiement: string | null
   moyen_paiement?: string | null
   montant_tva?: number | null
+  source_marketing?: string | null
   acheteur_nom: string | null
   acheteur_email: string
   import_date: string | null
@@ -184,6 +186,7 @@ function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onCl
             {commande.montant_tva != null && ligne('dont TVA', fmtDevise(commande.montant_tva, d))}
             {commande.total_remise !== null && commande.plateforme !== 'beatstars' && ligne('Remise indiquée dans le fichier', fmtDevise(commande.total_remise, d))}
             {commande.moyen_paiement && ligne('Moyen de paiement', commande.moyen_paiement)}
+            {commande.source_marketing && ligne('Source de la vente', libelleSource(commande.source_marketing))}
             {d !== 'EUR' && commande.taux_change !== null && ligne('Taux de change', `1 € = ${commande.taux_change} ${d} (BCE${commande.date_taux ? `, ${date(commande.date_taux)}` : ''})`)}
             {commande.numero_externe.startsWith('emp-')
               ? ligne('N° de commande', 'Absent du fichier')

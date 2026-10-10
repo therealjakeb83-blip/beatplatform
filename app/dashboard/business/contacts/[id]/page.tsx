@@ -994,7 +994,7 @@ export default async function FicheClientPage({
                     if (h.genre === 'importee') {
                       return (
                         <LigneTableauImportee key={`${h.commande.id}:${h.ligne.id}`} commande={h.commande} className={bordure}>
-                          <td className="px-5 py-3 text-xs text-amber-200/80 whitespace-nowrap">{libelleSourceImport(h.commande.plateforme, h.commande.type_boutique)}</td>
+                          <td className="px-5 py-3 text-xs text-amber-200/80 whitespace-nowrap">{libelleSourceImport(h.commande.plateforme, h.commande.type_boutique, h.commande.source_marketing)}</td>
                           <td className="px-5 py-3">
                             <TitreLigneImportee ligne={h.ligne} />
                             <MentionsLigne ligne={h.ligne} />

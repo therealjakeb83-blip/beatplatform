@@ -1,4 +1,5 @@
 import type { Devise, OrdreDate } from './valeurs'
+import { SOURCES_MARKETING } from '@/lib/sources-marketing'
 
 // Réponses du beatmaker à l'assistant (une par colonne + questions de suite).
 // Mémorisées par jeu exact de colonnes (formats_import_externes) et renvoyées
@@ -8,7 +9,7 @@ import type { Devise, OrdreDate } from './valeurs'
 export const ROLES = [
   'email', 'date', 'numero', 'nom_complet', 'prenom', 'nom', 'titre', 'licence',
   'montant_commande', 'montant_ligne', 'quantite', 'remise', 'statut', 'devise',
-  'adresse', 'ville', 'code_postal', 'pays', 'telephone', 'moyen_paiement', 'tva', 'ignorer',
+  'adresse', 'ville', 'code_postal', 'pays', 'telephone', 'moyen_paiement', 'tva', 'source', 'ignorer',
 ] as const
 
 // Coordonnées : enregistrées seulement sur les fiches CRÉÉES par l'import (une
@@ -39,6 +40,7 @@ export const LIBELLES_ROLES: Record<Role, string> = {
   telephone: 'Téléphone',
   moyen_paiement: 'Moyen de paiement',
   tva: 'TVA payée (montant)',
+  source: 'Source de la vente (YouTube, Instagram…)',
   ignorer: 'Ignorer cette colonne',
 }
 
@@ -53,6 +55,7 @@ export const AIDES_ROLES: Partial<Record<Role, string>> = {
   pays: 'Ajouté à la fiche des nouveaux contacts créés par cet import (code à 2 lettres ou nom du pays).',
   telephone: 'Ajouté à la fiche des nouveaux contacts créés par cet import.',
   moyen_paiement: 'Affiché sur chaque commande importée (carte, PayPal, Apple Pay…).',
+  source: 'Tu relieras ensuite chaque valeur à l’une des sources de ton CRM (YouTube, Instagram, Direct…).',
   tva: 'Montant de TVA de la commande, affiché dans son détail. Le total dépensé reste le montant payé, TVA comprise.',
 }
 
@@ -90,6 +93,10 @@ export type Association = {
   // clé = licence normalisée (cleLicence)
   licences: Record<string, ChoixLicence>
   devise: Devise
+  // valeur de la colonne source (clé normalisée) → source marketing du CRM
+  sources?: Record<string, string>
+  // devise confirmée par le beatmaker alors que des montants écrivent l'autre
+  deviseConfirmee?: boolean
   plateforme: string
 }
 
@@ -146,6 +153,8 @@ export function verifierAssociation(brut: unknown, nbColonnes: number): Associat
     formeLicence: a.formeLicence && FORMES_LICENCE.includes(a.formeLicence) ? a.formeLicence : null,
     licences,
     devise: a.devise,
+    deviseConfirmee: a.deviseConfirmee === true,
+    sources: Object.fromEntries(Object.entries(a.sources ?? {}).filter(([, v]) => v === 'aucune' || (SOURCES_MARKETING as readonly string[]).includes(String(v)))),
     plateforme,
   }
 }

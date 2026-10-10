@@ -20,6 +20,7 @@ type Profil = {
   pDevise: number
   pCode3: number
   pTelephone: number
+  pEspace: number
   pLettres: number
   longueurMoy: number
   maxEntier: number
@@ -57,6 +58,7 @@ function profil(valeurs: string[], numeros: string[] | null): Profil {
     pDevise: part(x => deviseEcrite(x) !== null && x.trim().length <= 5),
     pCode3: part(x => /^[A-Z]{3}$/.test(x.trim()) || /^[€$£¥]$/.test(x.trim())),
     pTelephone: part(x => /^\+?[\d\s().-]{6,20}$/.test(x.trim())),
+    pEspace: part(x => /\S\s+\S/.test(x.trim())),
     pLettres: part(x => /\p{L}/u.test(x)),
     longueurMoy: v.reduce((s, x) => s + x.length, 0) / n,
     maxEntier: entiers.length ? Math.max(...entiers) : 0,
@@ -85,10 +87,11 @@ const INDICES: Partial<Record<Role, RegExp>> = {
   pays: /(pays|country)/,
   telephone: /(telephone|phone|\btel\b|mobile|portable)/,
   moyen_paiement: /(paiement|payment|moyen de|gateway|passerelle)/,
+  source: /(source|origine|provenance|canal|referent|referer|attribution|utm|trafic|traffic)/,
 }
 
 // Colonnes qui ressemblent à une info utile mais n'en sont pas une
-const PAS_UTILE = /(societe|company|note|comment|livraison|shipping|tax|tva|vat|frais|fee|rembours|refund|sous-total|subtotal|ugs|sku|attribution|referent|source|type de client|code promo|coupon(?! amount)|ip\b|etat \(|state\b|region|province)/
+const PAS_UTILE = /(societe|company|note|comment|livraison|shipping|tax|tva|vat|frais|fee|rembours|refund|sous-total|subtotal|ugs|sku|type de client|code promo|coupon(?! amount)|ip\b|etat \(|state\b|region|province)/
 
 function scores(enTete: string, p: Profil): Partial<Record<Role, number>> {
   const h = sansAccents(enTete)
@@ -100,6 +103,8 @@ function scores(enTete: string, p: Profil): Partial<Record<Role, number>> {
 
   // Coordonnées (facturation) : reconnues au nom de la colonne, vérifiées par
   // le contenu ; une colonne « livraison / shipping » reste ignorée (doublon)
+  // source de la vente : peu de valeurs différentes, du texte
+  if (!inutile && indice('source') && p.pLettres > 0.8 && p.distinctes <= 40 && p.pEmail === 0) return { source: 70 }
   if (!inutile && indice('moyen_paiement') && p.pLettres > 0.8 && p.distinctes <= 2000 && !/(date|montant|amount|total|frais|fee|statut|status|etat)/.test(h)) return { moyen_paiement: 70 }
   if (!inutile && p.pEmail < 0.05 && p.pDate < 0.5) {
     if (indice('pays') && p.longueurMoy <= 30) s.pays = 72
@@ -149,7 +154,11 @@ function scores(enTete: string, p: Profil): Partial<Record<Role, number>> {
     if (indice('licence')) s.licence = 70
     if (indice('prenom')) s.prenom = 70
     if (indice('nom') && !indice('prenom')) s.nom = 68
-    if (indice('nom_complet') && !indice('prenom') && !indice('nom')) s.nom_complet = 65
+    // « client » qui ne contient presque jamais d'espace = un prénom ou un pseudo
+    if (indice('nom_complet') && !indice('prenom') && !indice('nom')) {
+      if (p.pEspace < 0.2) s.prenom = 65
+      else s.nom_complet = 65
+    }
     if (p.longueurMoy >= 3 && p.longueurMoy <= 120) s.titre = 30 + indice('titre') * 40 + (tauxDistinct > 0.05 ? 5 : 0)
   }
   return s
