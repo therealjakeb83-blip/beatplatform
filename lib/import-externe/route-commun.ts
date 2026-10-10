@@ -30,3 +30,10 @@ export async function lireFichierRequete(req: Request): Promise<{ octets: ArrayB
   }
   return { octets: await fichier.arrayBuffer(), nom: fichier.name, association }
 }
+
+// Réponses de l'import jamais retouchées en route : une petite réponse
+// (assistant du format libre) arrivait compressée par Vercel SANS l'en-tête
+// Content-Encoding, donc illisible pour le navigateur (vu en testant le lot 4)
+export function reponseJson(corps: unknown, status = 200): NextResponse {
+  return NextResponse.json(corps, { status, headers: { 'Cache-Control': 'no-store, no-transform' } })
+}
