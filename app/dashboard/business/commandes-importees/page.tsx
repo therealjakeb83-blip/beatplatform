@@ -33,7 +33,7 @@ export default async function CommandesImporteesPage({
       .from('commandes_externes')
       .select(SELECT_DETAIL)
       .eq('beatmaker_id', beatmakerId)
-      .order('date_vente', { ascending: false })
+      .order('date_vente', { ascending: false, nullsFirst: false })
       .order('id')
       .range(debut, fin) as unknown as PromiseLike<{ data: CommandeDetailBrute[] | null; error: unknown }>),
   ])

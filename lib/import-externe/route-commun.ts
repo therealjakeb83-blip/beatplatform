@@ -17,10 +17,16 @@ export async function beatmakerImport(exigerPlanPayant: boolean): Promise<{ beat
   return { beatmakerId: user.id }
 }
 
-export async function lireFichierRequete(req: Request): Promise<{ texte: string; nom: string } | { refus: NextResponse }> {
+// Fichier + réponses de l'assistant (format libre, absentes au 1er envoi)
+export async function lireFichierRequete(req: Request): Promise<{ octets: ArrayBuffer; nom: string; association: unknown | null } | { refus: NextResponse }> {
   const form = await req.formData().catch(() => null)
   const fichier = form?.get('fichier')
   if (!(fichier instanceof File)) return { refus: NextResponse.json({ error: 'Aucun fichier reçu.' }, { status: 400 }) }
   if (fichier.size > TAILLE_MAX_FICHIER) return { refus: NextResponse.json({ error: 'Fichier trop lourd (4 Mo maximum).' }, { status: 400 }) }
-  return { texte: await fichier.text(), nom: fichier.name }
+  const brut = form?.get('association')
+  let association: unknown | null = null
+  if (typeof brut === 'string' && brut) {
+    try { association = JSON.parse(brut) } catch { return { refus: NextResponse.json({ error: 'Réponses de l’assistant illisibles.' }, { status: 400 }) } }
+  }
+  return { octets: await fichier.arrayBuffer(), nom: fichier.name, association }
 }

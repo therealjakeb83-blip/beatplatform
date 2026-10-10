@@ -287,7 +287,9 @@ export default async function FicheClientPage({
   const pctNewsletter = (n: number) => nbRecues > 0 ? `${Math.round((n / nbRecues) * 100)}%` : '–'
 
   // "Client depuis" = date la plus ancienne parmi conservé + archivés
+  // (commande importée sans date : ne touche pas l'ancienneté)
   const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at), ...commandesImportees.map(c => c.date_vente)]
+    .filter((d): d is string => !!d)
   const clientDepuis = allDates.sort()[0]
 
   // Métriques
@@ -306,7 +308,7 @@ export default async function FicheClientPage({
   const nbAchats       = nbAchatsPayants(commandesLicences)
   const ltv            = totalDepense([...commandes, ...importeesCrm])
   const panierMoyen    = panierMoyenLicences(commandesLicences)
-  const derniereCmd    = commandesLicences.filter(c => montantDepense(c) > 0).map(c => c.created_at).sort().at(-1) ?? null
+  const derniereCmd    = commandesLicences.filter(c => montantDepense(c) > 0).map(c => c.created_at).filter((d): d is string => !!d).sort().at(-1) ?? null
   const moisAboCommandes = commandes.filter(
     c => c.type_commande === 'RENOUVELLEMENT' || c.type_commande === 'CREATION_ABONNEMENT'
   ).length
@@ -349,6 +351,10 @@ export default async function FicheClientPage({
         if (nom) m.set(nom, (m.get(nom) ?? 0) + 1)
       }
     }
+    // ventes importées reliées à une licence de la boutique
+    for (const c of commandesImportees) {
+      for (const l of c.lignes) if (l.licence_boutique) m.set(l.licence_boutique, (m.get(l.licence_boutique) ?? 0) + 1)
+    }
     return topN(m, 3)
   })()
 
@@ -384,11 +390,11 @@ export default async function FicheClientPage({
      (une ligne par beat, badge plateforme, clic = panneau de détail). */
   type LigneHistorique =
     | { genre: 'native'; date: string; ligne: (typeof achatsLignes)[number] }
-    | { genre: 'importee'; date: string; commande: (typeof commandesImportees)[number]; ligne: (typeof commandesImportees)[number]['lignes'][number] }
+    | { genre: 'importee'; date: string | null; commande: (typeof commandesImportees)[number]; ligne: (typeof commandesImportees)[number]['lignes'][number] }
   const historique: LigneHistorique[] = [
     ...achatsLignes.map(l => ({ genre: 'native' as const, date: l.created_at, ligne: l })),
     ...commandesImportees.flatMap(c => c.lignes.map(l => ({ genre: 'importee' as const, date: c.date_vente, commande: c, ligne: l }))),
-  ].sort((a, b) => b.date.localeCompare(a.date))
+  ].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
 
   // ── Server actions ─────────────────────────────────────────────────────────
@@ -993,8 +999,8 @@ export default async function FicheClientPage({
                             <TitreLigneImportee ligne={h.ligne} />
                             <MentionsLigne ligne={h.ligne} />
                           </td>
-                          <td className="px-5 py-3 text-xs text-gray-500">{h.ligne.licence ?? 'Non précisée'}</td>
-                          <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(h.date)}</td>
+                          <td className="px-5 py-3 text-xs text-gray-500">{h.ligne.licence_boutique ?? h.ligne.licence ?? 'Non précisée'}</td>
+                          <td className={`px-5 py-3 text-xs whitespace-nowrap ${h.date ? 'text-gray-400' : 'text-gray-600 italic'}`}>{h.date ? fmtDate(h.date) : 'Date inconnue'}</td>
                           <td className="px-5 py-3 text-right"><MontantLigne ligne={h.ligne} devise={h.commande.devise} /></td>
                         </LigneTableauImportee>
                       )

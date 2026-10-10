@@ -71,12 +71,14 @@ export function meilleureProposition(cle: string, beats: { id: string; cle: stri
   return egalite ? null : meilleur
 }
 
-type LigneTitre = { titre: string }
+type LigneTitre = { titre: string | null }
 type Memoire = { cle: string; decision: 'relier' | 'ne_pas_relier'; beat_id: string | null }
 
 export function grouperTitres(lignes: LigneTitre[], memoire: Memoire[], beats: BeatCatalogue[]): GroupeTitre[] {
   const parCle = new Map<string, Map<string, number>>()
   for (const l of lignes) {
+    // « Beat non précisé » (titre absent du fichier) : jamais reliable
+    if (!l.titre) continue
     const cle = normaliserTitre(l.titre)
     if (!cle) continue
     const variantes = parCle.get(cle) ?? new Map<string, number>()
@@ -112,6 +114,7 @@ export async function chargerLignesTitres(supabase: SupabaseClient, beatmakerId:
     .from('commandes_externes_lignes')
     .select('titre')
     .eq('beatmaker_id', beatmakerId)
+    .not('titre', 'is', null)
     .order('id')
     .range(debut, fin) as unknown as PromiseLike<{ data: LigneTitre[] | null; error: unknown }>)
 }

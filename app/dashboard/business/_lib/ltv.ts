@@ -38,3 +38,17 @@ export function panierMoyenLicences(licences: CommandeDepense[]): number | null 
   const avecDepense = licences.filter(c => centsDepenses(c) > 0)
   return avecDepense.length ? Math.round(totalDepense(avecDepense) * 100 / avecDepense.length) / 100 : null
 }
+
+// Dates des commandes en ignorant les dates INCONNUES (commande importée en
+// format libre sans date) : elles ne touchent ni l'ancienneté ni le dernier achat
+type AvecDate = { created_at: string | null }
+
+export function datePlusRecente(commandes: AvecDate[]): string | null {
+  const t = commandes.filter(c => c.created_at).map(c => new Date(c.created_at!).getTime())
+  return t.length ? new Date(Math.max(...t)).toISOString() : null
+}
+
+export function datePlusAncienne(commandes: AvecDate[]): string | null {
+  const t = commandes.filter(c => c.created_at).map(c => new Date(c.created_at!).getTime())
+  return t.length ? new Date(Math.min(...t)).toISOString() : null
+}

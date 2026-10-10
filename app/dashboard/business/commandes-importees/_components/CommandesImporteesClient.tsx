@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CommandeDetail } from '@/app/dashboard/business/_lib/commandes-externes'
-import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantLigne, TitreLigneImportee, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'
+import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantCommande, TitreLigneImportee, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
 import AssistantImport from './AssistantImport'
 import Pagination from '../../../_pagination/Pagination'
@@ -32,7 +32,7 @@ export type ImportHistorique = {
 
 const pluriel = (n: number, un: string, plusieurs: string) => `${n.toLocaleString('fr-FR')} ${n > 1 ? plusieurs : un}`
 
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Date inconnue')
 
 function Roue() {
   return <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin align-middle" />
@@ -66,7 +66,7 @@ export default function CommandesImporteesClient({
       return (c.acheteur_nom ?? '').toLowerCase().includes(q)
         || c.acheteur_email.includes(q)
         || c.numero_externe.toLowerCase().includes(q)
-        || c.lignes.some(l => l.titre.toLowerCase().includes(q) || (l.beat?.titre.toLowerCase().includes(q) ?? false))
+        || c.lignes.some(l => (l.titre ?? '').toLowerCase().includes(q) || (l.beat?.titre.toLowerCase().includes(q) ?? false))
     })
   }, [commandes, recherche, plateforme])
 
@@ -100,12 +100,13 @@ export default function CommandesImporteesClient({
         <div>
           <h1 className="text-2xl font-bold">Commandes importées</h1>
           <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-            Tes ventes réalisées sur d’autres plateformes (BeatStars, Airbit, Instrurap…). Elles complètent ton CRM
+            Tes ventes réalisées ailleurs (BeatStars, Airbit, Instrurap, ton propre site…). Elles complètent ton CRM
             (total dépensé, achats, ancienneté de tes clients) sans jamais toucher tes Analytics ni tes factures.
           </p>
           <p className="text-sm text-gray-400 mt-3 max-w-2xl">
-            Tu vends encore sur BeatStars ? Réimporte ton CSV quand tu veux, par exemple chaque mois. Les ventes déjà
-            importées sont reconnues et ignorées : jamais de doublon, même si ton fichier reprend des ventes déjà importées.
+            Tu vends encore ailleurs ? Réimporte ton fichier quand tu veux, par exemple chaque mois. Les ventes déjà
+            importées sont reconnues grâce à leur n° de commande et ignorées : pas de doublon, même si ton fichier reprend
+            des ventes déjà importées.
           </p>
         </div>
         {planPayant ? (
@@ -261,7 +262,7 @@ export default function CommandesImporteesClient({
                     commande={c}
                     className={`${n < arr.length - 1 ? 'border-b border-gray-800' : ''} hover:bg-gray-800/40 transition-colors align-top`}
                   >
-                    <td className="px-5 py-3 text-xs text-gray-400 whitespace-nowrap">
+                    <td className={`px-5 py-3 text-xs whitespace-nowrap ${c.date_vente ? 'text-gray-400' : 'text-gray-600 italic'}`}>
                       {fmtDate(c.date_vente)}
                       <div className="mt-1"><BadgePlateforme plateforme={c.plateforme} /></div>
                     </td>
@@ -286,7 +287,7 @@ export default function CommandesImporteesClient({
                     <td className="px-5 py-3 text-right">
                       {c.lignes.every(l => l.offert)
                         ? <span className="text-green-400 font-semibold">Offert</span>
-                        : <MontantLigne ligne={{ ...c.lignes[0], offert: false, montant_depense: c.total_depense, montant_depense_eur: c.total_depense_eur }} devise={c.devise} />}
+                        : <MontantCommande commande={c} />}
                     </td>
                   </LigneTableauImportee>
                 ))}

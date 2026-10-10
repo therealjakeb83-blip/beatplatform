@@ -11,16 +11,18 @@ import { libellePlateforme } from './plateformes'
 
 export class ErreurImport extends Error {}
 
-type LignePayload = {
+// null = INCONNU (format libre : seul l'email est obligatoire), jamais 0
+export type LignePayload = {
   ordre: number
-  titre: string
-  titre_original: string
+  titre: string | null
+  titre_original: string | null
   licence: string | null
-  prix_catalogue: number
-  remise: number
-  montant_depense: number
-  montant_paye: number
-  montant_depense_eur: number
+  licence_id?: string | null
+  prix_catalogue: number | null
+  remise: number | null
+  montant_depense: number | null
+  montant_paye: number | null
+  montant_depense_eur: number | null
   offert: boolean
   vendeur_principal: string | null
   collaborateurs: string[]
@@ -29,23 +31,23 @@ type LignePayload = {
 
 export type CommandePayload = {
   numero_externe: string
-  date_vente: string
+  date_vente: string | null
   acheteur_email: string
   acheteur_nom: string | null
   type_boutique: string | null
   reference_paiement: string | null
   devise: string
-  taux_change: number
-  date_taux: string
-  total_catalogue: number
-  total_remise: number
-  total_depense: number
-  total_paye: number
-  total_depense_eur: number
+  taux_change: number | null
+  date_taux: string | null
+  total_catalogue: number | null
+  total_remise: number | null
+  total_depense: number | null
+  total_paye: number | null
+  total_depense_eur: number | null
   lignes: LignePayload[]
 }
 
-export type ContactPayload = { email: string; prenom: string; nom: string; premiere_date: string }
+export type ContactPayload = { email: string; prenom: string; nom: string; premiere_date: string | null }
 
 export type Apercu = {
   plateforme: string
@@ -68,6 +70,14 @@ export type Apercu = {
   rejets: LigneRejetee[]
   enTetes: string[]
   nbCommandesRejetees: number
+  format: 'beatstars' | 'libre'
+  // format libre : commandes non réglées écartées, lignes sans article
+  // ignorées, montants inconnus, données absentes du fichier
+  nbLignesEcartees: number
+  nbCommandesEcartees: number
+  nbLignesSansArticle: number
+  nbMontantsInconnus: number
+  avertissements: string[]
 }
 
 export type Preparation = {
@@ -77,9 +87,9 @@ export type Preparation = {
   commandes: CommandePayload[]
 }
 
-const r2 = (n: number) => Math.round(n * 100) / 100
+export const r2 = (n: number) => Math.round(n * 100) / 100
 
-async function numerosDejaImportes(admin: SupabaseClient, beatmakerId: string, plateforme: string): Promise<Set<string>> {
+export async function numerosDejaImportes(admin: SupabaseClient, beatmakerId: string, plateforme: string): Promise<Set<string>> {
   const vus = new Set<string>()
   for (let debut = 0; ; debut += 1000) {
     const { data, error } = await admin
@@ -96,7 +106,7 @@ async function numerosDejaImportes(admin: SupabaseClient, beatmakerId: string, p
   return vus
 }
 
-async function emailsDejaContacts(admin: SupabaseClient, beatmakerId: string, emails: string[]): Promise<Set<string>> {
+export async function emailsDejaContacts(admin: SupabaseClient, beatmakerId: string, emails: string[]): Promise<Set<string>> {
   const existants = new Set<string>()
   for (let i = 0; i < emails.length; i += 200) {
     const lot = emails.slice(i, i + 200)
@@ -114,17 +124,18 @@ async function emailsDejaContacts(admin: SupabaseClient, beatmakerId: string, em
 
 // Nom de la commande la plus récente, coupé au 1er espace ; pseudo seul =
 // prénom ; aucun nom = l'email tient lieu de nom (décisions 9 et 19)
-function decouperNom(nom: string | null, email: string): { prenom: string; nom: string } {
+export function decouperNom(nom: string | null, email: string): { prenom: string; nom: string } {
   const n = (nom ?? '').trim().replace(/\s+/g, ' ')
   if (!n) return { prenom: email, nom: '' }
   const i = n.indexOf(' ')
   return i < 0 ? { prenom: n, nom: '' } : { prenom: n.slice(0, i), nom: n.slice(i + 1) }
 }
 
-function choisirEchantillon(commandes: CommandePayload[]): CommandePayload[] {
+export function choisirEchantillon(commandes: CommandePayload[], prioritaires: (CommandePayload | undefined)[] = []): CommandePayload[] {
   const choix: CommandePayload[] = []
   const ajouter = (c: CommandePayload | undefined) => { if (c && !choix.includes(c)) choix.push(c) }
   ajouter(commandes[0])
+  for (const c of prioritaires) ajouter(c)
   ajouter(commandes.find(c => c.lignes.some(l => l.vendeur_principal)))
   ajouter(commandes.find(c => c.lignes.some(l => l.offert)))
   ajouter(commandes.find(c => c.lignes.length > 1))
@@ -191,24 +202,24 @@ export async function preparerImport(
         devise,
         taux_change: taux,
         date_taux: dateTaux,
-        total_catalogue: r2(lignes.reduce((s, l) => s + l.prix_catalogue, 0)),
-        total_remise: r2(lignes.reduce((s, l) => s + l.remise, 0)),
-        total_depense: r2(lignes.reduce((s, l) => s + l.montant_depense, 0)),
-        total_paye: r2(lignes.reduce((s, l) => s + l.montant_paye, 0)),
-        total_depense_eur: r2(lignes.reduce((s, l) => s + l.montant_depense_eur, 0)),
+        total_catalogue: r2(lignes.reduce((s, l) => s + (l.prix_catalogue ?? 0), 0)),
+        total_remise: r2(lignes.reduce((s, l) => s + (l.remise ?? 0), 0)),
+        total_depense: r2(lignes.reduce((s, l) => s + (l.montant_depense ?? 0), 0)),
+        total_paye: r2(lignes.reduce((s, l) => s + (l.montant_paye ?? 0), 0)),
+        total_depense_eur: r2(lignes.reduce((s, l) => s + (l.montant_depense_eur ?? 0), 0)),
         lignes,
       }
     })
   }
 
   // Contacts : un par email ; nom = celui de la commande la plus récente qui en a un
-  const parEmail = new Map<string, { nom: string | null; premiere: string }>()
+  const parEmail = new Map<string, { nom: string | null; premiere: string | null }>()
   for (const c of commandes) {
     const ex = parEmail.get(c.acheteur_email)
     if (!ex) parEmail.set(c.acheteur_email, { nom: c.acheteur_nom, premiere: c.date_vente })
     else {
       if (!ex.nom && c.acheteur_nom) ex.nom = c.acheteur_nom
-      if (c.date_vente < ex.premiere) ex.premiere = c.date_vente
+      if (c.date_vente && (!ex.premiere || c.date_vente < ex.premiere)) ex.premiere = c.date_vente
     }
   }
   const emails = [...parEmail.keys()]
@@ -235,12 +246,18 @@ export async function preparerImport(
     nbAcheteurs: emails.length,
     nbAcheteursNouveaux: emails.length - existants.size,
     nbAcheteursExistants: existants.size,
-    totalDepense: r2(commandes.reduce((s, c) => s + c.total_depense, 0)),
-    totalDepenseEur: r2(commandes.reduce((s, c) => s + c.total_depense_eur, 0)),
+    totalDepense: r2(commandes.reduce((s, c) => s + (c.total_depense ?? 0), 0)),
+    totalDepenseEur: r2(commandes.reduce((s, c) => s + (c.total_depense_eur ?? 0), 0)),
     echantillon: choisirEchantillon(commandes),
     rejets: lecture.rejets,
     enTetes: lecture.enTetes,
     nbCommandesRejetees: lecture.nbCommandesRejetees,
+    format: 'beatstars',
+    nbLignesEcartees: 0,
+    nbCommandesEcartees: 0,
+    nbLignesSansArticle: 0,
+    nbMontantsInconnus: 0,
+    avertissements: [],
   }
 
   return {

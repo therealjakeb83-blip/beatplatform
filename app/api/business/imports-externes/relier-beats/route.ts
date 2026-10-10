@@ -21,6 +21,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient()
   const titresParCle = new Map<string, Set<string>>()
   for (const l of await chargerLignesTitres(admin, acces.beatmakerId)) {
+    if (!l.titre) continue
     const cle = normaliserTitre(l.titre)
     titresParCle.set(cle, (titresParCle.get(cle) ?? new Set()).add(l.titre))
   }

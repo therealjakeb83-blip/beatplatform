@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import ContactsClient, { ContactRow } from './_components/ContactsClient'
 import type { LeadRow } from './_components/LeadsView'
 import type { NewsletterRow } from './_components/NewsletterView'
-import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants, datePlusRecente } from '@/app/dashboard/business/_lib/ltv'
 import { statutFusionne, type StatutNewsletter } from '@/lib/newsletter'
 import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
@@ -139,7 +139,7 @@ export default async function ContactsPage({
 
   // ── 2. Commandes + abos + listes ─────────────────────────────────────────
   type CommandeCrm = {
-    client_id: string | null; created_at: string; prix_paye: number | string | null; statut: string
+    client_id: string | null; created_at: string | null; prix_paye: number | string | null; statut: string
     montant_rembourse_cents: number | null; type_commande: string
     commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
   }
@@ -376,9 +376,9 @@ export default async function ContactsPage({
     // Contact importé : son premier contact EST sa première commande (déjà
     // dans les événements « Commande ») — pas d'événement « Import » à part,
     // sauf s'il n'a plus de commande (import annulé, contact conservé)
-    if (lead && (lead.source !== 'import' || licenceCmds.length === 0)) events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source, lead.source_plateforme) })
+    if (lead && (lead.source !== 'import' || !licenceCmds.some(cmd => cmd.created_at))) events.push({ date: new Date(lead.created_at), type: leadSourceLabel(lead.source, lead.source_plateforme) })
     if (abo)  events.push({ date: new Date(abo.created_at),  type: 'Abonnement' })
-    for (const cmd of licenceCmds) events.push({ date: new Date(cmd.created_at), type: 'Commande' })
+    for (const cmd of licenceCmds) if (cmd.created_at) events.push({ date: new Date(cmd.created_at), type: 'Commande' })
     for (const ev of extraEventsParClient.get(c.id) ?? []) events.push(ev)
     events.sort((a, b) => a.date.getTime() - b.date.getTime())
 
@@ -388,9 +388,7 @@ export default async function ContactsPage({
     const typeDerniereAction = events[events.length - 1]?.type ?? 'Inscription'
 
     const ltv = totalDepense(cmds)
-    const dernier_achat_iso = licenceCmds.length
-      ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-      : null
+    const dernier_achat_iso = datePlusRecente(licenceCmds)
     const panier_moyen = panierMoyenLicences(licenceCmds)
 
     const stylesArr: string[] = []

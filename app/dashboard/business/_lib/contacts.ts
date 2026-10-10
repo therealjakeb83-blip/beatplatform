@@ -4,7 +4,7 @@ import {
   computeScoreRF, computeScoreChaleur,
   type ContactFiltre, type CatalogOptions,
 } from './segments'
-import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants, datePlusRecente, datePlusAncienne } from '@/app/dashboard/business/_lib/ltv'
 import { statutFusionne } from '@/lib/newsletter'
 import { toutesLesLignes, parLots } from './requetes'
 import { chargerCommandesExternesCrm } from './commandes-externes'
@@ -72,7 +72,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
 
   // Commandes + abos + beats catalogue + licences catalogue en parallèle
   type CommandeCrm = {
-    client_id: string | null; created_at: string; prix_paye: number | string | null; statut: string
+    client_id: string | null; created_at: string | null; prix_paye: number | string | null; statut: string
     montant_rembourse_cents: number | null; type_commande: string
     commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
   }
@@ -200,12 +200,8 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       const nbAchats    = nbAchatsPayants(licenceCmds)
       const ltv         = totalDepense(cmds)
       const panierMoyen = panierMoyenLicences(licenceCmds)
-      const dernierAchat = licenceCmds.length
-        ? new Date(Math.max(...licenceCmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-        : null
-      const premierContact = cmds.length
-        ? new Date(Math.min(...cmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-        : new Date().toISOString()
+      const dernierAchat = datePlusRecente(licenceCmds)
+      const premierContact = datePlusAncienne(cmds) ?? new Date().toISOString()
 
       let statut: ContactFiltre['statut']
       if (abo && (abo.statut === 'actif' || abo.statut === 'impaye')) statut = 'abonne'

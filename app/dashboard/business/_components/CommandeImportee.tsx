@@ -7,17 +7,19 @@ import { libellePlateforme, libelleTypeBoutique } from '@/lib/import-externe/pla
 // Commande importée d'une autre plateforme : ligne cliquable + petit panneau
 // de détail. Volontairement AUCUN bouton facture / contrat / téléchargement /
 // remboursement (décision 20) : la vente n'a pas eu lieu sur My Producer.
+// Format libre : titre, date ou montants peuvent être INCONNUS (null).
 
 export type LigneImportee = {
   id: string
-  titre: string
+  titre: string | null
   titre_original: string | null
   licence: string | null
-  prix_catalogue: number
-  remise: number
-  montant_depense: number
-  montant_paye: number
-  montant_depense_eur: number
+  licence_boutique?: string | null
+  prix_catalogue: number | null
+  remise: number | null
+  montant_depense: number | null
+  montant_paye: number | null
+  montant_depense_eur: number | null
   offert: boolean
   vendeur_principal: string | null
   collaborateurs: string[]
@@ -28,6 +30,11 @@ export type LigneImportee = {
 // Vente reliée à un beat du catalogue (page « Relier les beats ») : titre et
 // pochette du beat de la boutique ; le titre importé reste dans le panneau de
 // détail et au survol. Vente non reliée : titre importé.
+export const TITRE_NON_PRECISE = 'Beat non précisé'
+
+export const fmtDateImport = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Date inconnue'
+
 export function TitreLigneImportee({ ligne, classeTitre = 'font-medium text-white' }: { ligne: LigneImportee; classeTitre?: string }) {
   return (
     <span className="inline-flex items-center gap-2.5 align-middle">
@@ -35,7 +42,9 @@ export function TitreLigneImportee({ ligne, classeTitre = 'font-medium text-whit
         // eslint-disable-next-line @next/next/no-img-element
         <img src={ligne.image_url} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
       )}
-      <span className={classeTitre} title={ligne.beat ? `Titre importé : ${ligne.titre}` : undefined}>{ligne.beat?.titre ?? ligne.titre}</span>
+      <span className={ligne.titre || ligne.beat ? classeTitre : 'italic text-gray-500'} title={ligne.beat ? `Titre importé : ${ligne.titre}` : undefined}>
+        {ligne.beat?.titre ?? ligne.titre ?? TITRE_NON_PRECISE}
+      </span>
     </span>
   )
 }
@@ -44,15 +53,15 @@ export type CommandeImporteeDetail = {
   id: string
   plateforme: string
   numero_externe: string
-  date_vente: string
+  date_vente: string | null
   devise: string
-  taux_change: number
+  taux_change: number | null
   date_taux: string | null
-  total_catalogue: number
-  total_remise: number
-  total_depense: number
-  total_paye: number
-  total_depense_eur: number
+  total_catalogue: number | null
+  total_remise: number | null
+  total_depense: number | null
+  total_paye: number | null
+  total_depense_eur: number | null
   type_boutique: string | null
   reference_paiement: string | null
   acheteur_nom: string | null
@@ -92,19 +101,36 @@ export function MentionsLigne({ ligne, typeBoutique }: { ligne: LigneImportee; t
   )
 }
 
+export function MontantInconnu() {
+  return <span className="italic text-gray-500 whitespace-nowrap">Montant inconnu</span>
+}
+
 export function MontantLigne({ ligne, devise }: { ligne: LigneImportee; devise: string }) {
   if (ligne.offert) return <span className="text-green-400 font-semibold">Offert</span>
+  if (ligne.montant_depense === null) return <MontantInconnu />
   return (
     <span className="whitespace-nowrap">
       <span className="font-semibold text-white">{fmtDevise(ligne.montant_depense, devise)}</span>
-      {devise !== 'EUR' && <span className="text-gray-500 text-xs"> ≈ {fmtDevise(ligne.montant_depense_eur, 'EUR')}</span>}
+      {devise !== 'EUR' && ligne.montant_depense_eur !== null && <span className="text-gray-500 text-xs"> ≈ {fmtDevise(ligne.montant_depense_eur, 'EUR')}</span>}
+    </span>
+  )
+}
+
+// Montant d'une commande entière (devise d'origine + ≈ € ; inconnu si absent)
+export function MontantCommande({ commande, classe = 'font-semibold text-white' }: { commande: Pick<CommandeImporteeDetail, 'total_depense' | 'total_depense_eur' | 'devise'>; classe?: string }) {
+  if (commande.total_depense === null) return <MontantInconnu />
+  return (
+    <span className="whitespace-nowrap">
+      <span className={classe}>{fmtDevise(commande.total_depense, commande.devise)}</span>
+      {commande.devise !== 'EUR' && commande.total_depense_eur !== null && <span className="text-gray-500 text-xs"> ≈ {fmtDevise(commande.total_depense_eur, 'EUR')}</span>}
     </span>
   )
 }
 
 function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onClose: () => void }) {
   const d = commande.devise
-  const date = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const date = fmtDateImport
+  const montant = (n: number | null) => (n === null ? <MontantInconnu /> : fmtDevise(n, d))
   const ligne = (label: string, valeur: React.ReactNode) => (
     <div className="flex justify-between gap-4 py-1.5 border-b border-gray-800 last:border-0 text-xs">
       <span className="text-gray-500">{label}</span>
@@ -137,20 +163,27 @@ function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onCl
                 <MontantLigne ligne={l} devise={d} />
               </div>
               <div className="mt-2">
-                {l.beat && ligne('Titre importé', l.titre)}
-                {ligne('Licence', l.licence ?? 'Non précisée')}
-                {ligne('Prix catalogue', fmtDevise(l.prix_catalogue, d))}
-                {ligne('Remise', l.remise > 0 ? `− ${fmtDevise(l.remise, d)}` : '–')}
-                {ligne('Total payé par le client (frais et TVA de la plateforme compris)', fmtDevise(l.montant_paye, d))}
+                {l.beat && ligne('Titre importé', l.titre ?? TITRE_NON_PRECISE)}
+                {ligne('Licence', l.licence_boutique
+                  ? <>{l.licence_boutique}{l.licence && <span className="text-gray-500"> (« {l.licence} » dans le fichier)</span>}</>
+                  : l.licence ?? 'Non précisée')}
+                {l.prix_catalogue !== null && ligne('Prix catalogue', fmtDevise(l.prix_catalogue, d))}
+                {l.remise !== null && ligne('Remise', l.remise > 0 ? `− ${fmtDevise(l.remise, d)}` : '–')}
+                {commande.plateforme === 'beatstars'
+                  ? ligne('Total payé par le client (frais et TVA de la plateforme compris)', montant(l.montant_paye))
+                  : commande.lignes.length > 1 && ligne('Part de cet article dans le total', montant(l.montant_depense))}
                 {l.titre_original && l.titre_original !== l.titre && ligne('Article d’origine', l.titre_original)}
               </div>
             </div>
           ))}
 
           <div>
-            {ligne('Total dépensé', <>{fmtDevise(commande.total_depense, d)}{d !== 'EUR' && <span className="text-gray-500"> ≈ {fmtDevise(commande.total_depense_eur, 'EUR')}</span>}</>)}
-            {d !== 'EUR' && ligne('Taux de change', `1 € = ${commande.taux_change} ${d} (BCE${commande.date_taux ? `, ${date(commande.date_taux)}` : ''})`)}
-            {ligne(`N° de facture ${libellePlateforme(commande.plateforme)}`, <span className="font-mono">{commande.numero_externe}</span>)}
+            {ligne('Total dépensé', <MontantCommande commande={commande} classe="text-gray-200" />)}
+            {commande.total_remise !== null && commande.plateforme !== 'beatstars' && ligne('Remise indiquée dans le fichier', fmtDevise(commande.total_remise, d))}
+            {d !== 'EUR' && commande.taux_change !== null && ligne('Taux de change', `1 € = ${commande.taux_change} ${d} (BCE${commande.date_taux ? `, ${date(commande.date_taux)}` : ''})`)}
+            {commande.numero_externe.startsWith('emp-')
+              ? ligne('N° de commande', 'Absent du fichier')
+              : ligne(commande.plateforme === 'beatstars' ? 'N° de facture BeatStars' : `N° de commande ${libellePlateforme(commande.plateforme)}`, <span className="font-mono">{commande.numero_externe}</span>)}
             {commande.reference_paiement && ligne('Référence de paiement', <span className="font-mono">{commande.reference_paiement}</span>)}
             {libelleTypeBoutique(commande.type_boutique) && ligne('Vendu sur', libelleTypeBoutique(commande.type_boutique))}
             {ligne('Import d’origine', commande.import_date ? `${date(commande.import_date)}${commande.import_fichier ? ` — ${commande.import_fichier}` : ''}` : '–')}

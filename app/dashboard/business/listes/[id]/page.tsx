@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import ListeDetailClient, { type MembreRow, type ContactLight } from './_components/ListeDetailClient'
-import { totalDepense, panierMoyenLicences, nbAchatsPayants } from '@/app/dashboard/business/_lib/ltv'
+import { totalDepense, panierMoyenLicences, nbAchatsPayants, datePlusRecente, datePlusAncienne } from '@/app/dashboard/business/_lib/ltv'
 import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
@@ -107,7 +107,7 @@ export default async function ListeDetailPage({
     id: string; prenom: string | null; nom: string; surnom: string | null; nom_artiste: string | null; email: string
     pays: string | null; telephone: string | null; instagram: string | null; spotify: string | null; youtube: string | null; tiktok: string | null
   }
-  type CommandeListe = { client_id: string; prix_paye: number | string | null; type_commande: string | null; statut: string; montant_rembourse_cents: number | null; created_at: string }
+  type CommandeListe = { client_id: string; prix_paye: number | string | null; type_commande: string | null; statut: string; montant_rembourse_cents: number | null; created_at: string | null }
   type LeadListe = { client_id: string; newsletter_statut: string; newsletter_statut_at: string | null; source: string; source_plateforme: string | null; created_at: string }
   const [clients, commandesNatives, commandesExternes, abos, leads] = await Promise.all([
     parLots<ClientListe>(allClientIds, lot => admin
@@ -164,12 +164,8 @@ export default async function ListeDetailPage({
       const ltv      = totalDepense(cmds)
       const licences = cmds.filter(cmd => cmd.type_commande === 'LICENCE')
       const nb_achats = nbAchatsPayants(licences)
-      const dernierAchat = licences.length
-        ? new Date(Math.max(...licences.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-        : null
-      const premiereCommande = cmds.length > 0
-        ? new Date(Math.min(...cmds.map(cmd => new Date(cmd.created_at).getTime()))).toISOString()
-        : null
+      const dernierAchat = datePlusRecente(licences)
+      const premiereCommande = datePlusAncienne(cmds)
       const aboStatut = aboParClient.get(c.id)
       const leadData  = leadParClient.get(c.id)
       let statut: MembreRow['statut']

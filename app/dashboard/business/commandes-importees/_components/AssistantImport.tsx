@@ -4,16 +4,24 @@ import { useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Apercu } from '@/lib/import-externe/preparation'
 import { ecrireCsv } from '@/lib/import-externe/csv'
-import { BadgePlateforme, MentionsLigne, MontantLigne, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'
+import type { BesoinAssistant } from '@/lib/import-externe/entree'
+import type { Association, Role } from '@/lib/import-externe/libre/association'
+import { lireTableau, type Tableau } from '@/lib/import-externe/libre/tableau'
+import { devinerColonnes } from '@/lib/import-externe/libre/devinette'
+import { BadgePlateforme, MentionsLigne, MontantLigne, TitreLigneImportee, fmtDevise, fmtDateImport } from '@/app/dashboard/business/_components/CommandeImportee'
+import AssistantFormatLibre from './AssistantFormatLibre'
 
-// Import en 3 temps : fichier → écran de vérification (RIEN n'est écrit) →
-// import en un seul bloc (tout ou rien). Le fichier est renvoyé au serveur
-// à l'étape d'import : il relit et recalcule tout lui-même.
+// Import : fichier → DÉTECTION DU FORMAT (export BeatStars reconnu = règles
+// BeatStars ; tout autre fichier = assistant « format libre », chaque colonne
+// validée par le beatmaker) → écran de vérification (RIEN n'est écrit) →
+// import en un seul bloc (tout ou rien). Le fichier (et les réponses de
+// l'assistant) sont renvoyés au serveur, qui relit et recalcule tout lui-même.
 
-type Etape = 'choix' | 'analyse' | 'verification' | 'import' | 'termine'
+type Etape = 'choix' | 'analyse' | 'libre' | 'verification' | 'import' | 'termine'
 type Resultat = { nb_commandes: number; nb_lignes: number; nb_contacts_crees: number; nb_titres_non_relies?: number }
+type Libre = { tableau: Tableau; besoin: BesoinAssistant; roles: Role[] }
 
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+const fmtDate = fmtDateImport
 const nb = (n: number) => n.toLocaleString('fr-FR')
 
 function Attente({ texte, detail }: { texte: string; detail: string }) {
@@ -39,14 +47,17 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
   const [etape, setEtape] = useState<Etape>('choix')
   const [fichier, setFichier] = useState<File | null>(null)
   const [apercu, setApercu] = useState<Apercu | null>(null)
+  const [libre, setLibre] = useState<Libre | null>(null)
+  const [association, setAssociation] = useState<Association | null>(null)
   const [resultat, setResultat] = useState<Resultat | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const occupe = etape === 'analyse' || etape === 'import'
 
-  async function envoyer(url: string, f: File) {
+  async function envoyer(url: string, f: File, a: Association | null = null) {
     const form = new FormData()
     form.append('fichier', f)
+    if (a) form.append('association', JSON.stringify(a))
     const res = await fetch(url, { method: 'POST', body: form })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(json.error ?? 'Une erreur est survenue.')
@@ -56,9 +67,18 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
   async function analyser(f: File) {
     setFichier(f)
     setErreur(null)
+    setLibre(null)
+    setAssociation(null)
     setEtape('analyse')
     try {
       const json = await envoyer('/api/business/imports-externes/analyser', f)
+      if (json.assistant) {
+        // Format libre : le fichier est lu ici pour l'assistant (exemples réels)
+        const tableau = await lireTableau(f.name, await f.arrayBuffer())
+        setLibre({ tableau, besoin: json.assistant, roles: devinerColonnes(tableau) })
+        setEtape('libre')
+        return
+      }
       setApercu(json.apercu)
       setEtape('verification')
     } catch (e) {
@@ -67,12 +87,27 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
     }
   }
 
+  async function analyserLibre(a: Association) {
+    if (!fichier) return
+    setAssociation(a)
+    setErreur(null)
+    setEtape('analyse')
+    try {
+      const json = await envoyer('/api/business/imports-externes/analyser', fichier, a)
+      setApercu(json.apercu)
+      setEtape('verification')
+    } catch (e) {
+      setErreur((e as Error).message)
+      setEtape('libre')
+    }
+  }
+
   async function importer() {
     if (!fichier) return
     setErreur(null)
     setEtape('import')
     try {
-      const json = await envoyer('/api/business/imports-externes/importer', fichier)
+      const json = await envoyer('/api/business/imports-externes/importer', fichier, association)
       setResultat(json.resultat)
       setEtape('termine')
       onTermine()
@@ -89,7 +124,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `lignes-rejetees-${(apercu.nomFichier || 'import').replace(/\.csv$/i, '')}.csv`
+    a.download = `lignes-rejetees-${(apercu.nomFichier || 'import').replace(/\.(csv|xlsx)$/i, '')}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -110,24 +145,25 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
           {etape === 'choix' && (
             <div>
               <p className="text-sm text-gray-400 mb-1">
-                Ajoute à ton CRM l’historique de tes ventes faites sur une autre plateforme : BeatStars, Airbit, Instrurap…
+                Ajoute à ton CRM l’historique de tes ventes faites ailleurs : BeatStars, Airbit, Instrurap, ton propre site…
               </p>
               <p className="text-xs text-gray-500 mb-5">
-                Pour l’instant, seul l’export <strong className="text-gray-300">« Transactions »</strong> de BeatStars est accepté
-                (BeatStars → Sales → Transactions → Export CSV). Les autres plateformes arrivent bientôt.
+                L’export <strong className="text-gray-300">« Transactions »</strong> de BeatStars (BeatStars → Sales → Transactions → Export CSV)
+                est reconnu automatiquement. Pour tout autre fichier CSV ou Excel, un assistant te fait valider chaque colonne : seul
+                l’email de l’acheteur est obligatoire.
               </p>
               <button
                 onClick={() => input.current?.click()}
                 className="w-full border-2 border-dashed border-gray-700 hover:border-indigo-500/60 rounded-2xl py-10 text-center transition-colors group"
               >
-                <p className="text-white font-semibold group-hover:text-indigo-300">Choisir le fichier CSV</p>
+                <p className="text-white font-semibold group-hover:text-indigo-300">Choisir le fichier (CSV ou Excel)</p>
                 <p className="text-xs text-gray-500 mt-1">Rien n’est enregistré avant ta validation, sur l’écran suivant.</p>
                 <p className="text-xs text-gray-500 mt-1">Tu peux redéposer un fichier complet : seules les nouvelles ventes seront ajoutées.</p>
               </button>
               <input
                 ref={input}
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) analyser(f) }}
               />
@@ -136,6 +172,18 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
 
           {etape === 'analyse' && (
             <Attente texte="Lecture du fichier…" detail="On vérifie chaque ligne et on récupère les taux de change officiels de la Banque centrale européenne. Ça peut prendre quelques secondes." />
+          )}
+
+          {etape === 'libre' && libre && fichier && (
+            <AssistantFormatLibre
+              tableau={libre.tableau}
+              besoin={libre.besoin}
+              rolesDevines={libre.roles}
+              nomFichier={fichier.name}
+              reprise={association}
+              onValide={analyserLibre}
+              onAnnuler={() => { setLibre(null); setFichier(null); setEtape('choix') }}
+            />
           )}
 
           {etape === 'import' && (
@@ -148,7 +196,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
                 <Bloc titre="Fichier">
                   <div className="flex items-center gap-2 mb-1">
                     <BadgePlateforme plateforme={apercu.plateforme} />
-                    <span className="text-sm text-white">Format reconnu</span>
+                    <span className="text-sm text-white">{apercu.format === 'libre' ? 'Colonnes validées par toi' : 'Format reconnu'}</span>
                   </div>
                   <p className="text-xs text-gray-500 truncate">{apercu.nomFichier}</p>
                   {apercu.nomVendeur && (
@@ -165,8 +213,18 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
                   <p className="text-xs text-gray-500 mt-1">
                     {nb(apercu.nbCommandesFichier)} dans le fichier
                     {apercu.nbDejaImportees > 0 && <>, dont <strong className="text-gray-300">{nb(apercu.nbDejaImportees)} déjà importées</strong> (ignorées)</>}
-                    {' '}· {nb(apercu.nbBeats)} beats vendus
+                    {' '}· {nb(apercu.nbBeats)} {apercu.format === 'libre' ? 'articles vendus' : 'beats vendus'}
                   </p>
+                  {apercu.nbCommandesEcartees > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {nb(apercu.nbCommandesEcartees)} commande{apercu.nbCommandesEcartees > 1 ? 's' : ''} non réglée{apercu.nbCommandesEcartees > 1 ? 's' : ''} écartée{apercu.nbCommandesEcartees > 1 ? 's' : ''} ({nb(apercu.nbLignesEcartees)} ligne{apercu.nbLignesEcartees > 1 ? 's' : ''})
+                    </p>
+                  )}
+                  {apercu.nbLignesSansArticle > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {nb(apercu.nbLignesSansArticle)} ligne{apercu.nbLignesSansArticle > 1 ? 's' : ''} sans article ignorée{apercu.nbLignesSansArticle > 1 ? 's' : ''} (ligne en plus d’une commande qui a déjà ses articles, par exemple un 2e code promo)
+                    </p>
+                  )}
                 </Bloc>
                 <Bloc titre="Acheteurs">
                   <p className="text-2xl font-black text-white">{nb(apercu.nbAcheteurs)}</p>
@@ -182,9 +240,20 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
                   {apercu.devise !== 'EUR' && <span className="text-base font-semibold text-gray-400"> ≈ {fmtDevise(apercu.totalDepenseEur, 'EUR')}</span>}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Prix des beats après remise, hors frais et TVA de la plateforme. Conversion au taux officiel de la BCE du jour de chaque vente, figé à l’import.
+                  {apercu.format === 'libre'
+                    ? <>Montant payé indiqué dans ton fichier{apercu.nbMontantsInconnus > 0 && <> (hors {nb(apercu.nbMontantsInconnus)} commande{apercu.nbMontantsInconnus > 1 ? 's' : ''} sans montant)</>}.{apercu.devise !== 'EUR' && ' Conversion au taux officiel de la BCE du jour de chaque vente, figé à l’import.'}</>
+                    : 'Prix des beats après remise, hors frais et TVA de la plateforme. Conversion au taux officiel de la BCE du jour de chaque vente, figé à l’import.'}
                 </p>
               </Bloc>
+
+              {apercu.avertissements.length > 0 && (
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+                  <p className="text-sm text-amber-200 font-semibold mb-2">À savoir avant d’importer</p>
+                  <ul className="text-xs text-gray-300 space-y-1.5 list-disc pl-4">
+                    {apercu.avertissements.map(a => <li key={a}>{a}</li>)}
+                  </ul>
+                </div>
+              )}
 
               {apercu.echantillon.length > 0 && (
                 <Bloc titre={`Exemples (${apercu.echantillon.length} commandes telles qu’elles apparaîtront)`}>
@@ -192,12 +261,13 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
                     <tbody>
                       {apercu.echantillon.map(c => (
                         <tr key={c.numero_externe} className="border-b border-gray-800 last:border-0 align-top">
-                          <td className="py-2 pr-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(c.date_vente)}</td>
+                          <td className={`py-2 pr-3 text-xs whitespace-nowrap ${c.date_vente ? 'text-gray-400' : 'text-gray-600 italic'}`}>{fmtDate(c.date_vente)}</td>
                           <td className="py-2 pr-3 text-xs text-gray-300">{c.acheteur_nom ?? c.acheteur_email}</td>
                           <td className="py-2 pr-3">
                             {c.lignes.map((l, i) => (
                               <div key={i} className="mb-1.5 last:mb-0">
-                                <span className="text-gray-200">{l.titre}</span>
+                                <TitreLigneImportee ligne={{ ...l, id: String(i), image_url: null }} classeTitre="text-gray-200" />
+                                {l.licence && <span className="text-xs text-gray-500"> · {l.licence}</span>}
                                 <MentionsLigne
                                   ligne={{ ...l, id: String(i), image_url: null }}
                                   typeBoutique={i === 0 ? c.type_boutique : null}
@@ -247,9 +317,15 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
               </p>
 
               <div className="flex items-center justify-between gap-4 pt-2">
-                <button onClick={() => { setApercu(null); setFichier(null); setEtape('choix') }} className="text-sm text-gray-400 hover:text-white">
-                  ← Choisir un autre fichier
-                </button>
+                {apercu.format === 'libre' && libre ? (
+                  <button onClick={() => { setApercu(null); setEtape('libre') }} className="text-sm text-gray-400 hover:text-white">
+                    ← Revenir aux questions
+                  </button>
+                ) : (
+                  <button onClick={() => { setApercu(null); setFichier(null); setEtape('choix') }} className="text-sm text-gray-400 hover:text-white">
+                    ← Choisir un autre fichier
+                  </button>
+                )}
                 <button
                   onClick={importer}
                   disabled={apercu.nbNouvelles === 0}
@@ -267,7 +343,7 @@ export default function AssistantImport({ onFermer, onTermine }: { onFermer: () 
               <p className="text-4xl mb-3">✓</p>
               <p className="text-white font-bold text-lg">Import terminé</p>
               <p className="text-sm text-gray-400 mt-2">
-                {nb(resultat.nb_commandes)} commandes ({nb(resultat.nb_lignes)} beats vendus) importées · {nb(resultat.nb_contacts_crees)} contacts ajoutés à ton CRM.
+                {nb(resultat.nb_commandes)} commandes ({nb(resultat.nb_lignes)} articles vendus) importées · {nb(resultat.nb_contacts_crees)} contacts ajoutés à ton CRM.
               </p>
               {!!resultat.nb_titres_non_relies && (
                 <p className="text-sm text-gray-400 mt-4">
