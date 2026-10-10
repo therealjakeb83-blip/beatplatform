@@ -284,7 +284,7 @@ export default function AssistantFormatLibre({
           <li><span className="text-gray-500">Devise :</span> {memo.devise === 'EUR' ? 'euros (€)' : 'dollars ($)'}</li>
           {memo.statutsRegles && <li><span className="text-gray-500">Commandes réglées :</span> {statutsFichier.filter(([c]) => memo.statutsRegles!.includes(c)).map(([, v]) => v.libelle).join(', ') || '–'}</li>}
           {nouveauxStatuts.length > 0 && memo.statutsRegles && (
-            <li className="text-amber-300/90">Statut(s) jamais vu(s) dans ce fichier, écarté(s) : {nouveauxStatuts.map(([, v]) => `${v.libelle} (${nb(v.nb)})`).join(', ')}</li>
+            <li><span className="text-gray-500">Écartées (non réglées) :</span> {nouveauxStatuts.map(([, v]) => `${v.libelle} (${nb(v.nb)} ligne${v.nb > 1 ? 's' : ''})`).join(', ')}</li>
           )}
           {memo.separateurArticles && <li><span className="text-gray-500">Plusieurs articles dans une case séparés par</span> {LIBELLES_SEPARATEURS[memo.separateurArticles]}</li>}
           {valeursLic.length > 0 && <li><span className="text-gray-500">Licences :</span> {valeursLic.map(v => {

@@ -143,8 +143,11 @@ export async function preparerImportLibre(
       const morceaux = decouperCase(l.titre, a.separateurArticles, avecQuantite)
       const decoupee = morceaux.length > 1
       for (const m of morceaux) {
-        // quantité de la colonne : seulement pour une case non découpée
-        const n = decoupee ? m.quantite : Math.max(1, Math.round(l.quantite ?? m.quantite))
+        // quantité de la colonne : seulement pour une case non découpée dont le
+        // titre ne porte pas déjà sa propre quantité (« 1× … ») — sinon une case
+        // multi-articles que le beatmaker a choisi de ne pas découper serait
+        // recopiée autant de fois que la colonne compte d'articles
+        const n = decoupee || avecQuantite ? m.quantite : Math.max(1, Math.round(l.quantite ?? m.quantite))
         const prixUnitaire = decoupee ? null : l.montantLigne !== null ? r2(l.montantLigne / n) : null
         for (let k = 0; k < Math.min(n, 50); k++) articles.push({ ...licenceArticle(m.titre, val(l.cellules, 'licence'), a), prix: prixUnitaire })
       }
@@ -332,7 +335,9 @@ function licenceArticle(titre: string, colonneLicence: string, a: Association): 
     if (choix?.choix === 'pas_licence') return { titre, licence: null, licence_id: null, titreOriginal: null }
     return { titre, licence: nettoyerLicence(libelle), licence_id: choix?.choix === 'licence' ? choix.licence_id : null, titreOriginal: null }
   }
-  if (a.formeLicence) {
+  // case de plusieurs articles non découpée (« A - Licence WAV, 1× B - Licence MP3 ») :
+  // pas de licence, elle ne serait que celle du dernier article
+  if (a.formeLicence && !/\d+\s*[×x]\s/i.test(titre)) {
     const ex = extraireLicence(titre, a.formeLicence)
     if (ex) {
       const choix = a.licences[cleLicence(ex.licence)]

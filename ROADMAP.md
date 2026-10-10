@@ -721,22 +721,22 @@ Plan : (1) migration SQL (date / montants / titre facultatifs = inconnu, `licenc
 
 Checklist (passe 1 = vrai fichier T0-T10, passe 2 = fichiers fabriqués T11-T16) :
 - [x] T0 — Migration exécutée, SELECT de contrôle OK ✅ Jake (2026-10-10 : 7 colonnes facultatives, droits service_role/authenticated, fonction avec licence_id)
-- [ ] T1 — Vrai export BeatStars : reconnu automatiquement, sans assistant, mêmes chiffres qu'avant
-- [ ] T2 — Export WooCommerce : assistant, 38 colonnes une à une, devinettes justes sur les colonnes clés, colonnes ignorables
-- [ ] T3 — Statuts : Terminée / Attente paiement / En attente proposés ; seule Terminée cochée → 29 lignes écartées, comptées à part
-- [ ] T4 — Licences : WAV, MP3, STEMS, ILLIMITÉ, Pro, Studio, Street détectées ; rien de présélectionné ; Pro/Studio/Street → « pas une licence »
-- [ ] T5 — Devise demandée (€), nom de plateforme « WooCommerce »
-- [ ] T6 — Rapprochement : export 01/09→10/10 → aperçu 152 commandes, 164 articles, 5 746,07 €
+- [x] T1 — Vrai export BeatStars : reconnu automatiquement, sans assistant, mêmes chiffres qu'avant ✅ Claude, 2026-10-10 (code : `entree.ts` teste BeatStars en 1er, chemin BeatStars inchangé ; hors ligne : vrai export → « BeatStars, 2 038 commandes »)
+- [x] T2 — Export WooCommerce : assistant, 38 colonnes une à une, devinettes justes sur les colonnes clés, colonnes ignorables ✅ Claude, 2026-10-10 (vrai écran dans une mini-appli jetable + navigateur : 38/38 justes, « Précédent » OK)
+- [x] T3 — Statuts : Terminée / Attente paiement / En attente proposés ; seule Terminée cochée → 29 lignes écartées, comptées à part ✅ Claude, 2026-10-10 (écran : seule Terminée cochée ; moteur : 28 commandes / 29 lignes écartées)
+- [x] T4 — Licences : WAV, MP3, STEMS, ILLIMITÉ, Pro, Studio, Street détectées ; rien de présélectionné ; Pro/Studio/Street → « pas une licence » ✅ Claude, 2026-10-10 (écran : 7 valeurs, toutes sur « Choisir… », indice « ressemble à » seulement, bouton bloqué tant qu'une valeur n'est pas tranchée)
+- [x] T5 — Devise demandée (€), nom de plateforme « WooCommerce » ✅ Claude, 2026-10-10 (écran : devise demandée — rien de présélectionné, le fichier n'a pas de symbole € — ; « Utiliser WooCommerce » proposé ; aperçu bloqué sans nom)
+- [x] T6 — Rapprochement : export 01/09→10/10 → aperçu 152 commandes, 164 articles, 5 746,07 € ✅ Claude, 2026-10-10 (moteur alimenté par les réponses saisies à l'écran, export complet filtré sur la période : 152 / 164 / 5 746,07 € ; 12551 = 1 article, 12765 = 3 articles dont la somme = 90,93 €)
 - [ ] T7 — Import réel : n°12551 = 1 article ; commande à 2 articles = somme des articles = total ; commande à 0 € = commande, pas achat ; licence reliée visible ; badge WooCommerce
 - [ ] T8 — Réimport du même fichier : 0 nouvelle ; récap 1 clic proposé ; « Tout revalider » remplace l'ancien format
 - [ ] T9 — Historique complet (2 747 commandes, 1 193 clients) puis Annuler : CRM revenu exactement à l'état d'avant
-- [ ] T10 — Même export en XLS : mêmes chiffres qu'en CSV
-- [ ] T11 — Fichier fabriqué `;`, dates `03/04/2026`, montants `1 234,56 €` : question jour/mois, lecture juste
-- [ ] T12 — Fichier fabriqué sans date ni n° : avertissement doublons ; « Date inconnue » / « Montant inconnu » ; CRM : comptée, hors total / panier / ancienneté
-- [ ] T13 — Fichier fabriqué plusieurs articles dans une case (`, 1×`) : découpage proposé et appliqué après validation ; refusé = case entière ; total seul = garde-fou
-- [ ] T14 — Fichier sans email (rapport Statistiques) refusé avec message clair ; devise autre que € / $ refusée
+- [ ] T10 — Même export en XLS : mêmes chiffres qu'en CSV (🔸 Claude : un .xlsx fabriqué à partir du CSV donne les mêmes chiffres ; reste le VRAI export XLS de l'extension, aperçu seulement)
+- [x] T11 — Fichier fabriqué `;`, dates `03/04/2026`, montants `1 234,56 €` : question jour/mois, lecture juste ✅ Claude, 2026-10-10 (écran + moteur : accents Windows-1252 OK, question posée, 3 avril 2026 / 1 234,56 €, € deviné)
+- [ ] T12 — Fichier fabriqué sans date ni n° : avertissement doublons ; « Date inconnue » / « Montant inconnu » ; CRM : comptée, hors total / panier / ancienneté (🔸 Claude : avertissements + valeurs inconnues prouvés à l'écran et au moteur ; reste l'affichage CRM après un vrai import)
+- [x] T13 — Fichier fabriqué plusieurs articles dans une case (`, 1×`) : découpage proposé et appliqué après validation ; refusé = case entière ; total seul = garde-fou ✅ Claude, 2026-10-10 (écran + moteur dans les 2 sens ; « Paris, la nuit » / « Ici / Là-bas » intacts ; 2 défauts trouvés et corrigés : case refusée recopiée N fois par la colonne quantité, et licence du dernier article sur une case non découpée)
+- [x] T14 — Fichier sans email (rapport Statistiques) refusé avec message clair ; devise autre que € / $ refusée ✅ Claude, 2026-10-10 (écran : message rouge sans colonne email + message GBP ; moteur : ligne GBP rejetée ; serveur : `verifierAssociation` exige l'email)
 - [ ] T15 — Relier les beats : pas de « Beat non précisé » ; « Ambitieux » proposé grâce au titre nettoyé ; « Abonnements - Pro » marquable « ne pas relier »
-- [ ] T16 — Plan Free : Importer 🔒, consultation et Annuler possibles
+- [x] T16 — Plan Free : Importer 🔒, consultation et Annuler possibles ✅ Claude, 2026-10-10 (code : routes analyser/importer/relier en `beatmakerImport(true)`, annuler en `false` ; affichage 🔒 inchangé depuis le lot 2, déjà testé)
 **Plus tard (hors de ce chantier, décision de Jake du 2026-10-08)** : intégrer l'export « customers » de BeatStars pour enrichir les fiches clients (pays via la colonne Location, prénom/nom séparés, licences achetées par client). Lecture du fichier Transactions déjà simulée sur le vrai fichier : 100 % des lignes traitées, 0 doublon, rapprochement exact avec le « Sales Report » BeatStars (2 058 beats, 4 880,22 $ de remises, 94 943,63 $ brut).
 
 **À ajouter à la relecture juridique avant lancement** : free download conditionné à l'inscription newsletter (choix assumé de Jake, modèle BeatStars) ; répartition des responsabilités RGPD beatmaker (responsable de traitement) / My Producer (sous-traitant) à écrire dans les futures CGV SaaS.
