@@ -135,5 +135,5 @@ export async function lireTableau(nom: string, octets: ArrayBuffer): Promise<Tab
 
 // Empreinte d'un jeu de colonnes (mémoire du format) : noms normalisés, dans l'ordre
 export function signatureEnTetes(enTetes: string[]): string {
-  return enTetes.map(h => h.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim()).join('\u001f')
+  return JSON.stringify(enTetes.map(h => h.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim()))
 }

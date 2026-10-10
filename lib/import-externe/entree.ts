@@ -12,7 +12,6 @@ import { preparerImportLibre } from './libre/preparation-libre'
 export type LicenceBoutique = { id: string; nom: string }
 
 export type BesoinAssistant = {
-  signature: string
   formatMemorise: Association | null
   licences: LicenceBoutique[]
 }
@@ -52,7 +51,7 @@ export async function preparerFichier(
       formatMemorise(admin, beatmakerId, signature),
       licencesBoutique(admin, beatmakerId),
     ])
-    return { type: 'assistant', besoin: { signature, formatMemorise: memorise, licences } }
+    return { type: 'assistant', besoin: { formatMemorise: memorise, licences } }
   }
   const association = verifierAssociation(associationBrute, tableau.enTetes.length)
   const preparation = await preparerImportLibre(admin, beatmakerId, tableau, association, nomFichier)
