@@ -1028,7 +1028,7 @@ export async function confirmationCommande({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'confirmation_commande',
     to,
@@ -1096,7 +1096,7 @@ export async function confirmationAbonnement({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'confirmation_abonnement',
     to,
@@ -1142,7 +1142,7 @@ export async function confirmationDemandeAnnulation({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'demande_annulation_abonnement',
     to,
@@ -1171,7 +1171,7 @@ export async function annulationAbonnement({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'annulation_abonnement',
     to,
@@ -1216,7 +1216,7 @@ export async function confirmationCompteArtiste({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'confirmation_compte_artiste',
     to,
@@ -1262,7 +1262,7 @@ export async function telechargementGratuit({
 
   const { data, error } = await envoyerEmailUnique({
     beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'telechargement_gratuit',
     to,
@@ -1463,7 +1463,7 @@ export async function envoyerRemboursementClient({ commandeId, montantCents, non
     : ''
   await envoyerEmailUnique({
     beatmakerId: dest.beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'remboursement_commande',
     to: dest.email,
@@ -1486,7 +1486,7 @@ export async function envoyerAnnulationClient({ commandeId }: { commandeId: stri
   if (!branding) return
   await envoyerEmailUnique({
     beatmakerId: dest.beatmakerId,
-    from: expediteurBoutique(branding.nom_artiste),
+    from: expediteurBoutique(branding),
     type: 'transactionnel',
     evenement: 'annulation_commande',
     to: dest.email,

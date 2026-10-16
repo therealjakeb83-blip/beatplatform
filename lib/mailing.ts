@@ -299,7 +299,7 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
   // Domaine d'envoi par boutique ([slug]@mail.sonoo.app) prévu en 4.5, pas encore
   // configuré côté Resend. En attendant, on envoie depuis le domaine déjà vérifié
   // (le même que lib/emails.ts) pour que les campagnes fonctionnent dès maintenant.
-  const from = expediteurBoutique(beatmaker.nom_artiste)
+  const from = expediteurBoutique(beatmaker)
 
   let envoyes = 0
   let echecs = 0

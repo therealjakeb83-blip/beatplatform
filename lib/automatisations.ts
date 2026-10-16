@@ -527,7 +527,7 @@ async function envoyerEmailAutomatisation(params: {
   const corpsHtml = remplacerTokens(params.corps, params.destinataire, params.branding, lien)
     .split('\n').map(l => `<p style="margin:0 0 1em">${l}</p>`).join('')
 
-  const from = expediteurBoutique(params.branding.nom_artiste)
+  const from = expediteurBoutique(params.branding)
 
   const { data, error } = await envoyerEmailUnique({
     beatmakerId: params.beatmakerId,

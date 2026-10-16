@@ -4,14 +4,17 @@ export const NOM_PLATEFORME = 'Sonoo'
 
 export const URL_APP = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sonoo.app'
 
-// Adresses encore sur l'ancien domaine tant que sonoo.app n'est pas vérifié
-// chez Resend et que la réception de contact@ n'est pas branchée (lot 2).
-export const EMAIL_EXPEDITEUR_PLATEFORME = 'noreply@jakebmusic.com'
-export const EMAIL_EXPEDITEUR_BOUTIQUES = 'campagnes@jakebmusic.com'
+// Envois automatiques = sous-domaine mail.sonoo.app (vérifié chez Resend le
+// 2026-10-16), pour que la réputation de sonoo.app reste à part. Chaque boutique
+// envoie depuis sa propre adresse <slug>@. Le contact reste sur l'ancien domaine
+// tant que la réception de contact@sonoo.app n'est pas branchée.
+export const DOMAINE_ENVOI = 'mail.sonoo.app'
+export const EMAIL_EXPEDITEUR_PLATEFORME = `noreply@${DOMAINE_ENVOI}`
 export const EMAIL_CONTACT = 'contact@jakebmusic.com'
 
-export function expediteurBoutique(nomArtiste: string): string {
-  return `${nomArtiste} <${EMAIL_EXPEDITEUR_BOUTIQUES}>`
+export function expediteurBoutique(boutique: { nom_artiste: string; slug: string | null }): string {
+  const local = (boutique.slug ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '') || 'boutique'
+  return `${boutique.nom_artiste} <${local}@${DOMAINE_ENVOI}>`
 }
 
 // Étiquette posée dans les metadata Stripe sur ce que la plateforme lance
