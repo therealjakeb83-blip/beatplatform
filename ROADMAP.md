@@ -2,6 +2,12 @@
 
 > Dernière mise à jour : 2026-10-16 — **Nom de domaine acheté par Jake : `sonoo.app`.** Le blocage 🔒 « Nom + domaine » est levé : Phase 4.5 (domaine d'envoi email) et étape 17 (déploiement) ne sont plus bloquées. Rien de configuré à ce stade (DNS, Vercel, Resend, Supabase, Stripe, Google). Le nom de marque (« Sonoo » ?) et le moment du branchement restent à confirmer avec Jake.
 >
+> **Renommage Sonoo — lot 1 codé le 2026-10-16 (commit `2718f91`)** : source unique `lib/constantes.ts`. Tests :
+> - ✅ T1 build + recherche (Claude) · ✅ T2 accueil/onglet, ✅ T3 connexion/inscription, ✅ T5 page de téléchargement, ✅ T6 CGV/mentions jakeb-test et nic-beat (Claude, navigateur) · ✅ T9 achat de test collab `9621640d` : contrat + 2 factures citent Sonoo, 0 « My Producer » (Claude)
+> - ✅ T4, T7, T8, T11, T12 prouvés par le code (textes = `NOM_PLATEFORME`, build OK) · ✅ T10 étiquette Stripe prouvée par le code (fonction exécutée : 'plateforme' et 'my_producer' reconnus, rien d'autre)
+> - ⏳ T13 modèles d'emails Supabase, T14 réglages Stripe (Jake)
+> - Noté pour le lot 2 : les liens de fichiers vus par l'acheteur contiennent `myproducer-beats.…r2.cloudflarestorage.com` (nom du stockage).
+>
 > Mise à jour précédente : 2026-10-13 — **Connexion Google (OAuth) planifiée par Jake (aucun code)** : artistes dans la refonte boutique (rang 10), beatmakers dans l'Étape 14 (rang 14), finalisation (validation Google + domaine personnalisé Supabase, payant) avec l'étape 17 une fois le nom choisi. Détail : section « Détail — Connexion Google (OAuth) ».
 >
 > Mise à jour précédente : 2026-10-10 (reprise Codex) — **Petites améliorations notées en testant : ✅ TERMINÉES, déployées et validées par Jake**. « Relier les beats » : sélection multiple, validation des propositions sélectionnées, choix d'un même beat pour plusieurs titres, « Ne pas relier » groupé. Doublons : recherche noms/emails/téléphones combinée au filtre de confiance. Relance d'inactivité : commandes, historique anti-relance et automatisations actives lus par lots. Test local du vrai handler sur base simulée : 2 208 commandes, 1 505 relances historiques, aucun doublon au second scan ; aucun email réel envoyé. Aucune migration. Commit applicatif b250bd2, déploiement Ready confirmé par Jake. Prochain chantier : rang 10, refonte UX/UI, étape 5v2 boutiques.
