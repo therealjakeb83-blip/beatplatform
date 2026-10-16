@@ -7,13 +7,13 @@
 -- indépendant du sujet 9 bis (voir audit du 2026-08-08) mais reste la
 -- priorité la plus urgente du plan de refonte.
 --
--- Un beatmaker peut adopter le contenu par défaut proposé par My Producer
+-- Un beatmaker peut adopter le contenu par défaut proposé par Sonoo
 -- (lib/pages-legales.ts) tel quel, le modifier, ou repartir de zéro. Une
 -- seule ligne par (beatmaker_id, type_page) — version incrémentée et
 -- adopte_le réhorodaté à chaque enregistrement.
 --
 -- Distinct de beatmakers.cgv_acceptees_at, qui concerne l'acceptation des
--- CGV DE MY PRODUCER par le beatmaker (relation SaaS), pas les CGV que le
+-- CGV DE SONOO par le beatmaker (relation SaaS), pas les CGV que le
 -- beatmaker publie vers ses propres clients.
 --
 -- À exécuter en une fois dans l'éditeur SQL de Supabase.
@@ -41,4 +41,4 @@ GRANT ALL ON boutique_pages_legales TO authenticated;
 GRANT ALL ON boutique_pages_legales TO service_role;
 
 COMMENT ON TABLE boutique_pages_legales IS
-  'Contenu réel des pages CGV/mentions légales/confidentialité/contact/plan de site par boutique — adopté explicitement par le beatmaker (Phase 1 refonte 9 bis, 2026-08-08). Sans ligne = template My Producer affiché par défaut (lib/pages-legales.ts).';
+  'Contenu réel des pages CGV/mentions légales/confidentialité/contact/plan de site par boutique — adopté explicitement par le beatmaker (Phase 1 refonte 9 bis, 2026-08-08). Sans ligne = template Sonoo affiché par défaut (lib/pages-legales.ts).';

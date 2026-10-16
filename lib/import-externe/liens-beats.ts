@@ -5,7 +5,7 @@ import { sim } from '@/lib/similarite'
 // Relier les titres des commandes importées au catalogue (import lot 3).
 // JAMAIS de lien automatique : on PROPOSE le beat le plus proche, le
 // beatmaker valide. Titre importé = titre entier (« Mama | No Drums ») ; sur
-// My Producer le beat s'appelle souvent juste « Mama » → comparaison par
+// Sonoo le beat s'appelle souvent juste « Mama » → comparaison par
 // ressemblance, comme la détection de doublons (décision de Jake, 2026-10-09) :
 //   identique   : titre entier = titre du beat
 //   debut       : partie avant le 1er « | » = titre du beat

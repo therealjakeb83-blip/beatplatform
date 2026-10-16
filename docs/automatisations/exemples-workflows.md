@@ -40,13 +40,13 @@ Comme d'hab n'hésite pas à m'envoyer ton futur morceau pour que je te fasse un
 Jake
 ```
 
-> Note : sur sa boutique, Jake fait varier certains mots entre #2/#3 selon 1 seul beat acheté vs plusieurs (singulier/pluriel). La V1 de My Producer élargit à **4 paliers** (1er/2e/3e/4e et +), calculés sur les vraies données de Jake : 3587 commandes / 2362 clients = 1.5 commande/client en moyenne globale ; 1853 commandes / 594 clients récurrents = 3.1 en moyenne.
+> Note : sur sa boutique, Jake fait varier certains mots entre #2/#3 selon 1 seul beat acheté vs plusieurs (singulier/pluriel). La V1 de Sonoo élargit à **4 paliers** (1er/2e/3e/4e et +), calculés sur les vraies données de Jake : 3587 commandes / 2362 clients = 1.5 commande/client en moyenne globale ; 1853 commandes / 594 clients récurrents = 3.1 en moyenne.
 
 ---
 
 ## 4. Abonnement en attente (renouvellement non passé, pas une annulation)
 
-> **Mis à jour le 2026-07-06** — décision prise avec Jake : contrairement à sa boutique perso où l'abonnement reste en attente indéfiniment, My Producer impose un **délai de grâce d'1 mois** : si le paiement n'est toujours pas passé après 30 jours, l'abonnement est annulé automatiquement (cron `/api/cron/abonnements-impayes`) et le compteur de fidélité (`mois_consecutifs`) repart à 0. Le texte ci-dessous a été adapté pour mentionner ce délai — l'original ne le mentionnait pas ("quand tu veux"). Le "4 mois" fixe est remplacé par `abo_recurrence_cadeau_mois`, réglable par le beatmaker (page `/dashboard/business/plans`) au lieu d'être figé à 4 — le compteur de fidélité (`mois_consecutifs`) n'était par ailleurs jamais réellement incrémenté nulle part avant cette automatisation ; c'est maintenant fait dans le webhook (`traiterPaiementAbonnement`).
+> **Mis à jour le 2026-07-06** — décision prise avec Jake : contrairement à sa boutique perso où l'abonnement reste en attente indéfiniment, Sonoo impose un **délai de grâce d'1 mois** : si le paiement n'est toujours pas passé après 30 jours, l'abonnement est annulé automatiquement (cron `/api/cron/abonnements-impayes`) et le compteur de fidélité (`mois_consecutifs`) repart à 0. Le texte ci-dessous a été adapté pour mentionner ce délai — l'original ne le mentionnait pas ("quand tu veux"). Le "4 mois" fixe est remplacé par `abo_recurrence_cadeau_mois`, réglable par le beatmaker (page `/dashboard/business/plans`) au lieu d'être figé à 4 — le compteur de fidélité (`mois_consecutifs`) n'était par ailleurs jamais réellement incrémenté nulle part avant cette automatisation ; c'est maintenant fait dans le webhook (`traiterPaiementAbonnement`).
 
 ```
 Salut {{prénom}}, ça va ?

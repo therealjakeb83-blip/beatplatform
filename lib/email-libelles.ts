@@ -1,4 +1,4 @@
-// Libellés des emails « Mails My Producer » (evenement `plateforme_*` dans
+// Libellés des emails « Mails Sonoo » (evenement `plateforme_*` dans
 // email_logs) — partagés par les logs admin et les logs de chaque beatmaker.
 export const LIBELLES_EVENEMENTS_PLATEFORME: Record<string, string> = {
   plateforme_confirmation_email: "Confirmation d'adresse email",

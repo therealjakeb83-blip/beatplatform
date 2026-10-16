@@ -46,7 +46,7 @@ function pageDeDepart(next: string, origin: string): string {
 }
 
 // Brandé à la boutique de départ (slug dans ?redirect=/{slug} imbriqué dans
-// next) plutôt qu'un générique My Producer — voir confirmationCompteArtiste
+// next) plutôt qu'un générique Sonoo — voir confirmationCompteArtiste
 // dans lib/emails.ts. Si aucune boutique n'est identifiable (lien générique
 // sans contexte boutique), aucun email n'est envoyé (décision Jake, 2026-07-17).
 async function envoyerConfirmationCompteArtiste(email: string | undefined, next: string, origin: string) {

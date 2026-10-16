@@ -6,7 +6,7 @@ import { toutesLesLignes, parLots } from './requetes'
 // taux BCE figé à l'import), nombre d'achats/commandes, premier contact,
 // dernier achat. Lues UNIQUEMENT par le CRM — jamais Analytics, factures,
 // crons ni automatisations. Beat offert = 0 € : commande, pas achat (même
-// règle que les commandes My Producer). Format libre : date ou montant
+// règle que les commandes Sonoo). Format libre : date ou montant
 // INCONNUS (null) — comptée dans le nombre de commandes, jamais dans le total,
 // le panier, l'ancienneté ni le dernier achat.
 

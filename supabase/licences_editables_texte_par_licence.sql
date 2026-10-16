@@ -33,4 +33,4 @@ GRANT ALL ON licences_textes TO authenticated;
 GRANT ALL ON licences_textes TO service_role;
 
 COMMENT ON TABLE licences_textes IS
-  'Contenu éditable du texte de licence, par licence individuelle (licences.id) — Phase 6 refonte 9 bis. Sans ligne = modèle My Producer par défaut pour la catégorie (lib/licences-textes.ts, selon licences.modele).';
+  'Contenu éditable du texte de licence, par licence individuelle (licences.id) — Phase 6 refonte 9 bis. Sans ligne = modèle Sonoo par défaut pour la catégorie (lib/licences-textes.ts, selon licences.modele).';

@@ -5,7 +5,7 @@
 --    dans un panier payant) — jamais encaissée, mais le vendeur garde sa tranche.
 -- 3. tentatives_paiement : nouveau type « commande_gratuite » (aucun objet Stripe).
 -- 4. commandes.methode_paiement : nouvelle valeur « gratuit ».
--- 5. templates_plateforme : nouvel email « nouvelle_vente » (Mails My Producer).
+-- 5. templates_plateforme : nouvel email « nouvelle_vente » (Mails Sonoo).
 -- 6. Codes promo : prise de place atomique (compteur fiable).
 -- Une seule transaction : tout passe ou rien ne change.
 

@@ -8,6 +8,7 @@ import {
   envoyerRemboursementVente,
   envoyerRemboursementIncomplet,
 } from './emails'
+import { ETIQUETTE_STRIPE, estEtiquettePlateforme } from './constantes'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -23,10 +24,10 @@ type Admin = ReturnType<typeof createAdminClient>
 //   si ce n'est pas lui qui a remboursé ;
 // - un avoir par vendeur qui avait une facture.
 // Les remboursements lancés par la plateforme portent metadata.origine =
-// 'my_producer' : le webhook des comptes connectés les reconnaît et ne les
+// ETIQUETTE_STRIPE (lib/constantes.ts) : le webhook des comptes connectés les reconnaît et ne les
 // traite pas une deuxième fois comme un remboursement fait depuis Stripe.
 
-export const ORIGINE_REMBOURSEMENT = 'my_producer'
+export const ORIGINE_REMBOURSEMENT = ETIQUETTE_STRIPE
 
 export type MotifLicenceAnnulee = 'remboursement' | 'annulation' | 'remboursement_vendeur' | 'litige_perdu'
 
@@ -445,7 +446,7 @@ export async function traiterRemboursementStripe(refund: Stripe.Refund, compte: 
   if (!commandeId) return
 
   const etat = await etatPaiement(paymentIntentId, compte)
-  const lancePlateforme = refund.metadata?.origine === ORIGINE_REMBOURSEMENT
+  const lancePlateforme = estEtiquettePlateforme(refund.metadata?.origine)
 
   if (refund.status === 'failed' || refund.status === 'canceled') {
     if (!lancePlateforme) return

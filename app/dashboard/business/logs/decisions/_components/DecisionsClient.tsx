@@ -6,10 +6,11 @@ import type { DecisionLogRow } from '../page'
 import { TYPES_PAGES_LEGALES } from '@/lib/pages-legales'
 import PaginationAdresse from '../../../../_pagination/PaginationAdresse'
 import type { TaillePage } from '@/lib/pagination'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 const ACTOR_LABEL: Record<string, { label: string; cls: string }> = {
   beatmaker: { label: 'Toi', cls: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20' },
-  admin:     { label: 'My Producer', cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
+  admin:     { label: NOM_PLATEFORME, cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
 }
 
 const ENTITY_LABEL: Record<string, string> = {

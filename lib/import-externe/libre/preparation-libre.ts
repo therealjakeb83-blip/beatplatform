@@ -24,7 +24,7 @@ import { codePays, deviseEcrite, instantDate, lireDate, lireMontant, moyenPaieme
 // - ligne sans titre dans une commande qui a des articles = ignorée ;
 // - total payé réparti au prorata des prix d'articles quand ils sont tous
 //   connus, sinon gardé sur la commande seule (articles sans prix) ;
-// - commande à 0 € = offerte, comme sur My Producer ; $ converti au taux BCE
+// - commande à 0 € = offerte, comme sur Sonoo ; $ converti au taux BCE
 //   du jour de la vente, non converti si la date est inconnue.
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

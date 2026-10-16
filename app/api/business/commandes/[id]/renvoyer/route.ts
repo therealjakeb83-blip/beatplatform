@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from '@/lib/email-logger'
-import { NOM_PLATEFORME } from '@/lib/constantes'
+import { NOM_PLATEFORME, URL_APP } from '@/lib/constantes'
 
 export const runtime = 'nodejs'
 
@@ -74,7 +74,7 @@ export async function POST(
     .eq('id', user.id)
     .single()
 
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://beatplatform.vercel.app'
+  const APP_URL = URL_APP
   const downloadUrl = `${APP_URL}/telechargement/${commandeId}`
   const nomArtiste = beatmaker?.nom_artiste ?? 'votre beatmaker'
 

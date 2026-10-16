@@ -1,5 +1,6 @@
 import type { Devise, OrdreDate } from './valeurs'
 import { SOURCES_MARKETING } from '@/lib/sources-marketing'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 // Réponses du beatmaker à l'assistant (une par colonne + questions de suite).
 // Mémorisées par jeu exact de colonnes (formats_import_externes) et renvoyées
@@ -119,7 +120,7 @@ export function colonnesObligatoiresManquantes(colonnes: Role[]): string[] {
   return m
 }
 
-const PLATEFORMES_RESERVEES = new Set(['beatstars', 'my producer', 'myproducer'])
+const PLATEFORMES_RESERVEES = new Set(['beatstars', NOM_PLATEFORME.toLowerCase()])
 
 // Contrôle serveur : rien n'est repris du navigateur sans vérification
 export function verifierAssociation(brut: unknown, nbColonnes: number): Association {

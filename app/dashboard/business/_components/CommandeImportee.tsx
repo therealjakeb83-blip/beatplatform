@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { libellePlateforme, libelleTypeBoutique } from '@/lib/import-externe/plateformes'
 import { libelleSource } from '@/lib/sources-marketing'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 // Commande importée d'une autre plateforme : ligne cliquable + petit panneau
 // de détail. Volontairement AUCUN bouton facture / contrat / téléchargement /
-// remboursement (décision 20) : la vente n'a pas eu lieu sur My Producer.
+// remboursement (décision 20) : la vente n'a pas eu lieu sur Sonoo.
 // Format libre : titre, date ou montants peuvent être INCONNUS (null).
 
 export type LigneImportee = {
@@ -196,7 +197,7 @@ function Panneau({ commande, onClose }: { commande: CommandeImporteeDetail; onCl
             {ligne('Import d’origine', commande.import_date ? `${date(commande.import_date)}${commande.import_fichier ? ` — ${commande.import_fichier}` : ''}` : '–')}
           </div>
           <p className="text-[11px] text-gray-600">
-            Vente réalisée sur {libellePlateforme(commande.plateforme)} : pas de facture, de contrat ni de téléchargement sur My Producer.
+            Vente réalisée sur {libellePlateforme(commande.plateforme)} : pas de facture, de contrat ni de téléchargement sur {NOM_PLATEFORME}.
           </p>
         </div>
       </div>

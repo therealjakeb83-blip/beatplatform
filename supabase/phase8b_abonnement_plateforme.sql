@@ -1,5 +1,5 @@
 -- ============================================================
--- ÉTAPE 8b — Abonnement plateforme (beatmaker → My Producer)
+-- ÉTAPE 8b — Abonnement plateforme (beatmaker → Sonoo)
 -- ============================================================
 -- La migration phase15_1_admin_support.sql avait déjà accordé SELECT/UPDATE
 -- sur abonnements_plateforme à service_role (jamais fait avant) — il manque

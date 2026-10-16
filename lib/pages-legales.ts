@@ -29,7 +29,7 @@ export const CHAMPS_INFOS_LEGALES: { cle: keyof InfosLegalesBeatmaker; label: st
   { cle: 'email_contact_public', label: 'Email de contact (affiché publiquement)', placeholder: 'contact@tondomaine.com' },
 ]
 
-// Modèles de départ proposés par My Producer — le beatmaker peut les
+// Modèles de départ proposés par Sonoo — le beatmaker peut les
 // adopter tels quels, les modifier librement, ou repartir de zéro (Phase 1
 // de la refonte article 9 bis, décision "licences éditables" du Grill Me
 // appliquée ici aux CGV). Ce ne sont pas des textes juridiques définitifs :

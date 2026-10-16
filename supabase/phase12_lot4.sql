@@ -6,7 +6,7 @@
 BEGIN;
 
 -- ------------------------------------------------------------
--- 1. Emails « Mails My Producer » : les 5 emails de collaboration du lot 3
+-- 1. Emails « Mails Sonoo » : les 5 emails de collaboration du lot 3
 --    (jusque-là en texte brut) + 3 nouveaux (beat supprimé, pause, mise à
 --    jour des conditions). Retire les 3 types devenus inutiles depuis le
 --    ménage du lot 1 (fonds en attente / rappel / expiration) — leurs

@@ -1,7 +1,8 @@
 import type { createAdminClient } from '@/utils/supabase/admin'
 import { getZonedParts } from './fuseau-horaire'
+import { NOM_PLATEFORME } from './constantes'
 
-// Mandat de facturation — My Producer génère la facture pour le compte du
+// Mandat de facturation — Sonoo génère la facture pour le compte du
 // beatmaker en tant que mandataire technique, le beatmaker reste émetteur
 // légal (voir memory/project_grillme_9bis_synthese.md, section Facturation).
 // Versionné, même principe que lib/fulfillment.ts.
@@ -9,13 +10,13 @@ import { getZonedParts } from './fuseau-horaire'
 export const MANDAT_FACTURATION_VERSION_ACTUELLE = 1
 
 export const MANDAT_FACTURATION_TEXTES: Record<number, string> = {
-  1: `My Producer génère et te transmet automatiquement la facture correspondant à chaque vente, en ton nom et pour ton compte, en tant que mandataire technique.
+  1: `${NOM_PLATEFORME} génère et te transmet automatiquement la facture correspondant à chaque vente, en ton nom et pour ton compte, en tant que mandataire technique.
 
-Tu restes l'émetteur légal de cette facture — elle est établie en ton nom, avec tes informations légales, et My Producer n'apparaît jamais comme partie à la vente.
+Tu restes l'émetteur légal de cette facture — elle est établie en ton nom, avec tes informations légales, et ${NOM_PLATEFORME} n'apparaît jamais comme partie à la vente.
 
 Ce mandat couvre la génération du document et l'attribution du numéro de facture, avec un format par défaut conforme aux exemples que l'administration fiscale autorise explicitement — que tu personnalises ce format ou que tu gardes celui par défaut, la conformité légale de la numérotation de tes factures (numéro unique, chronologique et continu) et de tes informations fiscales (identité légale, numéro de TVA le cas échéant) reste entièrement de ta responsabilité dans les deux cas, au même titre.
 
-Ce mandat est nécessaire pour que My Producer puisse émettre une facture pour tes ventes — sans acceptation, aucune facture ne sera générée.`,
+Ce mandat est nécessaire pour que ${NOM_PLATEFORME} puisse émettre une facture pour tes ventes — sans acceptation, aucune facture ne sera générée.`,
 }
 
 export function texteMandatFacturation(version: number): string {

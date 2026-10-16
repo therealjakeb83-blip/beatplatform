@@ -1,5 +1,5 @@
 -- ============================================================
--- My Producer — Schéma de base de données
+-- Sonoo — Schéma de base de données
 -- À exécuter dans l'éditeur SQL de Supabase (une seule fois)
 -- ============================================================
 
@@ -225,7 +225,7 @@ create table doublons_ignores (
 
 -- ============================================================
 -- TABLE : abonnements_plateforme
--- Ce que les beatmakers paient à My Producer
+-- Ce que les beatmakers paient à Sonoo
 -- ============================================================
 create table abonnements_plateforme (
   -- Identité

@@ -6,6 +6,7 @@ import { validerCodePromo, type UtilisateurPourPrix } from '@/lib/pricing'
 import { calculerPretAVendreOuExempte } from '@/lib/pret-a-vendre'
 import { decomposerTva } from '@/lib/collaboration-parts'
 import { normaliserEmail } from '@/lib/email'
+import { ETIQUETTE_STRIPE, estEtiquettePlateforme } from '@/lib/constantes'
 
 // Abonnement boutique (artiste → beatmaker) en paiement direct : tout vit sur
 // le compte Stripe du beatmaker (produit, coupon, client, abonnement), jamais
@@ -36,7 +37,7 @@ export function optionsCompteAbonnement(stripeAccountId: string | null | undefin
 export async function assurerConfigurationPortail(stripeAccount: string): Promise<string> {
   const options = { stripeAccount }
   const existantes = await stripe.billingPortal.configurations.list({ active: true, limit: 20 }, options)
-  const trouvee = existantes.data.find(c => c.metadata?.my_producer === 'carte')
+  const trouvee = existantes.data.find(c => (c.metadata?.portail === 'carte' && estEtiquettePlateforme(c.metadata?.origine)) || c.metadata?.my_producer === 'carte')
   if (trouvee) return trouvee.id
   const configuration = await stripe.billingPortal.configurations.create({
     features: {
@@ -45,7 +46,7 @@ export async function assurerConfigurationPortail(stripeAccount: string): Promis
       subscription_cancel: { enabled: false },
       customer_update: { enabled: false },
     },
-    metadata: { my_producer: 'carte' },
+    metadata: { origine: ETIQUETTE_STRIPE, portail: 'carte' },
   }, options)
   return configuration.id
 }

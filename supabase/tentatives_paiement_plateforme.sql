@@ -3,7 +3,7 @@
 -- ============================================================
 -- Rang 9 ROADMAP (dernier point des "petits trous fonctionnels avant
 -- lancement") : un échec de renouvellement de l'abonnement plateforme
--- (beatmaker → My Producer, table abonnements_plateforme) n'était tracé
+-- (beatmaker → Sonoo, table abonnements_plateforme) n'était tracé
 -- nulle part — traiterEchecRenouvellementAbonnement() ne cherchait que
 -- côté abonnements_boutique. Même modèle que les migrations précédentes sur
 -- cette table (réutilise tentatives_paiement plutôt qu'une nouvelle table),

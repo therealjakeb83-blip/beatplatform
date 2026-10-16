@@ -160,7 +160,7 @@ export async function genererFacturePdf(input: FactureInput): Promise<Uint8Array
     }
   }
 
-  // En-tête — le nom du beatmaker (vendeur réel), jamais My Producer, même
+  // En-tête — le nom du beatmaker (vendeur réel), jamais Sonoo, même
   // principe que lib/contrat.ts (voir commentaire équivalent là-bas).
   ligneTexte(input.vendeur.nom_artiste, { font: fontBold, size: 14, color: [0.1, 0.1, 0.1] })
   y -= 18

@@ -14,6 +14,7 @@ import { deviseEcrite, formeDate, lireMontant, ordreDateImpose, type Devise, typ
 import type { BesoinAssistant } from '@/lib/import-externe/entree'
 import { suggererSource, valeursSource } from '@/lib/import-externe/libre/sources'
 import { SOURCES_MARKETING, SOURCE_LABELS } from '@/lib/sources-marketing'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 // Assistant « format libre » (lot 4) : le beatmaker valide CHAQUE colonne de
 // son fichier, une à la fois, puis les questions qui en découlent (statuts
@@ -608,7 +609,7 @@ export default function AssistantFormatLibre({
                           >
                             <option value="">Choisir…</option>
                             {besoin.licences.length > 0 && (
-                              <optgroup label="Mes licences My Producer">
+                              <optgroup label={`Mes licences ${NOM_PLATEFORME}`}>
                                 {besoin.licences.map(l => <option key={l.id} value={`l:${l.id}`}>{l.nom}</option>)}
                               </optgroup>
                             )}

@@ -501,7 +501,7 @@ async function enregistrerAbonnementDirect(
 
 // invoice.paid sur un compte vendeur : 1er paiement (création de
 // l'abonnement) ou renouvellement. Ignore tout ce qui n'est pas un abonnement
-// boutique créé par My Producer.
+// boutique créé par Sonoo.
 export async function traiterFacturePayeeCompteVendeur(invoice: Stripe.Invoice, stripeAccountId: string) {
   if (!estFactureAbonnement(invoice)) return
   const subscriptionId = abonnementDeLaFacture(invoice)

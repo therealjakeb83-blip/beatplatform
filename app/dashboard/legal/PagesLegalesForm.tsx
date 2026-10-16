@@ -91,7 +91,7 @@ export default function PagesLegalesForm({
     }
   }
 
-  // Revient au modèle proposé par My Producer, quelles que soient les
+  // Revient au modèle proposé par Sonoo, quelles que soient les
   // modifications en cours — ne publie rien tout seul, juste le brouillon
   // dans le champ ; il faut encore cliquer "Enregistrer et publier".
   function reinitialiserModele(type: TypePageLegale) {

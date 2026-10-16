@@ -386,7 +386,7 @@ export default async function FicheClientPage({
         }]
   )
 
-  /* Historique mélangé par date : commandes My Producer + commandes importées
+  /* Historique mélangé par date : commandes Sonoo + commandes importées
      (une ligne par beat, badge plateforme, clic = panneau de détail). */
   type LigneHistorique =
     | { genre: 'native'; date: string; ligne: (typeof achatsLignes)[number] }

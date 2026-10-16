@@ -1,4 +1,4 @@
-# My Producer — Architecture de la base de données
+# Sonoo — Architecture de la base de données
 
 > Dernière mise à jour : 2026-07-02 — corrections d'unités (`prix_paye`, `licences.prix`) + ajout des tables créées depuis (module Business/11d). Ce document reste la référence de conception initiale (étapes 1-9) ; il n'a pas été réécrit intégralement — voir `ROADMAP.md` pour l'état d'avancement à jour et le détail des tables les plus récentes dans les fichiers `supabase/*.sql` correspondants.
 
@@ -7,7 +7,7 @@
 ## Tables
 
 ### `beatmakers`
-Profil de chaque beatmaker inscrit sur la plateforme My Producer.
+Profil de chaque beatmaker inscrit sur la plateforme Sonoo.
 
 #### Identité
 | Champ | Type | Obligatoire | Description |
@@ -15,7 +15,7 @@ Profil de chaque beatmaker inscrit sur la plateforme My Producer.
 | `id` | UUID | ✅ Auto | Identifiant unique généré automatiquement |
 | `email` | text | ✅ Inscription | Email de connexion |
 | `nom_artiste` | text | ✅ Inscription | Nom de scène affiché sur la boutique |
-| `slug` | text | ✅ Inscription | URL de la boutique (ex: `jakeb` → myproducer.com/jakeb) |
+| `slug` | text | ✅ Inscription | URL de la boutique (ex: `jakeb` → sonoo.app/jakeb) |
 | `created_at` | timestamp | ✅ Auto | Date d'inscription |
 
 #### Boutique publique
@@ -44,7 +44,7 @@ Profil de chaque beatmaker inscrit sur la plateforme My Producer.
 | `tva_numero` | text | ⚠️ Requis si `tva_active=true` | Numéro de TVA intracommunautaire — bloqué à l'activation depuis Phase 8 (`/api/stripe/tva`), affiché sur les factures |
 | `tva_taux` | numeric | ⬜ Optionnel | Taux saisi par le beatmaker (ex: 20 pour 20%) |
 
-> **Note légale :** Le taux de TVA est saisi manuellement par le beatmaker. My Producer n'est pas responsable du taux appliqué ni des obligations fiscales du beatmaker.
+> **Note légale :** Le taux de TVA est saisi manuellement par le beatmaker. Sonoo n'est pas responsable du taux appliqué ni des obligations fiscales du beatmaker.
 
 #### Facturation (Phase 8, chantier 9 bis — regroupées dans `/dashboard/business/facturation`)
 | Champ | Type | Description |
@@ -69,7 +69,7 @@ Profil de chaque beatmaker inscrit sur la plateforme My Producer.
 #### Légal
 | Champ | Type | Obligatoire | Description |
 |---|---|---|---|
-| `cgv_acceptees_at` | timestamp | ✅ Inscription | Date d'acceptation des CGV de My Producer |
+| `cgv_acceptees_at` | timestamp | ✅ Inscription | Date d'acceptation des CGV de Sonoo |
 
 #### Admin & CRM
 | Champ | Type | Obligatoire | Description |
@@ -126,7 +126,7 @@ Catalogue de beats de chaque beatmaker.
 #### Marketing
 | Champ | Type | Description |
 |---|---|---|
-| `free_download_actif` | boolean | Si vrai, l'artiste peut télécharger le `mp3_tague_url` gratuitement en échange de la création d'un compte My Producer |
+| `free_download_actif` | boolean | Si vrai, l'artiste peut télécharger le `mp3_tague_url` gratuitement en échange de la création d'un compte Sonoo |
 
 ### `licences`
 Licences proposées par chaque beatmaker sur sa boutique. 5 modèles fixes (MP3, WAV, STEMS, ILLIMITÉ, EXCLUSIVE), activables ou non. Le beatmaker peut personnaliser 3 champs par licence.
@@ -173,7 +173,7 @@ Licences proposées par chaque beatmaker sur sa boutique. 5 modèles fixes (MP3,
 | `exclusive` | ✅ | ✅ | ✅ | null | null | null | null | ✅ | ✅ | ✅ |
 
 ### `clients`
-Comptes globaux des artistes acheteurs sur la plateforme My Producer. Partagés entre toutes les boutiques.
+Comptes globaux des artistes acheteurs sur la plateforme Sonoo. Partagés entre toutes les boutiques.
 
 #### Identité
 | Champ | Type | Obligatoire | Description |
@@ -208,7 +208,7 @@ Trace la relation entre un artiste et la boutique d'un beatmaker. Créé au prem
 | Champ | Type | Description |
 |---|---|---|
 | `id` | UUID | Identifiant unique |
-| `client_id` | UUID | Lien vers le client (compte My Producer) |
+| `client_id` | UUID | Lien vers le client (compte Sonoo) |
 | `beatmaker_id` | UUID | Lien vers la boutique du beatmaker |
 | `created_at` | timestamp | Date du premier contact |
 
@@ -295,7 +295,7 @@ Paires de clients que le beatmaker a décidé d'ignorer lors de la détection au
 | `created_at` | timestamp | Date de la décision d'ignorer |
 
 ### `abonnements_plateforme`
-Abonnements des beatmakers à My Producer. Un seul plan en V1, décliné en mensuel ou annuel. Essai gratuit 14 jours avec CB obligatoire — passage au payant automatique.
+Abonnements des beatmakers à Sonoo. Un seul plan en V1, décliné en mensuel ou annuel. Essai gratuit 14 jours avec CB obligatoire — passage au payant automatique.
 
 #### Identité
 | Champ | Type | Description |
@@ -335,7 +335,7 @@ Abonnements des beatmakers à My Producer. Un seul plan en V1, décliné en mens
 | `stripe_subscription_id` | text | Référence de l'abonnement Stripe |
 | `stripe_customer_id` | text | Référence du client Stripe |
 
-> **Étape 8b (2026-07-24)** : ce système (beatmaker → My Producer) a un vrai parcours de paiement fonctionnel depuis cette date — 1 plan (mensuel 49,99€ / annuel 499,90€), essai 14 jours + CB obligatoire, checkout direct sans Stripe Connect. Voir `app/api/stripe/plateforme/checkout/route.ts` et `/dashboard/abonnement`. **Le blocage d'accès dashboard si non abonné n'est pas (encore) activé** — voir mémoire `project_abonnement_plateforme_decouverte`.
+> **Étape 8b (2026-07-24)** : ce système (beatmaker → Sonoo) a un vrai parcours de paiement fonctionnel depuis cette date — 1 plan (mensuel 49,99€ / annuel 499,90€), essai 14 jours + CB obligatoire, checkout direct sans Stripe Connect. Voir `app/api/stripe/plateforme/checkout/route.ts` et `/dashboard/abonnement`. **Le blocage d'accès dashboard si non abonné n'est pas (encore) activé** — voir mémoire `project_abonnement_plateforme_decouverte`.
 
 ### `abonnements_boutique`
 Abonnements des artistes aux boutiques des beatmakers. 1 seul plan en V1, que chaque beatmaker tarifie librement.

@@ -1,5 +1,5 @@
 -- ============================================================
--- My Producer — Corrections du schéma v1
+-- Sonoo — Corrections du schéma v1
 -- À exécuter dans l'éditeur SQL de Supabase après schema.sql
 -- ============================================================
 

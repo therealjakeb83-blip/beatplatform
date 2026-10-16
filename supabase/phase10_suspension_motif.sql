@@ -33,7 +33,7 @@ alter table beatmakers add constraint beatmakers_suspendu_motif_requis_check che
   statut is distinct from 'suspendu' or suspendu_motif is not null
 );
 
--- Nouveau type d'email "Mails My Producer" (lib/emails.ts) — avertit
+-- Nouveau type d'email "Mails Sonoo" (lib/emails.ts) — avertit
 -- désormais automatiquement le beatmaker suspendu par email, en plus du
 -- message qu'il voit déjà en tentant de se reconnecter (/dashboard/suspendu
 -- via proxy.ts). Demande explicite de Jake, Phase 10.

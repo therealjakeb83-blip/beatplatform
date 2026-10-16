@@ -8,7 +8,7 @@
 -- auront leur propre texte, travaillés dans une étape séparée.
 --
 -- Même principe que boutique_pages_legales (Phase 1) : le beatmaker peut
--- adopter le modèle par défaut de My Producer tel quel, le modifier
+-- adopter le modèle par défaut de Sonoo tel quel, le modifier
 -- librement, ou repartir de zéro. Sans ligne = modèle par défaut utilisé
 -- silencieusement (contrairement aux pages légales publiques, un contrat
 -- de licence doit toujours exister au moment d'une vente — pas de gate
@@ -45,4 +45,4 @@ GRANT ALL ON licences_textes TO authenticated;
 GRANT ALL ON licences_textes TO service_role;
 
 COMMENT ON TABLE licences_textes IS
-  'Contenu éditable du texte de licence par catégorie (standard/illimite/exclusive) et par beatmaker — Phase 6 refonte 9 bis. Sans ligne = modèle My Producer par défaut (lib/licences-textes.ts).';
+  'Contenu éditable du texte de licence par catégorie (standard/illimite/exclusive) et par beatmaker — Phase 6 refonte 9 bis. Sans ligne = modèle Sonoo par défaut (lib/licences-textes.ts).';

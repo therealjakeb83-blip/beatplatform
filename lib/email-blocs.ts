@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { URL_APP } from './constantes'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
+const APP_URL = URL_APP
 
 // ── Types des blocs (format stocké dans templates_email.contenu / campagnes.contenu) ──
 

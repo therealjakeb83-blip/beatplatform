@@ -21,7 +21,7 @@ export async function PATCH(request: Request) {
     .eq('id', user.id)
     .single()
 
-  // Compte Stripe pas encore connecté : on sauvegarde côté My Producer, le
+  // Compte Stripe pas encore connecté : on sauvegarde côté Sonoo, le
   // descriptor sera poussé vers Stripe une fois le compte créé (connect/creer
   // le fait déjà pour un nouveau compte — pas encore le cas pour un compte
   // déjà connecté avant que ce descriptor n'existe, à revoir si besoin).

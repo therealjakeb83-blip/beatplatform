@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { finaliserCommandePayee } from '@/lib/webhook-paiement'
 import type { DetailLigneTranche } from '@/lib/paiement-multi-repartition'
+import { ETIQUETTE_STRIPE } from '@/lib/constantes'
 
 // Moteur du paiement réparti entre vendeurs (Phase 13, lot 1).
 // Condition absolue de Jake : l'argent ne transite JAMAIS par la plateforme.
@@ -116,9 +117,9 @@ async function annulerReservation(admin: ReturnType<typeof createAdminClient>, p
 async function rembourserPart(admin: ReturnType<typeof createAdminClient>, part: Part) {
   if (!part.stripe_payment_intent_id) return
   try {
-    // Origine « my_producer » : le webhook ne doit pas y voir un
+    // Origine plateforme : le webhook ne doit pas y voir un
     // remboursement fait par le vendeur depuis Stripe.
-    await stripe.refunds.create({ payment_intent: part.stripe_payment_intent_id, metadata: { origine: 'my_producer' } }, { stripeAccount: part.stripe_account_id })
+    await stripe.refunds.create({ payment_intent: part.stripe_payment_intent_id, metadata: { origine: ETIQUETTE_STRIPE } }, { stripeAccount: part.stripe_account_id })
     await majPart(admin, part.id, { statut: 'remboursee' })
   } catch (err) {
     console.error('[paiement-multi] Remboursement impossible', part.stripe_payment_intent_id, err instanceof Error ? err.message : err)

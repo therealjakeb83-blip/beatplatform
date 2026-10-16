@@ -16,6 +16,7 @@ import { litigesDeLaCommande } from '@/lib/litiges'
 import { decomposerTva } from '@/lib/collaboration-parts'
 import { totalDepense } from '@/app/dashboard/business/_lib/ltv'
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
+import { URL_APP } from '@/lib/constantes'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -424,7 +425,7 @@ export default async function CommandeDetailPage({
   const htAvantRemise = prixHT + remiseHT
 
   /* URL permanente de téléchargement */
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://beatplatform.vercel.app'
+  const APP_URL = URL_APP
   const downloadPageUrl = `${APP_URL}/telechargement/${id}`
 
   /* Timeline auto-générée */

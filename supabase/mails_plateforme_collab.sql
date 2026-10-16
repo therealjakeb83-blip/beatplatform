@@ -1,5 +1,5 @@
 -- ============================================================
--- Audit 2026-07-29 (F3) — Emails de collab migrés vers "Mails My Producer"
+-- Audit 2026-07-29 (F3) — Emails de collab migrés vers "Mails Sonoo"
 -- ============================================================
 -- envoyerInvitationCollab / envoyerFondsEnAttente / envoyerRappelFonds /
 -- envoyerConfirmationExpiration passaient jusqu'ici par de simples emails

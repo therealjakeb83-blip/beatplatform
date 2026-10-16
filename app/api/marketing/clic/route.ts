@@ -1,10 +1,11 @@
 import { verifierTokenCampagne, incrementerCompteurCampagne, COOKIE_CLIC, FENETRE_CONVERSION_JOURS } from '@/lib/mailing'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
+import { URL_APP } from '@/lib/constantes'
 
 export const runtime = 'nodejs'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
+const APP_URL = URL_APP
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams

@@ -8,7 +8,7 @@
 -- 4. templates_transactionnels : emails client « remboursement » et
 --    « annulation » de commande.
 -- 5. templates_plateforme : emails « remboursement d'une vente » et
---    « remboursement incomplet » (Mails My Producer).
+--    « remboursement incomplet » (Mails Sonoo).
 -- Une seule transaction : tout passe ou rien ne change.
 
 BEGIN;

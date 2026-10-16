@@ -6,8 +6,9 @@ import { rendreEmailHtml, type BlocEmail, type BrandingBoutique } from './email-
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '@/app/dashboard/business/_lib/contacts'
 import { evaluerFiltres, type Condition } from '@/app/dashboard/business/_lib/segments'
 import { peutRecevoirCampagne } from './newsletter'
+import { URL_APP, expediteurBoutique } from './constantes'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
+const APP_URL = URL_APP
 const LOT_TAILLE = 100 // limite du batch send Resend
 
 export type CibleCampagne =
@@ -295,10 +296,10 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
   // Un seul rendu HTML pour toute la campagne (les tokens restent en placeholders)
   const htmlBase = await rendreEmailHtml(campagne.contenu as BlocEmail[], campagne.beatmaker_id, branding)
 
-  // Domaine d'envoi par boutique ([slug]@mail.myproducer.com) prévu en 4.5, pas encore
+  // Domaine d'envoi par boutique ([slug]@mail.sonoo.app) prévu en 4.5, pas encore
   // configuré côté Resend. En attendant, on envoie depuis le domaine déjà vérifié
   // (le même que lib/emails.ts) pour que les campagnes fonctionnent dès maintenant.
-  const from = `${beatmaker.nom_artiste} <campagnes@jakebmusic.com>`
+  const from = expediteurBoutique(beatmaker.nom_artiste)
 
   let envoyes = 0
   let echecs = 0

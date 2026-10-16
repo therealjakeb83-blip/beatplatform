@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getResend } from './resend'
-import { NOM_PLATEFORME } from './constantes'
+import { NOM_PLATEFORME, EMAIL_EXPEDITEUR_PLATEFORME } from './constantes'
 import { envoiAutorise, MOTIF_BLOCAGE_LISTE_BLANCHE } from './email-liste-blanche'
 
 // Les campagnes (envoi de masse) ne passent volontairement pas par ce
@@ -9,7 +9,7 @@ import { envoiAutorise, MOTIF_BLOCAGE_LISTE_BLANCHE } from './email-liste-blanch
 // noierait la liste sous des milliers de lignes identiques.
 export type TypeEmailLog = 'transactionnel' | 'automatisation'
 
-const FROM_DEFAUT = `${NOM_PLATEFORME} <noreply@jakebmusic.com>`
+const FROM_DEFAUT = `${NOM_PLATEFORME} <${EMAIL_EXPEDITEUR_PLATEFORME}>`
 
 type ContexteEnvoi = {
   beatmakerId: string

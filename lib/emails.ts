@@ -1,14 +1,14 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
-import { NOM_PLATEFORME } from './constantes'
+import { NOM_PLATEFORME, URL_APP, EMAIL_CONTACT, expediteurBoutique } from './constantes'
 import { libelleMotifLitige } from './litiges-libelles'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://my-producer.com'
+const APP_URL = URL_APP
 const COULEUR_DEFAUT = '#4f46e5'
 
-// envoyerInvitationCollab a été migrée vers le système "Mails My Producer"
+// envoyerInvitationCollab a été migrée vers le système "Mails Sonoo"
 // (branding fixe, titre/intro éditables par l'admin) — voir plus bas,
-// section "Emails My Producer → beatmaker".
+// section "Emails Sonoo → beatmaker".
 
 export async function envoyerCategorieCertifiee({
   to,
@@ -210,11 +210,11 @@ function rendreEmailTransactionnel({
 }
 
 // ============================================================
-// Emails My Producer → beatmaker (Étape 8b, abonnement plateforme)
+// Emails Sonoo → beatmaker (Étape 8b, abonnement plateforme)
 // ============================================================
 // Contrairement aux transactionnels boutique→client ci-dessous (brandés
 // par boutique via templates_transactionnels), ces emails viennent de
-// Jake/My Producer directement — branding fixe (BRANDING_PLATEFORME),
+// Jake/Sonoo directement — branding fixe (BRANDING_PLATEFORME),
 // jamais personnalisable par le beatmaker. Seuls le titre et l'intro de
 // chaque email sont éditables par l'admin, dans `templates_plateforme`
 // (page /dashboard/admin/mails-plateforme) — même mécanisme "titre+intro,
@@ -587,7 +587,7 @@ export async function envoyerSuspensionPlateforme({
       titre: titre || TITRE_DEFAUT_PLATEFORME.suspension,
       intro: intro || introDefautPlateforme('suspension'),
       corpsHtml: corpsSuspension(motifLabel),
-      cta: { texte: 'Nous contacter', lien: 'mailto:contact@jakebmusic.com' },
+      cta: { texte: 'Nous contacter', lien: `mailto:${EMAIL_CONTACT}` },
     }),
   })
 }
@@ -871,7 +871,7 @@ export async function genererApercuTransactionnelPlateforme(
   return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })
 }
 
-// « Nouvelle vente » (Phase 13, lot 3 — Mails My Producer) : au propriétaire
+// « Nouvelle vente » (Phase 13, lot 3 — Mails Sonoo) : au propriétaire
 // de la boutique et à chaque collaborateur vendeur, à chaque vente de licence
 // (payée ou offerte : même email, seule la facture manque) et à chaque NOUVEL
 // abonnement boutique. Jamais pour un renouvellement ni un free download.
@@ -1028,7 +1028,7 @@ export async function confirmationCommande({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'confirmation_commande',
     to,
@@ -1096,7 +1096,7 @@ export async function confirmationAbonnement({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'confirmation_abonnement',
     to,
@@ -1142,7 +1142,7 @@ export async function confirmationDemandeAnnulation({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'demande_annulation_abonnement',
     to,
@@ -1171,7 +1171,7 @@ export async function annulationAbonnement({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'annulation_abonnement',
     to,
@@ -1190,7 +1190,7 @@ export async function annulationAbonnement({
 // boutique, contrairement aux autres emails transactionnels. Brandé quand
 // même à la boutique de départ (celle depuis laquelle l'inscription a eu
 // lieu, via /artiste/inscription?redirect=/{slug}) plutôt qu'un générique
-// "My Producer" : envoyer les deux aurait fait doublon pour une seule
+// "Sonoo" : envoyer les deux aurait fait doublon pour une seule
 // action (décision Jake, 2026-07-17). Si aucune boutique de départ n'est
 // identifiable, aucun email n'est envoyé (voir /auth/callback).
 export async function confirmationCompteArtiste({
@@ -1207,7 +1207,7 @@ export async function confirmationCompteArtiste({
   const { branding, titre, intro } = await chargerBrandingEtTemplate(beatmakerId, 'confirmation_compte_artiste')
   if (!branding) return
 
-  // Ligne fixe, non personnalisable : le compte est un compte My Producer
+  // Ligne fixe, non personnalisable : le compte est un compte Sonoo
   // global (pas propre à cette boutique) — doit rester claire quel que soit
   // le texte d'intro choisi par le beatmaker (décision Jake, 2026-07-17).
   const corpsHtml = `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">
@@ -1216,7 +1216,7 @@ export async function confirmationCompteArtiste({
 
   await envoyerEmailUnique({
     beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'confirmation_compte_artiste',
     to,
@@ -1262,7 +1262,7 @@ export async function telechargementGratuit({
 
   const { data, error } = await envoyerEmailUnique({
     beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'telechargement_gratuit',
     to,
@@ -1463,7 +1463,7 @@ export async function envoyerRemboursementClient({ commandeId, montantCents, non
     : ''
   await envoyerEmailUnique({
     beatmakerId: dest.beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'remboursement_commande',
     to: dest.email,
@@ -1486,7 +1486,7 @@ export async function envoyerAnnulationClient({ commandeId }: { commandeId: stri
   if (!branding) return
   await envoyerEmailUnique({
     beatmakerId: dest.beatmakerId,
-    from: `${branding.nom_artiste} <campagnes@jakebmusic.com>`,
+    from: expediteurBoutique(branding.nom_artiste),
     type: 'transactionnel',
     evenement: 'annulation_commande',
     to: dest.email,

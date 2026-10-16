@@ -1,5 +1,5 @@
 -- ============================================================
--- "Mails My Producer" (2026-07-27) — emails transactionnels
+-- "Mails Sonoo" (2026-07-27) — emails transactionnels
 -- plateforme → beatmaker (bienvenue, confirmation essai, rappel fin
 -- d'essai, paiement échoué, annulation). Inexistants jusqu'ici malgré
 -- la table abonnements_plateforme présente depuis le schéma d'origine.

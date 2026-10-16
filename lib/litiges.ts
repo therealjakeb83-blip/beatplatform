@@ -7,6 +7,7 @@ import { annulerLicence, recalculerStatut, prendreVerrou, rendreVerrou, STATUTS_
 import { envoyerLitigeOuvert, envoyerLitigeCollaborateur, envoyerLitigeRappel, type PartLitigeEmail } from './emails'
 import { lirePdfR2 } from './livraison'
 import { fuseauSur, formatDateTz, formatDateTimeTz } from './fuseau-horaire'
+import { NOM_PLATEFORME, estEtiquettePlateforme } from './constantes'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -62,7 +63,7 @@ const dateLimite = (d: Stripe.Dispute) => d.evidence_details?.due_by ? new Date(
 // marquée metadata.origine) ou par le vendeur depuis son espace Stripe.
 function reponseDejaEnvoyee(d: Stripe.Dispute): 'proprietaire' | 'vendeur_stripe' | null {
   if ((d.evidence_details?.submission_count ?? 0) === 0) return null
-  return d.metadata?.origine === ORIGINE_REMBOURSEMENT ? 'proprietaire' : 'vendeur_stripe'
+  return estEtiquettePlateforme(d.metadata?.origine) ? 'proprietaire' : 'vendeur_stripe'
 }
 
 async function trouverPaiement(admin: Admin, paymentIntentId: string, compte: string) {
@@ -393,7 +394,7 @@ async function preparerPreuvesCommande(admin: Admin, commandeId: string) {
   const dateAchat = formatDateTimeTz(commande.created_at, tz, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   const description = [
-    `Achat sur la boutique en ligne « ${boutique?.nom_artiste ?? ''} » (plateforme My Producer) le ${dateAchat}.`,
+    `Achat sur la boutique en ligne « ${boutique?.nom_artiste ?? ''} » (plateforme ${NOM_PLATEFORME}) le ${dateAchat}.`,
     `Produit numérique : licence d'exploitation d'instrumental(s) musical(aux), livrée immédiatement après le paiement par un lien de téléchargement personnel :`,
     ...articles.map(a => `- ${a.beats?.titre ?? 'Beat'} — Licence ${a.licence_nom ?? ''}`.trim()),
     `Pièces jointes : contrat de licence au nom de l'acheteur, facture, historique de téléchargement des fichiers (journal de la plateforme).`,
@@ -403,7 +404,7 @@ async function preparerPreuvesCommande(admin: Admin, commandeId: string) {
   const dls = (telechargements ?? []) as Dl[]
   const journal = (avecIp: boolean) => dls.length
     ? [
-        'Historique de téléchargement des fichiers achetés (journal de la plateforme My Producer) :',
+        `Historique de téléchargement des fichiers achetés (journal de la plateforme ${NOM_PLATEFORME}) :`,
         ...dls.map(d => `- ${formatDateTimeTz(d.downloaded_at, tz, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} — ${d.fichier === 'email_renvoi' ? 'lien de téléchargement renvoyé par email' : d.fichier}${avecIp && d.ip_address ? ` — IP ${d.ip_address}` : ''}`),
       ].join('\n')
     : "Aucun téléchargement enregistré à ce jour : le lien de téléchargement a été remis à l'acheteur juste après le paiement."

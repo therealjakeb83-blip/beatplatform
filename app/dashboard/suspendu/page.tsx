@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
-import { NOM_PLATEFORME } from '@/lib/constantes'
+import { NOM_PLATEFORME, EMAIL_CONTACT } from '@/lib/constantes'
 import { libelleMotifSuspension } from '@/lib/suspension'
 import DeconnexionButton from '../DeconnexionButton'
 
@@ -25,8 +25,8 @@ export default async function DashboardSuspenduPage() {
         )}
         <p className="text-sm text-gray-500 mb-8">
           Contacte-nous pour en savoir plus ou débloquer ton compte à{' '}
-          <a href="mailto:contact@jakebmusic.com" className="underline hover:text-white">
-            contact@jakebmusic.com
+          <a href={`mailto:${EMAIL_CONTACT}`} className="underline hover:text-white">
+            {EMAIL_CONTACT}
           </a>
           .
         </p>

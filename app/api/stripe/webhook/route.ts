@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Seuls les abonnements plateforme (beatmaker → My Producer, Étape 8b)
+    // Seuls les abonnements plateforme (beatmaker → Sonoo, Étape 8b)
     // vivent encore sur ce compte : les abonnements boutique sont chez le
     // beatmaker depuis le paiement direct (2026-10-01) et passent par
     // /api/stripe/webhook-connect. Les events invoice n'ont pas de
@@ -155,7 +155,7 @@ async function traiterEchecTentative(paymentIntent: Stripe.PaymentIntent) {
 }
 
 // ============================================================
-// Étape 8b — Abonnement plateforme (beatmaker → My Producer)
+// Étape 8b — Abonnement plateforme (beatmaker → Sonoo)
 // ============================================================
 // Pas
 // de Stripe Connect (paiement direct sur le compte principal, c'est le

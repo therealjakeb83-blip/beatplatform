@@ -1,7 +1,7 @@
 -- ============================================================
 -- Journal des décisions commerciales/juridiques (Phase 7 du chantier 9 bis)
 -- ============================================================
--- Preuve de la séparation des rôles (le beatmaker décide, My Producer
+-- Preuve de la séparation des rôles (le beatmaker décide, Sonoo
 -- exécute) — PAS un log technique universel. N'y entrent que des décisions
 -- à portée commerciale ou juridique (remboursement, suspension de boutique,
 -- publication de CGV, modification d'un texte de licence...). Les

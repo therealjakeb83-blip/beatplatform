@@ -2,7 +2,7 @@
 -- de colonnes, pour tout fichier qui n'est pas un export BeatStars).
 --   - date, montants et titre deviennent facultatifs : NULL = INCONNU (≠ 0),
 --     seul l'email reste obligatoire (point 19 du grill-me) ;
---   - une ligne importée peut être reliée à une licence My Producer
+--   - une ligne importée peut être reliée à une licence Sonoo
 --     (licence_id, choisie à la main par le beatmaker, jamais devinée) ;
 --   - formats_import_externes : mémoire des réponses de l'assistant par
 --     beatmaker et par jeu exact de noms de colonnes ;
@@ -28,7 +28,7 @@ ALTER TABLE commandes_externes_lignes ALTER COLUMN montant_depense     DROP NOT 
 ALTER TABLE commandes_externes_lignes ALTER COLUMN montant_paye        DROP NOT NULL;
 ALTER TABLE commandes_externes_lignes ALTER COLUMN montant_depense_eur DROP NOT NULL;
 
--- ── Licence My Producer reliée ───────────────────────────────────────────
+-- ── Licence Sonoo reliée ───────────────────────────────────────────
 ALTER TABLE commandes_externes_lignes
   ADD COLUMN IF NOT EXISTS licence_id uuid REFERENCES licences(id) ON DELETE SET NULL;
 

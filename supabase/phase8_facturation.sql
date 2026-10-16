@@ -6,7 +6,7 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
--- Mandat de facturation (My Producer = mandataire technique, le
+-- Mandat de facturation (Sonoo = mandataire technique, le
 -- beatmaker reste émetteur légal) — même pattern que le mandat de
 -- fulfillment (fulfillment_mandat_version/accepte_at sur beatmakers).
 -- Versionné : si le texte du mandat change, les acceptations déjà
@@ -16,7 +16,7 @@ alter table beatmakers add column if not exists mandat_facturation_version integ
 alter table beatmakers add column if not exists mandat_facturation_accepte_at timestamptz;
 
 comment on column beatmakers.mandat_facturation_version is
-  'Version du mandat de facturation acceptée par le beatmaker (My Producer génère la facture pour son compte, en tant que mandataire technique — le beatmaker reste émetteur légal). NULL = jamais accepté, aucune facture ne peut être générée.';
+  'Version du mandat de facturation acceptée par le beatmaker (Sonoo génère la facture pour son compte, en tant que mandataire technique — le beatmaker reste émetteur légal). NULL = jamais accepté, aucune facture ne peut être générée.';
 
 -- ------------------------------------------------------------
 -- Numérotation des factures — format par défaut {SLUG}-{NUM}{MM}{AA}
@@ -32,7 +32,7 @@ alter table beatmakers add column if not exists facturation_offset integer;
 alter table beatmakers add column if not exists facturation_compteur integer not null default 0;
 
 comment on column beatmakers.facturation_format is
-  'Format personnalisé du numéro de facture (variables {SLUG}{NUM}{JJ}{MM}{AA} dans l''ordre choisi par le beatmaker). NULL = format par défaut ({SLUG}-{NUM}{MM}{AA}). Si personnalisé, la conformité du format retenu est de la responsabilité du beatmaker, pas de My Producer.';
+  'Format personnalisé du numéro de facture (variables {SLUG}{NUM}{JJ}{MM}{AA} dans l''ordre choisi par le beatmaker). NULL = format par défaut ({SLUG}-{NUM}{MM}{AA}). Si personnalisé, la conformité du format retenu est de la responsabilité du beatmaker, pas de Sonoo.';
 comment on column beatmakers.facturation_annee_courante is
   'Année civile de la série de numérotation en cours — à la première facture d''une nouvelle année, un nouvel offset est tiré et le compteur reprend à 0 (nouvelle série légitime par exercice, jamais un saut en cours de série).';
 comment on column beatmakers.facturation_offset is

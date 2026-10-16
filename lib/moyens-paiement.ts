@@ -2,7 +2,7 @@
 // Niveau B (implémentation technique Stripe, jamais exposée comme un choix).
 // Décision du Grill Me (2026-08-08) : carte/PayPal/virement listés initialement
 // comme catégories à substance commerciale, réglables par le beatmaker —
-// Apple Pay/Google Pay/SCA restent de l'infrastructure gérée par My Producer.
+// Apple Pay/Google Pay/SCA restent de l'infrastructure gérée par Sonoo.
 //
 // "Virement" retiré le 2026-08-27 (Jake ne se souvenait pas d'avoir vraiment
 // voulu cette option — pas de cas d'usage identifié).
