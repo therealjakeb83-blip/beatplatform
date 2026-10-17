@@ -10,6 +10,8 @@ const LISTE_BLANCHE = [
   'contact@jakebmusic.com',
   'feedback.jakeb@gmail.com',
   'therealjakeb83@gmail.com',
+  'jake@sonoo.app',
+  'contact@sonoo.app',
 ]
 
 export const MOTIF_BLOCAGE_LISTE_BLANCHE = 'Bloqué par la liste blanche (verrou pré-lancement)'
