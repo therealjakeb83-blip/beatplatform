@@ -1,6 +1,6 @@
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { r2 } from './r2'
+import { r2, cleR2 } from './r2'
 
 const BUCKET = process.env.R2_BUCKET_NAME!
 const PUBLIC_URL = process.env.R2_PUBLIC_URL!
@@ -39,7 +39,7 @@ export async function genererUrlsSignees(
 
     const ext = EXTENSION[champ] ?? 'bin'
     const filename = `${titre}.${ext}`
-    const key = fileUrl.replace(PUBLIC_URL + '/', '')
+    const key = cleR2(fileUrl)
     const signed = await getSignedUrl(
       r2,
       new GetObjectCommand({
@@ -104,7 +104,7 @@ export async function uploadPdfAvoir(commandeId: string, avoirId: string, pdfByt
 }
 
 export async function genererUrlSigneePdf(pdfUrl: string, filename = 'contrat.pdf'): Promise<string> {
-  const key = pdfUrl.replace(PUBLIC_URL + '/', '')
+  const key = cleR2(pdfUrl)
   return getSignedUrl(
     r2,
     new GetObjectCommand({
@@ -119,7 +119,7 @@ export async function genererUrlSigneePdf(pdfUrl: string, filename = 'contrat.pd
 // Contenu d'un PDF stocké sur R2 (contrat, facture) — joint comme preuve à
 // la réponse d'un litige (Phase 13, lot 4b).
 export async function lirePdfR2(pdfUrl: string): Promise<Buffer> {
-  const key = pdfUrl.replace(PUBLIC_URL + '/', '')
+  const key = cleR2(pdfUrl)
   const res = await r2.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
   const octets = await res.Body?.transformToByteArray()
   if (!octets) throw new Error(`PDF introuvable : ${key}`)

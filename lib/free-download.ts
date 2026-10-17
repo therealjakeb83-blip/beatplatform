@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { r2, R2_BUCKET } from '@/lib/r2'
+import { r2, R2_BUCKET, cleR2 } from '@/lib/r2'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { automatisationActive } from '@/lib/automatisations'
 import { inscrireParClient } from '@/lib/newsletter'
@@ -56,8 +56,7 @@ export function lireJetonFreeDownload(jeton: string): { ok: true; demande: Deman
 }
 
 export async function urlFichierFreeDownload(beat: { titre: string; mp3_tague_url: string }): Promise<string> {
-  const PUBLIC_URL = process.env.R2_PUBLIC_URL!
-  const key = beat.mp3_tague_url.replace(PUBLIC_URL + '/', '')
+  const key = cleR2(beat.mp3_tague_url)
   return getSignedUrl(
     r2,
     new GetObjectCommand({
