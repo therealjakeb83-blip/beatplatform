@@ -16,7 +16,14 @@
 > - ✅ Stripe : 2 webhooks passés sur sonoo.app (URL seule, même clé) ; `webhook-connect` reçu en 200 après un achat de test sur sonoo.app (Claude). Le webhook plateforme n'a pas encore reçu d'événement depuis (aucun abonnement plateforme payé). Domaine Apple/Google Pay : enregistré automatiquement par `app/api/stripe/contexte-paiement` au premier paiement.
 > - ✅ Resend (compte GitHub) : `mail.sonoo.app` (boutiques, `slug@mail.sonoo.app`) et `sonoo.app` (plateforme, `noreply@sonoo.app`) vérifiés, région Irlande, connexion automatique GoDaddy. Email de commande reçu par Jake depuis `jakeb-test@mail.sonoo.app` ; Supabase SMTP sur `noreply@sonoo.app`, « mot de passe oublié » reçu par Jake.
 > - ✅ Google Workspace `jake@sonoo.app` (Business Starter mensuel) + alias `contact@sonoo.app`, réception testée par Jake ; `EMAIL_CONTACT` = contact@sonoo.app ; les 2 adresses ajoutées à la liste blanche.
-> - Étape 17 (inchangé) : nom public + libellé de relevé Stripe en mode réel, verrou liste blanche. **CHANTIER RENOMMAGE + DOMAINE TERMINÉ. Suite : rang 10 (5v2 boutiques).**
+> - Étape 17 (inchangé) : nom public + libellé de relevé Stripe en mode réel, verrou liste blanche.
+>
+> **Déménagement du stockage R2 vers l'espace `sonoo` — ✅ CLOS le 2026-10-17** (commit `3d2f377` + réglages). Les liens de téléchargement n'affichent plus « myproducer » (`sonoo.c674….r2.cloudflarestorage.com`).
+> - ✅ T1 `cleR2()` (`lib/r2.ts`) retrouve la clé depuis toute adresse r2.dev · T2-T3 script `.scratch/stockage-copie.mjs` (lancé par Jake) : 513 fichiers / 688 Mo copiés, identiques · Vercel `R2_BUCKET_NAME=sonoo`, `R2_PUBLIC_URL=https://pub-6a8b0d1a9a3a485ca052eb2596cbf6a4.r2.dev` · T10 SQL `.scratch/stockage-bascule.sql` (12 colonnes) : plus aucune adresse vers l'ancien espace hors `email_logs`.
+> - ✅ T4 142 images boutique sur le nouvel espace, T5 écoute, T6 nouvel achat (MP3 + contrat + facture), T7 ancienne commande (4 fichiers) — Claude ; T9 envoi des fichiers d'un nouveau beat + écoute — Jake ; T8 free download prouvé par le code (même fonction que T6/T7).
+> - CORS du nouvel espace : localhost:3000, sonoo.app, www.sonoo.app (l'ancien n'autorisait que beatplatform.vercel.app → les envois depuis sonoo.app étaient bloqués avant la bascule). Jeton R2 « myproducer-beats » = tous les compartiments, laissé tel quel.
+> - **Étape 17 : supprimer l'ancien espace `myproducer-beats`** (gardé pour les anciens liens d'emails de test et un retour arrière éventuel).
+> - **CHANTIER RENOMMAGE + DOMAINE + STOCKAGE TERMINÉ. Suite : rang 10 (5v2 boutiques).**
 >
 > Mise à jour précédente : 2026-10-13 — **Connexion Google (OAuth) planifiée par Jake (aucun code)** : artistes dans la refonte boutique (rang 10), beatmakers dans l'Étape 14 (rang 14), finalisation (validation Google + domaine personnalisé Supabase, payant) avec l'étape 17 une fois le nom choisi. Détail : section « Détail — Connexion Google (OAuth) ».
 >
