@@ -22,6 +22,7 @@
 > - ✅ T1 `cleR2()` (`lib/r2.ts`) retrouve la clé depuis toute adresse r2.dev · T2-T3 script `.scratch/stockage-copie.mjs` (lancé par Jake) : 513 fichiers / 688 Mo copiés, identiques · Vercel `R2_BUCKET_NAME=sonoo`, `R2_PUBLIC_URL=https://pub-6a8b0d1a9a3a485ca052eb2596cbf6a4.r2.dev` · T10 SQL `.scratch/stockage-bascule.sql` (12 colonnes) : plus aucune adresse vers l'ancien espace hors `email_logs`.
 > - ✅ T4 142 images boutique sur le nouvel espace, T5 écoute, T6 nouvel achat (MP3 + contrat + facture), T7 ancienne commande (4 fichiers) — Claude ; T9 envoi des fichiers d'un nouveau beat + écoute — Jake ; T8 free download prouvé par le code (même fonction que T6/T7).
 > - CORS du nouvel espace : localhost:3000, sonoo.app, www.sonoo.app (l'ancien n'autorisait que beatplatform.vercel.app → les envois depuis sonoo.app étaient bloqués avant la bascule). Jeton R2 « myproducer-beats » = tous les compartiments, laissé tel quel.
+> - **Étape 17 (passage de Stripe en réel)** : renommer le compte Stripe « My Producer » → « Sonoo » (nom interne, décision de Jake de le faire à ce moment-là), remplir nom public + libellé de relevé.
 > - **Étape 17 : supprimer l'ancien espace `myproducer-beats`** (gardé pour les anciens liens d'emails de test et un retour arrière éventuel).
 > - **CHANTIER RENOMMAGE + DOMAINE + STOCKAGE TERMINÉ. Suite : rang 10 (5v2 boutiques).**
 >
