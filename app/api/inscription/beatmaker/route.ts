@@ -10,9 +10,8 @@ export const runtime = 'nodejs'
 // client) pour pouvoir envoyer nous-mêmes l'email de confirmation — sinon
 // Supabase envoie automatiquement son propre email générique, non brandé et
 // hors de notre système (email_logs, /dashboard/admin/mails-plateforme).
-// admin.generateLink({ type: 'signup' }) crée le compte (déclenche le
-// trigger Postgres handle_new_beatmaker comme un signUp() normal) et renvoie
-// un token à vérifier, SANS jamais déclencher l'envoi automatique de
+// admin.generateLink({ type: 'signup' }) crée le compte et renvoie un token
+// à vérifier, SANS jamais déclencher l'envoi automatique de
 // Supabase — voir ROADMAP.md (2026-07-28) pour le diagnostic du bug corrigé
 // par ce chantier.
 export async function POST(request: NextRequest) {
@@ -44,12 +43,19 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Pays choisi à l'inscription (Phase 12 lot 4, Q6b) — la ligne beatmakers
-  // existe déjà (trigger handle_new_beatmaker synchrone, qui met 'FR' par
-  // défaut) : on la complète ici plutôt que de modifier le trigger.
-  if (pays && pays !== PAYS_PAR_DEFAUT) {
-    const { error: erreurPays } = await admin.from('beatmakers').update({ pays }).eq('id', data.user.id)
-    if (erreurPays) console.error('[inscription] Erreur enregistrement du pays:', JSON.stringify(erreurPays))
+  // Fiche beatmaker créée ICI, jamais par un trigger : un compte créé
+  // directement auprès de Supabase (clé publique) ne doit jamais devenir
+  // beatmaker — voir supabase/creation_beatmaker_serveur.sql.
+  const { error: erreurFiche } = await admin.rpc('creer_fiche_beatmaker', {
+    p_id: data.user.id,
+    p_email: emailNorm,
+    p_nom_artiste: nomArtiste,
+    p_pays: pays ?? PAYS_PAR_DEFAUT,
+  })
+  if (erreurFiche) {
+    console.error('[inscription] Erreur création fiche beatmaker:', JSON.stringify(erreurFiche))
+    await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
+    return NextResponse.json({ erreur: 'Erreur lors de la création du compte.' }, { status: 500 })
   }
 
   // Même pattern que le lien de récupération dans connecterAutomatiquementApresAbonnement
