@@ -6,6 +6,7 @@ import type { CategorieRow, TypeCategorie } from '@/lib/categories'
 import { estOfficielle } from '@/lib/categories'
 import Pagination from '../../../_pagination/Pagination'
 import { usePagination } from '../../../_pagination/usePagination'
+import { reduireImage } from '@/lib/image-navigateur'
 
 type CategorieAvecDonnees = CategorieRow & {
   nb_beats: number; ventes: number; ca_net: number; ecoutes: number
@@ -325,7 +326,7 @@ function ImageUploader({ categorieId, imageUrl, label }: { categorieId: string; 
     setEnCours(true)
     setErreur('')
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', await reduireImage(file, 600))
     formData.append('categorieId', categorieId)
     const res = await fetch('/api/upload/categorie-image', { method: 'POST', body: formData })
     const data = await res.json()

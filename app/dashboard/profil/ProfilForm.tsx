@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FUSEAUX_HORAIRES, FUSEAU_HORAIRE_DEFAUT } from '@/lib/fuseau-horaire'
+import { reduireImage } from '@/lib/image-navigateur'
 
 type Profil = {
   slug: string
@@ -62,7 +63,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
     setErreurLogo('')
     try {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', await reduireImage(file, 400))
       const res = await fetch('/api/profil/logo', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok || !data.url) {

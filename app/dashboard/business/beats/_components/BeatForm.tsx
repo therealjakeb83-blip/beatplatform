@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { CategorieOptions } from '@/lib/categories'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { MESSAGE_ADRESSE_REFUSEE } from '@/lib/collaboration-messages'
+import { reduireImage } from '@/lib/image-navigateur'
 
 export const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const MODES = ['majeur', 'mineur']
@@ -524,7 +525,7 @@ export function FileInput({ label, accept, required, file, existingUrl, onChange
 
 export async function uploadImage(file: File, beatId: string): Promise<string> {
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', await reduireImage(file, 1000))
   formData.append('beatId', beatId)
   const res = await fetch('/api/upload/image', { method: 'POST', body: formData })
   const data = await res.json()

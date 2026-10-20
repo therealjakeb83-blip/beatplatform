@@ -8,6 +8,7 @@ import { fmtEuroDisplay } from '@/app/dashboard/business/analytics/_lib/periode'
 import type { StatsCategorie } from '@/lib/categories-stats'
 import Pagination from '../../../_pagination/Pagination'
 import { usePagination } from '../../../_pagination/usePagination'
+import { reduireImage } from '@/lib/image-navigateur'
 
 // Les images ne sont pour l'instant proposées que sur Type Beat (photo
 // d'artiste) — décision Jake du 2026-07-20, facile à ouvrir aux autres
@@ -329,7 +330,7 @@ function ImageUploader({ categorieId, imageUrl, label }: { categorieId: string; 
     setEnCours(true)
     setErreur('')
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', await reduireImage(file, 600))
     formData.append('categorieId', categorieId)
     const res = await fetch('/api/upload/categorie-image', { method: 'POST', body: formData })
     const data = await res.json()
