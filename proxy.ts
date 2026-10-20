@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif, pageAccessibleEnPlanFree } from '@/lib/acces-plan'
+import { COOKIE_MAINTENANCE, cheminFermeEnMaintenance, jetonMaintenanceValide, maintenanceActive } from '@/lib/maintenance'
 
 // Délai maximum accordé à Supabase pour répondre à CHAQUE requête faite par
 // proxy.ts sur une page /dashboard (proxy.ts s'exécute avant tout rendu).
@@ -29,6 +30,20 @@ function avecTimeout<T>(promise: PromiseLike<T>): Promise<T> {
 type BeatmakerGate = { id: string; statut: string; role: string; abonnement_exempte: boolean }
 
 export async function proxy(request: NextRequest) {
+  // Avant tout appel à Supabase : une page fermée sans autorisation n'a pas
+  // besoin de vérifier la session.
+  if (maintenanceActive() && cheminFermeEnMaintenance(request.nextUrl.pathname)) {
+    const autorise = await jetonMaintenanceValide(request.cookies.get(COOKIE_MAINTENANCE)?.value)
+    if (!autorise) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/maintenance'
+      url.search = ''
+      const retour = request.nextUrl.pathname + request.nextUrl.search
+      if (retour !== '/') url.searchParams.set('next', retour)
+      return NextResponse.redirect(url)
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 
 // Boutique depuis laquelle le compte est créé (la case newsletter ne concerne qu'elle)
-const ROUTES_HORS_BOUTIQUE = new Set(['api', 'artiste', 'auth', 'confirmation-compte', 'connexion', 'dashboard', 'inscription', 'mon-compte', 'mot-de-passe-oublie', 'nouveau-mot-de-passe', 'telechargement', 'verification-en-cours'])
+const ROUTES_HORS_BOUTIQUE = new Set(['api', 'artiste', 'auth', 'confirmation-compte', 'connexion', 'dashboard', 'inscription', 'maintenance', 'mon-compte', 'mot-de-passe-oublie', 'nouveau-mot-de-passe', 'telechargement', 'verification-en-cours'])
 function slugDepuisRedirect(redirect: string): string | null {
   const segments = redirect.split('?')[0].split('/').filter(Boolean)
   const slug = segments[0] === 'paiement' ? segments[1] : segments[0]
