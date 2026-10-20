@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { cheminInterne } from '@/lib/redirection'
 
 export default function ConnexionPage() {
   const router = useRouter()
@@ -31,7 +32,7 @@ export default function ConnexionPage() {
     // Retour vers la page voulue (lien d'une invitation de collaboration…) —
     // uniquement un chemin interne du site, jamais une adresse externe.
     const redirection = new URLSearchParams(window.location.search).get('redirect')
-    const destination = redirection && redirection.startsWith('/') && !redirection.startsWith('//') ? redirection : '/dashboard'
+    const destination = cheminInterne(redirection, '/dashboard')
 
     router.refresh()
     router.push(destination)

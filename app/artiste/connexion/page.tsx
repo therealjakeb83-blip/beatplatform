@@ -4,11 +4,12 @@ import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { cheminInterne } from '@/lib/redirection'
 
 function ConnexionArtisteForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') ?? '/mon-compte'
+  const redirect = cheminInterne(searchParams.get('redirect'), '/mon-compte')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

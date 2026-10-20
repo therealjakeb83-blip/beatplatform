@@ -4,10 +4,11 @@ import { useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { cheminInterne } from '@/lib/redirection'
 
 function MotDePasseOublieArtisteForm() {
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') ?? '/mon-compte'
+  const redirect = cheminInterne(searchParams.get('redirect'), '/mon-compte')
 
   const [email, setEmail] = useState('')
   const [envoye, setEnvoye] = useState(false)

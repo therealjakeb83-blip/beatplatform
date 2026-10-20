@@ -3,11 +3,12 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { confirmationCompteArtiste } from '@/lib/emails'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { cheminInterne } from '@/lib/redirection'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const next = cheminInterne(searchParams.get('next'), '/')
 
   if (code) {
     const supabase = await createClient()
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 function pageDeDepart(next: string, origin: string): string {
   try {
     const url = new URL(next, origin)
-    if (url.pathname.startsWith('/artiste/')) return url.searchParams.get('redirect') ?? '/mon-compte'
+    if (url.pathname.startsWith('/artiste/')) return cheminInterne(url.searchParams.get('redirect'), '/mon-compte')
     return url.pathname + url.search
   } catch {
     return '/mon-compte'

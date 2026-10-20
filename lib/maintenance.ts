@@ -9,6 +9,8 @@
 // /auth/callback, /api, /.well-known pour Apple Pay) doit continuer de marcher
 // sans autorisation. Une future page côté plateforme doit être ajoutée ici.
 
+import { cheminInterne } from '@/lib/redirection'
+
 export const COOKIE_MAINTENANCE = 'sonoo_acces'
 export const DUREE_ACCES_MAINTENANCE_S = 30 * 24 * 60 * 60
 
@@ -67,5 +69,5 @@ export function motDePasseMaintenanceCorrect(saisi: string): boolean {
 }
 
 export function retourSur(next: string | null | undefined): string {
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+  return cheminInterne(next, '/')
 }

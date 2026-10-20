@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useParams, useSearchParams } from 'next/navigation'
+import { cheminInterne } from '@/lib/redirection'
 
 function NouveauMotDePasseArtisteForm() {
   const params = useParams<{ redirect?: string[] }>()
@@ -16,7 +17,7 @@ function NouveauMotDePasseArtisteForm() {
   // (/api/stripe/abonnement/succes), qui construit son URL à la main et n'a
   // jamais eu ce problème.
   const redirectSegments = params.redirect
-  const redirect = redirectSegments?.length ? `/${redirectSegments.join('/')}` : searchParams.get('redirect') ?? '/mon-compte'
+  const redirect = cheminInterne(redirectSegments?.length ? `/${redirectSegments.join('/')}` : searchParams.get('redirect'), '/mon-compte')
   const bienvenue = searchParams.get('bienvenue') === '1'
 
   const [password, setPassword] = useState('')

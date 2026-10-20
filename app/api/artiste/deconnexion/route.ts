@@ -1,11 +1,11 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { cheminInterne } from '@/lib/redirection'
 
 export async function POST(request: Request) {
   const url = new URL(request.url)
-  const redirectTo = url.searchParams.get('redirect') ?? '/'
-  const safeRedirect = redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/'
+  const safeRedirect = cheminInterne(url.searchParams.get('redirect'), '/')
   const supabase = await createClient()
   await supabase.auth.signOut()
 

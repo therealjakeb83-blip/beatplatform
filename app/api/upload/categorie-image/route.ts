@@ -10,6 +10,11 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
 
+  // Un compte artiste (créé librement depuis une boutique) ne doit jamais
+  // pouvoir déposer de fichiers sur le stockage.
+  const { data: beatmaker } = await createAdminClient().from('beatmakers').select('id').eq('id', user.id).maybeSingle()
+  if (!beatmaker) return Response.json({ error: 'Non autorisé' }, { status: 403 })
+
   const formData = await request.formData()
   const file = formData.get('file') as File | null
   const categorieId = formData.get('categorieId') as string | null

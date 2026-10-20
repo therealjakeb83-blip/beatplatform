@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { r2, R2_BUCKET } from '@/lib/r2'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
@@ -7,6 +8,11 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
+
+  // Un compte artiste (créé librement depuis une boutique) ne doit jamais
+  // pouvoir déposer de fichiers sur le stockage.
+  const { data: beatmaker } = await createAdminClient().from('beatmakers').select('id').eq('id', user.id).maybeSingle()
+  if (!beatmaker) return Response.json({ error: 'Non autorisé' }, { status: 403 })
 
   const formData = await request.formData()
   const file = formData.get('file') as File | null

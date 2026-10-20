@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { cheminInterne } from '@/lib/redirection'
 
 // Boutique depuis laquelle le compte est créé (la case newsletter ne concerne qu'elle)
 const ROUTES_HORS_BOUTIQUE = new Set(['api', 'artiste', 'auth', 'confirmation-compte', 'connexion', 'dashboard', 'inscription', 'maintenance', 'mon-compte', 'mot-de-passe-oublie', 'nouveau-mot-de-passe', 'telechargement', 'verification-en-cours'])
@@ -16,7 +17,7 @@ function slugDepuisRedirect(redirect: string): string | null {
 
 function InscriptionArtisteForm() {
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') ?? '/mon-compte'
+  const redirect = cheminInterne(searchParams.get('redirect'), '/mon-compte')
   const slugBoutique = slugDepuisRedirect(redirect)
 
   const [prenom, setPrenom] = useState('')

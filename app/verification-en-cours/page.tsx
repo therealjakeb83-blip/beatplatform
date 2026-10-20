@@ -1,4 +1,5 @@
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { cheminInterne } from '@/lib/redirection'
 
 // Affichée par proxy.ts quand la vérification de connexion auprès de Supabase
 // n'a pas répondu à temps (ex. incident Supabase, panne réseau ponctuelle) —
@@ -12,7 +13,7 @@ export default async function VerificationEnCoursPage({
   searchParams: Promise<{ next?: string }>
 }) {
   const { next } = await searchParams
-  const retourUrl = next && next.startsWith('/') ? next : '/dashboard'
+  const retourUrl = cheminInterne(next, '/dashboard')
 
   return (
     <>
