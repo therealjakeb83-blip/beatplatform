@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FUSEAUX_HORAIRES, FUSEAU_HORAIRE_DEFAUT } from '@/lib/fuseau-horaire'
-import { reduireImage } from '@/lib/image-navigateur'
+import { ErreurFormatImage, reduireImage } from '@/lib/image-navigateur'
 
 type Profil = {
   slug: string
@@ -71,8 +71,8 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
       } else {
         setLogoUrl(data.url)
       }
-    } catch {
-      setErreurLogo("Impossible d'envoyer ce logo. Vérifie ta connexion et réessaie.")
+    } catch (err) {
+      setErreurLogo(err instanceof ErreurFormatImage ? err.message : "Impossible d'envoyer ce logo. Vérifie ta connexion et réessaie.")
     } finally {
       setLogoLoading(false)
     }

@@ -329,8 +329,16 @@ function ImageUploader({ categorieId, imageUrl, label }: { categorieId: string; 
     if (!file) return
     setEnCours(true)
     setErreur('')
+    let image: File
+    try {
+      image = await reduireImage(file, 600)
+    } catch (err) {
+      setEnCours(false)
+      setErreur(err instanceof Error ? err.message : 'Erreur upload')
+      return
+    }
     const formData = new FormData()
-    formData.append('file', await reduireImage(file, 600))
+    formData.append('file', image)
     formData.append('categorieId', categorieId)
     const res = await fetch('/api/upload/categorie-image', { method: 'POST', body: formData })
     const data = await res.json()

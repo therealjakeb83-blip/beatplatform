@@ -8,13 +8,18 @@
 // pour que le plus petit côté fasse `cote`, sans jamais agrandir.
 const POIDS_MAX = 400 * 1024
 
+export class ErreurFormatImage extends Error {}
+
 export async function reduireImage(fichier: File, cote: number): Promise<File> {
   let bitmap: ImageBitmap
   try {
     bitmap = await createImageBitmap(fichier)
   } catch {
-    // Format que le navigateur ne sait pas lire : on laisse le serveur décider.
-    return fichier
+    // Format que le navigateur ne sait pas lire (HEIC d'iPhone…) : léger, on
+    // laisse le serveur décider ; lourd, l'envoi provoquerait la réponse
+    // illisible — on explique plutôt quoi faire.
+    if (fichier.size <= POIDS_MAX) return fichier
+    throw new ErreurFormatImage("Format d'image non pris en charge. Enregistre-la en JPG ou PNG, puis réessaie.")
   }
 
   const echelle = Math.min(1, cote / Math.min(bitmap.width, bitmap.height))
