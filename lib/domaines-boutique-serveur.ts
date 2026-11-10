@@ -29,7 +29,7 @@ export const COLONNES_DOMAINE =
 
 export type ResultatDomaine =
   | { ok: true; domaine: DomaineBoutique | null; verificationImpossible?: boolean }
-  | { ok: false; erreur: string; status: number }
+  | { ok: false; erreur: string; status: number; detail?: string }
 
 const MESSAGE_INDISPONIBLE = 'Le service est momentanément indisponible. Réessaie dans quelques minutes.'
 
@@ -267,8 +267,9 @@ export async function retirerDomaine(beatmakerId: string): Promise<ResultatDomai
   try {
     await retirerDuProjet(existante.domaine as string)
   } catch (err) {
-    console.error('[domaines] Retrait impossible :', err instanceof Error ? err.message : err)
-    return { ok: false, erreur: MESSAGE_INDISPONIBLE, status: 503 }
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error('[domaines] Retrait impossible :', detail)
+    return { ok: false, erreur: MESSAGE_INDISPONIBLE, status: 503, detail }
   }
   await admin.from('domaines_boutique').delete().eq('id', existante.id)
   return { ok: true, domaine: null }

@@ -108,4 +108,7 @@ export async function retirerDuProjet(nom: string): Promise<void> {
   const chemin = `/v9${cheminProjet(`/${encodeURIComponent(nom)}`)}`
   const r = await appelVercel(chemin, { method: 'DELETE', body: { removeRedirects: true } })
   if (r.status !== 200 && r.status !== 404) throw panne(chemin, r)
+  if (await lireDomaine(nom)) {
+    throw new VercelIndisponible(`${chemin} : DELETE ${r.status} ${JSON.stringify(r.corps).slice(0, 300)}, domaine toujours présent`)
+  }
 }
