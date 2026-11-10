@@ -59,17 +59,19 @@
 > 5. **Fin de parcours** : abonnement arrêté, délai de 30 jours, libération, test du domaine entier (domaine à bas prix), cas limites.
 >
 > **Checklist du lot 1 (validée le 2026-11-10, à cocher au fil des tests)** — pendant ce lot, la connexion et le paiement sur le domaine ne marchent pas encore (lot 3).
-> - [ ] T0 — SQL exécuté et vérifié en base, `test.jakebmusic.com` actif, site WordPress et emails intacts (Jake + Claude)
-> - [ ] T1 — `sonoo.app` inchangé : maintenance, boutiques, dashboard, achat test (Claude)
-> - [ ] T2 — `test.jakebmusic.com` affiche la boutique jakeb-test (Claude)
-> - [ ] T3 — Catalogue, fiche d'un beat, licences et pages légales s'ouvrent, sans `/jakeb-test` dans l'adresse (Claude)
-> - [ ] T4 — Lecteur audio et ajout au panier (Claude)
-> - [ ] T5 — Aucun lien du menu ou du bas de page ne sort vers `sonoo.app`, hors mentions Sonoo voulues (Claude)
-> - [ ] T6 — Sur le domaine, `/nic-beat-2809` n'affiche jamais une autre boutique (Claude)
-> - [ ] T7 — Sur le domaine, `/dashboard` et `/connexion` renvoient vers `sonoo.app` (Claude)
-> - [ ] T8 — Un domaine inconnu n'affiche aucune boutique (Claude)
-> - [ ] T9 — Une boutique suspendue reste bloquée sur son domaine (Claude)
+> - [x] T0 — SQL exécuté et vérifié en base, `test.jakebmusic.com` actif, site WordPress et emails intacts (Jake + Claude) — ✅ 2026-11-10 : table vérifiée (6 colonnes, RLS, 1 règle), HTTPS actif, enregistrements A/MX/TXT/NS de `jakebmusic.com` identiques avant/après, WordPress répond 200
+> - [ ] T1 — `sonoo.app` inchangé : maintenance, boutiques, dashboard, achat test (Claude) — 2026-11-10 : maintenance OK (`/`, `/dashboard`, `/connexion`), boutique jakeb-test OK (liens identiques), achat test OK (commande `b3b0809b`, 49 €, page de téléchargement atteinte, email `nicojacob83+domaine-t1@`). **Reste : ouvrir le dashboard connecté (Jake, pas de session dans dev-browser).** Code du dashboard non modifié
+> - [x] T2 — `test.jakebmusic.com` affiche la boutique jakeb-test (Claude) — ✅
+> - [x] T3 — Catalogue, fiche d'un beat, licences et pages légales s'ouvrent, sans `/jakeb-test` dans l'adresse (Claude) — ✅ 12 pages en accès direct + navigation par clics (menu, bas de page, logo, onglets mobiles, recherche)
+> - [x] T4 — Lecteur audio et ajout au panier (Claude) — ✅ clé `panier_jakeb-test`, panier conservé au rechargement
+> - [x] T5 — Aucun lien du menu ou du bas de page ne sort vers `sonoo.app`, hors mentions Sonoo voulues (Claude) — ✅ seul lien contenant le slug : `/artiste/connexion?redirect=/jakeb-test` (lot 3)
+> - [x] T6 — Sur le domaine, `/nic-beat-2809` n'affiche jamais une autre boutique (Claude) — ✅ page 404
+> - [x] T7 — Sur le domaine, `/dashboard` et `/connexion` renvoient vers `sonoo.app` (Claude) — ✅ 9 chemins plateforme
+> - [x] T8 — Un domaine inconnu n'affiche aucune boutique (Claude) — ✅ « Aucune boutique à cette adresse. » (404) sur le vrai domaine avant sa liaison
+> - [x] T9 — Une boutique suspendue reste bloquée sur son domaine (Claude) — ✅ copie `jakeb-test10` suspendue et branchée temporairement par SQL (motif obligatoire), 6 pages bloquées, puis remise en état vérifiée
 > - [ ] T10 — Rendu correct sur l'iPhone de Jake (Jake)
+>
+> **Écart au plan du lot 1** : côté serveur, la détection « sur un domaine » lit directement l'en-tête `host` au lieu d'une information transmise par `proxy.ts` (impossible à falsifier, une pièce de moins). **Noté pendant les tests, à traiter à part** : erreur React #418 dans la console au rechargement d'une page avec un panier rempli, identique sur `sonoo.app` et sur le domaine, sans effet visible ; pas comparée à la version d'avant le lot.
 >
 > Chaque lot suivant aura sa checklist présentée avant d'être codé.
 >
