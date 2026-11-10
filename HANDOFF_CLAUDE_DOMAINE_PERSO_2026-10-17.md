@@ -1,5 +1,7 @@
 # Passation — Domaine personnalisé par boutique (rang 9c)
 
+> **Dépassé depuis le 2026-11-10** : calibrage terminé. Lire `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT1_2026-11-10.md`.
+
 Date : 2026-10-17. Projet : `C:\Users\nicoj\beatplatform`, branche `main`. Site de test : **https://sonoo.app**.
 
 ## État en arrivant
