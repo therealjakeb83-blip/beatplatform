@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif, pageAccessibleEnPlanFree } from '@/lib/acces-plan'
 import { COOKIE_MAINTENANCE, cheminFermeEnMaintenance, jetonMaintenanceValide, maintenanceActive } from '@/lib/maintenance'
+import { URL_APP } from '@/lib/constantes'
+import { estHotePlateforme, hoteSansPort, routeSurDomaine } from '@/lib/domaine-boutique'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 // Délai maximum accordé à Supabase pour répondre à CHAQUE requête faite par
 // proxy.ts sur une page /dashboard (proxy.ts s'exécute avant tout rendu).
@@ -29,7 +32,63 @@ function avecTimeout<T>(promise: PromiseLike<T>): Promise<T> {
 
 type BeatmakerGate = { id: string; statut: string; role: string; abonnement_exempte: boolean }
 
+// Quelques secondes de mémoire : chaque page d'une boutique déclenche plusieurs
+// requêtes, inutile de consulter la base à chaque fois.
+const MEMOIRE_DOMAINE_MS = 30_000
+const memoireDomaines = new Map<string, { slug: string | null; expire: number }>()
+
+async function slugDuDomaine(hote: string): Promise<string | null> {
+  const memorise = memoireDomaines.get(hote)
+  if (memorise && memorise.expire > Date.now()) return memorise.slug
+
+  const { data, error } = await avecTimeout(
+    createAdminClient()
+      .from('domaines_boutique')
+      .select('beatmakers(slug)')
+      .eq('domaine', hote)
+      .eq('statut', 'actif')
+      .maybeSingle()
+  )
+  if (error) throw error
+
+  const beatmaker = data?.beatmakers as unknown as { slug: string | null } | null | undefined
+  const slug = beatmaker?.slug ?? null
+  memoireDomaines.set(hote, { slug, expire: Date.now() + MEMOIRE_DOMAINE_MS })
+  return slug
+}
+
+async function reponseDomaineBoutique(request: NextRequest, hote: string) {
+  let slug: string | null
+  try {
+    slug = await slugDuDomaine(hote)
+  } catch {
+    return new NextResponse('Cette boutique est momentanément injoignable. Réessaie dans un instant.', {
+      status: 503,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'retry-after': '10' },
+    })
+  }
+  if (!slug) {
+    return new NextResponse('Aucune boutique à cette adresse.', {
+      status: 404,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    })
+  }
+
+  const { pathname, search } = request.nextUrl
+  const route = routeSurDomaine(pathname)
+  if (route === 'plateforme') return NextResponse.redirect(new URL(pathname + search, URL_APP))
+  if (route === 'direct') return NextResponse.next()
+
+  const url = request.nextUrl.clone()
+  url.pathname = pathname === '/' ? `/${slug}` : `/${slug}${pathname}`
+  return NextResponse.rewrite(url)
+}
+
 export async function proxy(request: NextRequest) {
+  // Tout en haut : sur sonoo.app, Vercel et localhost, rien ne change.
+  const hote = request.headers.get('host')
+  if (!estHotePlateforme(hote)) return reponseDomaineBoutique(request, hoteSansPort(hote))
+
   // Avant tout appel à Supabase : une page fermée sans autorisation n'a pas
   // besoin de vérifier la session.
   if (maintenanceActive() && cheminFermeEnMaintenance(request.nextUrl.pathname)) {
