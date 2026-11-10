@@ -80,25 +80,25 @@
 > **Lot 2 (brancher depuis le dashboard) — plan et checklist validés par Jake le 2026-11-10.** Décidé au feu vert : la redirection `sonoo.app/slug` → domaine est allumée dès le lot 2, sans interrupteur (aucun vrai paiement sur Sonoo pour l'instant, la connexion client sur le domaine reste boguée jusqu'au lot 3) ; domaine resté « En attente » 30 jours sans jamais avoir marché = libéré automatiquement + email ; `test.jakebmusic.com` peut être retiré puis rebranché depuis le dashboard, `jakebmusic.com` lui-même n'est jamais touché.
 >
 > **Checklist du lot 2**
-> - [ ] T0 — SQL vérifié en base, clé Vercel en place, `sonoo.app` et `test.jakebmusic.com` inchangés (Jake + Claude)
-> - [ ] T1 — La page de jakeb-test affiche `test.jakebmusic.com` Actif, la clé fonctionne (Claude)
-> - [ ] T2 — Plan Free : cadenas visible et ajout refusé par le serveur ; l'essai gratuit y a droit (Jake)
-> - [ ] T3 — Refus : `sonoo.app`, `mail.sonoo.app`, adresse Vercel, IP, texte invalide, domaine d'une autre boutique (Claude)
-> - [ ] T4 — Une saisie désordonnée est bien nettoyée (Claude)
-> - [ ] T5 — Domaine entier fictif : En attente, lignes A et `www` correctes, redirection `www` créée chez Vercel (Claude)
-> - [ ] T6 — Sous-domaine fictif : une seule ligne CNAME, hôte correct (Claude)
-> - [ ] T7 — Boutons « Copier » et prompt IA pré-rempli (Claude)
+> - [x] T0 — SQL vérifié en base, clé Vercel en place, `sonoo.app` et `test.jakebmusic.com` inchangés (Jake + Claude) — ✅ 2026-11-10 : contrôle SQL de Jake (6 colonnes, test protégé, 3 emails), clé `VERCEL_TOKEN_DOMAINES` + `VERCEL_PROJET` posées par Jake (Secret), déploiement `1d157db` Ready ; sonoo.app et `test.jakebmusic.com` répondent comme avant
+> - [ ] T1 — La page de jakeb-test affiche `test.jakebmusic.com` Actif, la clé fonctionne (Claude) — 🔄 statut Actif en base prouvé de l'extérieur (la redirection ne part que pour un domaine `actif`) ; écran et clé à voir connecté
+> - [ ] T2 — Plan Free : cadenas visible et ajout refusé par le serveur ; l'essai gratuit y a droit (Jake) — 🔄 serveur prouvé par le code (`/api/domaine/brancher` refuse 403 sans `aAccesPlanPayant`, qui compte `actif` ET `en_essai`) ; cadenas à voir à l'écran
+> - [x] T3 — Refus : `sonoo.app`, `mail.sonoo.app`, adresse Vercel, IP, texte invalide, domaine d'une autre boutique (Claude) — ✅ script sur le vrai code (`sonoo.app`, `www.`/`mail.sonoo.app`, `*.vercel.app`, `1.2.3.4`, `localhost`, sans point, `a@b.com`, joker, espaces, extension invalide : tous refusés ; `monsonoo.app` accepté) + code (domaine d'une autre boutique : colonne `domaine` unique en base → erreur 23505 → 409 « déjà utilisé par une autre boutique », rien écrit chez Vercel)
+> - [x] T4 — Une saisie désordonnée est bien nettoyée (Claude) — ✅ script (`HTTPS://WWW.Exemple.com/page?x=1` → `exemple.com`, espaces retirés, `http://test.jakebmusic.com/` → `test.jakebmusic.com`, accents → punycode)
+> - [ ] T5 — Domaine entier fictif : En attente, lignes A et `www` correctes, redirection `www` créée chez Vercel (Claude) — 🔄 calcul des lignes prouvé par script (A `@` + CNAME `www`, TXT `_vercel` si Vercel le demande) ; vrai ajout chez Vercel à faire connecté
+> - [ ] T6 — Sous-domaine fictif : une seule ligne CNAME, hôte correct (Claude) — 🔄 script (`test.jakebmusic.com` → CNAME `test` ; `a.b.exemple.co.uk` → hôte `a.b`) ; vrai ajout à faire connecté
+> - [ ] T7 — Boutons « Copier » et prompt IA pré-rempli (Claude) — 🔄 prompt prouvé par script (domaine, lignes, rappel de ne pas toucher aux MX) ; boutons à voir connecté
 > - [ ] T8 — Retrait d'un domaine fictif : disparu de Vercel et de la base, le reste intact (Claude)
 > - [ ] T9 — Cycle réel : retirer `test.jakebmusic.com` puis le rebrancher, retour à Actif sans toucher GoDaddy, email reçu (Claude + Jake)
 > - [ ] T10 — La vérification automatique active un domaine, dashboard fermé (Claude)
 > - [ ] T11 — Vraie panne : ligne `test` retirée chez GoDaddy → Problème + email ; ligne remise → Actif + email (Jake + Claude)
-> - [ ] T12 — Clé invalide ou Vercel injoignable : aucun statut modifié, aucun email (Claude, par script)
+> - [x] T12 — Clé invalide ou Vercel injoignable : aucun statut modifié, aucun email (Claude, par script) — ✅ script sur le vrai `lib/vercel-domaines.ts` : clé invalide (vrai appel à Vercel, 403), clé absente, Vercel injoignable, Vercel en erreur 500 → les 5 fonctions lèvent toutes `VercelIndisponible` ; code : `verifierDomaine` n'écrit alors que l'heure de vérification et sort AVANT la décision de statut et l'email, `brancherDomaine` remet la base dans son état d'avant (503) ; retrait de `sonoo.app` / `www.sonoo.app` refusé
 > - [ ] T13 — Changement de domaine avec avertissement, l'ancien est libéré, puis retour à l'état initial (Claude)
-> - [ ] T14 — Redirection : même page et mêmes paramètres ; autres boutiques, `/dashboard` et `/paiement` non redirigés (Claude)
-> - [ ] T15 — Garde-fou : domaine non actif → boutique sur sonoo.app + avertissement au dashboard ; achat test OK (Claude)
-> - [ ] T16 — Un beatmaker ne peut agir que sur son propre domaine (Claude)
+> - [x] T14 — Redirection : même page et mêmes paramètres ; autres boutiques, `/dashboard` et `/paiement` non redirigés (Claude) — ✅ site en ligne : `/jakeb-test` → 307 `test.jakebmusic.com/` ; `/jakeb-test/beats?q=love&x=1` → 307 même page, mêmes paramètres ; `www.sonoo.app/jakeb-test/selection` → sonoo.app puis domaine ; HEAD redirigé, POST non (200) ; `nic-beat-2809` 200 ; `/paiement/jakeb-test` 200 ; `/dashboard` → maintenance ; `/telechargement/…` non redirigé ; sonde 200 sur le domaine, 404 sur sonoo.app
+> - [ ] T15 — Garde-fou : domaine non actif → boutique sur sonoo.app + avertissement au dashboard ; achat test OK (Claude) — 🔄 code : redirection seulement pour `statut = actif`, toute erreur de lecture = pas de redirection ; à voir en vrai pendant T13 (jakeb-test sans domaine actif) + achat test
+> - [x] T16 — Un beatmaker ne peut agir que sur son propre domaine (Claude) — ✅ code (les 3 routes ne reçoivent aucun identifiant, elles agissent sur le compte connecté ; compte suspendu refusé) + site en ligne (brancher / vérifier / retirer sans connexion → 401 ; tâche automatique avec un faux secret → 401)
 > - [ ] T17 — Page Domaine correcte sur iPhone et sur ordinateur (Jake)
-> - [ ] T18 — WordPress et enregistrements DNS de `jakebmusic.com` identiques à avant le lot, mentions Sonoo intactes (Claude)
+> - [ ] T18 — WordPress et enregistrements DNS de `jakebmusic.com` identiques à avant le lot, mentions Sonoo intactes (Claude) — 🔄 2026-11-10 avant T11 : A 152.42.134.54, 5 MX Google, 5 TXT, 2 NS GoDaddy = relevé du lot 1 à l'identique ; WordPress 200 ; aucune mention « Propulsé » touchée dans le diff du lot ; à refaire après T11
 >
 > Chaque lot suivant aura sa checklist présentée avant d'être codé.
 >
