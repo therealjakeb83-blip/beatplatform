@@ -404,6 +404,7 @@ Non détaillées colonne par colonne ici — voir le fichier `supabase/*.sql` ci
 
 | Table | Rôle | Fichier SQL |
 |-------|------|-------------|
+| `domaines_boutique` | Domaine personnalisé d'une boutique (rang 9c, 2026-11-10) : `beatmaker_id` unique, `domaine` unique en minuscules, `statut` (en_attente/actif/probleme). Seul `actif` affiche la boutique. Lecture de sa ligne pour le beatmaker connecté, écritures par `service_role` uniquement | `domaines_boutique.sql` |
 | `codes_promo` | Codes promo par beatmaker : `type_remise` (panier/produit/abonnement), `type_valeur` (pourcentage/montant), restrictions (dates, licences, beats, emails, limites) | `business_migration.sql`, `codes_promo_ajustements.sql` |
 | `beat_splits` | Collaborateurs par beat (pourcentage, email_invite ou beatmaker_id, statut) | `schema.sql` (déjà présent étape 4), câblage Stripe en `etape10_split_payments.sql` |
 | `split_payments` | Paiements de splits — `montant` en **centimes** (contrairement à `commandes`), statut `transfere`/`en_attente`, `expire_le` | `etape10_split_payments.sql` |

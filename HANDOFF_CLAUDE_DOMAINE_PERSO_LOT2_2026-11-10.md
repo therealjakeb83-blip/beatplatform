@@ -31,6 +31,13 @@ Sur un domaine, `/paiement`, `/telechargement`, `/artiste` et `/.well-known` ne 
 - Erreur React #418 au rechargement avec un panier rempli, sur `sonoo.app` comme sur le domaine, sans effet visible : à traiter à part.
 - Sur le domaine, un chemin inconnu à un seul niveau (ex. `/nic-beat-2809`) affiche la page 404 avec un statut HTTP 200 ; à deux niveaux, le statut est bien 404.
 
+## Réglages en place, à ne pas défaire
+
+- Vercel : `test.jakebmusic.com` ajouté au projet (certificat actif).
+- GoDaddy, sur `jakebmusic.com` : une seule ligne ajoutée, CNAME `test` → `a21d5db196248aea.vercel-dns-017.com`. À retirer à la fin du chantier.
+- Base : `test.jakebmusic.com` relié à jakeb-test, statut `actif`.
+- Ordre utile pour brancher un domaine à la main : Vercel d'abord (il donne la valeur à copier), DNS ensuite.
+
 ## Méthode
 
 Coder sur `main`, commit + push après chaque changement, Jake teste sur sonoo.app. Claude fait lui-même les tests possibles via `dev-browser`. SQL et réglages donnés à Jake un par un, avec où cliquer. Aucun email réel hors de la liste blanche. Ne toucher ni au WordPress ni aux emails de `jakebmusic.com`, ni aux mentions Sonoo.
