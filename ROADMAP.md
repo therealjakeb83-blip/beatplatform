@@ -1,6 +1,8 @@
 ﻿# Sonoo — Roadmap V1
 
-> Dernière mise à jour : 2026-11-10 (clôture) — **Rang 9c, domaine personnalisé par boutique : calibrage terminé (13 questions), plan en 5 lots et checklist du lot 1 validés par Jake. Rien de codé.** Prochaine session : lot 1 sur `main`. Nouveaux rangs : 9d (fiches clients confidentielles par boutique, bloquant lancement) et 9e (lenteur du dashboard). Logo Sonoo de base reçu, intégration seulement avec la charte complète. Détail : « Détail — Domaine personnalisé par boutique » juste en dessous.
+> Dernière mise à jour : 2026-11-10 — **Rang 9c, domaine personnalisé par boutique : lot 1 ✅ CLOS (T0-T10), `test.jakebmusic.com` affiche la boutique jakeb-test.** Prochaine étape : lot 2, à présenter avec sa checklist avant de coder.
+>
+> Mise à jour précédente : 2026-11-10 (clôture) — **Rang 9c : calibrage terminé (13 questions), plan en 5 lots et checklist du lot 1 validés par Jake.** Nouveaux rangs : 9d (fiches clients confidentielles par boutique, bloquant lancement) et 9e (lenteur du dashboard). Logo Sonoo de base reçu, intégration seulement avec la charte complète. Détail : « Détail — Domaine personnalisé par boutique » juste en dessous.
 >
 > Mise à jour précédente : 2026-10-17 (clôture) — **Nouveau chantier prioritaire, rang 9c : domaine personnalisé par boutique** (ex. `jakebmusic.com` au lieu de `sonoo.app/jakeb-test`), demandé par Jake, à traiter AVANT la refonte boutique (rang 10). Rien de codé ; la prochaine session commence par un calibrage des attentes. Détail : « Détail — Domaine personnalisé par boutique » juste en dessous. Renommage Sonoo + domaine + stockage : terminés.
 >
@@ -60,7 +62,7 @@
 >
 > **Checklist du lot 1 (validée le 2026-11-10, à cocher au fil des tests)** — pendant ce lot, la connexion et le paiement sur le domaine ne marchent pas encore (lot 3).
 > - [x] T0 — SQL exécuté et vérifié en base, `test.jakebmusic.com` actif, site WordPress et emails intacts (Jake + Claude) — ✅ 2026-11-10 : table vérifiée (6 colonnes, RLS, 1 règle), HTTPS actif, enregistrements A/MX/TXT/NS de `jakebmusic.com` identiques avant/après, WordPress répond 200
-> - [ ] T1 — `sonoo.app` inchangé : maintenance, boutiques, dashboard, achat test (Claude) — 2026-11-10 : maintenance OK (`/`, `/dashboard`, `/connexion`), boutique jakeb-test OK (liens identiques), achat test OK (commande `b3b0809b`, 49 €, page de téléchargement atteinte, email `nicojacob83+domaine-t1@`). **Reste : ouvrir le dashboard connecté (Jake, pas de session dans dev-browser).** Code du dashboard non modifié
+> - [x] T1 — `sonoo.app` inchangé : maintenance, boutiques, dashboard, achat test (Claude) — ✅ 2026-11-10 : maintenance OK (`/`, `/dashboard`, `/connexion`), boutique jakeb-test OK (liens identiques), achat test OK (commande `b3b0809b`, 49 €, page de téléchargement atteinte, email `nicojacob83+domaine-t1@`), dashboard connecté vérifié par Jake
 > - [x] T2 — `test.jakebmusic.com` affiche la boutique jakeb-test (Claude) — ✅
 > - [x] T3 — Catalogue, fiche d'un beat, licences et pages légales s'ouvrent, sans `/jakeb-test` dans l'adresse (Claude) — ✅ 12 pages en accès direct + navigation par clics (menu, bas de page, logo, onglets mobiles, recherche)
 > - [x] T4 — Lecteur audio et ajout au panier (Claude) — ✅ clé `panier_jakeb-test`, panier conservé au rechargement
@@ -69,7 +71,9 @@
 > - [x] T7 — Sur le domaine, `/dashboard` et `/connexion` renvoient vers `sonoo.app` (Claude) — ✅ 9 chemins plateforme
 > - [x] T8 — Un domaine inconnu n'affiche aucune boutique (Claude) — ✅ « Aucune boutique à cette adresse. » (404) sur le vrai domaine avant sa liaison
 > - [x] T9 — Une boutique suspendue reste bloquée sur son domaine (Claude) — ✅ copie `jakeb-test10` suspendue et branchée temporairement par SQL (motif obligatoire), 6 pages bloquées, puis remise en état vérifiée
-> - [ ] T10 — Rendu correct sur l'iPhone de Jake (Jake)
+> - [x] T10 — Rendu correct sur l'iPhone de Jake (Jake) — ✅ 2026-11-10
+>
+> **Lot 1 ✅ CLOS le 2026-11-10 (T0-T10).** `test.jakebmusic.com` reste branché pour les lots suivants (ligne CNAME à retirer chez GoDaddy à la fin du chantier). Reprise du lot 2 : `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT2_2026-11-10.md`.
 >
 > **Écart au plan du lot 1** : côté serveur, la détection « sur un domaine » lit directement l'en-tête `host` au lieu d'une information transmise par `proxy.ts` (impossible à falsifier, une pièce de moins). **Noté pendant les tests, à traiter à part** : erreur React #418 dans la console au rechargement d'une page avec un panier rempli, identique sur `sonoo.app` et sur le domaine, sans effet visible ; pas comparée à la version d'avant le lot.
 >

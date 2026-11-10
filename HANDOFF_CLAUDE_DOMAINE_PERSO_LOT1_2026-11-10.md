@@ -1,5 +1,7 @@
 # Passation — Domaine personnalisé par boutique, lot 1
 
+> **Remplacé par `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT2_2026-11-10.md` : le lot 1 est clos.**
+
 Date : 2026-11-10. Projet : `C:\Users\nicoj\beatplatform`, branche `main`. Site de test : **https://sonoo.app**. Remplace `HANDOFF_CLAUDE_DOMAINE_PERSO_2026-10-17.md`.
 
 ## État en arrivant
