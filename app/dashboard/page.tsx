@@ -4,6 +4,7 @@ import Link from 'next/link'
 import DeconnexionButton from './DeconnexionButton'
 import { estAdmin } from '@/lib/admin'
 import { NOM_PLATEFORME } from '@/lib/constantes'
+import { aAccesPlanPayant } from '@/lib/acces-plan'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -11,9 +12,11 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/connexion')
 
-  const [{ data: beatmaker }, admin] = await Promise.all([
+  const [{ data: beatmaker }, admin, { data: domaine }, planPayant] = await Promise.all([
     supabase.from('beatmakers').select('slug').eq('id', user.id).single(),
     estAdmin(),
+    supabase.from('domaines_boutique').select('domaine, statut').eq('beatmaker_id', user.id).maybeSingle(),
+    aAccesPlanPayant(supabase, user.id),
   ])
 
 return (
@@ -21,6 +24,14 @@ return (
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Bienvenue sur {NOM_PLATEFORME}</h1>
         <p className="text-gray-400 mb-8">Connecté en tant que {user.email}</p>
+        {domaine?.statut === 'probleme' && (
+          <Link
+            href="/dashboard/domaine"
+            className="block max-w-md mx-auto mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+          >
+            Ton domaine {domaine.domaine} ne fonctionne plus. Ta boutique reste sur son adresse {NOM_PLATEFORME}. Voir ce qu&apos;il faut corriger →
+          </Link>
+        )}
         <div className="flex flex-wrap gap-3 justify-center mb-4">
           <Link
             href="/dashboard/business"
@@ -45,6 +56,12 @@ return (
             className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
           >
             Pages légales
+          </Link>
+          <Link
+            href="/dashboard/domaine"
+            className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors"
+          >
+            Domaine{!planPayant && ' 🔒'}
           </Link>
           <Link
             href="/dashboard/abonnement"

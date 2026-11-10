@@ -23,6 +23,8 @@ const CHEMINS_LIBRES_EXACTS = ['/dashboard', BASE, `${BASE}/`]
 const PREFIXES_LIBRES = [
   '/dashboard/paiements',
   '/dashboard/legal',
+  // Domaine personnalisé : page visible avec un cadenas, l'ajout est refusé par l'API.
+  '/dashboard/domaine',
   `${BASE}/facturation`,
   `${BASE}/analytics`,
   `${BASE}/commandes`,

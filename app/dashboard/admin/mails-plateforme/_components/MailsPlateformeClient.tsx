@@ -170,6 +170,27 @@ const CARTES: { type: TypeTemplatePlateforme; nom: string; titrePlaceholder: str
     description: "Email d'information au collaborateur dont la part est contestée : le propriétaire gère le litige, répondre seul depuis Stripe est déconseillé.",
     declencheur: 'Déclencheur : litige Stripe ouvert sur la part d’un collaborateur → ce collaborateur',
   },
+  {
+    type: 'domaine_actif',
+    nom: 'Domaine actif',
+    titrePlaceholder: 'Ton domaine est en ligne',
+    description: 'Envoyé quand le domaine personnalisé du beatmaker fonctionne, la première fois ou après un problème.',
+    declencheur: 'Déclencheur : vérification réussie du domaine (dashboard ou tâche automatique)',
+  },
+  {
+    type: 'domaine_probleme',
+    nom: 'Domaine en problème',
+    titrePlaceholder: 'Ton domaine ne répond plus',
+    description: 'Envoyé quand un domaine qui fonctionnait échoue 3 vérifications de suite. La boutique revient alors sur son adresse Sonoo.',
+    declencheur: 'Déclencheur : 3e échec de suite de la vérification du domaine',
+  },
+  {
+    type: 'domaine_libere',
+    nom: 'Domaine libéré',
+    titrePlaceholder: 'Ton domaine a été libéré',
+    description: "Envoyé quand un domaine resté en attente 30 jours, sans avoir jamais fonctionné, est retiré du compte.",
+    declencheur: 'Déclencheur : tâche automatique, 30 jours après la saisie du domaine',
+  },
 ]
 
 export default function MailsPlateformeClient({ templates, sauvegarderTemplate, genererApercu }: Props) {

@@ -246,6 +246,9 @@ export type TypeTemplatePlateforme =
   | 'litige_ouvert'
   | 'litige_rappel'
   | 'litige_collaborateur'
+  | 'domaine_actif'
+  | 'domaine_probleme'
+  | 'domaine_libere'
 
 const BRANDING_PLATEFORME: BrandingTransactionnel = {
   nom_artiste: NOM_PLATEFORME,
@@ -283,6 +286,9 @@ const TITRE_DEFAUT_PLATEFORME: Record<TypeTemplatePlateforme, string> = {
   litige_ouvert: 'Un litige a été ouvert sur une vente',
   litige_rappel: 'Litige : plus que 3 jours pour répondre',
   litige_collaborateur: 'Un litige a été ouvert sur une vente en collaboration',
+  domaine_actif: 'Ton domaine est en ligne',
+  domaine_probleme: 'Ton domaine ne répond plus',
+  domaine_libere: 'Ton domaine a été libéré',
 }
 
 function introDefautPlateforme(type: TypeTemplatePlateforme): string {
@@ -331,6 +337,12 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
       return "Tu n'as pas encore répondu à un litige et la date limite approche. Passé cette date, la banque tranche sans ta réponse, ce qui revient en général à perdre le litige. Tu peux envoyer ta réponse (ou accepter le litige) depuis la fiche de la commande."
     case 'litige_collaborateur':
       return "Un client a contesté son paiement sur une vente en collaboration. Stripe bloque ta part le temps du litige. C'est le propriétaire du beat qui gère le litige : il envoie la réponse, preuves à l'appui, et la plateforme la transmet sur ton compte. Tu suis l'état du litige et l'historique de téléchargement sur la fiche de la vente. Ton espace Stripe te permet aussi de répondre, mais c'est déconseillé : une réponse est définitive, et le propriétaire ne pourrait plus répondre pour ta part."
+    case 'domaine_actif':
+      return 'Bonne nouvelle : ta boutique est maintenant accessible sur ton propre domaine.'
+    case 'domaine_probleme':
+      return `Ton domaine ne fonctionne plus correctement. Ta boutique reste accessible à son adresse ${NOM_PLATEFORME} le temps de régler ça. Ouvre ton dashboard pour voir ce qu'il faut corriger.`
+    case 'domaine_libere':
+      return "Ce domaine n'a pas pu être activé en 30 jours, il a donc été retiré de ton compte. Ta boutique n'a pas changé. Tu peux le brancher à nouveau quand tu veux."
   }
 }
 
@@ -777,6 +789,42 @@ export async function envoyerConditionsMiseAJour({
   })
 }
 
+const CTA_DOMAINE = { texte: 'Voir mon domaine', lien: `${APP_URL}/dashboard/domaine` }
+
+export async function envoyerDomaineActif({
+  to, beatmakerId, domaine,
+}: {
+  to: string; beatmakerId: string; domaine: string
+}) {
+  await envoyerEmailCollab({
+    type: 'domaine_actif', to, beatmakerId,
+    cta: { texte: 'Voir ma boutique', lien: `https://${domaine}` },
+    corpsHtml: corpsLignes([['Domaine', domaine]]),
+  })
+}
+
+export async function envoyerDomaineProbleme({
+  to, beatmakerId, domaine, explication,
+}: {
+  to: string; beatmakerId: string; domaine: string; explication: string
+}) {
+  await envoyerEmailCollab({
+    type: 'domaine_probleme', to, beatmakerId, cta: CTA_DOMAINE,
+    corpsHtml: corpsLignes([['Domaine', domaine], ['Ce qu’on constate', explication]]),
+  })
+}
+
+export async function envoyerDomaineLibere({
+  to, beatmakerId, domaine,
+}: {
+  to: string; beatmakerId: string; domaine: string
+}) {
+  await envoyerEmailCollab({
+    type: 'domaine_libere', to, beatmakerId, cta: CTA_DOMAINE,
+    corpsHtml: corpsLignes([['Domaine', domaine]]),
+  })
+}
+
 const CORPS_EXEMPLE_INVITATION = corpsInvitationCollab('Jake B', 'Midnight Drive', 30)
 const CORPS_EXEMPLE_SUSPENSION = corpsSuspension('Fraude')
 
@@ -866,6 +914,12 @@ export async function genererApercuTransactionnelPlateforme(
       ]),
       cta: { texte: 'Voir la vente', lien: '#' },
     },
+    domaine_actif: { corpsHtml: corpsLignes([['Domaine', 'monsite.com']]), cta: { texte: 'Voir ma boutique', lien: '#' } },
+    domaine_probleme: {
+      corpsHtml: corpsLignes([['Domaine', 'monsite.com'], ['Ce qu’on constate', 'Les lignes ne sont plus visibles.']]),
+      cta: { texte: CTA_DOMAINE.texte, lien: '#' },
+    },
+    domaine_libere: { corpsHtml: corpsLignes([['Domaine', 'monsite.com']]), cta: { texte: CTA_DOMAINE.texte, lien: '#' } },
   }
 
   return rendreEmailTransactionnel({ branding: BRANDING_PLATEFORME, titre, intro, ...parType[type] })

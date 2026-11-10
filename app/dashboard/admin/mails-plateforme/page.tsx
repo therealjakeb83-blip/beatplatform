@@ -16,6 +16,7 @@ const TYPES: TypeTemplatePlateforme[] = [
   'nouvelle_vente',
   'remboursement_vente', 'remboursement_incomplet',
   'litige_ouvert', 'litige_rappel', 'litige_collaborateur',
+  'domaine_actif', 'domaine_probleme', 'domaine_libere',
 ]
 
 

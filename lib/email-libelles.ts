@@ -23,4 +23,7 @@ export const LIBELLES_EVENEMENTS_PLATEFORME: Record<string, string> = {
   plateforme_litige_ouvert: 'Litige ouvert',
   plateforme_litige_rappel: 'Rappel litige',
   plateforme_litige_collaborateur: 'Litige — collaborateur',
+  plateforme_domaine_actif: 'Domaine actif',
+  plateforme_domaine_probleme: 'Domaine en problème',
+  plateforme_domaine_libere: 'Domaine libéré',
 }

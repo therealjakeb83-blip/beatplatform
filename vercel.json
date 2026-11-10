@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/paiements-multi",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/domaines",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

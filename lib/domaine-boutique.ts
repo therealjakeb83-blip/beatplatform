@@ -51,3 +51,37 @@ export function routeSurDomaine(pathname: string): RouteSurDomaine {
   if (PREFIXES_DIRECTS.some(p => commencePar(pathname, p))) return 'direct'
   return 'boutique'
 }
+
+// Réponse de proxy.ts, y compris pour un domaine pas encore actif : c'est ce qui
+// prouve qu'un domaine arrive réellement jusqu'à Sonoo, certificat compris.
+export const CHEMIN_SONDE = '/api/domaine/sonde'
+export const SIGNATURE_SONDE = 'domaine-relie'
+
+export function estHoteSonoo(hote: string | null | undefined): boolean {
+  const h = hoteSansPort(hote)
+  return h === DOMAINE_PLATEFORME || h === `www.${DOMAINE_PLATEFORME}`
+}
+
+const SEGMENTS_HORS_BOUTIQUE = new Set([
+  'api',
+  'artiste',
+  'auth',
+  'confirmation-compte',
+  'connexion',
+  'dashboard',
+  'inscription',
+  'maintenance',
+  'mon-compte',
+  'mot-de-passe-oublie',
+  'nouveau-mot-de-passe',
+  'paiement',
+  'telechargement',
+  'verification-en-cours',
+])
+
+// Le premier morceau d'une adresse sonoo.app, s'il peut être le slug d'une boutique.
+export function slugDuChemin(pathname: string): string | null {
+  const segment = pathname.split('/')[1] ?? ''
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(segment) || SEGMENTS_HORS_BOUTIQUE.has(segment)) return null
+  return segment
+}

@@ -4,7 +4,7 @@ import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif, pageAccessibleEnPlanFree } from '@/lib/acces-plan'
 import { COOKIE_MAINTENANCE, cheminFermeEnMaintenance, jetonMaintenanceValide, maintenanceActive } from '@/lib/maintenance'
 import { URL_APP } from '@/lib/constantes'
-import { estHotePlateforme, hoteSansPort, routeSurDomaine } from '@/lib/domaine-boutique'
+import { CHEMIN_SONDE, SIGNATURE_SONDE, estHotePlateforme, estHoteSonoo, hoteSansPort, routeSurDomaine, slugDuChemin } from '@/lib/domaine-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 
 // Délai maximum accordé à Supabase pour répondre à CHAQUE requête faite par
@@ -35,7 +35,48 @@ type BeatmakerGate = { id: string; statut: string; role: string; abonnement_exem
 // Quelques secondes de mémoire : chaque page d'une boutique déclenche plusieurs
 // requêtes, inutile de consulter la base à chaque fois.
 const MEMOIRE_DOMAINE_MS = 30_000
+const MEMOIRE_MAX_ENTREES = 5_000
 const memoireDomaines = new Map<string, { slug: string | null; expire: number }>()
+const memoireRedirections = new Map<string, { domaine: string | null; expire: number }>()
+
+async function domaineActifDuSlug(slug: string): Promise<string | null> {
+  const memorise = memoireRedirections.get(slug)
+  if (memorise && memorise.expire > Date.now()) return memorise.domaine
+
+  const { data, error } = await avecTimeout(
+    createAdminClient()
+      .from('domaines_boutique')
+      .select('domaine, beatmakers!inner(slug)')
+      .eq('statut', 'actif')
+      .eq('beatmakers.slug', slug)
+      .maybeSingle()
+  )
+  if (error) throw error
+
+  const domaine = (data?.domaine as string | undefined) ?? null
+  if (memoireRedirections.size >= MEMOIRE_MAX_ENTREES) memoireRedirections.clear()
+  memoireRedirections.set(slug, { domaine, expire: Date.now() + MEMOIRE_DOMAINE_MS })
+  return domaine
+}
+
+// Temporaire (307) et non définitive : un navigateur garde une redirection
+// définitive en mémoire et continuerait d'envoyer vers un domaine tombé en panne.
+// Au moindre doute, null : la boutique s'affiche normalement sur sonoo.app.
+async function redirectionVersDomaine(request: NextRequest): Promise<NextResponse | null> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return null
+  const { pathname, search } = request.nextUrl
+  const slug = slugDuChemin(pathname)
+  if (!slug) return null
+
+  let domaine: string | null
+  try {
+    domaine = await domaineActifDuSlug(slug)
+  } catch {
+    return null
+  }
+  if (!domaine) return null
+  return NextResponse.redirect(`https://${domaine}${pathname.slice(slug.length + 1)}${search}`, 307)
+}
 
 async function slugDuDomaine(hote: string): Promise<string | null> {
   const memorise = memoireDomaines.get(hote)
@@ -53,11 +94,16 @@ async function slugDuDomaine(hote: string): Promise<string | null> {
 
   const beatmaker = data?.beatmakers as unknown as { slug: string | null } | null | undefined
   const slug = beatmaker?.slug ?? null
+  if (memoireDomaines.size >= MEMOIRE_MAX_ENTREES) memoireDomaines.clear()
   memoireDomaines.set(hote, { slug, expire: Date.now() + MEMOIRE_DOMAINE_MS })
   return slug
 }
 
 async function reponseDomaineBoutique(request: NextRequest, hote: string) {
+  if (request.nextUrl.pathname === CHEMIN_SONDE) {
+    return NextResponse.json({ sonoo: SIGNATURE_SONDE }, { headers: { 'cache-control': 'no-store' } })
+  }
+
   let slug: string | null
   try {
     slug = await slugDuDomaine(hote)
@@ -88,6 +134,11 @@ export async function proxy(request: NextRequest) {
   // Tout en haut : sur sonoo.app, Vercel et localhost, rien ne change.
   const hote = request.headers.get('host')
   if (!estHotePlateforme(hote)) return reponseDomaineBoutique(request, hoteSansPort(hote))
+
+  if (estHoteSonoo(hote)) {
+    const redirection = await redirectionVersDomaine(request)
+    if (redirection) return redirection
+  }
 
   // Avant tout appel à Supabase : une page fermée sans autorisation n'a pas
   // besoin de vérifier la session.
