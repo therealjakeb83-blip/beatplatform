@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import NewsletterForm from './NewsletterForm'
 import { estMarqueAffichageValide, estStyleNomMarqueValide, type MarqueAffichage, type StyleNomMarque } from '../_lib/marque'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 export default function BoutiqueFooter({
   slug,
@@ -24,6 +25,7 @@ export default function BoutiqueFooter({
   youtubeUrl: string | null
   tiktokUrl: string | null
 }) {
+  const lien = useLienBoutique(slug)
   // Aperçu live depuis la page Personnalisation — mêmes query params que le
   // header (voir BoutiqueHeader.tsx).
   const searchParams = useSearchParams()
@@ -48,28 +50,28 @@ export default function BoutiqueFooter({
 
         <div className="shop-footer-col">
           <h4>Type beats</h4>
-          <Link href={`/${slug}#parcourir-styles`}>Tous les styles</Link>
-          <Link href={`/${slug}#parcourir-type-beat`}>Tous les type beats</Link>
-          <Link href={`/${slug}#parcourir-instruments`}>Tous les instruments</Link>
-          <Link href={`/${slug}#parcourir-ambiances`}>Toutes les ambiances</Link>
-          <Link href={`/${slug}/membres`}>Réservé aux abonnés</Link>
+          <Link href={lien(`#parcourir-styles`)}>Tous les styles</Link>
+          <Link href={lien(`#parcourir-type-beat`)}>Tous les type beats</Link>
+          <Link href={lien(`#parcourir-instruments`)}>Tous les instruments</Link>
+          <Link href={lien(`#parcourir-ambiances`)}>Toutes les ambiances</Link>
+          <Link href={lien(`/membres`)}>Réservé aux abonnés</Link>
         </div>
 
         <div className="shop-footer-col">
           <h4>Devenir abonné</h4>
-          <Link href={`/${slug}/comment-ca-marche`}>Comment ça marche ?</Link>
-          <Link href={`/${slug}/abonnement`}>Abonnements</Link>
-          <Link href={`/${slug}/licences`}>Licences</Link>
-          <Link href={`/${slug}/mon-compte/favoris`}>Favoris</Link>
+          <Link href={lien(`/comment-ca-marche`)}>Comment ça marche ?</Link>
+          <Link href={lien(`/abonnement`)}>Abonnements</Link>
+          <Link href={lien(`/licences`)}>Licences</Link>
+          <Link href={lien(`/mon-compte/favoris`)}>Favoris</Link>
         </div>
 
         <div className="shop-footer-col">
-          <Link href={`/${slug}/plan-de-site`}>Plan de site</Link>
-          <Link href={`/${slug}/mon-compte`}>Mon compte</Link>
-          <Link href={`/${slug}/contact`}>Contact</Link>
-          <Link href={`/${slug}/confidentialite`}>Politique de confidentialité</Link>
-          <Link href={`/${slug}/cgv`}>CGV</Link>
-          <Link href={`/${slug}/mentions-legales`}>Mentions légales</Link>
+          <Link href={lien(`/plan-de-site`)}>Plan de site</Link>
+          <Link href={lien(`/mon-compte`)}>Mon compte</Link>
+          <Link href={lien(`/contact`)}>Contact</Link>
+          <Link href={lien(`/confidentialite`)}>Politique de confidentialité</Link>
+          <Link href={lien(`/cgv`)}>CGV</Link>
+          <Link href={lien(`/mentions-legales`)}>Mentions légales</Link>
         </div>
 
         <div className="shop-footer-col">

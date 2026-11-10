@@ -6,6 +6,7 @@ import Link from 'next/link'
 import BeatCard from '../_components/BeatCard'
 import type { BeatPublic, LicencePublic } from '../_components/BeatCard'
 import { detailTva } from '@/lib/prix-affiche'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 export default async function MembresPage({
   params,
@@ -13,6 +14,7 @@ export default async function MembresPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -114,7 +116,7 @@ export default async function MembresPage({
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+      <Link href={lien()} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
         ← Boutique de {beatmaker.nom_artiste}
       </Link>
 
@@ -123,7 +125,7 @@ export default async function MembresPage({
           Réservés aux membres <span className="text-gray-500 font-normal text-lg">({beats.length})</span>
         </h1>
         {estAbonne && (
-          <Link href={`/${slug}/mon-abonnement`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
+          <Link href={lien(`/mon-abonnement`)} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
             Mon abonnement →
           </Link>
         )}
@@ -151,7 +153,7 @@ export default async function MembresPage({
             )}
           </div>
           <Link
-            href={`/${slug}/abonnement`}
+            href={lien(`/abonnement`)}
             className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
           >
             S&apos;abonner pour {prixAffiche}€/mois

@@ -8,6 +8,7 @@ import PaiementEnAttente from './PaiementEnAttente'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
 import type { TvaPanier } from '@/lib/tva-panier'
 import { effacerPaiementEnCours } from '../_lib/paiement-en-cours'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 const TRASH_ICON = (
   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,6 +41,7 @@ export default function CartDrawer({
   // redemander à quelqu'un qui est déjà identifié.
   clientEmail?: string | null
 }) {
+  const lien = useLienBoutique(slug)
   const { items, isOpen, close, removeItem, paiementEnCours } = useCart()
 
   const [codePromoOpen, setCodePromoOpen] = useState(false)
@@ -155,7 +157,7 @@ export default function CartDrawer({
       }
       await new Promise(r => setTimeout(r, 1000))
     }
-    window.location.href = `/${slug}`
+    window.location.href = lien()
   }
 
   return (

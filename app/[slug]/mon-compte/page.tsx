@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { lireStatutNewsletter, inscrireParClient, desinscrireParClient } from '@/lib/newsletter'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 type LigneRow = {
   beats: { titre: string; image_url: string | null } | null
@@ -30,6 +31,7 @@ export default async function MonCompteBoutiquePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -55,7 +57,7 @@ export default async function MonCompteBoutiquePage({
     if (emailCookie) emailIdentifie = emailCookie
   }
 
-  if (!emailIdentifie) redirect(`/${slug}`)
+  if (!emailIdentifie) redirect(lien())
 
   // Abonnement pour cette boutique
   let abo = null
@@ -163,7 +165,7 @@ export default async function MonCompteBoutiquePage({
   return (
     <div className="min-h-screen bg-black px-6 py-16">
       <div className="max-w-lg mx-auto">
-        <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+        <Link href={lien()} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Boutique de {beatmaker.nom_artiste}
         </Link>
 
@@ -205,7 +207,7 @@ export default async function MonCompteBoutiquePage({
                   }`}>
                     {estActif ? (enEssai ? 'Essai' : 'Actif') : estImpaye ? 'Paiement en attente' : 'Annulé'}
                   </span>
-                  <Link href={`/${slug}/mon-abonnement`} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                  <Link href={lien(`/mon-abonnement`)} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
                     Gérer →
                   </Link>
                 </div>
@@ -213,7 +215,7 @@ export default async function MonCompteBoutiquePage({
             ) : (
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
                 <p className="text-gray-500 text-sm">Aucun abonnement actif.</p>
-                <Link href={`/${slug}/abonnement`} className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+                <Link href={lien(`/abonnement`)} className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
                   S&apos;abonner →
                 </Link>
               </div>
@@ -228,7 +230,7 @@ export default async function MonCompteBoutiquePage({
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Mes favoris ({totalFavoris})
               </h2>
-              <Link href={`/${slug}/mon-compte/favoris`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
+              <Link href={lien(`/mon-compte/favoris`)} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
                 Voir tout →
               </Link>
             </div>
@@ -243,7 +245,7 @@ export default async function MonCompteBoutiquePage({
                   return (
                     <Link
                       key={fav.beat_id}
-                      href={`/${slug}/${fav.beat_id}`}
+                      href={lien(`/${fav.beat_id}`)}
                       className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl p-3 hover:border-gray-700 transition-colors"
                     >
                       {beat?.image_url ? (
@@ -269,7 +271,7 @@ export default async function MonCompteBoutiquePage({
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
               Mes achats ({totalCommandes})
             </h2>
-            <Link href={`/${slug}/mon-compte/achats`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
+            <Link href={lien(`/mon-compte/achats`)} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
               Voir tout →
             </Link>
           </div>
@@ -315,7 +317,7 @@ export default async function MonCompteBoutiquePage({
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Mes factures</h2>
-            <Link href={`/${slug}/mon-compte/factures`} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
+            <Link href={lien(`/mon-compte/factures`)} className="text-sm text-brand-400 hover:text-brand-300 transition-colors">
               Voir tout →
             </Link>
           </div>

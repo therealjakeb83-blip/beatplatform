@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from './PlayerContext'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 export type LicencePublic = {
   id: string
@@ -41,6 +42,7 @@ export default function BeatCard({
   queue: BeatMin[]
   estAbonne?: boolean
 }) {
+  const lien = useLienBoutique(slug)
   const { play, currentBeat, isPlaying, mobileControlsBeatId, setMobileControlsBeatId, openLicenceModal } = usePlayer()
 
   const isActive = currentBeat?.id === beat.id
@@ -89,7 +91,7 @@ export default function BeatCard({
 
   return (
     <Link
-      href={estVerrouille ? `/${slug}/membres` : `/${slug}/${beat.id}`}
+      href={estVerrouille ? lien(`/membres`) : lien(`/${beat.id}`)}
       className="group shop-beat-card"
     >
       {/* Cover + bouton play */}

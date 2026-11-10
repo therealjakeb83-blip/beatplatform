@@ -8,6 +8,7 @@ import ProduitCard from './_components/ProduitCard'
 import MemeStyleSection from './_components/MemeStyleSection'
 import { estClientAbonne } from '../_lib/abonnement'
 import type { LicencePublic, BeatPublic } from '../_components/BeatCard'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 export default async function BeatDetailPage({
   params,
@@ -15,6 +16,7 @@ export default async function BeatDetailPage({
   params: Promise<{ slug: string; beatId: string }>
 }) {
   const { slug, beatId } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -54,7 +56,7 @@ export default async function BeatDetailPage({
     admin, beatmakerId: beatmaker.id, aboActif: beatmaker.abo_actif, slug, user,
   })
 
-  if (beat.statut === 'prive' && !estAbonne) redirect(`/${slug}/membres`)
+  if (beat.statut === 'prive' && !estAbonne) redirect(lien(`/membres`))
 
   type RawBeatLicence = {
     actif: boolean
@@ -254,7 +256,7 @@ export default async function BeatDetailPage({
         slug={slug}
         beats={similaires}
         estAbonne={estAbonne}
-        toutVoirHref={tagPrincipal ? `/${slug}/parcourir/${tagPrincipalType}/${encodeURIComponent(tagPrincipal)}` : null}
+        toutVoirHref={tagPrincipal ? lien(`/parcourir/${tagPrincipalType}/${encodeURIComponent(tagPrincipal)}`) : null}
       />
     </div>
   )

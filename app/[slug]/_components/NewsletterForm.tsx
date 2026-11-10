@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 export default function NewsletterForm({ slug }: { slug: string }) {
+  const lien = useLienBoutique(slug)
   const [ouvert, setOuvert] = useState(false)
   const [email, setEmail] = useState('')
   const [accepte, setAccepte] = useState(false)
@@ -65,7 +67,7 @@ export default function NewsletterForm({ slug }: { slug: string }) {
         />
         <span>
           J&apos;accepte de recevoir des emails et j&apos;ai lu la{' '}
-          <Link href={`/${slug}/confidentialite`} className="underline">
+          <Link href={lien(`/confidentialite`)} className="underline">
             politique de confidentialité
           </Link>
           .

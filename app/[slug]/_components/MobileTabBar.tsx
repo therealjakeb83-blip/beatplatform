@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSurDomaineBoutique } from './DomaineBoutique'
+import { lienBoutique } from '@/lib/domaine-boutique'
 
 const ONGLETS = [
   {
     href: '',
     label: 'Accueil',
-    match: (path: string, base: string) => path === base,
+    match: (path: string, base: string) => path === (base || '/'),
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round">
         <path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-5v-6h-4v6H5a1 1 0 01-1-1v-9z" />
@@ -60,8 +62,14 @@ const ONGLETS = [
 ]
 
 export default function MobileTabBar({ slug }: { slug: string }) {
-  const pathname = usePathname()
-  const base = `/${slug}`
+  const pathnameBrut = usePathname()
+  const surDomaine = useSurDomaineBoutique()
+  const base = surDomaine ? '' : `/${slug}`
+  // Sur un domaine, le rendu serveur peut voir le chemin interne (/slug/beats)
+  // et le navigateur le chemin visible (/beats) : on compare le chemin visible.
+  const pathname = surDomaine && (pathnameBrut === `/${slug}` || pathnameBrut.startsWith(`/${slug}/`))
+    ? pathnameBrut.slice(slug.length + 1) || '/'
+    : pathnameBrut
 
   return (
     <nav className="shop-tabbar">
@@ -70,7 +78,7 @@ export default function MobileTabBar({ slug }: { slug: string }) {
         return (
           <Link
             key={onglet.label}
-            href={`${base}${onglet.href}`}
+            href={lienBoutique(slug, onglet.href, surDomaine)}
             className={`shop-tabbar-item${active ? ' is-active' : ''}`}
           >
             {onglet.icon}

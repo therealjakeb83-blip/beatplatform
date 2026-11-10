@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import BeatCard, { type BeatPublic } from './BeatCard'
 import type { BeatMin } from './PlayerContext'
 import { useDragScroll } from '../_lib/useDragScroll'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 // Vitesse cible du carrousel « Réservés aux membres », en px/s — fixe quel
 // que soit le nombre de beats (sinon la boucle infinie parcourt une piste
@@ -36,6 +37,7 @@ export default function BeatCatalogue({
   slug: string
   estAbonne?: boolean
 }) {
+  const lien = useLienBoutique(slug)
   const queue: BeatMin[] = beats.map(toBeatMin)
   const rowNouveautesRef = useDragScroll<HTMLDivElement>()
   const rowSelectionRef = useDragScroll<HTMLDivElement>()
@@ -68,7 +70,7 @@ export default function BeatCatalogue({
             <h2>
               Réservés aux membres <span className="shop-section-count">({beatsPrives.length})</span>
             </h2>
-            <Link href={`/${slug}/membres`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
+            <Link href={lien(`/membres`)} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
           {/* Banderole défilante en boucle infinie — la liste est rendue deux
               fois à l'identique pour une boucle sans couture (translate -50%). */}
@@ -90,7 +92,7 @@ export default function BeatCatalogue({
         <section className="shop-section">
           <div className="shop-section-heading">
             <h2>Nouveautés</h2>
-            <Link href={`/${slug}/beats`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
+            <Link href={lien(`/beats`)} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
           <div className="shop-row shop-row--beats" ref={rowNouveautesRef} data-hscroll>
             {beats.slice(0, 10).map(beat => (
@@ -105,7 +107,7 @@ export default function BeatCatalogue({
         <section className="shop-section">
           <div className="shop-section-heading">
             <h2>La sélection du beatmaker</h2>
-            <Link href={`/${slug}/selection`} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
+            <Link href={lien(`/selection`)} className="shop-all-button">Tout voir<span className="shop-all-button-arrow"> ›</span></Link>
           </div>
           <div className="shop-row shop-row--beats" ref={rowSelectionRef} data-hscroll>
             {selection.slice(0, 10).map(beat => (

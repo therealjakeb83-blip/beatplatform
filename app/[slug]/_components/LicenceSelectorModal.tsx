@@ -8,6 +8,7 @@ import { usePlayer } from './PlayerContext'
 import { useCart } from './CartContext'
 import { FICHIERS_INCLUS, formatStreams } from '../_lib/licences'
 import type { TvaPanier } from '@/lib/tva-panier'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 const BULLET_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -54,6 +55,7 @@ export default function LicenceSelectorModal({
   tvaActive?: boolean
   tvaTaux?: number | null
 }) {
+  const lien = useLienBoutique(slug)
   const { addItem, open: openCart } = useCart()
   const { isPlaying, togglePlay } = usePlayer()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -223,7 +225,7 @@ export default function LicenceSelectorModal({
               <p className="shop-lc-sur-demande-text">
                 Cette licence n&apos;a pas de prix fixe — contacte le beatmaker pour obtenir une offre.
               </p>
-              <Link href={`/${slug}/contact`} className="shop-lc-submit" onClick={onClose}>
+              <Link href={lien(`/contact`)} className="shop-lc-submit" onClick={onClose}>
                 Me contacter
               </Link>
             </div>

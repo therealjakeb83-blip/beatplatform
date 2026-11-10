@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 type CmdRow = {
   id: string
@@ -39,6 +40,7 @@ export default async function FacturesBoutiquePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -63,7 +65,7 @@ export default async function FacturesBoutiquePage({
     if (emailCookie) emailIdentifie = emailCookie
   }
 
-  if (!emailIdentifie) redirect(`/${slug}/mon-compte`)
+  if (!emailIdentifie) redirect(lien(`/mon-compte`))
 
   let commandes: CmdRow[] = []
   if (clientId) {
@@ -135,7 +137,7 @@ export default async function FacturesBoutiquePage({
   return (
     <div className="min-h-screen bg-black px-6 py-16">
       <div className="max-w-lg mx-auto">
-        <Link href={`/${slug}/mon-compte`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+        <Link href={lien(`/mon-compte`)} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Mon compte
         </Link>
 

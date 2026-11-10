@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePlayer, type BeatMin } from '../../_components/PlayerContext'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 type FavorisBeat = BeatMin & {
   bpm: number | null
@@ -15,6 +16,7 @@ export default function FavorisPlaylist({
   beats: FavorisBeat[]
   slug: string
 }) {
+  const lien = useLienBoutique(slug)
   const { play, currentBeat, isPlaying } = usePlayer()
 
   const queue: BeatMin[] = beats.map(b => ({
@@ -69,7 +71,7 @@ export default function FavorisPlaylist({
             )}
 
             {/* Titre + infos */}
-            <Link href={`/${slug}/${beat.id}`} className="flex-1 min-w-0">
+            <Link href={lien(`/${beat.id}`)} className="flex-1 min-w-0">
               <p className={`text-sm font-medium truncate ${isActive ? 'text-brand-300' : 'text-white'}`}>
                 {beat.titre}
               </p>

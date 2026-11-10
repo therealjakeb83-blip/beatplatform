@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import GererAbonnementButton from './GererAbonnementButton'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 export default async function MonAbonnementPage({
   params,
@@ -11,6 +12,7 @@ export default async function MonAbonnementPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -64,7 +66,7 @@ export default async function MonAbonnementPage({
         <div className="text-center">
           <h1 className="text-2xl font-black text-white mb-3">Non connecté</h1>
           <p className="text-gray-400 text-sm mb-6">Tu n&apos;as pas de session membre active.</p>
-          <Link href={`/${slug}/abonnement`} className="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]">
+          <Link href={lien(`/abonnement`)} className="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]">
             S&apos;abonner
           </Link>
         </div>
@@ -82,7 +84,7 @@ export default async function MonAbonnementPage({
           <p className="text-gray-400 text-sm mb-6">
             Tu n&apos;as pas d&apos;abonnement à la boutique de {beatmaker.nom_artiste} avec l&apos;adresse {emailAbonne}.
           </p>
-          <Link href={`/${slug}/abonnement`} className="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]">
+          <Link href={lien(`/abonnement`)} className="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]">
             S&apos;abonner
           </Link>
         </div>
@@ -103,7 +105,7 @@ export default async function MonAbonnementPage({
   return (
     <div className="min-h-screen bg-black px-6 py-16">
       <div className="max-w-lg mx-auto">
-        <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+        <Link href={lien()} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Boutique de {beatmaker.nom_artiste}
         </Link>
 
@@ -161,7 +163,7 @@ export default async function MonAbonnementPage({
           <div className="flex flex-col gap-3">
             {estActif && (
               <Link
-                href={`/${slug}/membres`}
+                href={lien(`/membres`)}
                 className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
               >
                 Accéder aux beats membres
@@ -181,7 +183,7 @@ export default async function MonAbonnementPage({
 
         {!estActif && !estImpaye && (
           <Link
-            href={`/${slug}/abonnement`}
+            href={lien(`/abonnement`)}
             className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center block shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
           >
             Se réabonner

@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { Fragment } from 'react'
 import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
-export default function Hero({
+export default async function Hero({
   slug,
   nomArtiste,
   heroTitre,
@@ -17,6 +18,7 @@ export default function Hero({
   tagline: string | null
   aboActif: boolean
 }) {
+  const lien = await lienBoutiqueServeur(slug)
   const titre = heroTitre || `Trouve une instru composée par ${nomArtiste}, pour ton projet`
   const sousTitre = heroSousTitre || tagline || 'Des beats de qualité pour donner vie à tes projets.'
   const afficherCta = peutAfficherCtaAbonnement({ abo_actif: aboActif })
@@ -40,7 +42,7 @@ export default function Hero({
         </h1>
         <p>{sousTitre}</p>
         {afficherCta && (
-          <Link href={`/${slug}/abonnement`} className="shop-cta shop-cta-hero">
+          <Link href={lien(`/abonnement`)} className="shop-cta shop-cta-hero">
             + Devenir membre gratuitement 👑
           </Link>
         )}

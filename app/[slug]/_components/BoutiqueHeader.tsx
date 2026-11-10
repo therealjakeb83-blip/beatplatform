@@ -6,6 +6,7 @@ import Link from 'next/link'
 import CartBadge from './CartBadge'
 import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
 import { estMarqueAffichageValide, estStyleNomMarqueValide, type MarqueAffichage, type StyleNomMarque } from '../_lib/marque'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 export default function BoutiqueHeader({
   slug,
@@ -24,6 +25,7 @@ export default function BoutiqueHeader({
   aboActif: boolean
   clientUser: { prenom: string; nom: string } | null
 }) {
+  const lien = useLienBoutique(slug)
   const router = useRouter()
   const searchParams = useSearchParams()
   const [recherche, setRecherche] = useState('')
@@ -58,14 +60,14 @@ export default function BoutiqueHeader({
 
   function soumettreRecherche(e: React.FormEvent) {
     e.preventDefault()
-    router.push(`/${slug}/beats${recherche ? `?q=${encodeURIComponent(recherche)}` : ''}`)
+    router.push(lien(`/beats${recherche ? `?q=${encodeURIComponent(recherche)}` : ''}`))
   }
 
   return (
     <div className="shop-header-wrap" ref={wrapRef}>
       <header className="shop-header">
         <div className="shop-header-row1">
-          <Link href={`/${slug}`} aria-label="Accueil">
+          <Link href={lien()} aria-label="Accueil">
             {marque === 'nom' && nomArtiste ? (
               <span className={`shop-wordmark shop-wordmark--${style}`}>{nomArtiste}</span>
             ) : logoUrl ? (
@@ -88,12 +90,12 @@ export default function BoutiqueHeader({
           </form>
 
           <nav className="shop-header-links">
-            <Link href={`/${slug}/comment-ca-marche`}>Comment ça marche ?</Link>
-            <Link href={`/${slug}/licences`}>Licences</Link>
+            <Link href={lien(`/comment-ca-marche`)}>Comment ça marche ?</Link>
+            <Link href={lien(`/licences`)}>Licences</Link>
           </nav>
 
           {afficherCta && (
-            <Link href={`/${slug}/abonnement`} className="shop-cta">
+            <Link href={lien(`/abonnement`)} className="shop-cta">
               + Devenir membre gratuitement 👑
             </Link>
           )}
@@ -101,7 +103,7 @@ export default function BoutiqueHeader({
           <div className="shop-header-icons">
             <CartBadge />
             <Link
-              href={clientUser ? `/${slug}/mon-compte` : `/artiste/connexion?redirect=/${slug}`}
+              href={clientUser ? lien(`/mon-compte`) : `/artiste/connexion?redirect=/${slug}`}
               className="shop-icon-btn"
               aria-label="Compte"
             >
@@ -113,11 +115,11 @@ export default function BoutiqueHeader({
         </div>
 
         <nav className="shop-header-row2">
-          <Link href={`/${slug}#parcourir-type-beat`} className="shop-pill">Type beat</Link>
-          <Link href={`/${slug}#parcourir-styles`} className="shop-pill">Styles</Link>
-          <Link href={`/${slug}#parcourir-instruments`} className="shop-pill">Instruments</Link>
-          <Link href={`/${slug}#parcourir-ambiances`} className="shop-pill">Ambiances</Link>
-          <Link href={`/${slug}/membres`} className="shop-pill is-private">Beats privés 🔒</Link>
+          <Link href={lien(`#parcourir-type-beat`)} className="shop-pill">Type beat</Link>
+          <Link href={lien(`#parcourir-styles`)} className="shop-pill">Styles</Link>
+          <Link href={lien(`#parcourir-instruments`)} className="shop-pill">Instruments</Link>
+          <Link href={lien(`#parcourir-ambiances`)} className="shop-pill">Ambiances</Link>
+          <Link href={lien(`/membres`)} className="shop-pill is-private">Beats privés 🔒</Link>
         </nav>
       </header>
     </div>

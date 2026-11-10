@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { TITRE_SECTION, TYPE_DB_VERS_URL, type TypeCategorieDb } from '../_lib/categories-urls'
 import { useDragScroll } from '../_lib/useDragScroll'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 export type CategorieCarte = { nom: string; count: number; imageUrl: string | null }
 
@@ -38,12 +39,13 @@ export default function CategorieBrowseSection({
   slug: string
   cartes: CategorieCarte[]
 }) {
+  const lien = useLienBoutique(slug)
   const rowRef = useDragScroll<HTMLDivElement>()
 
   if (cartes.length === 0) return null
 
   function href(nom: string) {
-    return `/${slug}/parcourir/${TYPE_DB_VERS_URL[type]}/${encodeURIComponent(nom)}`
+    return lien(`/parcourir/${TYPE_DB_VERS_URL[type]}/${encodeURIComponent(nom)}`)
   }
 
   return (

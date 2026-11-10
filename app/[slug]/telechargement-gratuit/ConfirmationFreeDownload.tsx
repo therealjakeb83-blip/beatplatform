@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 type Etat =
   | { kind: 'chargement' }
@@ -9,6 +10,7 @@ type Etat =
   | { kind: 'erreur'; message: string }
 
 export default function ConfirmationFreeDownload({ slug, nomArtiste, jeton }: { slug: string; nomArtiste: string; jeton: string }) {
+  const lien = useLienBoutique(slug)
   const [etat, setEtat] = useState<Etat>({ kind: 'chargement' })
   const lance = useRef(false)
 
@@ -77,7 +79,7 @@ export default function ConfirmationFreeDownload({ slug, nomArtiste, jeton }: { 
         </>
       )}
 
-      <Link href={`/${slug}`} className="inline-block mt-8 text-gray-500 hover:text-white text-sm transition-colors">
+      <Link href={lien()} className="inline-block mt-8 text-gray-500 hover:text-white text-sm transition-colors">
         ← Boutique de {nomArtiste}
       </Link>
     </div>

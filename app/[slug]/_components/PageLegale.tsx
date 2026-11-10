@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
-export default function PageLegale({
+export default async function PageLegale({
   slug,
   nomArtiste,
   titre,
@@ -13,9 +14,10 @@ export default function PageLegale({
   contenu: string
   adopteLe?: string | null
 }) {
+  const lien = await lienBoutiqueServeur(slug)
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+      <Link href={lien()} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
         ← Boutique de {nomArtiste}
       </Link>
 

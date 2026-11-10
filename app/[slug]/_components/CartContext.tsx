@@ -45,7 +45,8 @@ function slugFromPathname(pathname: string): string {
   return pathname.split('/').filter(Boolean)[0] ?? ''
 }
 
-// `slug` : à passer explicitement depuis une page hors de l'arborescence
+// `slug` : à passer explicitement sur un domaine personnalisé (l'adresse ne
+// contient pas le slug) et depuis une page hors de l'arborescence
 // `app/[slug]/**` (ex. app/paiement/[slug]) — sinon `slugFromPathname` lirait
 // le mauvais premier segment d'URL et pointerait vers une autre clé
 // localStorage que celle où le panier de cette boutique a été rempli.

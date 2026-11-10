@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import CatalogueClient from './_components/CatalogueClient'
 import type { BeatPublic, LicencePublic } from '../_components/BeatCard'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 export default async function CataloguePage({
   params,
@@ -11,6 +12,7 @@ export default async function CataloguePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -81,7 +83,7 @@ export default async function CataloguePage({
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+      <Link href={lien()} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
         ← Boutique de {beatmaker.nom_artiste}
       </Link>
 

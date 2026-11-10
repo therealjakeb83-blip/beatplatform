@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import SAbonnerButton from './SAbonnerButton'
 import { detailTva } from '@/lib/prix-affiche'
+import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 export default async function AbonnementPage({
   params,
@@ -12,6 +13,7 @@ export default async function AbonnementPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const lien = await lienBoutiqueServeur(slug)
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -62,7 +64,7 @@ export default async function AbonnementPage({
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 py-16">
       <div className="max-w-lg w-full">
-        <Link href={`/${slug}`} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
+        <Link href={lien()} className="text-gray-500 hover:text-white text-sm transition-colors inline-flex items-center gap-1 mb-8">
           ← Boutique de {beatmaker.nom_artiste}
         </Link>
 
@@ -74,13 +76,13 @@ export default async function AbonnementPage({
               <p className="text-gray-400 text-sm mb-6">Tu as accès à tous les beats réservés aux membres.</p>
               <div className="flex flex-col gap-3">
                 <Link
-                  href={`/${slug}/membres`}
+                  href={lien(`/membres`)}
                   className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition-colors text-center shadow-[0_6px_20px_-4px_rgba(0,41,255,0.5)]"
                 >
                   Accéder aux beats membres
                 </Link>
                 <Link
-                  href={`/${slug}/mon-abonnement`}
+                  href={lien(`/mon-abonnement`)}
                   className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors text-center"
                 >
                   Gérer mon abonnement

@@ -7,6 +7,7 @@ import FavoriButton from '../../_components/FavoriButton'
 import LicenceSelectorModal from '../../_components/LicenceSelectorModal'
 import type { BeatPublic } from '../../_components/BeatCard'
 import type { BeatMin } from '../../_components/PlayerContext'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 
 function PlayIcon() {
   return <svg viewBox="0 0 12 13" width="13" height="14" fill="currentColor"><path d="M10.4312 4.39786C11.7645 5.16766 11.7645 7.09216 10.4312 7.86197L3.64156 11.7819C2.30822 12.5517 0.641555 11.5895 0.641555 10.0499L0.641556 2.20994C0.641556 0.670336 2.30822 -0.291914 3.64156 0.477887L10.4312 4.39786Z" /></svg>
@@ -57,6 +58,7 @@ export default function ProduitCard({
   tvaTaux?: number | null
   queue: BeatMin[]
 }) {
+  const lien = useLienBoutique(slug)
   const { currentBeat, isPlaying, play } = usePlayer()
   const [licenceOpen, setLicenceOpen] = useState(false)
   const [partage, setPartage] = useState(false)
@@ -85,9 +87,9 @@ export default function ProduitCard({
       </div>
 
       <nav className="shop-product-crumbs">
-        <Link href={`/${slug}`}>Accueil</Link>
+        <Link href={lien()}>Accueil</Link>
         <span>›</span>
-        <Link href={`/${slug}/beats`}>Boutique</Link>
+        <Link href={lien(`/beats`)}>Boutique</Link>
         <span>›</span>
         <span className="is-current">{beat.titre}</span>
       </nav>

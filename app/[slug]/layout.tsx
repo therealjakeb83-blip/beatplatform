@@ -10,6 +10,8 @@ import { estClientAbonne } from './_lib/abonnement'
 import { PlayerProvider } from './_components/PlayerContext'
 import PlayerBar from './_components/PlayerBar'
 import { CartProvider } from './_components/CartContext'
+import { DomaineBoutiqueProvider } from './_components/DomaineBoutique'
+import { surDomaineBoutique } from './_lib/lien-boutique-serveur'
 import CartDrawer from './_components/CartDrawer'
 import BoutiqueHeader from './_components/BoutiqueHeader'
 import BoutiqueFooter from './_components/BoutiqueFooter'
@@ -141,8 +143,9 @@ export default async function BoutiqueLayout({
   }
 
   return (
+    <DomaineBoutiqueProvider surDomaine={await surDomaineBoutique()}>
     <PlayerProvider>
-      <CartProvider>
+      <CartProvider slug={slug}>
         <Suspense>
           <BoutiqueThemeRoot
             accentDb={beatmaker?.theme_couleur ?? '#2E4CF0'}
@@ -194,5 +197,6 @@ export default async function BoutiqueLayout({
         </Suspense>
       </CartProvider>
     </PlayerProvider>
+    </DomaineBoutiqueProvider>
   )
 }

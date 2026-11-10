@@ -9,7 +9,8 @@ export const URL_APP = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sonoo.app'
 // les emails critiques de la plateforme (inscription, mot de passe, Mails Sonoo).
 // Chaque boutique envoie depuis sa propre adresse <slug>@mail.sonoo.app.
 // contact@sonoo.app = alias de la boîte Google Workspace jake@sonoo.app.
-export const DOMAINE_ENVOI_PLATEFORME = 'sonoo.app'
+export const DOMAINE_PLATEFORME = 'sonoo.app'
+export const DOMAINE_ENVOI_PLATEFORME = DOMAINE_PLATEFORME
 export const DOMAINE_ENVOI_BOUTIQUES = 'mail.sonoo.app'
 export const EMAIL_EXPEDITEUR_PLATEFORME = `noreply@${DOMAINE_ENVOI_PLATEFORME}`
 export const EMAIL_CONTACT = 'contact@sonoo.app'
