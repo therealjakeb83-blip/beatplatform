@@ -176,7 +176,7 @@ export default function DomaineClient({
       </p>
       {modeChangement && domaine?.statut === 'actif' && (
         <p className="text-xs text-amber-300">
-          {domaine.domaine} cessera d&apos;afficher ta boutique dès la validation. Elle restera sur {adresseSonoo} jusqu&apos;à ce que le nouveau domaine soit actif.
+          {domaine.domaine} cessera d&apos;afficher ta boutique dès la validation. Elle restera sur {adresseSonoo}{' '}jusqu&apos;à ce que le nouveau domaine soit actif.
         </p>
       )}
     </form>
