@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { getResend } from './resend'
 import { NOM_PLATEFORME, EMAIL_EXPEDITEUR_PLATEFORME } from './constantes'
 import { envoiAutorise, MOTIF_BLOCAGE_LISTE_BLANCHE } from './email-liste-blanche'
+import { normaliserEmail } from './email'
 
 // Les campagnes (envoi de masse) ne passent volontairement pas par ce
 // logger : leur historique détaillé par destinataire vit déjà dans
@@ -29,7 +30,7 @@ async function enregistrer(
   resultat: { messageId?: string | null; erreur?: string | null },
 ) {
   const admin = createAdminClient()
-  const { error } = await admin.from('email_logs').insert({
+  const ligne = {
     beatmaker_id: ctx.beatmakerId,
     destinataire,
     sujet,
@@ -43,7 +44,17 @@ async function enregistrer(
     automatisation_id: ctx.automatisationId ?? null,
     corps_html: corps.html ?? null,
     corps_texte: corps.texte ?? null,
-  })
+  }
+  let { error } = await admin.from('email_logs').insert(ligne)
+
+  // Fiche client disparue entre l'envoi et le journal : la fiche provisoire d'un
+  // visiteur est fusionnée dans son vrai compte quand il choisit son mot de passe,
+  // parfois pendant que le webhook Stripe envoie l'email (bug du 2026-11-11). On
+  // rattache alors l'email à la fiche actuelle de ce client, retrouvée par son email.
+  if (error?.code === '23503' && error.message.includes('email_logs_client_id_fkey')) {
+    const { data: client } = await admin.from('clients').select('id').eq('email', normaliserEmail(destinataire)).maybeSingle()
+    ;({ error } = await admin.from('email_logs').insert({ ...ligne, client_id: client?.id ?? null }))
+  }
   if (error) console.error('[email-logger] Erreur insertion email_logs:', JSON.stringify(error))
 }
 
