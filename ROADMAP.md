@@ -182,7 +182,7 @@
 > **Checklist du lot 5** — ordre : cas limites sur `test.jakebmusic.com`, puis domaine entier à bas prix à la place sur jakeb-test, puis nettoyage
 > - [x] T0 — SQL vérifié en base ; sonoo.app et `test.jakebmusic.com` inchangés (boutique, redirection, achat test) (Jake + Claude) — ✅ 2026-11-11 : SQL `domaines_boutique_lot5.sql` vérifié par Jake (2 colonnes, table historique, déclencheur, fonction) ; `sonoo.app/jakeb-test` → 307 domaine (paramètres conservés), domaine 200 (accueil, /beats, /paiement, sonde), maintenance sonoo.app inchangée ; achat test 4242 sur `test.jakebmusic.com` (commande `08410949`, `+lot5-t0@`) → téléchargement du domaine
 > - [x] T1 — Boutique sans abonnement (domaine déplacé par SQL sur la copie jakeb-test10) : toutes les pages et `/paiement` affichent le message, code 503, ni 404 ni redirection (Claude) — ✅ 2026-11-11 (mise en scène SQL de Jake : `test.jakebmusic.com` déplacé sur jakeb-test10, passe-droit `abonnement_exempte` retiré, aucun abonnement) : `/`, `/beats`, `/paiement`, `/paiement?abonnement=1`, `/mon-compte`, `/sitemap.xml` → 503 + « Cette boutique est temporairement indisponible », aucune redirection
-> - [ ] T2 — Pendant ce temps : téléchargement d'un achat passé et désinscription marchent, le domaine reste Actif (Claude)
+> - [x] T2 — Pendant ce temps : téléchargement d'un achat passé et désinscription marchent, le domaine reste Actif (Claude) — ✅ pendant la mise en scène : `test.jakebmusic.com/telechargement/08410949…` servi (renvoyé vers sonoo.app, commande d'une autre boutique, règle du lot 3) et page sonoo.app 200 (demande de l'email) ; désinscription servie sur le domaine (400 « lien invalide » avec un faux jeton, pas le message) ; sonde 200 ; 11 min plus tard (au moins un passage de la vérification automatique), `sonoo.app/jakeb-test10` redirige toujours vers le domaine = statut toujours Actif
 > - [x] T3 — `sonoo.app/jakeb-test10` renvoie vers le domaine, qui affiche le message (Claude) — ✅ `sonoo.app/jakeb-test10` → 307 `test.jakebmusic.com/` (et `/beats` → même page), qui affiche le message ; pendant ce temps `sonoo.app/jakeb-test` (plus de domaine) → 200
 > - [x] T4 — Impayé : même message, aucun compte à rebours (Claude, SQL) — ✅ prouvé par le code + script (`.scratch/lot5-test-regles.ts`, 26/26) : impayé = invisible, raison « impaye », aucune date limite (même avec un ancien abonnement annulé) ; le domaine passe par la même règle que T1 (`etatBoutique` dans `proxy.ts`) ; la liste SQL des domaines à libérer exclut `impaye`
 > - [x] T5 — Suspension admin : même message sur toutes les pages du domaine, aucun compte à rebours (Claude, SQL) — ✅ prouvé par le code + script : suspendue (même exemptée) = invisible, aucune date limite ; `proxy.ts` sert le message sur toutes les pages boutique et `/paiement` ; liste SQL des domaines à libérer exclut `statut = suspendu`
@@ -203,6 +203,15 @@
 > - [ ] T20 — Fin de chantier : domaine à bas prix abandonné, ligne CNAME `test` retirée chez GoDaddy (renommée si la suppression bloque), relevé DNS avant/après (Jake + Claude)
 > - [ ] T21 — Message et domaine entier sur iPhone (Jake)
 > - [ ] T22 — WordPress, DNS de jakebmusic.com et mentions Sonoo identiques à avant le lot (Claude)
+>
+> **État au soir du 2026-11-11 (reprise)** : 12 tests sur 23 validés (T0-T9, T12, T13 sauf T10/T11). **Mise en scène encore en place** : `test.jakebmusic.com` rattaché à jakeb-test10 (passe-droit retiré) → le domaine affiche le message, `sonoo.app/jakeb-test` s'affiche sans redirection. Première action demain = SQL inverse (= test T10, la boutique doit revenir toute seule sur le domaine) :
+> ```sql
+> begin;
+> update beatmakers set abonnement_exempte = true where slug = 'jakeb-test10';
+> update domaines_boutique set beatmaker_id = (select id from beatmakers where slug = 'jakeb-test') where domaine = 'test.jakebmusic.com';
+> commit;
+> ```
+> Puis : T16-T18 avec **testjakeb.com** (acheté par Jake chez GoDaddy le 2026-11-11, renouvellement auto à couper, DNS encore par défaut), T11 (libération simulée sur testjakeb.com), T14-T15 (preuve `_sonoo`), T19, T20-T22. Relevé DNS de référence de jakebmusic.com (identique aux lots 1-4) : `.scratch/lot5-dns-jakebmusic-avant.txt`. Script des règles : `.scratch/lot5-test-regles.ts` (26/26).
 >
 > **Cadrage initial du 2026-10-17, conservé pour mémoire :**
 
