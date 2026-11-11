@@ -1,6 +1,10 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound } from 'next/navigation'
 import PageLegale from '../_components/PageLegale'
+import type { Metadata } from 'next'
+
+// Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
+export const metadata: Metadata = { alternates: { canonical: '/confidentialite' } }
 
 export default async function ConfidentialitePage({
   params,

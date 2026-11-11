@@ -6,6 +6,10 @@ import Link from 'next/link'
 import SAbonnerButton from './SAbonnerButton'
 import { detailTva } from '@/lib/prix-affiche'
 import { lienBoutiqueServeur, surDomaineBoutique } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import type { Metadata } from 'next'
+
+// Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
+export const metadata: Metadata = { alternates: { canonical: '/abonnement' } }
 
 export default async function AbonnementPage({
   params,

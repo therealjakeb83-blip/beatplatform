@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import type { Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Poppins, Anton, Archivo_Black, Bebas_Neue, Syne } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
@@ -18,6 +18,22 @@ import BoutiqueFooter from './_components/BoutiqueFooter'
 import BoutiqueThemeRoot from './_components/BoutiqueThemeRoot'
 import MobileTabBar from './_components/MobileTabBar'
 import './boutique-theme.css'
+import { siteDeLaPage } from '@/lib/boutique-du-domaine'
+import { boutiqueReferencable, indexationOuverte, accueilSonoo } from '@/lib/referencement'
+
+// Adresse officielle de la boutique (rang 9c, lot 4) : chaque page y ajoute son
+// chemin comme adresse canonique. Pas de référencement tant que l'indexation est
+// fermée (avant le lancement) ou sans aucun beat en vente.
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const site = await siteDeLaPage()
+  const accueil = site.surDomaine ? site.origine : accueilSonoo(slug)
+  const referencee = indexationOuverte() && (await boutiqueReferencable(slug))
+  return {
+    metadataBase: new URL(`${accueil}/`),
+    ...(referencee ? {} : { robots: { index: false, follow: true } }),
+  }
+}
 
 // Chrome du navigateur mobile (barre d'adresse/statut) alignée sur le thème
 // de la boutique — sinon elle reste blanche par défaut et jure avec le fond

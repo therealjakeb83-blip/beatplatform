@@ -10,6 +10,10 @@ import CategorieBrowseSection from './_components/CategorieBrowseSection'
 import type { BeatPublic, LicencePublic } from './_components/BeatCard'
 import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
 import type { TypeCategorieDb } from './_lib/categories-urls'
+import type { Metadata } from 'next'
+
+// Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
+export const metadata: Metadata = { alternates: { canonical: '/' } }
 
 export default async function BoutiquePage({
   params,

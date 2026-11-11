@@ -49,7 +49,7 @@ const PREFIXES_PLATEFORME = [
 
 // Servies telles quelles sur le domaine (elles retrouvent la boutique par
 // l'adresse, voir lib/boutique-du-domaine.ts). /paiement est réécrit à part.
-const PREFIXES_DIRECTS = ['/api', '/auth', '/_next', '/.well-known', '/telechargement', '/artiste']
+const PREFIXES_DIRECTS = ['/api', '/auth', '/_next', '/.well-known', '/telechargement', '/artiste', '/robots.txt']
 
 function commencePar(pathname: string, prefixe: string): boolean {
   return pathname === prefixe || pathname.startsWith(`${prefixe}/`)

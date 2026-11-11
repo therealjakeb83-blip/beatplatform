@@ -6,6 +6,13 @@ import BeatCard from '../../../_components/BeatCard'
 import type { BeatPublic, LicencePublic } from '../../../_components/BeatCard'
 import { estTypeCategorieUrlValide, TYPE_URL_VERS_DB } from '../../../_lib/categories-urls'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import type { Metadata } from 'next'
+
+// Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
+export async function generateMetadata({ params }: { params: Promise<{ type: string; valeur: string }> }): Promise<Metadata> {
+  const { type, valeur } = await params
+  return { alternates: { canonical: `/parcourir/${type}/${valeur}` } }
+}
 
 export default async function ParcourirCategoriePage({
   params,

@@ -9,6 +9,13 @@ import MemeStyleSection from './_components/MemeStyleSection'
 import { estClientAbonne } from '../_lib/abonnement'
 import type { LicencePublic, BeatPublic } from '../_components/BeatCard'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import type { Metadata } from 'next'
+
+// Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
+export async function generateMetadata({ params }: { params: Promise<{ beatId: string }> }): Promise<Metadata> {
+  const { beatId } = await params
+  return { alternates: { canonical: `/${beatId}` } }
+}
 
 export default async function BeatDetailPage({
   params,
