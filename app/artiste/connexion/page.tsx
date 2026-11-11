@@ -2,14 +2,15 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { cheminInterne } from '@/lib/redirection'
+import { useSlugBoutiqueArtiste } from '../_lib/BoutiqueArtiste'
 
 function ConnexionArtisteForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = cheminInterne(searchParams.get('redirect'), '/mon-compte')
+  const slug = useSlugBoutiqueArtiste(redirect)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -50,7 +51,6 @@ function ConnexionArtisteForm() {
       return
     }
 
-    const slug = redirect.split('/').filter(Boolean)[0] ?? null
     await fetch('/api/artiste/lier-compte', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

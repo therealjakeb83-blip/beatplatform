@@ -26,4 +26,6 @@ export const LIBELLES_EVENEMENTS_PLATEFORME: Record<string, string> = {
   plateforme_domaine_actif: 'Domaine actif',
   plateforme_domaine_probleme: 'Domaine en problème',
   plateforme_domaine_libere: 'Domaine libéré',
+  plateforme_compte_artiste_confirmation: 'Client artiste — confirmation du compte',
+  plateforme_compte_artiste_mot_de_passe: 'Client artiste — mot de passe oublié',
 }

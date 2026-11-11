@@ -4,6 +4,8 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
+import { lienBoutique } from '@/lib/domaine-boutique'
 
 export const runtime = 'nodejs'
 
@@ -51,7 +53,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Abonnement introuvable' }, { status: 404 })
   }
 
-  const origin = request.headers.get('origin') ?? 'http://localhost:3000'
+  // Retour sur le site d'où vient le client (domaine de la boutique compris).
+  const site = await siteDeLaRequete(request)
 
   try {
     // Le client Stripe de l'abonné vit sur le même compte que l'abonnement
@@ -62,7 +65,7 @@ export async function POST(request: Request) {
     const configuration = abo.stripe_account_id ? await assurerConfigurationPortail(abo.stripe_account_id) : undefined
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/${slug}/mon-abonnement`,
+      return_url: `${site.origine}${lienBoutique(slug, '/mon-abonnement', site.surDomaine)}`,
       ...(configuration ? { configuration } : {}),
     }, options)
     return NextResponse.json({ url: session.url })

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { cheminInterne } from '@/lib/redirection'
@@ -20,19 +19,17 @@ function MotDePasseOublieArtisteForm() {
     setErreur('')
     setChargement(true)
 
-    const supabase = createClient()
+    // Envoyé par Sonoo, lien vers le site où se trouve le client (domaine de
+    // la boutique compris), retour à la page de départ.
+    const res = await fetch('/api/artiste/mot-de-passe-oublie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirect }),
+    }).catch(() => null)
 
-    // Contexte boutique passé par le chemin, pas en ?redirect= : Supabase
-    // colle son propre ?token_hash=...&type=recovery à la fin du redirectTo
-    // sans vérifier s'il contient déjà un "?", ce qui produisait un lien à
-    // double "?" invalide (bug constaté le 2026-07-17, voir
-    // /artiste/nouveau-mot-de-passe/[[...redirect]]).
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/artiste/nouveau-mot-de-passe${redirect}`,
-    })
-
-    if (error) {
-      setErreur(error.message)
+    if (!res?.ok) {
+      const data = await res?.json().catch(() => null)
+      setErreur(data?.erreur ?? "L'envoi a échoué, réessaie dans un instant.")
       setChargement(false)
       return
     }

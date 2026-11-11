@@ -3,11 +3,12 @@ import { createClient } from '@/utils/supabase/server'
 import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat, uploadPdfFacture, uploadPdfFactureTranche } from '@/lib/livraison'
 import { genererContratPdfPourVente } from '@/lib/contrat'
 import { genererFacturePdfPourCommande, genererFacturePdfPourTranche } from '@/lib/facture'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import TelechargerBouton from './_components/TelechargerBouton'
 import VerificationGate from './_components/VerificationGate'
-import { NOM_PLATEFORME } from '@/lib/constantes'
+import { NOM_PLATEFORME, URL_APP } from '@/lib/constantes'
+import { siteDeLaPage } from '@/lib/boutique-du-domaine'
 import { normaliserEmail } from '@/lib/email'
 import { cookieAccesTelechargement } from '@/lib/telechargement-acces'
 import { urlPdfAvoir } from '@/lib/avoirs'
@@ -45,6 +46,17 @@ export default async function TelechargerPage({
     .select('id, vendeur_id, vendeur_nom, facture_numero, facture_pdf_url, est_proprietaire')
     .eq('commande_id', commandeId)
     .order('est_proprietaire', { ascending: false })
+
+  // Sur le domaine d'une boutique (rang 9c, lot 3) : seulement ses commandes,
+  // collabs comprises ; toute autre commande s'ouvre sur sonoo.app.
+  const site = await siteDeLaPage()
+  if (site.surDomaine) {
+    const { data: boutique } = site.slugDomaine
+      ? await supabase.from('beatmakers').select('id').eq('slug', site.slugDomaine).maybeSingle()
+      : { data: null }
+    const vendeurs = new Set([commande.beatmaker_id, ...(tranches ?? []).map(t => t.vendeur_id)])
+    if (!boutique || !vendeurs.has(boutique.id)) redirect(`${URL_APP}/telechargement/${commandeId}`)
+  }
 
   // Accès (Phase 11, 9 bis) — l'UUID de commande reste la vraie protection ;
   // ceci n'est qu'une confirmation légère, pas un vrai système d'auth (voir

@@ -25,6 +25,7 @@ import {
   type DomaineVercel,
 } from '@/lib/vercel-domaines'
 import { envoyerDomaineActif, envoyerDomaineLibere, envoyerDomaineProbleme } from '@/lib/emails'
+import { assurerDomainePaiement } from '@/lib/stripe-domaines-paiement'
 
 export const COLONNES_DOMAINE =
   'id, beatmaker_id, domaine, statut, domaine_entier, lignes_dns, explication, echecs_consecutifs, derniere_verification_le, premiere_activation_le, premier_echec_le, dernieres_verifications, created_at'
@@ -83,7 +84,20 @@ async function calculerLignes(domaine: string, vercel: DomaineVercel, config: Co
   })
 }
 
+// Apple Pay / Google Pay prêts dès l'activation, sans attendre le premier
+// client : compte Stripe du vendeur (paiement habituel) et compte Sonoo
+// (panier collab). Rattrapé au paiement par contexte-paiement en cas d'échec.
+async function declarerDomainePaiement(ligne: DomaineBoutique) {
+  const { data } = await createAdminClient().from('beatmakers').select('stripe_account_id').eq('id', ligne.beatmaker_id).maybeSingle()
+  const comptes = [undefined, (data?.stripe_account_id as string | null) ?? undefined]
+  await Promise.all([...new Set(comptes)].map(compte =>
+    assurerDomainePaiement(ligne.domaine, compte).catch(err =>
+      console.error('[domaines] Déclaration Apple Pay / Google Pay :', err instanceof Error ? err.message : err)),
+  ))
+}
+
 async function notifierChangement(ligne: DomaineBoutique, nouveauStatut: string, explication: string | null) {
+  if (nouveauStatut === 'actif') await declarerDomainePaiement(ligne)
   try {
     const to = await emailDuBeatmaker(ligne.beatmaker_id)
     if (!to) return

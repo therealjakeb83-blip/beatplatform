@@ -26,6 +26,16 @@ export function lienBoutique(slug: string, chemin: string, surDomaine: boolean):
   return chemin.startsWith('/') ? chemin : `/${chemin}`
 }
 
+// Page de paiement : domaine/paiement sur un domaine (proxy.ts la réécrit).
+export function lienPaiement(slug: string, surDomaine: boolean, requete = ''): string {
+  return `${surDomaine ? '/paiement' : `/paiement/${slug}`}${requete}`
+}
+
+// Connexion client avec retour sur la page voulue de la boutique.
+export function lienConnexionArtiste(slug: string, surDomaine: boolean, chemin = ''): string {
+  return `/artiste/connexion?redirect=${encodeURIComponent(lienBoutique(slug, chemin, surDomaine))}`
+}
+
 const PREFIXES_PLATEFORME = [
   '/dashboard',
   '/connexion',
@@ -37,17 +47,19 @@ const PREFIXES_PLATEFORME = [
   '/verification-en-cours',
 ]
 
-// /paiement, /telechargement et /artiste : traités au lot 3, laissés tels quels d'ici là.
-const PREFIXES_DIRECTS = ['/api', '/auth', '/_next', '/.well-known', '/paiement', '/telechargement', '/artiste']
+// Servies telles quelles sur le domaine (elles retrouvent la boutique par
+// l'adresse, voir lib/boutique-du-domaine.ts). /paiement est réécrit à part.
+const PREFIXES_DIRECTS = ['/api', '/auth', '/_next', '/.well-known', '/telechargement', '/artiste']
 
 function commencePar(pathname: string, prefixe: string): boolean {
   return pathname === prefixe || pathname.startsWith(`${prefixe}/`)
 }
 
-export type RouteSurDomaine = 'plateforme' | 'direct' | 'boutique'
+export type RouteSurDomaine = 'plateforme' | 'direct' | 'paiement' | 'boutique'
 
 export function routeSurDomaine(pathname: string): RouteSurDomaine {
   if (PREFIXES_PLATEFORME.some(p => commencePar(pathname, p))) return 'plateforme'
+  if (commencePar(pathname, '/paiement')) return 'paiement'
   if (PREFIXES_DIRECTS.some(p => commencePar(pathname, p))) return 'direct'
   return 'boutique'
 }
@@ -84,4 +96,13 @@ export function slugDuChemin(pathname: string): string | null {
   const segment = pathname.split('/')[1] ?? ''
   if (!/^[a-z0-9][a-z0-9-]*$/i.test(segment) || SEGMENTS_HORS_BOUTIQUE.has(segment)) return null
   return segment
+}
+
+// Boutique d'une adresse de retour sur sonoo.app (« /slug/beats »,
+// « /paiement/slug?abonnement=1 »). Sur un domaine, la boutique se lit sur
+// l'adresse du site, jamais ici.
+export function slugBoutiqueDuChemin(chemin: string): string | null {
+  const segments = chemin.split(/[?#]/)[0].split('/').filter(Boolean)
+  if (segments[0] === 'paiement') return segments[1] && slugDuChemin(`/${segments[1]}`) ? segments[1] : null
+  return slugDuChemin(`/${segments[0] ?? ''}`)
 }

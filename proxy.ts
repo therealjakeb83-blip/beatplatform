@@ -123,11 +123,56 @@ async function reponseDomaineBoutique(request: NextRequest, hote: string) {
   const { pathname, search } = request.nextUrl
   const route = routeSurDomaine(pathname)
   if (route === 'plateforme') return NextResponse.redirect(new URL(pathname + search, URL_APP))
-  if (route === 'direct') return NextResponse.next()
+  if (route === 'direct') return avecSessionRafraichie(request, () => NextResponse.next({ request }))
 
   const url = request.nextUrl.clone()
-  url.pathname = pathname === '/' ? `/${slug}` : `/${slug}${pathname}`
-  return NextResponse.rewrite(url)
+  if (route === 'paiement') {
+    // Adresse publique : domaine/paiement. L'ancienne forme avec le slug
+    // (liens ou retours Stripe déjà partis) y est renvoyée.
+    const reste = pathname.slice('/paiement'.length).replace(/\/$/, '')
+    if (reste === `/${slug}`) {
+      url.pathname = '/paiement'
+      return NextResponse.redirect(url, 307)
+    }
+    if (reste !== '') return new NextResponse('Page introuvable.', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+    url.pathname = `/paiement/${slug}`
+  } else {
+    url.pathname = pathname === '/' ? `/${slug}` : `/${slug}${pathname}`
+  }
+  return avecSessionRafraichie(request, () => NextResponse.rewrite(url, { request }))
+}
+
+// Sur sonoo.app, la session du client est rafraîchie plus bas à chaque page ;
+// sur un domaine aussi, sinon il serait déconnecté au bout d'environ une heure
+// (une page serveur ne peut pas réécrire les cookies de session). Seulement si
+// le visiteur a une session : aucun appel à Supabase pour les autres.
+async function avecSessionRafraichie(request: NextRequest, fabriquer: () => NextResponse): Promise<NextResponse> {
+  let reponse = fabriquer()
+  if (!request.cookies.getAll().some(c => c.name.startsWith('sb-'))) return reponse
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          reponse = fabriquer()
+          cookiesToSet.forEach(({ name, value, options }) => reponse.cookies.set(name, value, options))
+        },
+      },
+    }
+  )
+  try {
+    await avecTimeout(supabase.auth.getUser())
+  } catch {
+    // Supabase lent : la page s'affiche quand même, la session sera
+    // rafraîchie à la prochaine.
+  }
+  return reponse
 }
 
 export async function proxy(request: NextRequest) {

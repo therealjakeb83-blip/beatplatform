@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { lireStatutNewsletter, inscrireParClient, desinscrireParClient } from '@/lib/newsletter'
-import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import { lienBoutiqueServeur, surDomaineBoutique } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 type LigneRow = {
   beats: { titre: string; image_url: string | null } | null
@@ -32,6 +32,7 @@ export default async function MonCompteBoutiquePage({
 }) {
   const { slug } = await params
   const lien = await lienBoutiqueServeur(slug)
+  const surDomaine = await surDomaineBoutique()
   const supabase = await createClient()
   const admin = createAdminClient()
 
@@ -174,7 +175,7 @@ export default async function MonCompteBoutiquePage({
             <h1 className="text-2xl font-black text-white">Bonjour, {prenomAffiche}</h1>
             <p className="text-gray-500 text-sm mt-1">{emailIdentifie}</p>
           </div>
-          <form action={`/api/artiste/deconnexion?redirect=/${slug}`} method="POST">
+          <form action={`/api/artiste/deconnexion?redirect=${encodeURIComponent(lien())}`} method="POST">
             <button type="submit" className="text-sm text-gray-600 hover:text-gray-400 transition-colors">
               Déconnexion
             </button>
@@ -354,9 +355,18 @@ export default async function MonCompteBoutiquePage({
         {/* Lien compte global */}
         {clientId && (
           <div className="pt-4 border-t border-gray-800">
-            <Link href="/mon-compte" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
-              Accéder à mon compte {NOM_PLATEFORME} →
-            </Link>
+            {surDomaine ? (
+              // Laissez-passer : sonoo.app/mon-compte, déjà connecté (lot 3, décision 11).
+              <form action="/api/artiste/passage-compte" method="POST">
+                <button type="submit" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+                  Accéder à mon compte {NOM_PLATEFORME} →
+                </button>
+              </form>
+            ) : (
+              <Link href="/mon-compte" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+                Accéder à mon compte {NOM_PLATEFORME} →
+              </Link>
+            )}
           </div>
         )}
       </div>

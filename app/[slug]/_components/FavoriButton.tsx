@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useSurDomaineBoutique } from './DomaineBoutique'
+import { lienConnexionArtiste } from '@/lib/domaine-boutique'
 
 export default function FavoriButton({
   beatId,
@@ -16,6 +18,7 @@ export default function FavoriButton({
   className?: string
 }) {
   const router = useRouter()
+  const surDomaine = useSurDomaineBoutique()
   const [estFavori, setEstFavori] = useState(false)
   const [chargement, setChargement] = useState(false)
 
@@ -36,7 +39,7 @@ export default function FavoriButton({
     e.stopPropagation()
 
     if (!clientId) {
-      router.push(`/artiste/connexion?redirect=/${slug}`)
+      router.push(lienConnexionArtiste(slug, surDomaine))
       return
     }
 

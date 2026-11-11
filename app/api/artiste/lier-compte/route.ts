@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { lierCompteClient } from '@/lib/lier-compte-client'
 import { NextResponse } from 'next/server'
+import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
@@ -45,7 +46,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
   }
 
-  await lierCompteClient(finalUserId, finalEmail, finalNom, finalPrenom, newsletter_consent, slug)
+  // Sur le domaine d'une boutique, c'est elle, quoi qu'envoie la page.
+  const site = await siteDeLaRequete(request)
+  const slugFinal = site.surDomaine ? site.slugDomaine : slug
+
+  await lierCompteClient(finalUserId, finalEmail, finalNom, finalPrenom, newsletter_consent, slugFinal)
 
   return NextResponse.json({ ok: true })
 }

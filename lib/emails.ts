@@ -1286,6 +1286,81 @@ export async function confirmationCompteArtiste({
   })
 }
 
+// Rang 9c, lot 3 : « confirme ton compte » et « mot de passe oublié » des
+// clients artistes, envoyés par Sonoo (plus par Supabase) pour que le lien
+// mène au site où se trouve le client (domaine de la boutique ou sonoo.app).
+// Au nom de la boutique de départ (décision de Jake 2026-11-11), au nom de
+// Sonoo sans boutique. Toujours enregistrés SANS boutique et lien masqué :
+// le beatmaker ne doit jamais pouvoir lire un lien qui connecte son client.
+export type EmailCompteArtiste = 'confirmation' | 'mot_de_passe'
+
+export const EVENEMENT_EMAIL_COMPTE_ARTISTE: Record<EmailCompteArtiste, string> = {
+  confirmation: 'plateforme_compte_artiste_confirmation',
+  mot_de_passe: 'plateforme_compte_artiste_mot_de_passe',
+}
+
+export async function envoyerEmailCompteArtiste({
+  type,
+  to,
+  beatmakerId,
+  lien,
+}: {
+  type: EmailCompteArtiste
+  to: string
+  beatmakerId: string | null
+  lien: string
+}) {
+  let branding: BrandingTransactionnel = BRANDING_PLATEFORME
+  let from: string | undefined
+  if (beatmakerId) {
+    const { data } = await createAdminClient().from('beatmakers').select(SELECT_BRANDING).eq('id', beatmakerId).maybeSingle()
+    if (data) {
+      branding = data as BrandingTransactionnel
+      from = expediteurBoutique(branding)
+    }
+  }
+  const surBoutique = branding !== BRANDING_PLATEFORME
+
+  const contenu = type === 'confirmation'
+    ? {
+        sujet: surBoutique ? `Confirme ton compte sur ${branding.nom_artiste}` : `Confirme ton compte ${NOM_PLATEFORME}`,
+        titre: 'Confirme ton compte',
+        intro: `Il ne reste qu'une étape : confirme ton adresse email pour activer ton compte et retrouver tes achats, favoris et abonnements${surBoutique ? ` sur ${branding.nom_artiste}` : ''}.`,
+        corps: `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">
+      Ceci est un compte ${NOM_PLATEFORME} artiste : il te permettra de te connecter sur toutes les boutiques ${NOM_PLATEFORME}. Si tu n'es pas à l'origine de cette inscription, ignore cet email.
+    </p>`,
+        bouton: 'Confirmer mon compte',
+      }
+    : {
+        sujet: 'Choisis un nouveau mot de passe',
+        titre: 'Mot de passe oublié ?',
+        intro: `Tu as demandé à changer le mot de passe de ton compte ${NOM_PLATEFORME} artiste. Clique ci-dessous pour en choisir un nouveau. Ce lien ne fonctionne qu'une seule fois.`,
+        corps: `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;border-top:1px solid #f3f4f6;padding-top:16px;">
+      Si tu n'as rien demandé, ignore cet email : ton mot de passe reste inchangé.
+    </p>`,
+        bouton: 'Choisir un nouveau mot de passe',
+      }
+
+  const rendre = (lienBouton: string) => rendreEmailTransactionnel({
+    branding,
+    titre: contenu.titre,
+    intro: contenu.intro,
+    corpsHtml: contenu.corps,
+    cta: { texte: contenu.bouton, lien: lienBouton },
+  })
+
+  await envoyerEmailUnique({
+    beatmakerId: null,
+    from,
+    type: 'transactionnel',
+    evenement: EVENEMENT_EMAIL_COMPTE_ARTISTE[type],
+    to,
+    subject: contenu.sujet,
+    html: rendre(lien),
+    htmlJournal: rendre('#lien-masque'),
+  })
+}
+
 export async function telechargementGratuit({
   to,
   beatmakerId,

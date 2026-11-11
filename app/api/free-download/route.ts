@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
+import { lienBoutique } from '@/lib/domaine-boutique'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { telechargementGratuit } from '@/lib/emails'
@@ -68,7 +70,8 @@ export async function POST(req: Request) {
       beatId, beatmakerId, email: emailNorm,
       prenom: prenom || null, nom: nom || null, nomArtiste: nomArtiste || null, pays: pays || null,
     })
-    const lien = `${new URL(req.url).origin}/${slug}/telechargement-gratuit?t=${encodeURIComponent(jeton)}`
+    const site = await siteDeLaRequete(req)
+    const lien = `${site.origine}${lienBoutique(slug, `/telechargement-gratuit?t=${encodeURIComponent(jeton)}`, site.surDomaine)}`
 
     const envoye = await telechargementGratuit({
       to: emailNorm, beatmakerId, titreBeat: beat.titre, downloadUrl: lien, lienDeConfirmation: true,

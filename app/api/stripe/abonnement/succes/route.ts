@@ -2,6 +2,8 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { lierCompteClient } from '@/lib/lier-compte-client'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
+import { lienBoutique } from '@/lib/domaine-boutique'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +17,9 @@ export const runtime = 'nodejs'
 // l'ancien session_id) ; on n'accepte en plus qu'un abonnement de moins
 // d'une heure.
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  // Sur le domaine de la boutique, retour à ses pages sans le slug (lot 3).
+  const { origine: origin, surDomaine } = await siteDeLaRequete(request)
   const subscriptionId = searchParams.get('subscription_id')
   const slug = searchParams.get('slug')
 
@@ -23,7 +27,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/`)
   }
 
-  const chemin = `/${slug}/mon-abonnement`
+  const chemin = lienBoutique(slug, '/mon-abonnement', surDomaine)
   let redirection = `${origin}${chemin}`
 
   try {

@@ -1,24 +1,16 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { cheminInterne } from '@/lib/redirection'
-
-// Boutique depuis laquelle le compte est créé (la case newsletter ne concerne qu'elle)
-const ROUTES_HORS_BOUTIQUE = new Set(['api', 'artiste', 'auth', 'confirmation-compte', 'connexion', 'dashboard', 'inscription', 'maintenance', 'mon-compte', 'mot-de-passe-oublie', 'nouveau-mot-de-passe', 'telechargement', 'verification-en-cours'])
-function slugDepuisRedirect(redirect: string): string | null {
-  const segments = redirect.split('?')[0].split('/').filter(Boolean)
-  const slug = segments[0] === 'paiement' ? segments[1] : segments[0]
-  return slug && !ROUTES_HORS_BOUTIQUE.has(slug) && slug !== 'paiement' ? slug : null
-}
+import { useSlugBoutiqueArtiste } from '../_lib/BoutiqueArtiste'
 
 function InscriptionArtisteForm() {
   const searchParams = useSearchParams()
   const redirect = cheminInterne(searchParams.get('redirect'), '/mon-compte')
-  const slugBoutique = slugDepuisRedirect(redirect)
+  const slugBoutique = useSlugBoutiqueArtiste(redirect)
 
   const [prenom, setPrenom] = useState('')
   const [nom, setNom] = useState('')
@@ -34,31 +26,20 @@ function InscriptionArtisteForm() {
     setErreur('')
     setChargement(true)
 
-    const supabase = createClient()
-    // Lien de confirmation → directement la page de départ, déjà connecté
-    const callbackNext = redirect
-    const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { prenom, nom }, emailRedirectTo },
-    })
+    // Compte créé et email de confirmation envoyé par Sonoo (lien vers le
+    // site où se trouve le client, domaine de la boutique compris).
+    const res = await fetch('/api/artiste/inscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prenom, nom, email, password, newsletter, redirect }),
+    }).catch(() => null)
+    const data = await res?.json().catch(() => null)
 
-    if (error || !data.user) {
-      setErreur(error?.message ?? 'Erreur lors de la création du compte.')
+    if (!res?.ok) {
+      setErreur(data?.erreur ?? 'Erreur lors de la création du compte.')
       setChargement(false)
       return
     }
-
-    const slug = slugBoutique
-    await fetch('/api/artiste/lier-compte', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nom, prenom, newsletter_consent: slug ? newsletter : undefined, slug,
-        // Pas de session si email non confirmé — on passe userId+email pour que le serveur vérifie
-        ...(!data.session ? { userId: data.user.id, userEmail: data.user.email } : {}),
-      }),
-    })
 
     setSucces(true)
     setChargement(false)

@@ -7,6 +7,8 @@ import { estRoleAdmin } from '@/lib/admin'
 import { normaliserEmail } from '@/lib/email'
 import { panierEstMultiVendeurs, repartirPanier } from '@/lib/paiement-multi-repartition'
 import { NextResponse } from 'next/server'
+import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
+import { lienPaiement } from '@/lib/domaine-boutique'
 
 export const runtime = 'nodejs'
 
@@ -105,6 +107,7 @@ export async function POST(request: Request) {
     metadata: { boutique: slug },
   })
 
+  const site = await siteDeLaRequete(request)
   let setupIntent
   try {
     setupIntent = await stripe.setupIntents.create({
@@ -115,7 +118,7 @@ export async function POST(request: Request) {
       ...(body.payment_method_id ? {
         payment_method: body.payment_method_id,
         confirm: true,
-        return_url: `${new URL(request.url).origin}/paiement/${slug}`,
+        return_url: `${site.origine}${lienPaiement(slug, site.surDomaine)}`,
       } : {}),
     })
   } catch (err) {

@@ -9,6 +9,7 @@ import { effacerPaiementEnCours, idDepuisClientSecret, noterPaiementEnCours } fr
 import { messageErreurInattendue, payerMultiAvecMoyen } from '../_lib/paiement-multi-client'
 import { useCart, type CartItem } from './CartContext'
 import PaiementEnAttente from './PaiementEnAttente'
+import { useLienBoutique } from './DomaineBoutique'
 
 // Paiement express du panier — Apple Pay sur iOS, Google Pay ailleurs, jamais
 // les deux ensemble, Link en plus sur la même ligne (voir _lib/express-payments
@@ -84,6 +85,7 @@ export default function CartExpressPay(props: Props) {
 }
 
 function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs, codePromo }: Props & { multiVendeurs: boolean }) {
+  const lien = useLienBoutique(slug)
   const stripe = useStripe()
   const elements = useElements()
   const { clear } = useCart()
@@ -246,7 +248,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
               elements,
               clientSecret: data.clientSecret,
               confirmParams: {
-                return_url: `${window.location.origin}/${slug}?express_pi={PAYMENT_INTENT_ID}`,
+                return_url: `${window.location.origin}${lien('?express_pi={PAYMENT_INTENT_ID}')}`,
               },
               redirect: 'if_required',
             })

@@ -27,6 +27,8 @@ import { effacerPaiementEnCours, idDepuisClientSecret, lirePaiementEnCours, note
 import PaiementEnAttente from '@/app/[slug]/_components/PaiementEnAttente'
 import { messageErreurInattendue, payerMultiAvecMoyen, payerMultiParCarte, type ResultatPaiementMultiClient } from '@/app/[slug]/_lib/paiement-multi-client'
 import { lireCodePromoPanier, oublierCodePromoPanier } from '@/app/[slug]/_lib/code-promo-panier'
+import { useLienBoutique, useSurDomaineBoutique } from '@/app/[slug]/_components/DomaineBoutique'
+import { lienPaiement } from '@/lib/domaine-boutique'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -113,6 +115,7 @@ type EtatAbonnementEnCours = 'verification' | 'en_cours' | 'autre_onglet' | 'non
 
 function AbonnementInner(props: Props & { abonnement: AbonnementPaiement }) {
   const { slug, abonnement } = props
+  const lien = useLienBoutique(slug)
   // Paiement d'abonnement lancé avant un rechargement : jamais de formulaire
   // pour repayer tant que son issue n'est pas connue (même principe que le
   // panier, marqueur distinct pour ne pas toucher au panier de beats).
@@ -172,7 +175,7 @@ function AbonnementInner(props: Props & { abonnement: AbonnementPaiement }) {
             <p style={{ textAlign: 'center', color: 'rgba(10,10,12,.75)', fontSize: 14 }}>
               Cette boutique n&apos;est pas encore prête à vendre — réessaie plus tard.
             </p>
-            <Link href={`/${slug}`} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
+            <Link href={lien()} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
               Retour à la boutique
             </Link>
           </div>
@@ -214,6 +217,7 @@ async function abandonnerAbonnementRefuse(slug: string, id: string) {
 }
 
 function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
+  const lien = useLienBoutique(slug)
   const { items, paiementEnCours } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
   const [contexte, setContexte] = useState<ContextePaiement | null | undefined>(undefined)
@@ -245,7 +249,7 @@ function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaAc
                 : 'Paiement reçu. Ta commande est en cours de préparation, tu vas recevoir un email de confirmation.'}
             </p>
             {paiementEnCours === 'recu' && (
-              <Link href={`/${slug}`} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
+              <Link href={lien()} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
                 Retour à la boutique
               </Link>
             )}
@@ -263,7 +267,7 @@ function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaAc
             <p style={{ textAlign: 'center', color: 'rgba(10,10,12,.6)', fontSize: 13 }}>
               Ton panier est vide.
             </p>
-            <Link href={`/${slug}`} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
+            <Link href={lien()} className="pmt-cta" style={{ textAlign: 'center', lineHeight: '54px', textDecoration: 'none' }}>
               Retour à la boutique
             </Link>
           </div>
@@ -323,6 +327,8 @@ const cardElementStyle = {
 }
 
 function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, multiVendeurs, abonnement }: PropsForm) {
+  const lien = useLienBoutique(slug)
+  const surDomaine = useSurDomaineBoutique()
   const stripe = useStripe()
   const elements = useElements()
   const { items, clear } = useCart()
@@ -614,7 +620,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
       }
       await new Promise(r => setTimeout(r, 1000))
     }
-    window.location.href = `/${slug}`
+    window.location.href = lien()
   }
 
   async function validerCommandeGratuite() {
@@ -661,7 +667,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
       await new Promise(r => setTimeout(r, 1000))
     }
     effacerPaiementEnCours(cleAbonnement(slug))
-    window.location.href = `/${slug}/mon-abonnement`
+    window.location.href = lien('/mon-abonnement')
   }
 
   async function payerAbonnementParCarte(cardNumberElement: StripeCardNumberElement) {
@@ -781,7 +787,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
     <div className="pmt-page">
       <div className="pmt-col">
         <header className="pmt-header">
-          <Link href={enAbonnement ? `/${slug}/abonnement` : `/${slug}`} className="pmt-back" aria-label={enAbonnement ? 'Retour' : 'Retour au panier'}>
+          <Link href={enAbonnement ? lien('/abonnement') : lien()} className="pmt-back" aria-label={enAbonnement ? 'Retour' : 'Retour au panier'}>
             {CHEVRON_LEFT}
             <span className="pmt-back-label">{enAbonnement ? 'Retour' : 'Retour au panier'}</span>
           </Link>
@@ -993,7 +999,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                 {!emailImpose && (
                   <div className="pmt-connexion-row">
                     <span>Déjà client ?</span>
-                    <Link href={`/artiste/connexion?redirect=${encodeURIComponent(enAbonnement ? `/paiement/${slug}?abonnement=1` : `/paiement/${slug}`)}`} className="pmt-connexion-link">Connexion</Link>
+                    <Link href={`/artiste/connexion?redirect=${encodeURIComponent(lienPaiement(slug, surDomaine, enAbonnement ? '?abonnement=1' : ''))}`} className="pmt-connexion-link">Connexion</Link>
                   </div>
                 )}
 
@@ -1104,11 +1110,11 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                 )}
                 {enAbonnement ? (
                   <p className="pmt-legal">
-                    En t&apos;abonnant, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link>. L&apos;abonnement se renouvelle chaque mois jusqu&apos;à son annulation.
+                    En t&apos;abonnant, tu acceptes les <Link href={lien('/cgv')}>CGV</Link>. L&apos;abonnement se renouvelle chaque mois jusqu&apos;à son annulation.
                   </p>
                 ) : (
                   <p className="pmt-legal">
-                    En {gratuit ? 'validant' : 'payant'}, tu acceptes les <Link href={`/${slug}/cgv`}>CGV</Link> et les conditions de licence.
+                    En {gratuit ? 'validant' : 'payant'}, tu acceptes les <Link href={lien('/cgv')}>CGV</Link> et les conditions de licence.
                   </p>
                 )}
               </div>
@@ -1120,7 +1126,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
         </div>
 
         <footer className="pmt-footer">
-          Besoin d&apos;aide ? <Link href={`/${slug}/contact`}>Me contacter</Link>
+          Besoin d&apos;aide ? <Link href={lien('/contact')}>Me contacter</Link>
         </footer>
       </div>
     </div>
@@ -1162,6 +1168,8 @@ function ExpressButtons({
   // facture payée avec ce moyen de paiement.
   abonnement: { emailImpose: string | null; onSucces: (subscriptionId: string) => Promise<void> } | null
 }) {
+  const lien = useLienBoutique(slug)
+  const surDomaine = useSurDomaineBoutique()
   const stripe = useStripe()
   const elements = useElements()
   const estHydrate = useSyncExternalStore(abonnementHydratation, navigateurHydrate, renduServeur)
@@ -1248,7 +1256,7 @@ function ExpressButtons({
               const { error } = await stripe.confirmPayment({
                 elements,
                 clientSecret: data.clientSecret,
-                confirmParams: { return_url: `${window.location.origin}/paiement/${slug}?abonnement=1` },
+                confirmParams: { return_url: `${window.location.origin}${lienPaiement(slug, surDomaine, '?abonnement=1')}` },
                 redirect: 'if_required',
               })
               if (error) {
@@ -1321,7 +1329,7 @@ function ExpressButtons({
             const { error, paymentIntent } = await stripe.confirmPayment({
               elements,
               clientSecret: data.clientSecret,
-              confirmParams: { return_url: `${window.location.origin}/${slug}?express_pi={PAYMENT_INTENT_ID}` },
+              confirmParams: { return_url: `${window.location.origin}${lien('?express_pi={PAYMENT_INTENT_ID}')}` },
               redirect: 'if_required',
             })
             if (error) {

@@ -12,7 +12,8 @@ export type TypeEmailLog = 'transactionnel' | 'automatisation'
 const FROM_DEFAUT = `${NOM_PLATEFORME} <${EMAIL_EXPEDITEUR_PLATEFORME}>`
 
 type ContexteEnvoi = {
-  beatmakerId: string
+  // null = email de Sonoo hors de toute boutique, invisible des beatmakers.
+  beatmakerId: string | null
   type: TypeEmailLog
   evenement: string
   clientId?: string | null
@@ -56,11 +57,14 @@ export async function envoyerEmailUnique(ctx: ContexteEnvoi & {
   html?: string
   text?: string
   from?: string
+  // Corps enregistré à la place du vrai (lien de connexion masqué).
+  htmlJournal?: string
 }) {
+  const corpsJournal = { html: ctx.htmlJournal ?? ctx.html, texte: ctx.text }
   // Bloqué = « fait comme si » pour l'appelant (sinon une automatisation
   // réessaierait à chaque passage du cron), mais tracé en échec dans les logs.
   if (!envoiAutorise(ctx.to)) {
-    await enregistrer(ctx, ctx.to, ctx.subject, { html: ctx.html, texte: ctx.text }, {
+    await enregistrer(ctx, ctx.to, ctx.subject, corpsJournal, {
       erreur: MOTIF_BLOCAGE_LISTE_BLANCHE,
     })
     return { data: { id: null as string | null }, error: null }
@@ -70,14 +74,14 @@ export async function envoyerEmailUnique(ctx: ContexteEnvoi & {
     const { data, error } = await getResend().emails.send(
       ctx.html ? { ...base, html: ctx.html } : { ...base, text: ctx.text ?? '' }
     )
-    await enregistrer(ctx, ctx.to, ctx.subject, { html: ctx.html, texte: ctx.text }, {
+    await enregistrer(ctx, ctx.to, ctx.subject, corpsJournal, {
       messageId: data?.id ?? null,
       erreur: error ? JSON.stringify(error) : null,
     })
     return { data, error }
   } catch (err) {
     const erreur = err instanceof Error ? err.message : String(err)
-    await enregistrer(ctx, ctx.to, ctx.subject, { html: ctx.html, texte: ctx.text }, { erreur })
+    await enregistrer(ctx, ctx.to, ctx.subject, corpsJournal, { erreur })
     return { data: null, error: err }
   }
 }

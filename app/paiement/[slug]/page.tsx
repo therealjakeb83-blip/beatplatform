@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
 import PaiementClient from './_components/PaiementClient'
+import { DomaineBoutiqueProvider } from '@/app/[slug]/_components/DomaineBoutique'
+import { surDomaineBoutique } from '@/app/[slug]/_lib/lien-boutique-serveur'
 import './paiement.css'
 
 // Page hors de l'arborescence app/[slug]/** volontairement (voir
@@ -86,6 +88,7 @@ export default async function PaiementPage({
   }))
 
   return (
+    <DomaineBoutiqueProvider surDomaine={await surDomaineBoutique()}>
     <div className={poppins.variable}>
       <PaiementClient
         slug={slug}
@@ -99,5 +102,6 @@ export default async function PaiementPage({
         abonnement={abonnement}
       />
     </div>
+    </DomaineBoutiqueProvider>
   )
 }

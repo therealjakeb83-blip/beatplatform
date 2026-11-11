@@ -6,7 +6,8 @@ import Link from 'next/link'
 import CartBadge from './CartBadge'
 import { peutAfficherCtaAbonnement } from '../_lib/abonnement'
 import { estMarqueAffichageValide, estStyleNomMarqueValide, type MarqueAffichage, type StyleNomMarque } from '../_lib/marque'
-import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
+import { useLienBoutique, useSurDomaineBoutique } from '@/app/[slug]/_components/DomaineBoutique'
+import { lienConnexionArtiste } from '@/lib/domaine-boutique'
 
 export default function BoutiqueHeader({
   slug,
@@ -26,6 +27,7 @@ export default function BoutiqueHeader({
   clientUser: { prenom: string; nom: string } | null
 }) {
   const lien = useLienBoutique(slug)
+  const surDomaine = useSurDomaineBoutique()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [recherche, setRecherche] = useState('')
@@ -103,7 +105,7 @@ export default function BoutiqueHeader({
           <div className="shop-header-icons">
             <CartBadge />
             <Link
-              href={clientUser ? lien(`/mon-compte`) : `/artiste/connexion?redirect=/${slug}`}
+              href={clientUser ? lien(`/mon-compte`) : lienConnexionArtiste(slug, surDomaine)}
               className="shop-icon-btn"
               aria-label="Compte"
             >

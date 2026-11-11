@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import SAbonnerButton from './SAbonnerButton'
 import { detailTva } from '@/lib/prix-affiche'
-import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import { lienBoutiqueServeur, surDomaineBoutique } from '@/app/[slug]/_lib/lien-boutique-serveur'
 
 export default async function AbonnementPage({
   params,
@@ -133,7 +133,7 @@ export default async function AbonnementPage({
                 </li>
               </ul>
 
-              <SAbonnerButton slug={slug} prixAffiche={prixAffiche} />
+              <SAbonnerButton slug={slug} prixAffiche={prixAffiche} surDomaine={await surDomaineBoutique()} />
 
               <p className="text-xs text-gray-600 text-center mt-4">
                 Annulable à tout moment. Paiement sécurisé par Stripe.

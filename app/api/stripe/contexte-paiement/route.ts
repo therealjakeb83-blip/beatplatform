@@ -1,50 +1,17 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { stripe } from '@/lib/stripe'
 import { NextResponse } from 'next/server'
+import { assurerDomainePaiement } from '@/lib/stripe-domaines-paiement'
+import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
 
-// Évite un aller-retour Stripe à chaque checkout sur une même instance
-// serveur. La vérification reste idempotente entre instances/serverless.
-const domainesAssures = new Set<string>()
 const configurationsGooglePayAssurees = new Set<string>()
 
-function hostnamePaiement(request: Request): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  return new URL(appUrl || request.url).hostname.toLowerCase()
-}
-
-async function assurerDomainePaiement(hostname: string, stripeAccountId?: string): Promise<void> {
-  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') return
-
-  const cacheKey = `${stripeAccountId ?? 'plateforme'}:${hostname}`
-  if (domainesAssures.has(cacheKey)) return
-
-  const options = stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
-  const domaines = await stripe.paymentMethodDomains.list(
-    { domain_name: hostname, limit: 1 },
-    options,
-  )
-
-  let domaine = domaines.data[0]
-  if (!domaine) {
-    domaine = await stripe.paymentMethodDomains.create(
-      { domain_name: hostname, enabled: true },
-      options,
-    )
-  } else if (!domaine.enabled) {
-    domaine = await stripe.paymentMethodDomains.update(
-      domaine.id,
-      { enabled: true },
-      options,
-    )
-  }
-
-  // Un domaine déjà créé avant l'activation complète d'un wallet peut rester
-  // inactif. Stripe recommande alors de relancer sa validation.
-  if (domaine.google_pay.status !== 'active') {
-    domaine = await stripe.paymentMethodDomains.validate(domaine.id, {}, options)
-  }
-
-  if (domaine.google_pay.status === 'active') domainesAssures.add(cacheKey)
+// Le site où se trouve le client : sonoo.app, ou le domaine de CETTE boutique
+// (jamais un domaine qui ne lui appartient pas).
+async function hostnamePaiement(request: Request, slug: string): Promise<string | null> {
+  const site = await siteDeLaRequete(request)
+  if (!site.surDomaine) return new URL(process.env.NEXT_PUBLIC_APP_URL || request.url).hostname.toLowerCase()
+  return site.slugDomaine === slug ? new URL(site.origine).hostname : null
 }
 
 async function assurerGooglePay(stripeAccountId?: string): Promise<void> {
@@ -128,7 +95,8 @@ export async function POST(request: Request) {
   // Ne jamais rendre le checkout entier indisponible si Stripe refuse une
   // opération de configuration : la carte classique doit rester utilisable.
   await Promise.all([
-    assurerDomainePaiement(hostnamePaiement(request), stripeAccountId)
+    hostnamePaiement(request, slug)
+      .then(hostname => (hostname ? assurerDomainePaiement(hostname, stripeAccountId) : undefined))
       .catch(error => console.error('[contexte-paiement] Domaine wallets non assuré:', error)),
     assurerGooglePay(stripeAccountId)
       .catch(error => console.error('[contexte-paiement] Google Pay non assuré:', error)),

@@ -8,7 +8,8 @@ import PaiementEnAttente from './PaiementEnAttente'
 import { computeItemsPricing, computePromoBanner, computeTotal, formatPrix, hasFreeItem, type ReductionLotRule } from '../_lib/reductions-lot'
 import type { TvaPanier } from '@/lib/tva-panier'
 import { effacerPaiementEnCours } from '../_lib/paiement-en-cours'
-import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
+import { useLienBoutique, useSurDomaineBoutique } from '@/app/[slug]/_components/DomaineBoutique'
+import { lienPaiement } from '@/lib/domaine-boutique'
 
 const TRASH_ICON = (
   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,6 +43,7 @@ export default function CartDrawer({
   clientEmail?: string | null
 }) {
   const lien = useLienBoutique(slug)
+  const surDomaine = useSurDomaineBoutique()
   const { items, isOpen, close, removeItem, paiementEnCours } = useCart()
 
   const [codePromoOpen, setCodePromoOpen] = useState(false)
@@ -131,7 +133,7 @@ export default function CartDrawer({
   // elle-même.
   function passerCommande() {
     close()
-    window.location.href = `/paiement/${slug}`
+    window.location.href = lienPaiement(slug, surDomaine)
   }
 
   // Apple Pay/Google Pay (pas de redirection externe) : le webhook crée la
