@@ -175,6 +175,35 @@
 >
 > **Lot 4 ✅ CLOS le 2026-11-11 (T0-T22).** Liens des emails, campagnes et automatisations vers le domaine actif ; suivi de clic limité à sonoo.app + domaine de la boutique ; passage inverse `sonoo.app/mon-compte` → domaine connecté ; « Continuer avec Google » (détour sonoo.app, domaine revérifié) ; adresse canonique, `robots.txt`, plans de site façon Shopify, indexation fermée par `INDEXATION_OUVERTE` (à mettre à `true` à l'étape 17). Corrigé en route : email d'abonnement absent des Logs emails depuis octobre (fiche client fusionnée pendant l'envoi, `lib/email-logger.ts`) ; nom Google qui remplaçait le prénom/nom déjà sur la fiche client (vu en T17, commit `1d1bc16` : Google ne remplit plus qu'un champ vide). Google Cloud : projet `sonoo-514415` en mode Test (testeurs `jake@sonoo.app`, `contact@jakebmusic.com`) ; projet en double `vivid-ocean-514415-g1` à supprimer un jour ; validation de l'écran Google + Custom Domain Supabase à l'étape 17. Comptes de test à nettoyer à l'étape 17 : `jake@sonoo.app`, `contact@jakebmusic.com`, `nicojacob83+lot4-t1/t2/t4/t4b@`. Reprise lot 5 : `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT5_2026-11-11.md`.
 >
+> **Lot 5 (fin de parcours) — plan et checklist validés par Jake le 2026-11-11.** Décisions du feu vert (à ne pas rouvrir) : (1A) carte refusée = boutique cachée (message), mais le compte à rebours de 30 jours ne démarre qu'à l'arrêt DÉFINITIF de l'abonnement (jamais pendant que Stripe réessaie) ; (2A) suspension par l'admin = message, aucun compte à rebours, domaine gardé ; (3A) domaine en « Problème » 30 jours sans interruption (expiré, mal réglé) = débranché automatiquement + email, comme un domaine jamais activé ; (4) **preuve de propriété** façon Shopify : un domaine qui a déjà marché pour une AUTRE boutique ne peut être repris qu'avec une ligne TXT `_sonoo` propre à la nouvelle boutique (sinon un autre beatmaker pourrait récupérer un domaine libéré dont les lignes pointent encore vers Sonoo) ; (5) `sonoo.app/slug` d'une boutique indisponible renvoie vers son domaine, qui affiche le message. Comparé à Shopify : même message, même remise en route au réabonnement, même preuve TXT ; Shopify ne libère jamais un domaine tout seul (ses marchands s'en plaignent), Sonoo le libère au bout de 30 jours. Pas de formule « en pause » (sans intérêt pour Sonoo, Jake).
+>
+> Plan : (1) une seule règle « boutique visible » (`lib/boutique-visible.ts` : compte non suspendu + abonnement actif/en essai, admin/exemptés toujours visibles) ; (2) sur un domaine, page « Cette boutique est temporairement indisponible » renvoyée par `proxy.ts` (code 503, `noindex`) : abonnement arrêté, impayé, suspendue, domaine en attente / problème / sans boutique ; téléchargements des achats passés et désinscription continuent de marcher, la sonde aussi (le domaine reste Actif) ; (3) aucun paiement possible sur une boutique indisponible (trou trouvé : les routes de paiement ne vérifiaient pas l'abonnement plateforme) ; (4) compte à rebours = date d'arrêt déjà en base (`date_annulation`, sinon `date_fin`) + 30 jours ; réabonnement = retour automatique ; (5) libération par la tâche des domaines (toutes les 10 min) avec revérification juste avant, retrait Vercel + base + email au motif adapté ; (6) dashboard : date limite + « Me réabonner » (page Domaine + accueil) ; (7) email de fin d'abonnement : paragraphe domaine + date limite ; (8) historique des domaines ayant marché + preuve TXT. SQL : `supabase/domaines_boutique_lot5.sql`.
+>
+> **Checklist du lot 5** — ordre : cas limites sur `test.jakebmusic.com`, puis domaine entier à bas prix à la place sur jakeb-test, puis nettoyage
+> - [ ] T0 — SQL vérifié en base ; sonoo.app et `test.jakebmusic.com` inchangés (boutique, redirection, achat test) (Jake + Claude)
+> - [ ] T1 — Boutique sans abonnement (domaine déplacé par SQL sur la copie jakeb-test10) : toutes les pages et `/paiement` affichent le message, code 503, ni 404 ni redirection (Claude)
+> - [ ] T2 — Pendant ce temps : téléchargement d'un achat passé et désinscription marchent, le domaine reste Actif (Claude)
+> - [ ] T3 — `sonoo.app/jakeb-test10` renvoie vers le domaine, qui affiche le message (Claude)
+> - [ ] T4 — Impayé : même message, aucun compte à rebours (Claude, SQL)
+> - [ ] T5 — Suspension admin : même message sur toutes les pages du domaine, aucun compte à rebours (Claude, SQL)
+> - [ ] T6 — Domaine en attente, en problème ou sans boutique : même message au lieu de « Aucune boutique » (Claude)
+> - [ ] T7 — Aucun paiement possible sur une boutique indisponible, ni page ni API (licences, collab, gratuit, abonnement) (Claude)
+> - [ ] T8 — Dashboard sans abonnement : date limite et « Me réabonner » (page Domaine + accueil), « Retirer » possible (Jake)
+> - [ ] T9 — Email de fin d'abonnement : paragraphe domaine + date limite correcte (Claude, rendu par script ; envoi réel vers une adresse de Jake si possible)
+> - [ ] T10 — Réabonnement avant 30 jours : la boutique revient seule sur le domaine, la date limite disparaît (Claude, SQL)
+> - [ ] T11 — Après 30 jours : domaine retiré chez Vercel et en base, email « libéré » au bon motif, boutique sur sonoo.app inchangée (Claude, date simulée)
+> - [ ] T12 — Garde-fous de la libération : jamais si l'abonnement est revenu, compte admin/exempté, boutique suspendue, impayé (Claude, script sur le vrai code)
+> - [ ] T13 — Panne de plus de 30 jours sans interruption → débranché + email ; panne coupée par une réussite → compteur remis à zéro (Claude, script)
+> - [ ] T14 — Preuve de propriété : un domaine qui a marché pour une autre boutique reste En attente sans la ligne TXT `_sonoo`, avec la bonne ligne et la bonne explication (Claude)
+> - [ ] T15 — Avec la ligne TXT : actif ; la même boutique qui rebranche son propre ancien domaine n'a rien à prouver (Claude + Jake)
+> - [ ] T16 — Domaine entier à bas prix branché sur jakeb-test : lignes A + `www`, Actif, `www` renvoie vers le domaine (Jake + Claude)
+> - [ ] T17 — Sur le domaine entier : connexion, achat test, téléchargement, plan de site, adresse canonique (Claude)
+> - [ ] T18 — Domaine entier mal réglé (`www` absent ou mauvaise ligne A) : statut et explication corrects (Jake + Claude)
+> - [ ] T19 — Domaine retiré depuis le dashboard : message tant que Vercel le sert encore, puis `sonoo.app/jakeb-test` revient (Claude)
+> - [ ] T20 — Fin de chantier : domaine à bas prix abandonné, ligne CNAME `test` retirée chez GoDaddy (renommée si la suppression bloque), relevé DNS avant/après (Jake + Claude)
+> - [ ] T21 — Message et domaine entier sur iPhone (Jake)
+> - [ ] T22 — WordPress, DNS de jakebmusic.com et mentions Sonoo identiques à avant le lot (Claude)
+>
 > **Cadrage initial du 2026-10-17, conservé pour mémoire :**
 
 > **Demande de Jake (2026-10-17)** : qu'un beatmaker puisse afficher sa boutique sur son propre nom de domaine, par exemple `jakebmusic.com` au lieu de `sonoo.app/jakeb-test`. Placé en priorité, avant la refonte boutique (rang 10). **Rien de codé.** La prochaine session commence par un **calibrage précis des attentes** (grill-me), puis l'exposé des difficultés, enjeux et conséquences, AVANT tout plan de lot.
