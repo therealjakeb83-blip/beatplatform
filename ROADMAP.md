@@ -108,6 +108,32 @@
 >
 > **Lot 2 ✅ CLOS le 2026-11-11 (T0-T22).** Corrigés en route : vérification du retrait chez Vercel (`9be45c2`), espace manquant, flèches émoji iOS, texte « plus visibles » pour un domaine qui marchait. **Appris** : Vercel met 10-20 min à cesser de servir un domaine retiré alors que son API confirme tout de suite ; GoDaddy refuse la suppression d'une ligne DNS (renommer marche). Reprise lot 3 : `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT3_2026-11-11.md`.
 >
+>
+> **Lot 3 (compte et paiement sur le domaine) — plan et checklist validés par Jake le 2026-11-11.** Décisions du feu vert : (1A) les emails « confirme ton compte » et « mot de passe oublié » des clients artistes sont envoyés par Sonoo au nom de la boutique de départ (`slug@mail.sonoo.app`, branding de la boutique) ; sans boutique de départ, au nom de Sonoo (`noreply@sonoo.app`) ; (2A) le passage inverse sonoo.app → domaine (client déjà connecté) est reporté au lot 4, avec Google. Aucun réglage Supabase / Stripe / Vercel attendu. Email déjà utilisé à l'inscription = « Un compte existe déjà, connecte-toi » (comme chez les beatmakers).
+>
+> Plan : (1) session rafraîchie par `proxy.ts` aussi sur les domaines ; (2) pages `/artiste/*` qui reconnaissent la boutique par l'adresse ; (3) inscription + mot de passe oublié par Sonoo (`generateLink`, lien vers le site où se trouve le client, 1 email du même type par minute et par adresse au plus) ; (4) paiement sur `domaine/paiement` (anciennes adresses `/paiement/slug` renvoyées), tous les retours Stripe vers le domaine ; (5) Apple Pay / Google Pay : domaine déclaré sur le compte Stripe du vendeur (ou de Sonoo pour un panier collab), à l'activation + rattrapage au paiement, uniquement pour le domaine de la boutique ; (6) téléchargement sur le domaine limité aux commandes de la boutique ; (7) laissez-passer à usage unique vers `sonoo.app/mon-compte` ; (8) liens restants (déconnexion, favori, en-tête, S'abonner, panier, téléchargement gratuit).
+>
+> **Checklist du lot 3**
+> - [ ] T0 — sonoo.app inchangé : boutique, achat test, connexion artiste (Claude)
+> - [ ] T1 — Connexion sur le domaine : retour à la page de départ, sans `/jakeb-test` dans l'adresse (Claude)
+> - [ ] T2 — Session conservée après rechargement et navigation, rafraîchie par le proxy (Claude)
+> - [ ] T3 — Inscription sur le domaine : email Sonoo reçu, lien vers le domaine, compte activé et connecté, newsletter pour jakeb-test seulement (Claude)
+> - [ ] T4 — Email déjà utilisé : message clair, aucun email envoyé (Claude)
+> - [ ] T5 — Mot de passe oublié sur le domaine : lien vers le domaine, nouveau mot de passe OK, retour à la page de départ (Claude)
+> - [ ] T6 — Garde-fou : 2 demandes en moins d'une minute = 1 email ; adresse inconnue = même écran, aucun email (Claude)
+> - [ ] T7 — Inscription et mot de passe depuis sonoo.app : même système, liens vers sonoo.app (Claude)
+> - [ ] T8 — Domaine déclaré chez Stripe (vendeur + Sonoo), Apple Pay et Google Pay validés (Claude, script)
+> - [ ] T9 — Achat carte sur le domaine avec 3D Secure, arrivée sur le téléchargement du domaine (Claude)
+> - [ ] T10 — Achat collab sur le domaine, retour correct, factures (Claude)
+> - [ ] T11 — Commande gratuite (code 100 %) sur le domaine (Claude)
+> - [ ] T12 — Abonnement sur le domaine, retour vers la page d'abonnement du domaine, portail de carte avec retour au domaine (Claude)
+> - [ ] T13 — Apple Pay sur iPhone sur le domaine (Jake)
+> - [ ] T14 — Commande d'une autre boutique ouverte sur le domaine → renvoyée vers sonoo.app (Claude)
+> - [ ] T15 — Laissez-passer : clic → `sonoo.app/mon-compte` connecté ; lien réutilisé refusé ; sans connexion refusé (Claude)
+> - [ ] T16 — Déconnexion, favori, S'abonner, lien du téléchargement gratuit restent sur le domaine (Claude)
+> - [ ] T17 — Aucun lien de la boutique, du paiement ou du compte ne contient `/jakeb-test` sur le domaine (Claude, relevé automatique)
+> - [ ] T18 — Les 2 nouveaux emails corrects sur iPhone et ordinateur (Jake)
+> - [ ] T19 — WordPress, DNS de jakebmusic.com et mentions Sonoo identiques à avant le lot (Claude)
 > Chaque lot suivant aura sa checklist présentée avant d'être codé.
 >
 > **Cadrage initial du 2026-10-17, conservé pour mémoire :**
