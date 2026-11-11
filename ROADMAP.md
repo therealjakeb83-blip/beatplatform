@@ -142,6 +142,35 @@
 > **Lot 3 ✅ CLOS le 2026-11-11 (T0-T19).** Corrigé en route : faille du lien de connexion lisible par le beatmaker dans ses Logs emails (enregistrés sans boutique, code masqué), session non rafraîchie sur un domaine. Apple Pay : la carte Revolut de Jake est refusée partout (en amont de Sonoo), une autre carte passe sur le domaine et sur sonoo.app. Reprise lot 4 : `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT4_2026-11-11.md`.
 > Chaque lot suivant aura sa checklist présentée avant d'être codé.
 >
+> **Lot 4 (liens et Google) — plan et checklist présentés à Jake le 2026-11-11.** Décisions : email de bienvenue à la création d'un compte via Google (pas aux connexions suivantes) ; **indexation Google fermée jusqu'au lancement** (interrupteur à couper à l'étape 17, vraies règles codées et testées) ; un plan de site par boutique façon Shopify (domaine actif → `domaine/sitemap.xml` ; sans domaine → `sonoo.app/slug/sitemap.xml` ; `sonoo.app/sitemap.xml` = sommaire des boutiques sans domaine) ; **référencée seulement si au moins 1 beat en vente** (sinon `noindex` et hors plan de site, boutique toujours ouverte) ; aucun blocage beatmaker/client dans ce lot (point (j) de l'étape 17). Réglages de Jake : Google Cloud (projet, écran de consentement en mode Test, identifiant Web), Supabase (fournisseur Google + adresse de retour autorisée), 1 SQL de contrôle (compte Gmail non beatmaker pour les tests). Vercel : rien.
+>
+> Plan : (1) adresse officielle d'une boutique (domaine actif sinon `sonoo.app/slug`) dans tous les emails aux clients, `{{url_boutique}}`, blocs des campagnes, désinscription et suivi de clic (destination acceptée : sonoo.app ou le domaine de CETTE boutique) ; (2) passage inverse `sonoo.app/mon-compte` → domaine, connecté, au clic, à usage unique ; (3) « Continuer avec Google » (détour par sonoo.app, domaine de retour revérifié Actif, compte relié à la boutique de départ seulement) ; (4) adresse canonique (`proxy.ts` transmet le chemin public), `robots.txt` et plans de site (`/robots.txt` et `/sitemap.xml` à laisser passer sur un domaine).
+>
+> **Checklist du lot 4**
+> - [ ] T0 — sonoo.app inchangé : boutique sans domaine, achat test, connexion par mot de passe (Claude)
+> - [ ] T1 — Achat sur le domaine : le bouton de l'email de confirmation mène à `test.jakebmusic.com/telechargement/…` (Claude)
+> - [ ] T2 — Achat de jakeb-test passé sur sonoo.app : l'email mène au domaine (Claude)
+> - [ ] T3 — Boutique sans domaine actif : liens restés `sonoo.app/slug` (Claude, script sur le vrai code)
+> - [ ] T4 — Email de confirmation d'abonnement → `domaine/mon-compte` (Claude)
+> - [ ] T5 — « Renvoyer » le lien de téléchargement depuis le dashboard → domaine (Claude)
+> - [ ] T6 — Relevé : aucun email client d'une boutique à domaine ne contient de lien `sonoo.app` (hors mentions Sonoo et images) (Claude)
+> - [ ] T7 — Campagne test (liste blanche) : blocs beats, « Voir la boutique », `{{url_boutique}}`, désinscription, suivi de clic sur le domaine ; clic compté, bonne page (Claude + Jake)
+> - [ ] T8 — Le suivi de clic refuse une destination étrangère, y compris le domaine d'une autre boutique (Claude)
+> - [ ] T9 — Désinscription depuis le domaine : « Désinscrit » chez jakeb-test seulement (Claude)
+> - [ ] T10 — Automatisation : aperçu et envoi test, liens vers le domaine (Claude)
+> - [ ] T11 — Passage inverse : `sonoo.app/mon-compte` → « Gérer » → `test.jakebmusic.com/mon-abonnement` connecté ; lien réutilisé refusé (Claude)
+> - [ ] T12 — Passage vers une boutique sans domaine : reste sur sonoo.app, aucun laissez-passer (Claude)
+> - [ ] T13 — Passage sans être connecté : page normale de la boutique, aucun laissez-passer (Claude)
+> - [ ] T14 — Réglages Google et Supabase faits, bouton visible sur connexion et inscription (Jake + Claude)
+> - [ ] T15 — Google sur sonoo.app, nouveau compte : connecté, fiche client + lead de la boutique de départ seulement, email de bienvenue, retour à la page de départ (Jake + Claude)
+> - [ ] T16 — Google sur le domaine : détour par sonoo.app, retour sur la page de départ de `test.jakebmusic.com`, connecté (Jake)
+> - [ ] T17 — Google avec un email qui a déjà un compte mot de passe : même compte, achats conservés, pas d'email de bienvenue (Jake)
+> - [ ] T18 — Retour Google avec un domaine inventé ou non actif : refusé, aucun laissez-passer (Claude)
+> - [ ] T19 — Google sur iPhone (Safari) sur le domaine (Jake)
+> - [ ] T20 — Adresse canonique correcte sur le domaine et sur une boutique sans domaine (Claude)
+> - [ ] T21 — `robots.txt` et plans de site corrects sur le domaine et sur sonoo.app ; indexation fermée tant que l'interrupteur est allumé ; boutique sans beat en vente = `noindex` et hors plan ; aucun beat hors vente listé (Claude)
+> - [ ] T22 — WordPress, DNS de jakebmusic.com et mentions Sonoo identiques à avant le lot (Claude)
+>
 > **Cadrage initial du 2026-10-17, conservé pour mémoire :**
 
 > **Demande de Jake (2026-10-17)** : qu'un beatmaker puisse afficher sa boutique sur son propre nom de domaine, par exemple `jakebmusic.com` au lieu de `sonoo.app/jakeb-test`. Placé en priorité, avant la refonte boutique (rang 10). **Rien de codé.** La prochaine session commence par un **calibrage précis des attentes** (grill-me), puis l'exposé des difficultés, enjeux et conséquences, AVANT tout plan de lot.
