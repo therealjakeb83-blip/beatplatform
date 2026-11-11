@@ -111,6 +111,19 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
   }
   const [loadError, setLoadError] = useState(false)
   const enCoursRef = useRef(false)
+  // DIAGNOSTIC TEMPORAIRE (Apple Pay sur domaine, 2026-11-11) : ?diag=1 une
+  // fois dans l'adresse, puis chaque étape s'affiche sous les boutons. À retirer.
+  const [diag, setDiag] = useState<string[] | null>(null)
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('diag') === '1') sessionStorage.setItem('diag_express', '1')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (sessionStorage.getItem('diag_express') === '1') setDiag([])
+    } catch {}
+  }, [])
+  const noter = useCallback((etape: string) => {
+    setDiag(d => (d ? [...d, `${new Date().toLocaleTimeString('fr-FR')} ${etape}`].slice(-14) : d))
+  }, [])
 
   // Montant affiché aux wallets = le vrai montant qui sera facturé (TVA,
   // remise membre, réduction par lot déjà appliquées côté serveur) — jamais
@@ -160,9 +173,10 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
   }, [status, onStatusChange])
 
   const handleReady = useCallback((event: StripeExpressCheckoutElementReadyEvent) => {
+    noter(`pret ${JSON.stringify(event.availablePaymentMethods)}`)
     setMethodesDisponibles(Boolean(event.availablePaymentMethods))
     setPret(true)
-  }, [])
+  }, [noter])
 
   const rienADetecter = loadError || (expiree && !pret) || (pret && !methodesDisponibles)
   if (estIOS === null || rienADetecter) return null
@@ -181,12 +195,15 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
           billingAddressRequired: true,
         }}
         onReady={handleReady}
-        onLoadError={() => setLoadError(true)}
+        onLoadError={(e) => { noter(`erreur chargement ${JSON.stringify(e?.error ?? e).slice(0, 200)}`); setLoadError(true) }}
+        onCancel={() => noter('fenetre fermee (annulation)')}
         onClick={(event: StripeExpressCheckoutElementClickEvent) => {
+          noter(`clic ${event.expressPaymentType}`)
           if (items.length === 0) { event.reject(); return }
           event.resolve()
         }}
         onConfirm={async (event: StripeExpressCheckoutElementConfirmEvent) => {
+          noter(`confirm recu (multi=${multiVendeurs}) stripe=${Boolean(stripe)} elements=${Boolean(elements)} items=${items.length} enCours=${enCoursRef.current}`)
           if (!stripe || !elements || items.length === 0 || enCoursRef.current) return
           enCoursRef.current = true
           setConfirmErreur(null)
@@ -237,6 +254,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
               }),
             })
             const data = await res.json() as { clientSecret?: string; erreur?: string }
+            noter(`express-checkout ${res.status} ${data.erreur ?? (data.clientSecret ? 'secret ok' : 'sans secret')}`)
             if (!res.ok || !data.clientSecret) {
               echouer(data.erreur ?? 'Erreur serveur, réessaie')
               event.paymentFailed({ reason: 'fail', message: data.erreur })
@@ -253,6 +271,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
               redirect: 'if_required',
             })
 
+            noter(`confirmPayment ${confirmError ? `ERREUR ${confirmError.type}/${confirmError.code ?? '-'}/${confirmError.decline_code ?? '-'} ${confirmError.message}` : `ok ${paymentIntent?.status}`}`)
             if (confirmError) {
               effacerPaiementEnCours(slug)
               echouer(confirmError.message ?? 'Paiement refusé')
@@ -270,6 +289,7 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
               onSuccess({ paymentIntentId: paymentIntent.id })
             }
           } catch (err) {
+            noter(`exception ${err instanceof Error ? err.message : String(err)}`)
             echouer(messageErreurInattendue(err))
             event.paymentFailed({ reason: 'fail' })
           } finally {
@@ -280,6 +300,11 @@ function ExpressButtons({ slug, items, onStatusChange, onSuccess, multiVendeurs,
       {confirmErreur && <div className="shop-cart-express-error">{confirmErreur}</div>}
       {messageValidation && <div className="shop-cart-express-error" role="status" style={{ color: 'inherit' }}>{messageValidation}</div>}
       {enAttente && <PaiementEnAttente message={messageValidation} />}
+      {diag && (
+        <pre style={{ fontSize: 10, lineHeight: 1.35, whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: 8, padding: 8, background: '#111', color: '#9f9', borderRadius: 6 }}>
+          {[`DIAGNOSTIC ${typeof window !== 'undefined' ? window.location.host : ''}`, ...(diag.length ? diag : ['(rien encore)'])].join(String.fromCharCode(10))}
+        </pre>
+      )}
     </div>
   )
 }
