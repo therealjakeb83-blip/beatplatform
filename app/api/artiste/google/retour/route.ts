@@ -45,12 +45,15 @@ export async function GET(request: Request) {
 
   // Nouveau compte = pas encore de fiche client à son nom (un compte mot de passe
   // existant relié à Google en a déjà une) → email de bienvenue, une seule fois.
-  const { data: ficheExistante } = await admin.from('clients').select('id').eq('id', user.id).maybeSingle()
+  const { data: ficheExistante } = await admin.from('clients').select('id, prenom, nom').eq('id', user.id).maybeSingle()
 
   const meta = (user.user_metadata ?? {}) as { given_name?: string; family_name?: string; full_name?: string; name?: string }
   const nomComplet = (meta.full_name ?? meta.name ?? '').trim()
-  const prenom = meta.given_name ?? (nomComplet.split(' ')[0] || null)
-  const nom = meta.family_name ?? (nomComplet.split(' ').slice(1).join(' ') || null)
+  const prenomGoogle = meta.given_name ?? (nomComplet.split(' ')[0] || null)
+  const nomGoogle = meta.family_name ?? (nomComplet.split(' ').slice(1).join(' ') || null)
+  // Le nom Google ne remplace jamais celui que le client a déjà sur sa fiche.
+  const prenom = ficheExistante?.prenom?.trim() ? null : prenomGoogle
+  const nom = ficheExistante?.nom?.trim() ? null : nomGoogle
   await lierCompteClient(user.id, email, nom, prenom, undefined, slug).catch(err =>
     console.error('[artiste/google/retour] lierCompteClient:', err),
   )
