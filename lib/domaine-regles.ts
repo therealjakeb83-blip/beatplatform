@@ -105,9 +105,12 @@ export type ConstatDomaine = {
   sondeOk: boolean
 }
 
-function causeDuConstat(c: ConstatDomaine): string {
+function causeDuConstat(c: ConstatDomaine, aDejaMarche: boolean): string {
   if (!c.present) return "Ce domaine n'est plus enregistré de notre côté. Retire-le puis branche-le à nouveau."
   if (!c.verifie) return 'Ajoute la ligne TXT ci-dessous : elle prouve que ce domaine est bien à toi.'
+  if (!c.configurationOk && aDejaMarche) {
+    return "Les lignes ci-dessous ne sont plus visibles chez le site où tu as acheté ton domaine. Vérifie qu'elles n'ont pas été modifiées ou supprimées."
+  }
   if (!c.configurationOk) return "Les lignes ci-dessous ne sont pas encore visibles. Après un ajout, cela peut prendre jusqu'à 48 h."
   return 'Les lignes sont bonnes. La connexion sécurisée est en cours de création, encore quelques minutes.'
 }
@@ -122,7 +125,7 @@ export function deciderStatut(
   if (constat.present && constat.verifie && constat.configurationOk && constat.sondeOk) {
     return { statut: 'actif', echecs: 0, explication: null }
   }
-  const explication = causeDuConstat(constat)
+  const explication = causeDuConstat(constat, ancien !== 'en_attente')
   if (ancien === 'en_attente') {
     return { statut: constat.present ? 'en_attente' : 'probleme', echecs: 0, explication }
   }
