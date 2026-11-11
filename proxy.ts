@@ -64,6 +64,8 @@ async function domaineActifDuSlug(slug: string): Promise<string | null> {
 // Au moindre doute, null : la boutique s'affiche normalement sur sonoo.app.
 async function redirectionVersDomaine(request: NextRequest): Promise<NextResponse | null> {
   if (request.method !== 'GET' && request.method !== 'HEAD') return null
+  // DIAGNOSTIC TEMPORAIRE (Apple Pay, 2026-11-11) : ?diag=1 garde la boutique sur sonoo.app. À retirer.
+  if (request.nextUrl.searchParams.get('diag') === '1') return null
   const { pathname, search } = request.nextUrl
   const slug = slugDuChemin(pathname)
   if (!slug) return null
