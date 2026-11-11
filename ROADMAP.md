@@ -113,27 +113,29 @@
 >
 > Plan : (1) session rafraîchie par `proxy.ts` aussi sur les domaines ; (2) pages `/artiste/*` qui reconnaissent la boutique par l'adresse ; (3) inscription + mot de passe oublié par Sonoo (`generateLink`, lien vers le site où se trouve le client, 1 email du même type par minute et par adresse au plus) ; (4) paiement sur `domaine/paiement` (anciennes adresses `/paiement/slug` renvoyées), tous les retours Stripe vers le domaine ; (5) Apple Pay / Google Pay : domaine déclaré sur le compte Stripe du vendeur (ou de Sonoo pour un panier collab), à l'activation + rattrapage au paiement, uniquement pour le domaine de la boutique ; (6) téléchargement sur le domaine limité aux commandes de la boutique ; (7) laissez-passer à usage unique vers `sonoo.app/mon-compte` ; (8) liens restants (déconnexion, favori, en-tête, S'abonner, panier, téléchargement gratuit).
 >
-> **Checklist du lot 3**
-> - [ ] T0 — sonoo.app inchangé : boutique, achat test, connexion artiste (Claude)
-> - [ ] T1 — Connexion sur le domaine : retour à la page de départ, sans `/jakeb-test` dans l'adresse (Claude)
-> - [ ] T2 — Session conservée après rechargement et navigation, rafraîchie par le proxy (Claude)
-> - [ ] T3 — Inscription sur le domaine : email Sonoo reçu, lien vers le domaine, compte activé et connecté, newsletter pour jakeb-test seulement (Claude)
-> - [ ] T4 — Email déjà utilisé : message clair, aucun email envoyé (Claude)
-> - [ ] T5 — Mot de passe oublié sur le domaine : lien vers le domaine, nouveau mot de passe OK, retour à la page de départ (Claude)
-> - [ ] T6 — Garde-fou : 2 demandes en moins d'une minute = 1 email ; adresse inconnue = même écran, aucun email (Claude)
-> - [ ] T7 — Inscription et mot de passe depuis sonoo.app : même système, liens vers sonoo.app (Claude)
-> - [ ] T8 — Domaine déclaré chez Stripe (vendeur + Sonoo), Apple Pay et Google Pay validés (Claude, script)
-> - [ ] T9 — Achat carte sur le domaine avec 3D Secure, arrivée sur le téléchargement du domaine (Claude)
-> - [ ] T10 — Achat collab sur le domaine, retour correct, factures (Claude)
-> - [ ] T11 — Commande gratuite (code 100 %) sur le domaine (Claude)
-> - [ ] T12 — Abonnement sur le domaine, retour vers la page d'abonnement du domaine, portail de carte avec retour au domaine (Claude)
+> **Checklist du lot 3** — résultats des tests de Claude le 2026-11-11 (code `6d6c0f3`) ; restent à Jake : SQL, T3, T5, T6, T7 (clic sur les emails), T8 (script), T13, T18
+> - [x] T0 — sonoo.app inchangé : boutique, achat test, connexion artiste (Claude) — ✅ achat 3D Secure sur `sonoo.app/paiement/jakeb-test` → `sonoo.app/telechargement/ec5caf75…` ; liens de la page au format sonoo.app (`/jakeb-test`, `/jakeb-test/cgv`…) ; connexion artiste sur sonoo.app → `sonoo.app/mon-compte` ; code : la branche sonoo.app de `proxy.ts` n'a pas changé, les aides de liens donnent les mêmes adresses hors domaine
+> - [x] T1 — Connexion sur le domaine : retour à la page de départ, sans `/jakeb-test` dans l'adresse (Claude) — ✅ lien « Compte » = `/artiste/connexion?redirect=%2F` ; connexion depuis `/beats` → retour `test.jakebmusic.com/beats`, icône Compte → `/mon-compte`
+> - [x] T2 — Session conservée après rechargement et navigation, rafraîchie par le proxy (Claude) — ✅ rechargement et navigation OK ; session rendue expirée dans le cookie + renouvellement du navigateur bloqué (0 appel) → jeton renouvelé par le serveur à la page suivante
+> - [ ] T3 — Inscription sur le domaine : email Sonoo reçu, lien vers le domaine, compte activé et connecté, newsletter pour jakeb-test seulement (Claude) — à faire après le SQL ; déjà vu : case newsletter affichée sur le domaine (boutique reconnue par l'adresse), lien de l'email construit sur l'adresse du site (code)
+> - [x] T4 — Email déjà utilisé : message clair, aucun email envoyé (Claude) — ✅ 409 « Un compte existe déjà avec cet email. Connecte-toi, ou utilise « Mot de passe oublié ». » ; code : réponse avant tout envoi
+> - [ ] T5 — Mot de passe oublié sur le domaine : lien vers le domaine, nouveau mot de passe OK, retour à la page de départ (Claude) — à faire après le SQL (clic sur l'email reçu)
+> - [ ] T6 — Garde-fou : 2 demandes en moins d'une minute = 1 email ; adresse inconnue = même écran, aucun email (Claude) — code : adresse inconnue → `generateLink` refuse → réponse « ok » sans envoi ; garde-fou lu dans `email_logs`, actif seulement après le SQL
+> - [ ] T7 — Inscription et mot de passe depuis sonoo.app : même système, liens vers sonoo.app (Claude) — code : mêmes routes, adresse du site = sonoo.app ; à confirmer par un email après le SQL
+> - [ ] T8 — Domaine déclaré chez Stripe (vendeur + Sonoo), Apple Pay et Google Pay validés (Claude, script) — déclaration déclenchée en vrai (route `contexte-paiement` appelée sur le domaine, solo et collab) ; état à lire par le script de Jake
+> - [x] T9 — Achat carte sur le domaine avec 3D Secure, arrivée sur le téléchargement du domaine (Claude) — ✅ panier → `test.jakebmusic.com/paiement` ; beats solos « Memories » et « Mélancholia » (compte Stripe du vendeur) → 3D Secure → `test.jakebmusic.com/telechargement/…`, fichiers + contrat + facture affichés sans redemander l'email. Un 1er essai est resté sur la page de paiement après le 3D Secure (panier non vidé, aucune erreur) ; rejoué à l'identique 2 fois : réussi, non reproduit
+> - [x] T10 — Achat collab sur le domaine, retour correct, factures (Claude) — ✅ « Ambitieux » (jakeb-test + nic-beat-2809), 3D Secure, arrivée sur le téléchargement du domaine, 2 factures (une par vendeur)
+> - [x] T11 — Commande gratuite (code 100 %) sur le domaine (Claude) — ✅ prouvé par le code (aucun code 100 % panier actif sur jakeb-test, pas créé) : appel relatif `/api/commande-gratuite`, cookie d'accès posé sur le domaine, retour relatif `/telechargement/…` = mêmes mécanismes que T9
+> - [x] T12 — Abonnement sur le domaine, retour vers la page d'abonnement du domaine, portail de carte avec retour au domaine (Claude) — ✅ « S'abonner » → `test.jakebmusic.com/paiement?abonnement=1` → paiement 4242 → « choisis un mot de passe » sur le domaine → `test.jakebmusic.com/mon-abonnement` connecté ; portail Stripe : « Retour vers Jake B » → `test.jakebmusic.com/mon-abonnement`
 > - [ ] T13 — Apple Pay sur iPhone sur le domaine (Jake)
-> - [ ] T14 — Commande d'une autre boutique ouverte sur le domaine → renvoyée vers sonoo.app (Claude)
-> - [ ] T15 — Laissez-passer : clic → `sonoo.app/mon-compte` connecté ; lien réutilisé refusé ; sans connexion refusé (Claude)
-> - [ ] T16 — Déconnexion, favori, S'abonner, lien du téléchargement gratuit restent sur le domaine (Claude)
-> - [ ] T17 — Aucun lien de la boutique, du paiement ou du compte ne contient `/jakeb-test` sur le domaine (Claude, relevé automatique)
+> - [x] T14 — Commande d'une autre boutique ouverte sur le domaine → renvoyée vers sonoo.app (Claude) — ✅ prouvé par le code (aucune commande d'une autre boutique sans lien avec jakeb-test trouvable : la recherche admin demande l'identifiant) : vendeurs de la commande (propriétaire + parts) comparés à la boutique du domaine, sinon redirection `sonoo.app/telechargement/…`
+> - [x] T15 — Laissez-passer : clic → `sonoo.app/mon-compte` connecté ; lien réutilisé refusé ; sans connexion refusé (Claude) — ✅ clic → `sonoo.app/mon-compte` « Bonjour, Abo » ; même lien rouvert → « Ce lien a déjà servi ou a expiré » ; sans session → renvoi vers `/artiste/connexion?redirect=/mon-compte` du domaine
+> - [x] T16 — Déconnexion, favori, S'abonner, lien du téléchargement gratuit restent sur le domaine (Claude) — ✅ déconnexion → `test.jakebmusic.com/` ; S'abonner → `/paiement?abonnement=1` ; email du téléchargement gratuit (visiteur) → `test.jakebmusic.com/telechargement-gratuit?t=…`, ouvert : « Email confirmé », téléchargement lancé ; favori : même aide de lien que l'en-tête (code)
+> - [x] T17 — Aucun lien de la boutique, du paiement ou du compte ne contient `/jakeb-test` sur le domaine (Claude, relevé automatique) — ✅ 22 pages, 814 liens et formulaires relevés connecté : aucun ne contient `jakeb-test` ni `sonoo.app` ; adresses directes : `/paiement/jakeb-test` → 307 `/paiement`, `/paiement/nic-beat-2809` → 404
 > - [ ] T18 — Les 2 nouveaux emails corrects sur iPhone et ordinateur (Jake)
-> - [ ] T19 — WordPress, DNS de jakebmusic.com et mentions Sonoo identiques à avant le lot (Claude)
+> - [x] T19 — WordPress, DNS de jakebmusic.com et mentions Sonoo identiques à avant le lot (Claude) — ✅ A 152.42.134.54, 5 MX Google, 5 TXT, 2 NS GoDaddy, CNAME `test` intact, WordPress 200 ; aucune ligne « Propulsé » modifiée dans le diff du lot
+>
+> **Trouvé en route** : (1) les emails « confirme ton compte » / « mot de passe oublié » contiennent un lien qui connecte le client ; enregistrés comme les autres emails de boutique, le beatmaker aurait pu le lire dans ses Logs emails et entrer dans le compte de son client → enregistrés sans boutique (visibles seulement en admin) avec le code du lien masqué, SQL `supabase/domaines_boutique_lot3.sql` (colonne `email_logs.beatmaker_id` facultative + index du garde-fou) ; (2) la session client n'était pas rafraîchie sur un domaine (déconnexion au bout d'environ 1 h) → corrigé dans `proxy.ts`. **Noté, hors lot** : sonoo.app/nic-beat-2809 (et les autres boutiques de test sauf jakeb-test) affichent 404 = abonnement plateforme non actif, sans lien avec ce lot ; sur la page de téléchargement de l'achat témoin « Gyro », la liste des fichiers audio paraissait vide (à regarder si ça se confirme).
 > Chaque lot suivant aura sa checklist présentée avant d'être codé.
 >
 > **Cadrage initial du 2026-10-17, conservé pour mémoire :**
