@@ -6,6 +6,8 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { EMAIL_CONTACT } from '@/lib/constantes'
 import { CHEMIN_SONDE, SIGNATURE_SONDE } from '@/lib/domaine-boutique'
 import {
+  ajouterVerification,
+  causeCourte,
   construireLignesDns,
   deciderStatut,
   JOURS_AVANT_LIBERATION,
@@ -25,7 +27,7 @@ import {
 import { envoyerDomaineActif, envoyerDomaineLibere, envoyerDomaineProbleme } from '@/lib/emails'
 
 export const COLONNES_DOMAINE =
-  'id, beatmaker_id, domaine, statut, domaine_entier, lignes_dns, explication, echecs_consecutifs, derniere_verification_le, premiere_activation_le, created_at'
+  'id, beatmaker_id, domaine, statut, domaine_entier, lignes_dns, explication, echecs_consecutifs, derniere_verification_le, premiere_activation_le, premier_echec_le, dernieres_verifications, created_at'
 
 export type ResultatDomaine =
   | { ok: true; domaine: DomaineBoutique | null; verificationImpossible?: boolean }
@@ -104,7 +106,8 @@ export async function verifierDomaine(
   ligne: DomaineBoutique,
 ): Promise<{ domaine: DomaineBoutique; verificationImpossible: boolean }> {
   const admin = createAdminClient()
-  const maintenant = new Date().toISOString()
+  const instant = new Date()
+  const maintenant = instant.toISOString()
 
   let constat: ConstatDomaine = { present: false, verifie: false, configurationOk: false, sondeOk: false }
   let lignes = ligne.lignes_dns
@@ -141,12 +144,15 @@ export async function verifierDomaine(
     return { domaine: ligne, verificationImpossible: true }
   }
 
-  const decision = deciderStatut(ligne.statut, ligne.echecs_consecutifs, constat)
+  const decision = deciderStatut(ligne.statut, ligne.echecs_consecutifs, ligne.premier_echec_le, constat, instant)
+  const cause = causeCourte(constat)
   const { data } = await admin
     .from('domaines_boutique')
     .update({
       statut: decision.statut,
       echecs_consecutifs: decision.echecs,
+      premier_echec_le: decision.premierEchecLe,
+      dernieres_verifications: ajouterVerification(ligne.dernieres_verifications, { le: maintenant, ok: cause === null, cause }),
       explication: decision.explication,
       lignes_dns: lignes,
       domaine_entier: entier,
@@ -176,6 +182,8 @@ function nouvellesValeurs(domaine: string) {
     echecs_consecutifs: 0,
     derniere_verification_le: null,
     premiere_activation_le: null,
+    premier_echec_le: null,
+    dernieres_verifications: [],
     created_at: maintenant,
     updated_at: maintenant,
   }
@@ -198,6 +206,8 @@ async function remettreEnEtat(id: string, avant: DomaineBoutique | null) {
       echecs_consecutifs: avant.echecs_consecutifs,
       derniere_verification_le: avant.derniere_verification_le,
       premiere_activation_le: avant.premiere_activation_le,
+      premier_echec_le: avant.premier_echec_le,
+      dernieres_verifications: avant.dernieres_verifications,
       created_at: avant.created_at,
     })
     .eq('id', id)
@@ -278,7 +288,8 @@ export async function retirerDomaine(beatmakerId: string): Promise<ResultatDomai
 const UNE_HEURE_MS = 60 * 60 * 1000
 
 // Chaque passage pendant les 48 h que peut prendre un réglage DNS, puis toutes
-// les heures. Un domaine actif qui vient d'échouer est revérifié sans attendre.
+// les heures. Un domaine actif qui vient d'échouer est revérifié à chaque passage
+// (toutes les 10 min) jusqu'à confirmer ou écarter la panne.
 export async function domainesAVerifier(limite: number): Promise<DomaineBoutique[]> {
   const ilYAUneHeure = new Date(Date.now() - UNE_HEURE_MS).toISOString()
   const ilYA48Heures = new Date(Date.now() - 48 * UNE_HEURE_MS).toISOString()

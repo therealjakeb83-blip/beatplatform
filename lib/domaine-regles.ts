@@ -22,10 +22,18 @@ export type DomaineBoutique = {
   echecs_consecutifs: number
   derniere_verification_le: string | null
   premiere_activation_le: string | null
+  premier_echec_le: string | null
+  dernieres_verifications: VerificationDomaine[]
   created_at: string
 }
 
-export const ECHECS_AVANT_PROBLEME = 3
+export type VerificationDomaine = { le: string; ok: boolean; cause: string | null }
+
+// Une panne n'est confirmée (email, bandeau, boutique réaffichée sur sonoo.app)
+// qu'après plus de 30 minutes sans réponse : une coupure courte chez l'hébergeur
+// ne doit alerter personne.
+export const DUREE_AVANT_PROBLEME_MS = 30 * 60 * 1000
+export const VERIFICATIONS_GARDEES = 3
 export const JOURS_AVANT_LIBERATION = 30
 
 export type ResultatSaisie = { ok: true; domaine: string } | { ok: false; erreur: string }
@@ -115,25 +123,52 @@ function causeDuConstat(c: ConstatDomaine, aDejaMarche: boolean): string {
   return 'Les lignes sont bonnes. La connexion sécurisée est en cours de création, encore quelques minutes.'
 }
 
-// Un domaine qui a déjà marché ne bascule en « Problème » qu'après plusieurs
-// échecs de suite : une coupure de quelques minutes ne doit alerter personne.
+// Cause courte, affichée dans l'historique des vérifications.
+export function causeCourte(c: ConstatDomaine): string | null {
+  if (!c.present) return 'Domaine introuvable de notre côté'
+  if (!c.verifie) return 'Propriété du domaine pas encore prouvée'
+  if (!c.configurationOk) return 'Lignes DNS introuvables'
+  if (!c.sondeOk) return 'Le domaine ne répond pas'
+  return null
+}
+
+export type DecisionStatut = {
+  statut: StatutDomaine
+  echecs: number
+  premierEchecLe: string | null
+  explication: string | null
+}
+
+// Un domaine qui a déjà marché reste « Actif » tant qu'il ne répond plus depuis
+// moins de 30 minutes (mesurées depuis le premier échec de la série).
 export function deciderStatut(
   ancien: StatutDomaine,
   echecs: number,
+  premierEchecLe: string | null,
   constat: ConstatDomaine,
-): { statut: StatutDomaine; echecs: number; explication: string | null } {
+  maintenant: Date,
+): DecisionStatut {
   if (constat.present && constat.verifie && constat.configurationOk && constat.sondeOk) {
-    return { statut: 'actif', echecs: 0, explication: null }
+    return { statut: 'actif', echecs: 0, premierEchecLe: null, explication: null }
   }
   const explication = causeDuConstat(constat, ancien !== 'en_attente')
   if (ancien === 'en_attente') {
-    return { statut: constat.present ? 'en_attente' : 'probleme', echecs: 0, explication }
+    return { statut: constat.present ? 'en_attente' : 'probleme', echecs: 0, premierEchecLe: null, explication }
   }
+  const debut = premierEchecLe ?? maintenant.toISOString()
   const total = echecs + 1
-  if (ancien === 'actif' && total < ECHECS_AVANT_PROBLEME) {
-    return { statut: 'actif', echecs: total, explication: null }
+  const confirmee = maintenant.getTime() - new Date(debut).getTime() > DUREE_AVANT_PROBLEME_MS
+  if (ancien === 'actif' && !confirmee) {
+    return { statut: 'actif', echecs: total, premierEchecLe: debut, explication: null }
   }
-  return { statut: 'probleme', echecs: total, explication }
+  return { statut: 'probleme', echecs: total, premierEchecLe: debut, explication }
+}
+
+export function ajouterVerification(
+  liste: VerificationDomaine[] | null | undefined,
+  entree: VerificationDomaine,
+): VerificationDomaine[] {
+  return [entree, ...(liste ?? [])].slice(0, VERIFICATIONS_GARDEES)
 }
 
 export function promptAssistantDns(domaine: string, lignes: LigneDns[]): string {

@@ -100,6 +100,12 @@
 > - [x] T17 — Page Domaine correcte sur iPhone et sur ordinateur (Jake) — ✅ 2026-11-11 (captures de Jake) ; retouches mineures faites en passant (flèches affichées en émoji sur iOS, chevron des lignes DNS, contour du bouton Retirer), le reste attendra la refonte UX/UI
 > - [ ] T18 — WordPress et enregistrements DNS de `jakebmusic.com` identiques à avant le lot, mentions Sonoo intactes (Claude) — 🔄 2026-11-10 avant T11 : A 152.42.134.54, 5 MX Google, 5 TXT, 2 NS GoDaddy = relevé du lot 1 à l'identique ; WordPress 200 ; aucune mention « Propulsé » touchée dans le diff du lot ; à refaire après T11
 >
+> **Ajout du 2026-11-11 (décision de Jake pendant T11)** : une panne n'est confirmée (statut Problème, email, bandeau, boutique réaffichée sur sonoo.app) qu'après **plus de 30 minutes sans réponse**, mesurées depuis le premier échec (plus de seuil « 3 échecs ») ; « Vérifier maintenant » = une seule vérification, ajoutée à l'historique, qui ne peut jamais confirmer une panne plus tôt ; la page Domaine montre les 3 dernières vérifications avec une note (un échec isolé n'est pas une panne) et un encadré orange quand la dernière a échoué sur un domaine encore Actif. SQL `supabase/domaines_boutique_lot2b.sql` (2 colonnes : `premier_echec_le`, `dernieres_verifications`).
+> - [ ] T19 — Clic sur un domaine qui ne répond pas : reste Actif, échec visible dans l'historique + encadré orange (Claude)
+> - [ ] T20 — Historique des 3 dernières vérifications correct, la plus récente en haut (Claude)
+> - [x] T21 — Problème seulement après plus de 30 minutes de panne, jamais plus tôt même avec des clics rapprochés (Claude, script) — ✅ script sur le vrai code avec heures simulées : 1er échec → Actif + chrono ; 10 échecs en 2 min → Actif ; 30 min pile → Actif ; 31 min → Problème (explication « plus visibles »)
+> - [x] T22 — Une réussite remet le chrono à zéro (Claude, script) — ✅ réussite à 25 min → chrono effacé ; échec suivant à 40 min → Actif (nouveau chrono)
+>
 > Chaque lot suivant aura sa checklist présentée avant d'être codé.
 >
 > **Cadrage initial du 2026-10-17, conservé pour mémoire :**

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { DOMAINE_PLATEFORME } from '@/lib/constantes'
-import { promptAssistantDns, type DomaineBoutique, type StatutDomaine } from '@/lib/domaine-regles'
+import { promptAssistantDns, type DomaineBoutique, type StatutDomaine, type VerificationDomaine } from '@/lib/domaine-regles'
 
 const RAFRAICHISSEMENT_MS = 30_000
 
@@ -11,6 +11,34 @@ const BADGES: Record<StatutDomaine, { libelle: string; classes: string }> = {
   en_attente: { libelle: 'En attente', classes: 'bg-amber-500/15 text-amber-300' },
   actif: { libelle: 'Actif', classes: 'bg-emerald-500/15 text-emerald-300' },
   probleme: { libelle: 'Problème', classes: 'bg-red-500/15 text-red-300' },
+}
+
+function heure(iso: string): string {
+  return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function Historique({ verifications }: { verifications: VerificationDomaine[] }) {
+  if (verifications.length === 0) return null
+  return (
+    <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6 space-y-3">
+      <h2 className="font-semibold">Dernières vérifications</h2>
+      <ul className="space-y-2 text-sm">
+        {verifications.map(v => (
+          <li key={v.le} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-gray-400 tabular-nums">{heure(v.le)}</span>
+            {v.ok ? (
+              <span className="text-emerald-300">Réussie</span>
+            ) : (
+              <span className="text-red-300">Échouée{v.cause ? ` — ${v.cause}` : ''}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-gray-500">
+        Une vérification échouée ne veut pas dire que ton domaine est en panne : ton hébergeur peut avoir une coupure de quelques minutes. Une panne n&apos;est confirmée qu&apos;après plus de 30 minutes sans réponse. Dans ce cas, tu reçois un email et ta boutique se réaffiche sur {DOMAINE_PLATEFORME} en attendant.
+      </p>
+    </section>
+  )
 }
 
 function Roue() {
@@ -124,7 +152,7 @@ export default function DomaineClient({
     }
   }
 
-  const aSurveiller = planPayant && !!domaine && domaine.statut !== 'actif'
+  const aSurveiller = planPayant && !!domaine && (domaine.statut !== 'actif' || !!domaine.premier_echec_le)
   useEffect(() => {
     if (!aSurveiller) return
     const minuteur = setInterval(async () => {
@@ -234,7 +262,17 @@ export default function DomaineClient({
                 </span>
               </div>
 
-              {domaine.statut === 'actif' && <p className="text-sm text-gray-300">Ta boutique s&apos;affiche sur ce domaine.</p>}
+              {domaine.statut === 'actif' && !domaine.premier_echec_le && (
+                <p className="text-sm text-gray-300">Ta boutique s&apos;affiche sur ce domaine.</p>
+              )}
+              {domaine.statut === 'actif' && domaine.premier_echec_le && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+                  Ton domaine n&apos;a pas répondu à la dernière vérification
+                  {domaine.derniere_verification_le ? ` (${heure(domaine.derniere_verification_le)})` : ''}. La panne n&apos;est pas
+                  confirmée : on revérifie toutes les 10 minutes, et on te prévient par email s&apos;il ne répond toujours pas après 30
+                  minutes.
+                </div>
+              )}
               {domaine.statut === 'en_attente' && (
                 <div className="space-y-2 text-sm text-gray-300">
                   {domaine.explication && <p>{domaine.explication}</p>}
@@ -301,6 +339,8 @@ export default function DomaineClient({
                 </div>
               )}
             </section>
+
+            <Historique verifications={domaine.dernieres_verifications ?? []} />
 
             {domaine.lignes_dns.length > 0 && (
               domaine.statut === 'actif' ? (
