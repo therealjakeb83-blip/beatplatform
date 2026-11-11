@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { cheminInterne } from '@/lib/redirection'
 import { useSlugBoutiqueArtiste } from '../_lib/BoutiqueArtiste'
+import BoutonGoogle from '../_lib/BoutonGoogle'
 
 function InscriptionArtisteForm() {
   const searchParams = useSearchParams()
@@ -73,6 +74,8 @@ function InscriptionArtisteForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <BoutonGoogle redirect={redirect} />
+
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-sm text-gray-300 mb-1">Prénom</label>

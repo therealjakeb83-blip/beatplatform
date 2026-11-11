@@ -6,6 +6,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
 import { URL_APP } from '@/lib/constantes'
+import { siteDeLaPage } from '@/lib/boutique-du-domaine'
 
 export function indexationOuverte(): boolean {
   return process.env.INDEXATION_OUVERTE === 'true'
@@ -151,4 +152,10 @@ export function sommairePlansDeSiteXml(adresses: string[]): string {
 
 export function accueilSonoo(slug: string): string {
   return `${URL_APP}/${slug}`
+}
+
+// Accueil officiel de la boutique pour la page affichée : son domaine, sinon sonoo.app/slug.
+export async function accueilOfficiel(slug: string): Promise<string> {
+  const site = await siteDeLaPage()
+  return site.surDomaine ? site.origine : accueilSonoo(slug)
 }

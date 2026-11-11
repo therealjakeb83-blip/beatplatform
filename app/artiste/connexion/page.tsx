@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { cheminInterne } from '@/lib/redirection'
 import { useSlugBoutiqueArtiste } from '../_lib/BoutiqueArtiste'
+import BoutonGoogle from '../_lib/BoutonGoogle'
 
 function ConnexionArtisteForm() {
   const searchParams = useSearchParams()
@@ -14,7 +15,9 @@ function ConnexionArtisteForm() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [erreur, setErreur] = useState('')
+  const [erreur, setErreur] = useState(
+    searchParams.get('erreur') === 'google' ? "La connexion avec Google n'a pas abouti. Réessaie, ou connecte-toi avec ton email." : '',
+  )
   const [chargement, setChargement] = useState(false)
   const [info, setInfo] = useState<string | null>(
     searchParams.get('confirmation') === 'activee'
@@ -70,6 +73,8 @@ function ConnexionArtisteForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <BoutonGoogle redirect={redirect} />
+
           <div>
             <label className="block text-sm text-gray-300 mb-1">Email</label>
             <input

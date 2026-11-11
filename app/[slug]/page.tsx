@@ -11,9 +11,13 @@ import type { BeatPublic, LicencePublic } from './_components/BeatCard'
 import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
 import type { TypeCategorieDb } from './_lib/categories-urls'
 import type { Metadata } from 'next'
+import { accueilOfficiel } from '@/lib/referencement'
 
 // Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
-export const metadata: Metadata = { alternates: { canonical: '/' } }
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  return { alternates: { canonical: await accueilOfficiel(slug) } }
+}
 
 export default async function BoutiquePage({
   params,

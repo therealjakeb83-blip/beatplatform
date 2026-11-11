@@ -18,16 +18,14 @@ import BoutiqueFooter from './_components/BoutiqueFooter'
 import BoutiqueThemeRoot from './_components/BoutiqueThemeRoot'
 import MobileTabBar from './_components/MobileTabBar'
 import './boutique-theme.css'
-import { siteDeLaPage } from '@/lib/boutique-du-domaine'
-import { boutiqueReferencable, indexationOuverte, accueilSonoo } from '@/lib/referencement'
+import { boutiqueReferencable, indexationOuverte, accueilOfficiel } from '@/lib/referencement'
 
 // Adresse officielle de la boutique (rang 9c, lot 4) : chaque page y ajoute son
 // chemin comme adresse canonique. Pas de référencement tant que l'indexation est
 // fermée (avant le lancement) ou sans aucun beat en vente.
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const site = await siteDeLaPage()
-  const accueil = site.surDomaine ? site.origine : accueilSonoo(slug)
+  const accueil = await accueilOfficiel(slug)
   const referencee = indexationOuverte() && (await boutiqueReferencable(slug))
   return {
     metadataBase: new URL(`${accueil}/`),
