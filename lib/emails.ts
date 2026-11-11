@@ -1357,7 +1357,7 @@ export async function envoyerEmailCompteArtiste({
     to,
     subject: contenu.sujet,
     html: rendre(lien),
-    htmlJournal: rendre('#lien-masque'),
+    htmlJournal: rendre(lien.replace(/token_hash=[^&]+/, 'token_hash=masque')),
   })
 }
 
