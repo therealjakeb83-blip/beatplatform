@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-## État de clôture — 2026-11-10 : la plateforme s'appelle Sonoo, site sur `sonoo.app`
+## État de clôture — 2026-11-11 : la plateforme s'appelle Sonoo, site sur `sonoo.app`
 
 **Renommage + installation du domaine TERMINÉS (lots 1 et 2, 2026-10-16/17).** Jake teste désormais sur **`https://sonoo.app`** ; `beatplatform.vercel.app` renvoie (308) vers sonoo.app. Lire la mémoire `project_naming_deferred.md` et l'entrée « Renommage Sonoo » de `ROADMAP.md`.
 
@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - DNS chez GoDaddy : A @ 216.150.1.1, CNAME www → Vercel, MX Google, enregistrements Resend et Google ajoutés par connexion automatique. Vercel `NEXT_PUBLIC_APP_URL=https://sonoo.app` (type Config). Supabase Site URL + redirections sonoo.app. Stripe : 2 webhooks sur sonoo.app (connect testé 200), produit renommé ; domaine Apple/Google Pay enregistré automatiquement par `app/api/stripe/contexte-paiement`.
 - Stockage R2 déménagé le 2026-10-17 dans l'espace **`sonoo`** (adresse publique `pub-6a8b0d1a9a3a485ca052eb2596cbf6a4.r2.dev`, CORS sonoo.app) ; clé d'un fichier = `cleR2(url)` de `lib/r2.ts`, jamais un `replace` du préfixe. Ancien espace `myproducer-beats` conservé jusqu'à l'étape 17 (anciens liens d'emails), puis à supprimer. Étape 17 : nom public + libellé de relevé Stripe en mode réel, verrou liste blanche.
 
-**Prochain chantier : rang 9c, domaine personnalisé par boutique, LOT 2** (brancher un domaine depuis le dashboard). Lot 1 ✅ CLOS le 2026-11-10 (T0-T10) : `test.jakebmusic.com` affiche jakeb-test. Toute nouvelle page de boutique passe par l'assistant de liens (`useLienBoutique` / `lienBoutiqueServeur`), jamais `/${slug}` en dur. Lire EN PREMIER `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT2_2026-11-10.md`, `ROADMAP.md` section « Détail — Domaine personnalisé par boutique » (13 décisions à ne pas rouvrir, 5 lots) et la mémoire `project_domaine_perso_grillme_2026_11_10.md`. Checklist du lot 2 à présenter à Jake avant de coder. Code sur `main`, Jake teste sur sonoo.app.
+**Prochain chantier : rang 9c, domaine personnalisé par boutique, LOT 3** (compte et paiement sur le domaine). Lot 1 ✅ CLOS le 2026-11-10 (T0-T10) ; **lot 2 ✅ CLOS le 2026-11-11 (T0-T22)** : brancher/vérifier/changer/retirer depuis `/dashboard/domaine`, API Vercel (`lib/vercel-domaines.ts`), vérification toutes les 10 min, panne confirmée après plus de 30 min sans réponse, redirection `sonoo.app/slug` → domaine allumée. Toute nouvelle page de boutique passe par l'assistant de liens (`useLienBoutique` / `lienBoutiqueServeur`), jamais `/${slug}` en dur. Lire EN PREMIER `HANDOFF_CLAUDE_DOMAINE_PERSO_LOT3_2026-11-11.md`, `ROADMAP.md` section « Détail — Domaine personnalisé par boutique » (13 décisions à ne pas rouvrir, 5 lots) et la mémoire `project_domaine_perso_grillme_2026_11_10.md`. Checklist du lot 3 à présenter à Jake avant de coder. Code sur `main`, Jake teste sur sonoo.app.
 
 **Ordre ensuite (validé le 2026-11-10)** : rang 9d, **fiches clients confidentielles par boutique, BLOQUANT lancement, à calibrer** (règle de Jake : pas de fiche client uniforme ; chaque boutique ne voit que ce que le client lui a divulgué ; seul l'admin Sonoo voit tout ; le client garde sa page globale `/mon-compte`, accessible à lui seul ; écarts dans `project_failles_avant_lancement_2026_10_20.md`) → rang 9e, **lenteur du dashboard** (`project_lenteur_dashboard_2026_10_20.md`) → rang 10, refonte UX/UI, étape 5v2 boutiques.
 
