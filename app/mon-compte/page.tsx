@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import LienVersBoutique from './_components/LienVersBoutique'
 
 type AboRow = {
   id: string
@@ -120,12 +121,13 @@ export default async function MonComptePage() {
                         {enEssai ? 'Essai' : 'Actif'}
                       </span>
                       {bm?.slug && (
-                        <Link
-                          href={`/${bm.slug}/mon-abonnement`}
+                        <LienVersBoutique
+                          slug={bm.slug}
+                          chemin="/mon-abonnement"
                           className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
                         >
                           Gérer →
-                        </Link>
+                        </LienVersBoutique>
                       )}
                     </div>
                   </div>

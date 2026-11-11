@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import LienVersBoutique from '../_components/LienVersBoutique'
 
 type FavoriRow = {
   id: string
@@ -54,36 +55,38 @@ export default async function MesFavorisPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {(favoris as unknown as FavoriRow[]).map(fav => {
               const beat = fav.beats
               if (!beat) return null
               const bm = beat.beatmakers
+              if (!bm?.slug) return null
               return (
-                <Link
+                <LienVersBoutique
                   key={fav.id}
-                  href={bm?.slug ? `/${bm.slug}/${beat.id}` : '#'}
-                  className="flex items-center gap-4 bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 transition-colors group"
+                  slug={bm.slug}
+                  chemin={`/${beat.id}`}
+                  className="w-full text-left flex items-center gap-4 bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 transition-colors group"
                 >
                   {beat.image_url ? (
                     <img src={beat.image_url} alt={beat.titre} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-14 h-14 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-500 text-sm font-black">
+                    <span className="w-14 h-14 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-gray-500 text-sm font-black">
                       {beat.titre.slice(0, 2).toUpperCase()}
-                    </div>
+                    </span>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold truncate group-hover:text-indigo-300 transition-colors">
+                  <span className="block flex-1 min-w-0">
+                    <span className="block text-white font-semibold truncate group-hover:text-indigo-300 transition-colors">
                       {beat.titre}
-                    </p>
-                    <p className="text-gray-500 text-xs mt-0.5">
+                    </span>
+                    <span className="block text-gray-500 text-xs mt-0.5">
                       {bm?.nom_artiste ?? 'Beatmaker'}
                       {beat.bpm && ` · ${beat.bpm} BPM`}
                       {beat.cle && ` · ${beat.cle}`}
-                    </p>
-                  </div>
+                    </span>
+                  </span>
                   <span className="text-rose-500 text-lg flex-shrink-0">♥</span>
-                </Link>
+                </LienVersBoutique>
               )
             })}
           </div>
