@@ -1,5 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin'
-import { rendreEmailHtml, type BlocEmail, type BrandingBoutique } from '@/lib/email-blocs'
+import { rendreEmailHtml, chargerBrandingBoutique, type BlocEmail, type BrandingBoutique } from '@/lib/email-blocs'
 import { remplacerTokens, genererLienDesinscription } from '@/lib/mailing'
 import { chargerContactsEnrichis } from '../../_lib/contacts'
 
@@ -14,14 +13,7 @@ export async function construireApercu(
   clientId?: string,
   campagneId?: string,
 ): Promise<string> {
-  const admin = createAdminClient()
-  const { data: beatmaker } = await admin
-    .from('beatmakers')
-    .select('nom_artiste, slug, logo_url, instagram_url, signature_emails')
-    .eq('id', beatmakerId)
-    .single()
-
-  const branding: BrandingBoutique = beatmaker ?? {
+  const branding: BrandingBoutique = (await chargerBrandingBoutique(beatmakerId)) ?? {
     nom_artiste: 'Ta boutique',
     slug: '',
     logo_url: null,
@@ -36,6 +28,6 @@ export async function construireApercu(
   const contact = contacts.find(c => c.id === clientId)
   if (!contact) return htmlBase
 
-  const lien = campagneId ? genererLienDesinscription(clientId, beatmakerId, campagneId) : '#'
+  const lien = campagneId ? genererLienDesinscription(clientId, beatmakerId, campagneId, branding.adresse?.site) : '#'
   return remplacerTokens(htmlBase, contact, branding, lien)
 }

@@ -1,7 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { URL_APP } from './constantes'
-
-const APP_URL = URL_APP
+import { adresseDeLaBoutique, type AdresseBoutique } from './adresse-boutique'
 
 // ── Types des blocs (format stocké dans templates_email.contenu / campagnes.contenu) ──
 
@@ -27,6 +25,22 @@ export type BrandingBoutique = {
   logo_url: string | null
   instagram_url: string | null
   signature_emails: string | null
+  // Domaine actif de la boutique, sinon sonoo.app (rang 9c, lot 4).
+  adresse?: AdresseBoutique
+}
+
+const SELECT_BRANDING_BOUTIQUE = 'nom_artiste, slug, logo_url, instagram_url, signature_emails'
+
+// Branding + adresse officielle de la boutique : campagnes, automatisations, aperçus.
+export async function chargerBrandingBoutique(beatmakerId: string): Promise<BrandingBoutique | null> {
+  const { data, error } = await createAdminClient()
+    .from('beatmakers')
+    .select(SELECT_BRANDING_BOUTIQUE)
+    .eq('id', beatmakerId)
+    .single()
+  if (error) console.error('[email-blocs] Erreur lecture beatmaker', beatmakerId, ':', error)
+  if (!data) return null
+  return { ...data, adresse: await adresseDeLaBoutique(beatmakerId, data.slug) }
 }
 
 // ── Rendu HTML (tokens laissés tels quels — remplacés ensuite par lib/mailing.ts) ──
@@ -56,7 +70,7 @@ async function rendreSectionBeats(bloc: BlocSectionBeats, beatmakerId: string): 
   const largeur = bloc.colonnes === 1 ? '100%' : '48%'
   const cartes = beats.map(b => `
     <td style="width:${largeur};padding:8px;vertical-align:top;">
-      <a href="${APP_URL}/{{slug_boutique}}/${b.id}" style="text-decoration:none;">
+      <a href="{{url_boutique}}/${b.id}" style="text-decoration:none;">
         ${b.image_url
           ? `<img src="${b.image_url}" alt="${echapper(b.titre)}" width="100%" style="border-radius:8px;display:block;" />`
           : `<div style="width:100%;aspect-ratio:1;background:#1f2937;border-radius:8px;"></div>`}
@@ -117,7 +131,7 @@ function rendreFooter(branding: BrandingBoutique): string {
         ? `<img src="${branding.logo_url}" alt="${echapper(branding.nom_artiste)}" height="32" style="margin-bottom:8px;" />`
         : `<p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 8px;">${echapper(branding.nom_artiste)}</p>`}
       <p style="font-size:12px;color:#9ca3af;margin:0 0 8px;">
-        <a href="${APP_URL}/{{slug_boutique}}" style="color:#6366f1;text-decoration:none;">Voir la boutique</a>
+        <a href="{{url_boutique}}" style="color:#6366f1;text-decoration:none;">Voir la boutique</a>
       </p>
       <p style="font-size:11px;color:#9ca3af;margin:0;">
         Tu reçois cet email car tu es inscrit à la newsletter de ${echapper(branding.nom_artiste)}.

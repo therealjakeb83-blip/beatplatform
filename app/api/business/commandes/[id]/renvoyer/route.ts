@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from '@/lib/email-logger'
 import { NOM_PLATEFORME, URL_APP } from '@/lib/constantes'
+import { adresseDeLaBoutique } from '@/lib/adresse-boutique'
 
 export const runtime = 'nodejs'
 
@@ -74,8 +75,8 @@ export async function POST(
     .eq('id', user.id)
     .single()
 
-  const APP_URL = URL_APP
-  const downloadUrl = `${APP_URL}/telechargement/${commandeId}`
+  const site = beatmaker?.slug ? (await adresseDeLaBoutique(user.id, beatmaker.slug)).site : URL_APP
+  const downloadUrl = `${site}/telechargement/${commandeId}`
   const nomArtiste = beatmaker?.nom_artiste ?? 'votre beatmaker'
 
   const sujetArticles = items.length === 1

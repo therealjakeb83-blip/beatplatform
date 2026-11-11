@@ -2,7 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
 import { lireStatutNewsletter, peutRecevoirAutomatisation } from './newsletter'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
-import type { BrandingBoutique } from './email-blocs'
+import { chargerBrandingBoutique, type BrandingBoutique } from './email-blocs'
 import { normaliserEmail } from './email'
 import { expediteurBoutique } from './constantes'
 
@@ -522,7 +522,7 @@ async function envoyerEmailAutomatisation(params: {
 }): Promise<boolean> {
   const admin = createAdminClient()
 
-  const lien = genererLienDesinscription(params.clientId, params.beatmakerId, params.automatisationId)
+  const lien = genererLienDesinscription(params.clientId, params.beatmakerId, params.automatisationId, params.branding.adresse?.site)
   const objet = remplacerTokens(params.objet, params.destinataire, params.branding, lien)
   const corpsHtml = remplacerTokens(params.corps, params.destinataire, params.branding, lien)
     .split('\n').map(l => `<p style="margin:0 0 1em">${l}</p>`).join('')
@@ -574,13 +574,12 @@ async function envoyerPourTemplate(params: {
 }): Promise<void> {
   if (!params.config.objet || !params.config.corps) return
 
-  const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
+  const [destinataire, branding, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(params.clientId, params.beatmakerId),
-    createAdminClient().from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url, signature_emails').eq('id', params.beatmakerId).single(),
+    chargerBrandingBoutique(params.beatmakerId),
     resoudreTokensSupplementaires(params.typeTemplate, params.evenementsSources, params.beatmakerId, params.clientId),
   ])
 
-  const branding = brandingRes.data as BrandingBoutique | null
   if (!destinataire || !branding) return
 
   await envoyerEmailAutomatisation({
@@ -795,13 +794,12 @@ export async function genererApercuGroupe(evenements: EvenementAutomatisation[])
     return { erreur: "Cette recette n'a pas encore d'objet ou de corps enregistré." }
   }
 
-  const [destinataire, brandingRes, tokensSupplementaires] = await Promise.all([
+  const [destinataire, branding, tokensSupplementaires] = await Promise.all([
     chargerDestinatairePourAutomatisation(clientId, beatmakerId),
-    admin.from('beatmakers').select('nom_artiste, slug, logo_url, instagram_url, signature_emails').eq('id', beatmakerId).single(),
+    chargerBrandingBoutique(beatmakerId),
     resoudreTokensSupplementaires(typeTemplate, evenementsSources, beatmakerId, clientId, { previsualisation: true }),
   ])
 
-  const branding = brandingRes.data as BrandingBoutique | null
   if (!destinataire || !branding) {
     return { erreur: 'Impossible de charger le destinataire ou la boutique.' }
   }

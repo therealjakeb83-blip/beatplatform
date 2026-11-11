@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { createClient as createServerClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerLotEmails } from './email-logger'
-import { rendreEmailHtml, type BlocEmail, type BrandingBoutique } from './email-blocs'
+import { rendreEmailHtml, chargerBrandingBoutique, type BlocEmail, type BrandingBoutique } from './email-blocs'
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '@/app/dashboard/business/_lib/contacts'
 import { evaluerFiltres, type Condition } from '@/app/dashboard/business/_lib/segments'
 import { peutRecevoirCampagne } from './newsletter'
@@ -115,7 +115,7 @@ function valeursTokens(
     'annee':        String(maintenant.getFullYear()),
     // Boutique
     'nom_boutique':        branding.nom_artiste,
-    'url_boutique':        `${APP_URL}/${branding.slug}`,
+    'url_boutique':        branding.adresse?.accueil ?? `${APP_URL}/${branding.slug}`,
     'slug_boutique':       branding.slug,
     'signature':           branding.signature_emails || branding.nom_artiste,
     'lien_desinscription': lienDesinscription ?? '',
@@ -190,31 +190,34 @@ export function verifierTokenCampagne(token: string): { clientId: string; beatma
   }
 }
 
-export function genererLienDesinscription(clientId: string, beatmakerId: string, campagneId: string): string {
+// `site` : domaine actif de la boutique, sinon sonoo.app (BrandingBoutique.adresse).
+export function genererLienDesinscription(clientId: string, beatmakerId: string, campagneId: string, site = APP_URL): string {
   const token = genererToken(clientId, beatmakerId, campagneId)
-  return `${APP_URL}/api/marketing/desinscription?token=${token}`
+  return `${site}/api/marketing/desinscription?token=${token}`
 }
 
 // Lien de suivi de clic : fait transiter le destinataire par notre propre redirection
 // avant la vraie destination, pour savoir précisément qui a cliqué depuis quelle
 // campagne — indépendamment de l'email utilisé plus tard au paiement.
-export function genererLienClic(clientId: string, beatmakerId: string, campagneId: string, urlCible: string): string {
+export function genererLienClic(clientId: string, beatmakerId: string, campagneId: string, urlCible: string, site = APP_URL): string {
   const token = genererToken(clientId, beatmakerId, campagneId)
-  return `${APP_URL}/api/marketing/clic?token=${token}&url=${encodeURIComponent(urlCible)}`
+  return `${site}/api/marketing/clic?token=${token}&url=${encodeURIComponent(urlCible)}`
 }
 
-// Enveloppe tous les liens absolus vers l'app (sauf ceux déjà routés vers /api/marketing/)
-// dans le lien de suivi de clic — appelé une fois par destinataire après remplacerTokens().
-export function envelopperLiensSuivi(html: string, clientId: string, beatmakerId: string, campagneId: string): string {
-  const prefixe = `href="${APP_URL}`
-  return html.split(prefixe).map((segment, i) => {
-    if (i === 0) return segment
-    const finGuillemet = segment.indexOf('"')
-    if (finGuillemet === -1) return prefixe + segment
-    const urlCible = APP_URL + segment.slice(0, finGuillemet)
-    if (urlCible.includes('/api/marketing/')) return prefixe + segment
-    return `href="${genererLienClic(clientId, beatmakerId, campagneId, urlCible)}"` + segment.slice(finGuillemet + 1)
-  }).join('')
+// L'adresse même du site, ou une page derrière (jamais « https://sonoo.app.autre.com »).
+export function lienDuSite(url: string, site: string): boolean {
+  return url === site || ['/', '?', '#'].some(c => url.startsWith(site + c))
+}
+
+// Enveloppe les liens vers sonoo.app ou le domaine de la boutique (sauf ceux déjà
+// routés vers /api/marketing/) dans le lien de suivi de clic, servi par le site de
+// la boutique — appelé une fois par destinataire après remplacerTokens().
+export function envelopperLiensSuivi(html: string, clientId: string, beatmakerId: string, campagneId: string, site = APP_URL): string {
+  return html.replace(/href="([^"]*)"/g, (tout, url: string) => {
+    if (!lienDuSite(url, APP_URL) && !lienDuSite(url, site)) return tout
+    if (url.includes('/api/marketing/')) return tout
+    return `href="${genererLienClic(clientId, beatmakerId, campagneId, url, site)}"`
+  })
 }
 
 export const COOKIE_CLIC = 'mp_click'
@@ -272,15 +275,9 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
   }
   if (!campagne.cible_mode) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
 
-  const { data: beatmaker, error: beatmakerError } = await admin
-    .from('beatmakers')
-    .select('nom_artiste, slug, logo_url, instagram_url, signature_emails')
-    .eq('id', campagne.beatmaker_id)
-    .single()
-  if (beatmakerError) console.error('[mailing] Erreur lecture beatmaker', campagne.beatmaker_id, ':', beatmakerError)
-  if (!beatmaker) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
-
-  const branding: BrandingBoutique = beatmaker
+  const branding = await chargerBrandingBoutique(campagne.beatmaker_id)
+  if (!branding) return { envoyes: 0, echecs: 0, raison: 'sans_ciblage' }
+  const site = branding.adresse?.site ?? APP_URL
 
   const cible: CibleCampagne = campagne.cible_mode === 'manuel'
     ? { mode: 'manuel', emails: campagne.cible_emails ?? [] }
@@ -299,7 +296,7 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
   // Domaine d'envoi par boutique ([slug]@mail.sonoo.app) prévu en 4.5, pas encore
   // configuré côté Resend. En attendant, on envoie depuis le domaine déjà vérifié
   // (le même que lib/emails.ts) pour que les campagnes fonctionnent dès maintenant.
-  const from = expediteurBoutique(beatmaker)
+  const from = expediteurBoutique(branding)
 
   let envoyes = 0
   let echecs = 0
@@ -309,12 +306,12 @@ export async function envoyerCampagne(campagneId: string): Promise<ResultatEnvoi
 
     try {
       const payloads = lot.map(contact => {
-        const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id, campagneId)
+        const lien = genererLienDesinscription(contact.id, campagne.beatmaker_id, campagneId, site)
         const htmlPersonnalise = remplacerTokens(htmlBase, contact, branding, lien)
         return {
           to: contact.email,
           subject: remplacerTokens(campagne.objet ?? campagne.nom, contact, branding, lien),
-          html: envelopperLiensSuivi(htmlPersonnalise, contact.id, campagne.beatmaker_id, campagneId),
+          html: envelopperLiensSuivi(htmlPersonnalise, contact.id, campagne.beatmaker_id, campagneId, site),
         }
       })
 

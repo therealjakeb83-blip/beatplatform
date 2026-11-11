@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from './email-logger'
 import { NOM_PLATEFORME, URL_APP, EMAIL_CONTACT, expediteurBoutique } from './constantes'
 import { libelleMotifLitige } from './litiges-libelles'
+import { adresseDeLaBoutique } from './adresse-boutique'
 
 const APP_URL = URL_APP
 const COULEUR_DEFAUT = '#4f46e5'
@@ -1094,7 +1095,7 @@ export async function confirmationCommande({
       titre: titre || TITRE_DEFAUT.confirmation_commande,
       intro: intro || introDefaut('confirmation_commande', branding.nom_artiste),
       corpsHtml,
-      cta: { texte: 'Télécharger mes fichiers', lien: `${APP_URL}/telechargement/${commandeId}` },
+      cta: { texte: 'Télécharger mes fichiers', lien: `${(await adresseDeLaBoutique(beatmakerId, branding.slug)).site}/telechargement/${commandeId}` },
     }),
   })
 }
@@ -1161,7 +1162,7 @@ export async function confirmationAbonnement({
       titre: titre || TITRE_DEFAUT.confirmation_abonnement,
       intro: intro || introDefaut('confirmation_abonnement', branding.nom_artiste),
       corpsHtml,
-      cta: { texte: 'Accéder à mon espace membre', lien: `${APP_URL}/${branding.slug}/mon-compte` },
+      cta: { texte: 'Accéder à mon espace membre', lien: `${(await adresseDeLaBoutique(beatmakerId, branding.slug)).accueil}/mon-compte` },
     }),
   })
 }
