@@ -15,8 +15,9 @@ export default function BoutonGoogle({ redirect }: { redirect: string }) {
   function auClic(e: React.MouseEvent<HTMLAnchorElement>) {
     if (estHotePlateforme(window.location.host)) return
     e.preventDefault()
-    url.searchParams.set('domaine', window.location.host)
-    window.location.href = url.toString()
+    const avecDomaine = new URL(url)
+    avecDomaine.searchParams.set('domaine', window.location.host)
+    window.location.assign(avecDomaine.toString())
   }
 
   return (
