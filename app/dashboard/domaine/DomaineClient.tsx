@@ -225,7 +225,7 @@ export default function DomaineClient({
                   <p className="text-lg font-semibold break-all">{domaine.domaine}</p>
                   {domaine.statut === 'actif' && (
                     <a href={`https://${domaine.domaine}`} target="_blank" rel="noreferrer" className="text-sm text-indigo-400 hover:text-indigo-300">
-                      Voir ma boutique ↗
+                      Voir ma boutique {'↗︎'}
                     </a>
                   )}
                 </div>
@@ -276,7 +276,7 @@ export default function DomaineClient({
                 <button
                   type="button"
                   onClick={() => { setConfirmeRetrait(v => !v); setModeChangement(false) }}
-                  className="px-4 py-2 rounded-lg text-red-300 hover:bg-red-500/10 text-sm font-semibold transition-colors"
+                  className="px-4 py-2 rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10 text-sm font-semibold transition-colors"
                 >
                   Retirer ce domaine
                 </button>
@@ -304,8 +304,13 @@ export default function DomaineClient({
 
             {domaine.lignes_dns.length > 0 && (
               domaine.statut === 'actif' ? (
-                <details className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-                  <summary className="cursor-pointer text-sm font-semibold">Voir les lignes DNS</summary>
+                <details className="group rounded-2xl border border-gray-800 bg-gray-900 p-6">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-90">
+                      <path fillRule="evenodd" d="M7.2 14.8a1 1 0 0 1 0-1.4L10.6 10 7.2 6.6a1 1 0 1 1 1.4-1.4l4.1 4.1a1 1 0 0 1 0 1.4l-4.1 4.1a1 1 0 0 1-1.4 0Z" clipRule="evenodd" />
+                    </svg>
+                    Voir les lignes DNS
+                  </summary>
                   <div className="mt-4"><Lignes domaine={domaine} /></div>
                 </details>
               ) : (

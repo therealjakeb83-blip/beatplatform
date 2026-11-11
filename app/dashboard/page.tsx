@@ -37,7 +37,7 @@ return (
             href="/dashboard/business"
             className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors"
           >
-            Business ↗
+            Business {'↗︎'}
           </Link>
           <Link
             href="/dashboard/profil"
@@ -75,7 +75,7 @@ return (
               target="_blank"
               className="px-6 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors flex items-center gap-2"
             >
-              Ma boutique ↗
+              Ma boutique {'↗︎'}
             </Link>
           )}
           {admin && (
