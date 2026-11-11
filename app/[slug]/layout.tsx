@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from 'next'
 import { Poppins, Anton, Archivo_Black, Bebas_Neue, Syne } from 'next/font/google'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { estRoleAdmin } from '@/lib/admin'
+import { chargerEtatBoutique, MESSAGE_BOUTIQUE_INDISPONIBLE } from '@/lib/boutique-visible'
 import { accentPresetKey } from './_lib/theme-accent'
 import { estClientAbonne } from './_lib/abonnement'
 import { PlayerProvider } from './_components/PlayerContext'
@@ -128,36 +128,25 @@ export default async function BoutiqueLayout({
     }))
   }
 
-  // Boutique suspendue depuis l'admin (Étape 15c) — bloque toute la boutique
-  // publique, avant même de charger le player/panier/thème.
-  if (beatmaker?.statut === 'suspendu') {
-    return (
-      <div className="min-h-screen bg-[#05060B] text-white flex items-center justify-center px-4">
-        <p className="text-center text-gray-400">Cette boutique est temporairement indisponible.</p>
-      </div>
-    )
-  }
-
-  // Étape 8b — la boutique publique n'existe que pour un beatmaker qui paie
-  // la plateforme : tant qu'il n'a pas d'abonnement actif, la boutique ne
-  // doit pas juste être "inactive", elle ne doit pas exister publiquement —
-  // vrai 404, pas de page qui confirme qu'un slug est pris. Mêmes exemptions
-  // que le gate dashboard (proxy.ts) : compte admin et boutiques de test
-  // exemptées (`abonnement_exempte`).
-  if (beatmaker && !estRoleAdmin(beatmaker.role) && !beatmaker.abonnement_exempte) {
-    const { data: abonnementActif } = await admin
-      .from('abonnements_plateforme')
-      .select('id')
-      .eq('beatmaker_id', beatmaker.id)
-      .in('statut', ['actif', 'en_essai'])
-      .limit(1)
-      .maybeSingle()
-
-    if (!abonnementActif) notFound()
+  // Boutique suspendue, ou sans abonnement plateforme (Étape 8b) : sur
+  // sonoo.app la boutique n'existe pas publiquement (vrai 404, pas de page qui
+  // confirme qu'un slug est pris) ; sur son domaine, message « temporairement
+  // indisponible » (rang 9c, lot 5). Règle commune : lib/boutique-visible.ts.
+  const surDomaine = await surDomaineBoutique()
+  if (beatmaker) {
+    const etat = await chargerEtatBoutique(admin, beatmaker.id)
+    if (etat && !etat.visible) {
+      if (etat.raison !== 'suspendue' && !surDomaine) notFound()
+      return (
+        <div className="min-h-screen bg-[#05060B] text-white flex items-center justify-center px-4">
+          <p className="text-center text-gray-400">{MESSAGE_BOUTIQUE_INDISPONIBLE}</p>
+        </div>
+      )
+    }
   }
 
   return (
-    <DomaineBoutiqueProvider surDomaine={await surDomaineBoutique()}>
+    <DomaineBoutiqueProvider surDomaine={surDomaine}>
     <PlayerProvider>
       <CartProvider slug={slug}>
         <Suspense>

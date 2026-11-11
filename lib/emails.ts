@@ -343,7 +343,7 @@ function introDefautPlateforme(type: TypeTemplatePlateforme): string {
     case 'domaine_probleme':
       return `Ton domaine ne fonctionne plus correctement. Ta boutique reste accessible à son adresse ${NOM_PLATEFORME} le temps de régler ça. Ouvre ton dashboard pour voir ce qu'il faut corriger.`
     case 'domaine_libere':
-      return "Ce domaine n'a pas pu être activé en 30 jours, il a donc été retiré de ton compte. Ta boutique n'a pas changé. Tu peux le brancher à nouveau quand tu veux."
+      return "Ce domaine a été retiré de ton compte. Ta boutique et son contenu n'ont pas changé. Ton nom de domaine reste à toi chez le site où tu l'as acheté : tu peux le brancher à nouveau quand tu veux."
   }
 }
 
@@ -549,12 +549,20 @@ export async function envoyerPaiementEchouePlateforme({
   })
 }
 
+// Rang 9c lot 5 : paragraphe ajouté quand la boutique a un domaine personnalisé.
+export function corpsDomaineFinAbonnement(domaine: string, limiteLe: string): string {
+  const date = new Date(limiteLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
+  return `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#374151;">Ton domaine <strong>${echapper(domaine)}</strong> affiche maintenant « Cette boutique est temporairement indisponible ». Il reste réservé à ta boutique jusqu'au <strong>${echapper(date)}</strong> : réabonne-toi avant cette date et ta boutique y revient automatiquement, sans aucun réglage. Passé ce délai, il sera retiré de ton compte (il reste à toi chez le site où tu l'as acheté, et tu pourras le rebrancher).</p>`
+}
+
 export async function envoyerConfirmationAnnulationPlateforme({
   to,
   beatmakerId,
+  domaine,
 }: {
   to: string
   beatmakerId: string
+  domaine?: { domaine: string; limiteLe: string } | null
 }) {
   const { titre, intro } = await chargerTemplatePlateforme('annulation')
   await envoyerEmailUnique({
@@ -567,7 +575,7 @@ export async function envoyerConfirmationAnnulationPlateforme({
       branding: BRANDING_PLATEFORME,
       titre: titre || TITRE_DEFAUT_PLATEFORME.annulation,
       intro: intro || introDefautPlateforme('annulation'),
-      corpsHtml: '',
+      corpsHtml: domaine ? corpsDomaineFinAbonnement(domaine.domaine, domaine.limiteLe) : '',
       cta: { texte: 'Me réabonner', lien: `${APP_URL}/dashboard/abonnement` },
     }),
   })
@@ -815,14 +823,20 @@ export async function envoyerDomaineProbleme({
   })
 }
 
+const RAISONS_LIBERATION: Record<'jamais_active' | 'panne' | 'abonnement', string> = {
+  jamais_active: "Il n'a pas pu être activé en 30 jours.",
+  panne: 'Il ne répondait plus depuis 30 jours.',
+  abonnement: 'Ton abonnement est arrêté depuis 30 jours.',
+}
+
 export async function envoyerDomaineLibere({
-  to, beatmakerId, domaine,
+  to, beatmakerId, domaine, raison = 'jamais_active',
 }: {
-  to: string; beatmakerId: string; domaine: string
+  to: string; beatmakerId: string; domaine: string; raison?: 'jamais_active' | 'panne' | 'abonnement'
 }) {
   await envoyerEmailCollab({
     type: 'domaine_libere', to, beatmakerId, cta: CTA_DOMAINE,
-    corpsHtml: corpsLignes([['Domaine', domaine]]),
+    corpsHtml: corpsLignes([['Domaine', domaine], ['Raison', RAISONS_LIBERATION[raison]]]),
   })
 }
 

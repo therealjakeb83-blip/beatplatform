@@ -6,6 +6,7 @@ import { COOKIE_MAINTENANCE, cheminFermeEnMaintenance, jetonMaintenanceValide, m
 import { URL_APP } from '@/lib/constantes'
 import { CHEMIN_SONDE, SIGNATURE_SONDE, estHotePlateforme, estHoteSonoo, hoteSansPort, routeSurDomaine, slugDuChemin } from '@/lib/domaine-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { etatBoutique, MESSAGE_BOUTIQUE_INDISPONIBLE, type AbonnementPlateformeResume, type BeatmakerVisibilite } from '@/lib/boutique-visible'
 
 // Délai maximum accordé à Supabase pour répondre à CHAQUE requête faite par
 // proxy.ts sur une page /dashboard (proxy.ts s'exécute avant tout rendu).
@@ -36,7 +37,8 @@ type BeatmakerGate = { id: string; statut: string; role: string; abonnement_exem
 // requêtes, inutile de consulter la base à chaque fois.
 const MEMOIRE_DOMAINE_MS = 30_000
 const MEMOIRE_MAX_ENTREES = 5_000
-const memoireDomaines = new Map<string, { slug: string | null; expire: number }>()
+type BoutiqueDuDomaine = { slug: string | null; visible: boolean }
+const memoireDomaines = new Map<string, BoutiqueDuDomaine & { expire: number }>()
 const memoireRedirections = new Map<string, { domaine: string | null; expire: number }>()
 
 async function domaineActifDuSlug(slug: string): Promise<string | null> {
@@ -78,25 +80,43 @@ async function redirectionVersDomaine(request: NextRequest): Promise<NextRespons
   return NextResponse.redirect(`https://${domaine}${pathname.slice(slug.length + 1)}${search}`, 307)
 }
 
-async function slugDuDomaine(hote: string): Promise<string | null> {
+async function boutiqueDuDomaine(hote: string): Promise<BoutiqueDuDomaine> {
   const memorise = memoireDomaines.get(hote)
-  if (memorise && memorise.expire > Date.now()) return memorise.slug
+  if (memorise && memorise.expire > Date.now()) return memorise
 
   const { data, error } = await avecTimeout(
     createAdminClient()
       .from('domaines_boutique')
-      .select('beatmakers(slug)')
+      .select('beatmakers(slug, role, abonnement_exempte, statut, abonnements_plateforme(statut, date_annulation, date_fin))')
       .eq('domaine', hote)
       .eq('statut', 'actif')
       .maybeSingle()
   )
   if (error) throw error
 
-  const beatmaker = data?.beatmakers as unknown as { slug: string | null } | null | undefined
-  const slug = beatmaker?.slug ?? null
+  const beatmaker = data?.beatmakers as unknown as
+    | (BeatmakerVisibilite & { slug: string | null; abonnements_plateforme: AbonnementPlateformeResume[] | null })
+    | null
+    | undefined
+  const resultat: BoutiqueDuDomaine = {
+    slug: beatmaker?.slug ?? null,
+    visible: !!beatmaker && etatBoutique(beatmaker, beatmaker.abonnements_plateforme ?? []).visible,
+  }
   if (memoireDomaines.size >= MEMOIRE_MAX_ENTREES) memoireDomaines.clear()
-  memoireDomaines.set(hote, { slug, expire: Date.now() + MEMOIRE_DOMAINE_MS })
-  return slug
+  memoireDomaines.set(hote, { ...resultat, expire: Date.now() + MEMOIRE_DOMAINE_MS })
+  return resultat
+}
+
+// Domaine sans boutique à montrer (abonnement arrêté, impayé, suspension,
+// domaine pas actif ou plus rattaché) : jamais de 404 ni de redirection. 503 =
+// « temporaire » pour les moteurs de recherche.
+const PAGE_INDISPONIBLE = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Boutique indisponible</title><style>html,body{margin:0;height:100%;background:#05060B;color:#9ca3af;font-family:system-ui,-apple-system,sans-serif}body{display:flex;align-items:center;justify-content:center;padding:0 16px;text-align:center}</style></head><body><p>${MESSAGE_BOUTIQUE_INDISPONIBLE}</p></body></html>`
+
+function reponseIndisponible(): NextResponse {
+  return new NextResponse(PAGE_INDISPONIBLE, {
+    status: 503,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '3600' },
+  })
 }
 
 async function reponseDomaineBoutique(request: NextRequest, hote: string) {
@@ -104,26 +124,24 @@ async function reponseDomaineBoutique(request: NextRequest, hote: string) {
     return NextResponse.json({ sonoo: SIGNATURE_SONDE }, { headers: { 'cache-control': 'no-store' } })
   }
 
-  let slug: string | null
+  let boutique: BoutiqueDuDomaine
   try {
-    slug = await slugDuDomaine(hote)
+    boutique = await boutiqueDuDomaine(hote)
   } catch {
     return new NextResponse('Cette boutique est momentanément injoignable. Réessaie dans un instant.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8', 'retry-after': '10' },
     })
   }
-  if (!slug) {
-    return new NextResponse('Aucune boutique à cette adresse.', {
-      status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    })
-  }
+  const slug = boutique.slug
+  if (!slug) return reponseIndisponible()
 
   const { pathname, search } = request.nextUrl
   const route = routeSurDomaine(pathname)
   if (route === 'plateforme') return NextResponse.redirect(new URL(pathname + search, URL_APP))
+  // Téléchargements des achats passés, désinscription, connexion : toujours servis.
   if (route === 'direct') return avecSessionRafraichie(request, () => NextResponse.next({ request }))
+  if (!boutique.visible) return reponseIndisponible()
 
   const url = request.nextUrl.clone()
   if (route === 'paiement') {

@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { chargerEtatBoutique } from '@/lib/boutique-visible'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerConfirmationEssaiPlateforme, envoyerPaiementEchouePlateforme, envoyerConfirmationAnnulationPlateforme } from '@/lib/emails'
 import { resoudreClientParEmail, traiterPaiementExpress } from '@/lib/webhook-paiement'
@@ -288,7 +289,23 @@ async function traiterAnnulationAbonnementPlateforme(subscription: Stripe.Subscr
   console.log('[webhook] Abonnement plateforme annulé:', subscription.id)
 
   const beatmaker = Array.isArray(data?.beatmakers) ? data.beatmakers[0] : data?.beatmakers
-  if (beatmaker?.email && data) await envoyerConfirmationAnnulationPlateforme({ to: beatmaker.email, beatmakerId: data.beatmaker_id })
+  if (beatmaker?.email && data) {
+    await envoyerConfirmationAnnulationPlateforme({
+      to: beatmaker.email,
+      beatmakerId: data.beatmaker_id,
+      domaine: await domaineEtDateLimite(data.beatmaker_id),
+    })
+  }
+}
+
+// Rang 9c lot 5 : domaine de la boutique et date jusqu'à laquelle il reste réservé.
+async function domaineEtDateLimite(beatmakerId: string): Promise<{ domaine: string; limiteLe: string } | null> {
+  const admin = createAdminClient()
+  const { data: ligne } = await admin.from('domaines_boutique').select('domaine').eq('beatmaker_id', beatmakerId).maybeSingle()
+  if (!ligne) return null
+  const etat = await chargerEtatBoutique(admin, beatmakerId)
+  if (!etat || etat.visible || etat.raison !== 'arrete' || !etat.limiteLe) return null
+  return { domaine: ligne.domaine as string, limiteLe: etat.limiteLe }
 }
 
 // Les events invoice n'ont pas metadata.type directement dessus — on

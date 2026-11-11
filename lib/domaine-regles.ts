@@ -24,7 +24,22 @@ export type DomaineBoutique = {
   premiere_activation_le: string | null
   premier_echec_le: string | null
   dernieres_verifications: VerificationDomaine[]
+  // Rang 9c lot 5 : renseigné quand le domaine a déjà marché pour une autre
+  // boutique ; il faut alors la ligne TXT « _sonoo » pour l'activer.
+  jeton_propriete: string | null
+  propriete_prouvee_le: string | null
   created_at: string
+}
+
+export const HOTE_TXT_PROPRIETE = '_sonoo'
+
+export function valeurTxtPropriete(jeton: string): string {
+  return `sonoo-verification=${jeton}`
+}
+
+// Nom complet interrogé dans le DNS (« _sonoo.beats.monsite.com »).
+export function nomTxtPropriete(domaine: string): string {
+  return `${HOTE_TXT_PROPRIETE}.${domaine}`
 }
 
 export type VerificationDomaine = { le: string; ok: boolean; cause: string | null }
@@ -89,8 +104,9 @@ export function construireLignesDns(params: {
   cname: string | null
   cnameWww: string | null
   verification: { type: string; domain: string; value: string }[]
+  jetonPropriete?: string | null
 }): LigneDns[] {
-  const { domaine, apex, ipv4, cname, cnameWww, verification } = params
+  const { domaine, apex, ipv4, cname, cnameWww, verification, jetonPropriete } = params
   const lignes: LigneDns[] = []
 
   if (domaine === apex) {
@@ -103,6 +119,9 @@ export function construireLignesDns(params: {
   for (const v of verification) {
     if (v.type === 'TXT') lignes.push({ type: 'TXT', hote: hoteRelatif(v.domain, apex), valeur: v.value })
   }
+  if (jetonPropriete) {
+    lignes.push({ type: 'TXT', hote: hoteRelatif(nomTxtPropriete(domaine), apex), valeur: valeurTxtPropriete(jetonPropriete) })
+  }
   return lignes
 }
 
@@ -111,11 +130,16 @@ export type ConstatDomaine = {
   verifie: boolean
   configurationOk: boolean
   sondeOk: boolean
+  // false tant qu'un domaine repris d'une autre boutique n'a pas sa ligne « _sonoo ».
+  proprieteOk: boolean
 }
 
 function causeDuConstat(c: ConstatDomaine, aDejaMarche: boolean): string {
   if (!c.present) return "Ce domaine n'est plus enregistré de notre côté. Retire-le puis branche-le à nouveau."
   if (!c.verifie) return 'Ajoute la ligne TXT ci-dessous : elle prouve que ce domaine est bien à toi.'
+  if (!c.proprieteOk) {
+    return `Ce domaine a déjà été utilisé par une autre boutique. Ajoute aussi la ligne TXT « ${HOTE_TXT_PROPRIETE} » ci-dessous : elle prouve qu'il est bien à toi.`
+  }
   if (!c.configurationOk && aDejaMarche) {
     return "Les lignes ci-dessous ne sont plus visibles chez le site où tu as acheté ton domaine. Vérifie qu'elles n'ont pas été modifiées ou supprimées."
   }
@@ -126,7 +150,7 @@ function causeDuConstat(c: ConstatDomaine, aDejaMarche: boolean): string {
 // Cause courte, affichée dans l'historique des vérifications.
 export function causeCourte(c: ConstatDomaine): string | null {
   if (!c.present) return 'Domaine introuvable de notre côté'
-  if (!c.verifie) return 'Propriété du domaine pas encore prouvée'
+  if (!c.verifie || !c.proprieteOk) return 'Propriété du domaine pas encore prouvée'
   if (!c.configurationOk) return 'Lignes DNS introuvables'
   if (!c.sondeOk) return 'Le domaine ne répond pas'
   return null
@@ -148,7 +172,7 @@ export function deciderStatut(
   constat: ConstatDomaine,
   maintenant: Date,
 ): DecisionStatut {
-  if (constat.present && constat.verifie && constat.configurationOk && constat.sondeOk) {
+  if (constat.present && constat.verifie && constat.proprieteOk && constat.configurationOk && constat.sondeOk) {
     return { statut: 'actif', echecs: 0, premierEchecLe: null, explication: null }
   }
   const explication = causeDuConstat(constat, ancien !== 'en_attente')

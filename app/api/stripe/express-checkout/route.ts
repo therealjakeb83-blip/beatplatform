@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { boutiqueOuverteALaVente, MESSAGE_BOUTIQUE_INDISPONIBLE } from '@/lib/boutique-visible'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
@@ -80,6 +81,10 @@ export async function POST(request: Request) {
   }
 
   if (!beatmaker) return NextResponse.json({ erreur: 'Boutique introuvable' }, { status: 404 })
+
+  if (!(await boutiqueOuverteALaVente(admin, beatmaker.id))) {
+    return NextResponse.json({ erreur: MESSAGE_BOUTIQUE_INDISPONIBLE }, { status: 400 })
+  }
 
   // Checklist « prêt à vendre » (Phase 12 lot 2, Q7) — jusqu'ici seule
   // l'existence de stripe_account_id était vérifiée, jamais que le compte

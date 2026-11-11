@@ -107,10 +107,12 @@ function Lignes({ domaine }: { domaine: DomaineBoutique }) {
 
 export default function DomaineClient({
   domaineInitial,
+  avertissementIndisponible,
   planPayant,
   slug,
 }: {
   domaineInitial: DomaineBoutique | null
+  avertissementIndisponible: string | null
   planPayant: boolean
   slug: string
 }) {
@@ -288,6 +290,14 @@ export default function DomaineClient({
                 </div>
               )}
 
+              {avertissementIndisponible && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3 text-sm text-amber-200">
+                  <p>{avertissementIndisponible}</p>
+                  <Link href="/dashboard/abonnement" className="inline-block px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white">
+                    Me réabonner
+                  </Link>
+                </div>
+              )}
               {!planPayant && (
                 <p className="text-sm text-amber-300">🔒 Ton abonnement n&apos;est plus actif : tu peux retirer ce domaine, mais plus le modifier.</p>
               )}

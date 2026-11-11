@@ -2,7 +2,10 @@
 // retrait, libération. La base est écrite en premier pour réserver le domaine :
 // deux boutiques ne peuvent pas le prendre en même temps.
 
+import { randomBytes } from 'node:crypto'
+import { promises as dns } from 'node:dns'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { chargerEtatBoutique } from '@/lib/boutique-visible'
 import { EMAIL_CONTACT } from '@/lib/constantes'
 import { CHEMIN_SONDE, SIGNATURE_SONDE } from '@/lib/domaine-boutique'
 import {
@@ -11,6 +14,8 @@ import {
   construireLignesDns,
   deciderStatut,
   JOURS_AVANT_LIBERATION,
+  nomTxtPropriete,
+  valeurTxtPropriete,
   type ConstatDomaine,
   type DomaineBoutique,
 } from '@/lib/domaine-regles'
@@ -28,7 +33,7 @@ import { envoyerDomaineActif, envoyerDomaineLibere, envoyerDomaineProbleme } fro
 import { assurerDomainePaiement } from '@/lib/stripe-domaines-paiement'
 
 export const COLONNES_DOMAINE =
-  'id, beatmaker_id, domaine, statut, domaine_entier, lignes_dns, explication, echecs_consecutifs, derniere_verification_le, premiere_activation_le, premier_echec_le, dernieres_verifications, created_at'
+  'id, beatmaker_id, domaine, statut, domaine_entier, lignes_dns, explication, echecs_consecutifs, derniere_verification_le, premiere_activation_le, premier_echec_le, dernieres_verifications, jeton_propriete, propriete_prouvee_le, created_at'
 
 export type ResultatDomaine =
   | { ok: true; domaine: DomaineBoutique | null; verificationImpossible?: boolean }
@@ -56,6 +61,32 @@ async function sonder(domaine: string): Promise<boolean> {
   }
 }
 
+// Ligne « _sonoo » lue directement dans le DNS public du domaine.
+async function proprieteProuvee(domaine: string, jeton: string): Promise<boolean> {
+  try {
+    const enregistrements = await Promise.race([
+      dns.resolveTxt(nomTxtPropriete(domaine)),
+      new Promise<never>((_, refuse) => setTimeout(() => refuse(new Error('délai')), 5_000)),
+    ])
+    const attendue = valeurTxtPropriete(jeton)
+    return enregistrements.some(morceaux => morceaux.join('').trim() === attendue)
+  } catch {
+    return false
+  }
+}
+
+// Un domaine qui a déjà marché pour une AUTRE boutique : ses lignes peuvent
+// encore pointer vers Sonoo, il faut donc une preuve avant de le réattribuer.
+export async function dejaUtiliseAilleurs(domaine: string, beatmakerId: string): Promise<boolean> {
+  const { data } = await createAdminClient()
+    .from('domaines_historique')
+    .select('id')
+    .eq('domaine', domaine)
+    .or(`beatmaker_id.is.null,beatmaker_id.neq.${beatmakerId}`)
+    .limit(1)
+  return (data?.length ?? 0) > 0
+}
+
 function premierCname(config: ConfigurationVercel): string | null {
   return [...(config.recommendedCNAME ?? [])].sort((a, b) => a.rank - b.rank)[0]?.value ?? null
 }
@@ -71,7 +102,7 @@ async function assurerVersionWww(domaine: string): Promise<void> {
   if (!resultat.ok) console.error(`[domaines] Version www refusée pour ${domaine} : ${resultat.raison}`)
 }
 
-async function calculerLignes(domaine: string, vercel: DomaineVercel, config: ConfigurationVercel) {
+async function calculerLignes(domaine: string, vercel: DomaineVercel, config: ConfigurationVercel, jetonPropriete: string | null) {
   const entier = vercel.apexName === domaine
   const configWww = entier ? await lireConfiguration(`www.${domaine}`) : null
   return construireLignesDns({
@@ -81,6 +112,7 @@ async function calculerLignes(domaine: string, vercel: DomaineVercel, config: Co
     cname: premierCname(config),
     cnameWww: configWww ? premierCname(configWww) : null,
     verification: vercel.verified ? [] : vercel.verification ?? [],
+    jetonPropriete,
   })
 }
 
@@ -123,7 +155,9 @@ export async function verifierDomaine(
   const instant = new Date()
   const maintenant = instant.toISOString()
 
-  let constat: ConstatDomaine = { present: false, verifie: false, configurationOk: false, sondeOk: false }
+  const jetonAPouver = ligne.jeton_propriete && !ligne.propriete_prouvee_le ? ligne.jeton_propriete : null
+  const proprieteOk = jetonAPouver ? await proprieteProuvee(ligne.domaine, jetonAPouver) : true
+  let constat: ConstatDomaine = { present: false, verifie: false, configurationOk: false, sondeOk: false, proprieteOk }
   let lignes = ligne.lignes_dns
   let entier = ligne.domaine_entier
 
@@ -137,7 +171,7 @@ export async function verifierDomaine(
       const config = await lireConfiguration(ligne.domaine)
       entier = vercel.apexName === ligne.domaine
       if (ligne.statut !== 'actif' || lignes.length === 0) {
-        lignes = await calculerLignes(ligne.domaine, vercel, config)
+        lignes = await calculerLignes(ligne.domaine, vercel, config, proprieteOk ? null : jetonAPouver)
         if (entier) await assurerVersionWww(ligne.domaine)
       }
       const configurationOk = vercel.verified && !config.misconfigured
@@ -146,6 +180,7 @@ export async function verifierDomaine(
         verifie: vercel.verified,
         configurationOk,
         sondeOk: configurationOk ? await sonder(ligne.domaine) : false,
+        proprieteOk,
       }
     }
   } catch (err) {
@@ -172,6 +207,7 @@ export async function verifierDomaine(
       domaine_entier: entier,
       derniere_verification_le: maintenant,
       premiere_activation_le: decision.statut === 'actif' ? ligne.premiere_activation_le ?? maintenant : ligne.premiere_activation_le,
+      propriete_prouvee_le: jetonAPouver && proprieteOk ? maintenant : ligne.propriete_prouvee_le,
       updated_at: maintenant,
     })
     .eq('id', ligne.id)
@@ -185,7 +221,7 @@ export async function verifierDomaine(
   return { domaine: data as unknown as DomaineBoutique, verificationImpossible: false }
 }
 
-function nouvellesValeurs(domaine: string) {
+function nouvellesValeurs(domaine: string, jetonPropriete: string | null) {
   const maintenant = new Date().toISOString()
   return {
     domaine,
@@ -198,6 +234,8 @@ function nouvellesValeurs(domaine: string) {
     premiere_activation_le: null,
     premier_echec_le: null,
     dernieres_verifications: [],
+    jeton_propriete: jetonPropriete,
+    propriete_prouvee_le: null,
     created_at: maintenant,
     updated_at: maintenant,
   }
@@ -222,6 +260,8 @@ async function remettreEnEtat(id: string, avant: DomaineBoutique | null) {
       premiere_activation_le: avant.premiere_activation_le,
       premier_echec_le: avant.premier_echec_le,
       dernieres_verifications: avant.dernieres_verifications,
+      jeton_propriete: avant.jeton_propriete,
+      propriete_prouvee_le: avant.propriete_prouvee_le,
       created_at: avant.created_at,
     })
     .eq('id', id)
@@ -237,7 +277,8 @@ export async function brancherDomaine(beatmakerId: string, domaine: string): Pro
   const avant = existante as unknown as DomaineBoutique | null
   if (avant?.domaine === domaine) return { ok: true, domaine: avant }
 
-  const valeurs = nouvellesValeurs(domaine)
+  const jeton = (await dejaUtiliseAilleurs(domaine, beatmakerId)) ? randomBytes(16).toString('hex') : null
+  const valeurs = nouvellesValeurs(domaine, jeton)
   const { data: reservee, error } = avant
     ? await admin.from('domaines_boutique').update(valeurs).eq('id', avant.id).select(COLONNES_DOMAINE).single()
     : await admin.from('domaines_boutique').insert({ ...valeurs, beatmaker_id: beatmakerId }).select(COLONNES_DOMAINE).single()
@@ -319,40 +360,75 @@ export async function domainesAVerifier(limite: number): Promise<DomaineBoutique
   return (data ?? []) as unknown as DomaineBoutique[]
 }
 
+export type RaisonLiberation = 'jamais_active' | 'panne' | 'abonnement'
+
+type LigneALiberer = { id: string; beatmaker_id: string; domaine: string }
+
+async function liberer(ligne: LigneALiberer, raison: RaisonLiberation): Promise<boolean> {
+  try {
+    await retirerDuProjet(ligne.domaine)
+  } catch (err) {
+    console.error(`[domaines] Libération de ${ligne.domaine} reportée :`, err instanceof Error ? err.message : err)
+    return false
+  }
+  const { data: supprimee } = await createAdminClient()
+    .from('domaines_boutique')
+    .delete()
+    .eq('id', ligne.id)
+    .eq('domaine', ligne.domaine)
+    .select('id')
+    .maybeSingle()
+  if (!supprimee) return false
+  console.log(`[domaines] ${ligne.domaine} libéré (${raison})`)
+  const to = await emailDuBeatmaker(ligne.beatmaker_id)
+  if (to) {
+    await envoyerDomaineLibere({ to, beatmakerId: ligne.beatmaker_id, domaine: ligne.domaine, raison }).catch(err =>
+      console.error('[domaines] Email de libération :', err instanceof Error ? err.message : err),
+    )
+  }
+  return true
+}
+
+// Abonnement arrêté depuis plus de 30 jours : la base propose, le code
+// revérifie la règle commune juste avant (abonnement revenu, compte exempté,
+// suspension ou impayé = on ne touche à rien).
+export async function doitLibererPourAbonnement(beatmakerId: string, maintenant = new Date()): Promise<boolean> {
+  const etat = await chargerEtatBoutique(createAdminClient(), beatmakerId)
+  if (!etat || etat.visible || etat.raison !== 'arrete' || !etat.limiteLe) return false
+  return new Date(etat.limiteLe).getTime() < maintenant.getTime()
+}
+
 export async function libererDomainesOublies(limite: number): Promise<number> {
   const admin = createAdminClient()
   const dateLimite = new Date(Date.now() - JOURS_AVANT_LIBERATION * 24 * UNE_HEURE_MS).toISOString()
-  const { data } = await admin
+  let liberes = 0
+
+  // Jamais activé en 30 jours (en attente, ou introuvable chez Vercel).
+  const { data: jamais } = await admin
     .from('domaines_boutique')
     .select('id, beatmaker_id, domaine')
-    .eq('statut', 'en_attente')
+    .in('statut', ['en_attente', 'probleme'])
     .is('premiere_activation_le', null)
     .lt('created_at', dateLimite)
     .limit(limite)
+  for (const ligne of (jamais ?? []) as LigneALiberer[]) if (await liberer(ligne, 'jamais_active')) liberes++
 
-  let liberes = 0
-  for (const ligne of data ?? []) {
-    try {
-      await retirerDuProjet(ligne.domaine as string)
-    } catch (err) {
-      console.error(`[domaines] Libération de ${ligne.domaine} reportée :`, err instanceof Error ? err.message : err)
-      continue
-    }
-    const { data: supprimee } = await admin
-      .from('domaines_boutique')
-      .delete()
-      .eq('id', ligne.id)
-      .eq('statut', 'en_attente')
-      .select('id')
-      .maybeSingle()
-    if (!supprimee) continue
-    liberes++
-    const to = await emailDuBeatmaker(ligne.beatmaker_id as string)
-    if (to) {
-      await envoyerDomaineLibere({ to, beatmakerId: ligne.beatmaker_id as string, domaine: ligne.domaine as string }).catch(err =>
-        console.error('[domaines] Email de libération :', err instanceof Error ? err.message : err),
-      )
-    }
+  // A marché, puis en panne depuis plus de 30 jours sans une seule réussite
+  // (une réussite efface premier_echec_le).
+  const { data: pannes } = await admin
+    .from('domaines_boutique')
+    .select('id, beatmaker_id, domaine')
+    .eq('statut', 'probleme')
+    .not('premiere_activation_le', 'is', null)
+    .lt('premier_echec_le', dateLimite)
+    .limit(limite)
+  for (const ligne of (pannes ?? []) as LigneALiberer[]) if (await liberer(ligne, 'panne')) liberes++
+
+  const { data: sansAbonnement, error } = await admin.rpc('domaines_sans_abonnement', { limite })
+  if (error) console.error('[domaines] Liste sans abonnement :', error.message)
+  for (const ligne of (sansAbonnement ?? []) as LigneALiberer[]) {
+    if (!(await doitLibererPourAbonnement(ligne.beatmaker_id))) continue
+    if (await liberer(ligne, 'abonnement')) liberes++
   }
   return liberes
 }

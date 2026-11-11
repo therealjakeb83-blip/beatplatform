@@ -1,4 +1,5 @@
 import type Stripe from 'stripe'
+import { boutiqueOuverteALaVente, MESSAGE_BOUTIQUE_INDISPONIBLE } from '@/lib/boutique-visible'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { stripe } from '@/lib/stripe'
 import { descriptionAvecTva } from '@/lib/prix-affiche'
@@ -218,6 +219,9 @@ export async function preparerAbonnement(
 
   if (!bm || bm.statut === 'suspendu' || !bm.abo_actif || !bm.abo_prix) {
     return { ok: false, erreur: 'Abonnement non disponible sur cette boutique.', status: 404 }
+  }
+  if (!(await boutiqueOuverteALaVente(admin, bm.id))) {
+    return { ok: false, erreur: MESSAGE_BOUTIQUE_INDISPONIBLE, status: 400 }
   }
   const pret = bm.stripe_account_id ? await calculerPretAVendreOuExempte(admin, bm.id, { estConcedant: true }) : { pret: false }
   if (!bm.stripe_account_id || !pret.pret) {

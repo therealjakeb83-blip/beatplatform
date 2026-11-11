@@ -1,4 +1,5 @@
 import { stripe } from '@/lib/stripe'
+import { boutiqueOuverteALaVente, MESSAGE_BOUTIQUE_INDISPONIBLE } from '@/lib/boutique-visible'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { resoudreRemiseAbonne, validerCodePromo, calculerLignesPanier, resoudreClientId, type ItemPanier } from '@/lib/pricing'
@@ -54,6 +55,10 @@ export async function POST(request: Request) {
     .eq('slug', slug)
     .single()
   if (!beatmaker) return NextResponse.json({ erreur: 'Boutique introuvable' }, { status: 404 })
+
+  if (!(await boutiqueOuverteALaVente(admin, beatmaker.id))) {
+    return NextResponse.json({ erreur: MESSAGE_BOUTIQUE_INDISPONIBLE }, { status: 400 })
+  }
 
   if (!(estRoleAdmin(beatmaker.role) || beatmaker.abonnement_exempte)) {
     const readiness = await calculerPretAVendre(admin, beatmaker.id, { estConcedant: true })
