@@ -148,11 +148,13 @@ function causeDuConstat(c: ConstatDomaine, aDejaMarche: boolean): string {
 }
 
 // Cause courte, affichée dans l'historique des vérifications.
-export function causeCourte(c: ConstatDomaine): string | null {
+// Un domaine jamais activé dont les lignes sont bonnes attend son certificat
+// HTTPS : ce n'est pas une panne.
+export function causeCourte(c: ConstatDomaine, aDejaMarche = true): string | null {
   if (!c.present) return 'Domaine introuvable de notre côté'
   if (!c.verifie || !c.proprieteOk) return 'Propriété du domaine pas encore prouvée'
   if (!c.configurationOk) return 'Lignes DNS introuvables'
-  if (!c.sondeOk) return 'Le domaine ne répond pas'
+  if (!c.sondeOk) return aDejaMarche ? 'Le domaine ne répond pas' : 'Connexion sécurisée en cours de création'
   return null
 }
 

@@ -194,7 +194,7 @@ export async function verifierDomaine(
   }
 
   const decision = deciderStatut(ligne.statut, ligne.echecs_consecutifs, ligne.premier_echec_le, constat, instant)
-  const cause = causeCourte(constat)
+  const cause = causeCourte(constat, ligne.statut !== 'en_attente')
   const { data } = await admin
     .from('domaines_boutique')
     .update({
