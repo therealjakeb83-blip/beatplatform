@@ -51,6 +51,11 @@ export const DUREE_AVANT_PROBLEME_MS = 30 * 60 * 1000
 export const VERIFICATIONS_GARDEES = 3
 export const JOURS_AVANT_LIBERATION = 30
 
+// Domaine entier actif dont la version www ne répond plus : le statut reste
+// Actif (l'adresse principale marche), la page Domaine affiche cet avertissement.
+export const EXPLICATION_WWW_ABSENT =
+  "La version www de ton domaine ne fonctionne pas : vérifie la ligne CNAME « www » (bouton « Voir les lignes DNS ») chez le site où tu as acheté ton domaine. Ton adresse principale, elle, fonctionne."
+
 export type ResultatSaisie = { ok: true; domaine: string } | { ok: false; erreur: string }
 
 const ADRESSE_INVALIDE = "Cette adresse n'est pas valide. Exemple attendu : monsite.com ou beats.monsite.com."

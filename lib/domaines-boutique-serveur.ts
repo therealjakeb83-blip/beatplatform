@@ -13,6 +13,7 @@ import {
   causeCourte,
   construireLignesDns,
   deciderStatut,
+  EXPLICATION_WWW_ABSENT,
   JOURS_AVANT_LIBERATION,
   nomTxtPropriete,
   valeurTxtPropriete,
@@ -160,6 +161,7 @@ export async function verifierDomaine(
   let constat: ConstatDomaine = { present: false, verifie: false, configurationOk: false, sondeOk: false, proprieteOk }
   let lignes = ligne.lignes_dns
   let entier = ligne.domaine_entier
+  let wwwOk = true
 
   try {
     let vercel = await lireDomaine(ligne.domaine)
@@ -175,6 +177,7 @@ export async function verifierDomaine(
         if (entier) await assurerVersionWww(ligne.domaine)
       }
       const configurationOk = vercel.verified && !config.misconfigured
+      if (entier && configurationOk) wwwOk = !(await lireConfiguration(`www.${ligne.domaine}`)).misconfigured
       constat = {
         present: true,
         verifie: vercel.verified,
@@ -202,7 +205,7 @@ export async function verifierDomaine(
       echecs_consecutifs: decision.echecs,
       premier_echec_le: decision.premierEchecLe,
       dernieres_verifications: ajouterVerification(ligne.dernieres_verifications, { le: maintenant, ok: cause === null, cause }),
-      explication: decision.explication,
+      explication: decision.statut === 'actif' && !wwwOk ? EXPLICATION_WWW_ABSENT : decision.explication,
       lignes_dns: lignes,
       domaine_entier: entier,
       derniere_verification_le: maintenant,

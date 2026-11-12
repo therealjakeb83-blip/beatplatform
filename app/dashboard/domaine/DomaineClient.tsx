@@ -267,6 +267,9 @@ export default function DomaineClient({
               {domaine.statut === 'actif' && !domaine.premier_echec_le && (
                 <p className="text-sm text-gray-300">Ta boutique s&apos;affiche sur ce domaine.</p>
               )}
+              {domaine.statut === 'actif' && domaine.explication && (
+                <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{domaine.explication}</p>
+              )}
               {domaine.statut === 'actif' && domaine.premier_echec_le && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
                   Ton domaine n&apos;a pas répondu à la dernière vérification
