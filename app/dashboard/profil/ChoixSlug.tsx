@@ -106,7 +106,7 @@ export default function ChoixSlug({ slug, choisi }: { slug: string; choisi: bool
       {etat === 'disponible' && (
         <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4 space-y-3">
           <p className="text-sm text-yellow-200">
-            Attention : ce choix est définitif. Ta boutique sera à l&apos;adresse <strong className="break-all">{adresseAffichee(propre)}</strong> et
+            Attention : ce choix est définitif. Ta boutique sera à l&apos;adresse <strong className="break-all">{adresseAffichee(propre)}</strong>{' '}et
             tu ne pourras plus la changer toi-même. L&apos;adresse provisoire renverra automatiquement vers la nouvelle.
           </p>
           <label className="block text-sm text-gray-300">
