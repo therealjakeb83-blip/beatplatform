@@ -40,7 +40,7 @@ const MEMOIRE_DOMAINE_MS = 30_000
 const MEMOIRE_MAX_ENTREES = 5_000
 // `domaineActif` : sur un sous-domaine seulement, le domaine perso actif de la
 // boutique, vers lequel ses pages renvoient (adresse officielle, décision 3A).
-type BoutiqueDuDomaine = { slug: string | null; visible: boolean; domaineActif?: string | null }
+type BoutiqueDuDomaine = { slug: string | null; visible: boolean; domaineActif?: string | null; ancienNom?: RenvoiAncienNom | null }
 const memoireDomaines = new Map<string, BoutiqueDuDomaine & { expire: number }>()
 const memoireRedirections = new Map<string, { domaine: string | null; expire: number }>()
 
@@ -51,8 +51,43 @@ function domaineActifDe(lignes: LigneDomaine | LigneDomaine[] | null | undefined
   return liste.find(l => l.statut === 'actif')?.domaine ?? null
 }
 
-// Adresse officielle d'une boutique demandée sur sonoo.app/slug : son domaine
-// actif, sinon (sous-domaines ouverts, rang 9c bis) slug.sonoo.app.
+type LigneBoutiqueRenvoi = { slug: string; domaines_boutique: LigneDomaine | LigneDomaine[] | null }
+
+// Adresse officielle d'une boutique : son domaine actif, sinon (sous-domaines
+// ouverts, rang 9c bis) slug.sonoo.app, sinon null (reste sur sonoo.app/slug).
+function hoteOfficiel(boutique: LigneBoutiqueRenvoi): string | null {
+  return domaineActifDe(boutique.domaines_boutique)
+    ?? (SOUS_DOMAINES_OUVERTS && sousDomainePossible(boutique.slug) ? hoteSousDomaine(boutique.slug) : null)
+}
+
+// Rang 9c bis lot 3 : un ancien slug (choisi ou automatique) mène pour toujours
+// à la boutique, tant que l'admin ne l'a pas libéré. `slug` = slug actuel.
+type RenvoiAncienNom = { slug: string; hote: string | null }
+const memoireAnciensNoms = new Map<string, { renvoi: RenvoiAncienNom | null; expire: number }>()
+
+async function renvoiAncienNom(ancien: string): Promise<RenvoiAncienNom | null> {
+  const memorise = memoireAnciensNoms.get(ancien)
+  if (memorise && memorise.expire > Date.now()) return memorise.renvoi
+
+  const { data, error } = await avecTimeout(
+    createAdminClient()
+      .from('anciens_slugs')
+      .select('beatmakers(slug, domaines_boutique(domaine, statut))')
+      .eq('slug', ancien)
+      .is('libere_le', null)
+      .maybeSingle()
+  )
+  if (error) throw error
+  const boutique = data?.beatmakers as unknown as LigneBoutiqueRenvoi | null | undefined
+  const renvoi = boutique?.slug ? { slug: boutique.slug, hote: hoteOfficiel(boutique) } : null
+  if (memoireAnciensNoms.size >= MEMOIRE_MAX_ENTREES) memoireAnciensNoms.clear()
+  memoireAnciensNoms.set(ancien, { renvoi, expire: Date.now() + MEMOIRE_DOMAINE_MS })
+  return renvoi
+}
+
+// Où envoyer sonoo.app/slug/... : `https://hote` (la suite du chemin est
+// ajoutée), ou `https://sonoo.app/nouveau-slug` pour un ancien nom dont la
+// boutique reste sur sonoo.app. Null = la boutique s'affiche ici.
 async function destinationDuSlug(slug: string): Promise<string | null> {
   const memorise = memoireRedirections.get(slug)
   if (memorise && memorise.expire > Date.now()) return memorise.domaine
@@ -66,11 +101,17 @@ async function destinationDuSlug(slug: string): Promise<string | null> {
   )
   if (error) throw error
 
-  const actif = data ? domaineActifDe(data.domaines_boutique as unknown as LigneDomaine | LigneDomaine[] | null) : null
-  const domaine = actif ?? (data && SOUS_DOMAINES_OUVERTS && sousDomainePossible(slug) ? hoteSousDomaine(slug) : null)
+  let destination: string | null
+  if (data) {
+    const hote = hoteOfficiel(data as unknown as LigneBoutiqueRenvoi)
+    destination = hote ? `https://${hote}` : null
+  } else {
+    const renvoi = await renvoiAncienNom(slug)
+    destination = !renvoi ? null : renvoi.hote ? `https://${renvoi.hote}` : `${URL_APP}/${renvoi.slug}`
+  }
   if (memoireRedirections.size >= MEMOIRE_MAX_ENTREES) memoireRedirections.clear()
-  memoireRedirections.set(slug, { domaine, expire: Date.now() + MEMOIRE_DOMAINE_MS })
-  return domaine
+  memoireRedirections.set(slug, { domaine: destination, expire: Date.now() + MEMOIRE_DOMAINE_MS })
+  return destination
 }
 
 // Temporaire (307) et non définitive : un navigateur garde une redirection
@@ -79,17 +120,36 @@ async function destinationDuSlug(slug: string): Promise<string | null> {
 async function redirectionVersDomaine(request: NextRequest): Promise<NextResponse | null> {
   if (request.method !== 'GET' && request.method !== 'HEAD') return null
   const { pathname, search } = request.nextUrl
+
+  // Ancienne page de paiement (sonoo.app/paiement/ancien-nom) : même page sous le nouveau nom.
+  const paiement = /^\/paiement\/([a-z0-9][a-z0-9-]*)\/?$/i.exec(pathname)
+  if (paiement) {
+    try {
+      const renvoi = await renvoiSiAncienNom(paiement[1])
+      return renvoi ? NextResponse.redirect(new URL(`/paiement/${renvoi.slug}${search}`, request.nextUrl.origin), 307) : null
+    } catch {
+      return null
+    }
+  }
+
   const slug = slugDuChemin(pathname)
   if (!slug) return null
 
-  let domaine: string | null
+  let destination: string | null
   try {
-    domaine = await destinationDuSlug(slug)
+    destination = await destinationDuSlug(slug)
   } catch {
     return null
   }
-  if (!domaine) return null
-  return NextResponse.redirect(`https://${domaine}${pathname.slice(slug.length + 1)}${search}`, 307)
+  if (!destination) return null
+  return NextResponse.redirect(`${destination}${pathname.slice(slug.length + 1)}${search}`, 307)
+}
+
+// Ancien nom seulement si aucune boutique ne porte ce slug aujourd'hui.
+async function renvoiSiAncienNom(slug: string): Promise<RenvoiAncienNom | null> {
+  const { data, error } = await avecTimeout(createAdminClient().from('beatmakers').select('id').eq('slug', slug).maybeSingle())
+  if (error) throw error
+  return data ? null : renvoiAncienNom(slug)
 }
 
 async function boutiqueDuDomaine(hote: string): Promise<BoutiqueDuDomaine> {
@@ -149,7 +209,7 @@ async function boutiqueDuSousDomaine(etiquette: string): Promise<BoutiqueDuDomai
         visible: etatBoutique(beatmaker, beatmaker.abonnements_plateforme ?? []).visible,
         domaineActif: domaineActifDe(beatmaker.domaines_boutique),
       }
-    : { slug: null, visible: false }
+    : { slug: null, visible: false, ancienNom: await renvoiAncienNom(etiquette) }
   if (memoireDomaines.size >= MEMOIRE_MAX_ENTREES) memoireDomaines.clear()
   memoireDomaines.set(cle, { ...resultat, expire: Date.now() + MEMOIRE_DOMAINE_MS })
   return resultat
@@ -192,6 +252,7 @@ async function reponseDomaineBoutique(request: NextRequest, hote: string) {
       headers: { 'content-type': 'text/plain; charset=utf-8', 'retry-after': '10' },
     })
   }
+  if (!boutique.slug && boutique.ancienNom) return renvoiDepuisAncienSousDomaine(request, boutique.ancienNom)
   const slug = boutique.slug
   if (!slug) return etiquette === null && !hote.endsWith(`.${DOMAINE_PLATEFORME}`) ? reponseIndisponible() : reponseAucuneBoutique()
 
@@ -223,6 +284,18 @@ async function reponseDomaineBoutique(request: NextRequest, hote: string) {
     url.pathname = pathname === '/' ? `/${slug}` : `/${slug}${pathname}`
   }
   return avecSessionRafraichie(request, () => NextResponse.rewrite(url, { request }))
+}
+
+// ancien-nom.sonoo.app/... : même page à l'adresse actuelle, toute méthode
+// (307 garde un POST, ex. désinscription en un clic depuis un vieil email).
+function renvoiDepuisAncienSousDomaine(request: NextRequest, renvoi: RenvoiAncienNom): NextResponse {
+  const { pathname, search } = request.nextUrl
+  if (renvoi.hote) return NextResponse.redirect(`https://${renvoi.hote}${pathname}${search}`, 307)
+  const route = routeSurDomaine(pathname)
+  const chemin = route === 'paiement' ? `/paiement/${renvoi.slug}`
+    : route === 'boutique' ? `/${renvoi.slug}${pathname === '/' ? '' : pathname}`
+    : pathname
+  return NextResponse.redirect(`${URL_APP}${chemin}${search}`, 307)
 }
 
 // Sur sonoo.app, la session du client est rafraîchie plus bas à chaque page ;

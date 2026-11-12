@@ -78,3 +78,14 @@ export function nettoyerSlug(brut: string): string {
     .slice(0, SLUG_LONGUEUR_MAX)
     .replace(/-$/, '')
 }
+
+// Slug automatique donné à l'inscription (remplacé une fois par le choix du
+// beatmaker) : nom nettoyé + 8 premiers caractères de l'identifiant du compte,
+// donc unique et toujours une adresse valide, 50 caractères au plus.
+export function slugAutomatique(nomArtiste: string, beatmakerId: string): string {
+  const suffixe = beatmakerId.replace(/-/g, '').slice(0, 8).toLowerCase()
+  let base = nettoyerSlug(nomArtiste).slice(0, SLUG_LONGUEUR_MAX - suffixe.length - 1).replace(/-$/, '')
+  // Un nom contenant « sonoo » ne passe pas dans l'adresse.
+  if (!base || estSlugReserve(`${base}-${suffixe}`)) base = 'boutique'
+  return `${base}-${suffixe}`
+}

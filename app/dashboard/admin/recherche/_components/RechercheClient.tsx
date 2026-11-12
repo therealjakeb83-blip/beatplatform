@@ -125,7 +125,7 @@ export default function RechercheClient({ rechercher }: Props) {
           {resultat.beatmakers.map(b => (
             <Link key={b.id} href={`/dashboard/admin/boutiques/${b.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-800/50 transition-colors">
               <div>
-                <p className="text-sm text-white">{b.nom_artiste} <span className="text-gray-600">— {b.slug}</span></p>
+                <p className="text-sm text-white">{b.nom_artiste} <span className="text-gray-600">— {b.slug}</span>{b.ancien_nom && <span className="text-gray-600"> (ancien nom : {b.ancien_nom})</span>}</p>
                 <p className="text-xs text-gray-500">{b.email}</p>
               </div>
               <Badge statut={b.statut} />

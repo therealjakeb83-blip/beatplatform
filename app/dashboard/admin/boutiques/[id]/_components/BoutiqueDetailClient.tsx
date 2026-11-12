@@ -33,6 +33,7 @@ type ChampsEditables = Record<'nom_artiste' | 'tagline' | 'bio' | 'telephone' | 
 
 type Props = {
   beatmaker: Beatmaker
+  sectionAdresse?: React.ReactNode
   nbClients: number
   nbCommandes: number
   statutAbonnementPlateforme: string | null
@@ -45,7 +46,7 @@ type Props = {
 }
 
 export default function BoutiqueDetailClient({
-  beatmaker, nbClients, nbCommandes, statutAbonnementPlateforme, annulationPrevueAbonnementPlateforme, nbAbosArtistesActifs,
+  beatmaker, sectionAdresse, nbClients, nbCommandes, statutAbonnementPlateforme, annulationPrevueAbonnementPlateforme, nbAbosArtistesActifs,
   suspendreAction, reactiverAction, corrigerBeatmakerAction, exempterGateAction,
 }: Props) {
   const [statut, setStatut] = useState(beatmaker.statut)
@@ -222,10 +223,12 @@ export default function BoutiqueDetailClient({
         </div>
       )}
 
+      {sectionAdresse}
+
       <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
         <p className="text-sm font-semibold text-white">Infos (correction manuelle)</p>
         <p className="text-xs text-gray-500">
-          Email, slug et Stripe Connect ne sont pas modifiables depuis l&apos;admin (voir cadrage Étape 15).
+          Email et Stripe Connect ne sont pas modifiables depuis l&apos;admin (voir cadrage Étape 15). Le slug se change dans « Adresse de la boutique ».
         </p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Champ label="Nom d'artiste" valeur={champs.nom_artiste ?? ''} onChange={v => setChamps(c => ({ ...c, nom_artiste: v }))} />

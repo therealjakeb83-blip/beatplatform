@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-import { messageRefusSlug, nettoyerSlug, refusSlug } from '@/lib/slug-regles'
+import { nettoyerSlug } from '@/lib/slug-regles'
+import { changerSlugBoutique, disponibiliteSlug } from '@/lib/slug-boutique'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -8,28 +9,23 @@ export async function PATCH(request: Request) {
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
 
   const body = await request.json()
-  const { slug: rawSlug, nom_artiste, tagline, logo_url, logo_inverser_fond_clair, instagram_url, youtube_url, tiktok_url, fuseau_horaire } = body
+  const { slug: rawSlug, confirmation_slug, nom_artiste, tagline, logo_url, logo_inverser_fond_clair, instagram_url, youtube_url, tiktok_url, fuseau_horaire } = body
 
   const updates: Record<string, string | boolean | null> = {}
 
   const { data: actuel } = await supabase.from('beatmakers').select('slug').eq('id', user.id).maybeSingle()
   const slugVoulu = rawSlug !== undefined ? nettoyerSlug(String(rawSlug)) : undefined
 
-  // Slug inchangé : jamais refusé, même s'il date d'avant les règles du rang 9c bis.
+  // Choix unique du slug (rang 9c bis lot 3) : adresse retapée à l'identique,
+  // puis figée (refus géré par changer_slug_boutique). Slug inchangé = jamais refusé.
+  let slugChoisi: string | undefined
   if (slugVoulu !== undefined && slugVoulu !== actuel?.slug) {
-    const slug = slugVoulu
-    const refus = refusSlug(slug)
-    if (refus) return Response.json({ error: messageRefusSlug(refus) }, { status: 400 })
-
-    const { data: existing } = await supabase
-      .from('beatmakers')
-      .select('id')
-      .eq('slug', slug)
-      .neq('id', user.id)
-      .single()
-
-    if (existing) return Response.json({ error: 'Ce slug est déjà pris.' }, { status: 409 })
-    updates.slug = slug
+    if (nettoyerSlug(String(confirmation_slug ?? '')) !== slugVoulu) {
+      return Response.json({ error: "Retape l'adresse exactement pour confirmer ton choix." }, { status: 400 })
+    }
+    const resultat = await changerSlugBoutique(user.id, slugVoulu, null)
+    if (!resultat.ok) return Response.json({ error: resultat.erreur }, { status: 400 })
+    slugChoisi = resultat.slug
   }
 
   if (nom_artiste !== undefined) updates.nom_artiste = nom_artiste || null
@@ -43,34 +39,24 @@ export async function PATCH(request: Request) {
   // si invalide — jamais d'injection d'une valeur arbitraire en base.
   if (fuseau_horaire !== undefined) updates.fuseau_horaire = fuseauSur(fuseau_horaire)
 
-  const { error } = await supabase
-    .from('beatmakers')
-    .update(updates)
-    .eq('id', user.id)
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase
+      .from('beatmakers')
+      .update(updates)
+      .eq('id', user.id)
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+  }
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
-
-  return Response.json({ success: true, slug: updates.slug })
+  return Response.json({ success: true, slug: slugChoisi })
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const raw = searchParams.get('slug') ?? ''
-  const slug = nettoyerSlug(raw)
-
-  const refus = refusSlug(slug)
-  if (refus) return Response.json({ disponible: false, slug, refus: messageRefusSlug(refus) })
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return Response.json({ error: 'Non autorisé' }, { status: 401 })
 
-  const { data } = await supabase
-    .from('beatmakers')
-    .select('id')
-    .eq('slug', slug)
-    .neq('id', user.id)
-    .single()
-
-  return Response.json({ disponible: !data, slug })
+  return Response.json(await disponibiliteSlug(raw, user.id))
 }

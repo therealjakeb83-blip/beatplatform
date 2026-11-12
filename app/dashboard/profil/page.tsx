@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ProfilForm from './ProfilForm'
+import ChoixSlug from './ChoixSlug'
 
 export default async function ProfilPage() {
   const supabase = await createClient()
@@ -10,7 +11,7 @@ export default async function ProfilPage() {
 
   const { data: profil } = await supabase
     .from('beatmakers')
-    .select('slug, nom_artiste, tagline, logo_url, logo_inverser_fond_clair, instagram_url, youtube_url, tiktok_url, fuseau_horaire')
+    .select('slug, slug_choisi_le, nom_artiste, tagline, logo_url, logo_inverser_fond_clair, instagram_url, youtube_url, tiktok_url, fuseau_horaire')
     .eq('id', user.id)
     .single()
 
@@ -26,6 +27,9 @@ export default async function ProfilPage() {
           ← Dashboard
         </Link>
         <h1 className="text-2xl font-bold mb-8">Mon profil</h1>
+        <div className="mb-8 max-w-lg">
+          <ChoixSlug slug={profil.slug} choisi={!!profil.slug_choisi_le} />
+        </div>
         <ProfilForm profil={profil} />
       </div>
     </main>

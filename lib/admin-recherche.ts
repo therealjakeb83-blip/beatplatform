@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 
 export type ResultatRechercheAdmin = {
-  beatmakers: { id: string; nom_artiste: string; slug: string; email: string; statut: string }[]
+  beatmakers: { id: string; nom_artiste: string; slug: string; email: string; statut: string; ancien_nom?: string }[]
   clients: { id: string; nom: string; prenom: string; email: string }[]
   commandes: { id: string; beatmaker_id: string; client_id: string; acheteur_email: string | null; prix_paye: number; statut: string; created_at: string }[]
   abonnements: { id: string; beatmaker_id: string; client_id: string; acheteur_email: string | null; statut: string; created_at: string }[]
@@ -45,12 +45,27 @@ export async function rechercherAdmin(requete: string, onglet: OngletRecherche):
   const ressemblePrefixeId = /^[0-9a-f]{3,32}$/i.test(q)
 
   if (onglet === 'boutiques') {
-    const { data } = await admin
-      .from('beatmakers')
-      .select('id, nom_artiste, slug, email, statut')
-      .or(`email.ilike.${motif},slug.ilike.${motif},nom_artiste.ilike.${motif}`)
-      .limit(10)
-    return { ...VIDE, beatmakers: data ?? [] }
+    const [{ data }, { data: anciens }] = await Promise.all([
+      admin
+        .from('beatmakers')
+        .select('id, nom_artiste, slug, email, statut')
+        .or(`email.ilike.${motif},slug.ilike.${motif},nom_artiste.ilike.${motif}`)
+        .limit(10),
+      // Rang 9c bis lot 3 : une boutique se retrouve aussi par un ancien nom.
+      admin.from('anciens_slugs').select('slug, beatmaker_id').ilike('slug', motif).is('libere_le', null).limit(10),
+    ])
+    const trouves: ResultatRechercheAdmin['beatmakers'] = data ?? []
+    const dejaLa = new Set(trouves.map(b => b.id))
+    const ancienParBoutique = new Map<string, string>()
+    for (const a of anciens ?? []) if (!dejaLa.has(a.beatmaker_id) && !ancienParBoutique.has(a.beatmaker_id)) ancienParBoutique.set(a.beatmaker_id, a.slug)
+    if (ancienParBoutique.size > 0) {
+      const { data: parAncien } = await admin
+        .from('beatmakers')
+        .select('id, nom_artiste, slug, email, statut')
+        .in('id', [...ancienParBoutique.keys()])
+      for (const b of parAncien ?? []) trouves.push({ ...b, ancien_nom: ancienParBoutique.get(b.id) })
+    }
+    return { ...VIDE, beatmakers: trouves }
   }
 
   if (onglet === 'artistes') {

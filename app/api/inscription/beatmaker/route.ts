@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { slugAutomatique } from '@/lib/slug-regles'
 import { envoyerConfirmationEmailPlateforme } from '@/lib/emails'
 import { paysValide, PAYS_PAR_DEFAUT } from '@/lib/pays'
 import { NextResponse } from 'next/server'
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
     p_email: emailNorm,
     p_nom_artiste: nomArtiste,
     p_pays: pays ?? PAYS_PAR_DEFAUT,
+    p_slug: slugAutomatique(nomArtiste || emailNorm.split('@')[0], data.user.id),
   })
   if (erreurFiche) {
     console.error('[inscription] Erreur création fiche beatmaker:', JSON.stringify(erreurFiche))
