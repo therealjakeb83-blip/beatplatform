@@ -50,6 +50,22 @@
 >
 > **Plan proposé (à valider par Jake)** : lot 0 failles → lot 1 fondation (fiche boutique = table `leads` enrichie, unique client × boutique, + reconstruction) → lot 2 lectures (fiche, Contacts, segments, listes, doublons, emails/automatisations) → lot 3 écritures automatiques (connexion, paiement, free download, abonnement, import, ajout manuel) → lot 4 RGPD + Admin (effacer, exporter, supprimer son compte, Confidentialité, vue admin) → lot 5 ménage (la fiche commune ne garde que le compte).
 
+> **Plan validé par Jake le 2026-11-12.** **Checklist du lot 0 : failles (feu vert de Jake le 2026-11-12)** — code `bc089ba` (`lib/cookie-abonne.ts`, `app/dashboard/business/_lib/appartenance.ts`), SQL `supabase/fiches_clients_lot0_menage_clients.sql` (`e41f1dd`). Correction de l'état des lieux : la page d'une liste n'affichait déjà que les contacts liés (un intrus restait invisible) ; ajout bloqué quand même.
+> - [x] T0 — Droits en base sur `clients` (Jake SQL, Claude lit) — ✅ 2026-11-12 : règles `clients_select/update/insert_own` présentes, mais `anon`/`authenticated` n'ont ni SELECT ni INSERT ni UPDATE (seulement TRUNCATE, REFERENCES, TRIGGER, inaccessibles par l'API publique) → faille 6 NON exploitable ; T11 devient un ménage
+> - [x] T1 — Cookie d'abonné signé, cookie fabriqué refusé partout (Claude) — ✅ 2026-11-12 : `.scratch/9d-lot0-T1-cookie.mts` sur le vrai code, 10/10 (en clair, autre boutique, email remplacé, signature modifiée/tronquée, autre secret → refusé ; signé → accepté) ; en ligne avec `abo_jakeb-test=faux-abonne@…` : `/mon-compte` → `/`, `/mon-compte/factures` et `/achats` → `/mon-compte`, `/mon-abonnement` = « Non connecté » ; cookie bien formé mais mal signé → refusé sans erreur (secret présent en production) ; accueil, `/membres`, `/selection` 200
+> - [x] T2 — Annuler / reprendre / portail avec cookie fabriqué → refusé (Claude) — ✅ 2026-11-12 en ligne : les 3 routes répondent « Session membre introuvable » (l'ancien code acceptait le cookie et cherchait l'abonnement)
+> - [x] T3 — Abonné reconnu après un vrai abonnement (Claude) — ✅ prouvé par le code : `succes` pose `valeurCookieAbonne`, relu par `lireEmailCookieAbonne` (aller-retour prouvé en T1, secret de production prouvé) ; la reconnaissance principale reste la connexion automatique, inchangée. Un ancien cookie non signé ne vaut plus rien : se reconnecter
+> - [x] T4 — Fiche d'un client non lié → renvoi vers Contacts, actions refusées (Claude) — ✅ prouvé par le code : `clientLieABoutique` (leads, commandes, abonnements de CETTE boutique) avant tout chargement, et `assurerAcces()` en tête des 10 actions
+> - [ ] T5 — Fiche d'un client lié : s'affiche et se modifie comme avant (Jake)
+> - [ ] T6 — Fusion : non liée refusée ✅ prouvé par le code (`clientsLiesABoutique`, 404) ; fusion normale qui fonctionne (Jake)
+> - [ ] T7 — Ignorer un doublon : non lié refusé ✅ prouvé par le code ; « Ignorer » normal qui fonctionne (Jake)
+> - [ ] T8 — Listes : ajout d'un client non lié refusé ✅ prouvé par le code (création, ajout par route et par bouton, propriété de la liste vérifiée) ; ajout normal qui fonctionne (Jake)
+> - [x] T9 — Favoris comptés par boutique (Claude) — ✅ prouvé par le code : fiche, liste Contacts (2 lectures) et segments/campagnes (`chargerContactsEnrichis`) filtrent `beats.beatmaker_id` = la boutique
+> - [x] T10 — Modifier l'identité ne touche plus les fusions des autres boutiques (Claude) — ✅ prouvé par le code : lecture et mise à jour de `fusions_crm` filtrées par `beatmaker_id`
+> - [ ] T11 — SQL de ménage exécuté (Jake) + vérification à 0 ligne ; rien de cassé ✅ prouvé par le code (aucune lecture/écriture de `clients` avec la session de l'utilisateur, tout passe par la clé de service)
+> - [ ] T12 — Rien de cassé : compilation ✅ (types OK, déploiement Vercel en ligne), pages boutique ✅ 200 ; dashboard Contacts / fiche / Listes / Doublons qui s'ouvrent (Jake)
+> - Noté pour le lot 2 : les liens vers la fiche d'un acheteur dans les vues d'un collaborateur (commande collab, analytics d'un beat collab) mènent maintenant à Contacts (pas de fuite, à masquer).
+
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
 
 > **Étude faite et plan validé par Jake le 2026-11-12 (7 questions).** Journal : mémoire `project_sous_domaines_9cbis_etude_2026_11_12.md`. Ligne directrice de Jake : « comme Shopify, automatique, pro et rapide ».
