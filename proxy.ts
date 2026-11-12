@@ -3,8 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif, pageAccessibleEnPlanFree } from '@/lib/acces-plan'
 import { COOKIE_MAINTENANCE, cheminFermeEnMaintenance, jetonMaintenanceValide, maintenanceActive } from '@/lib/maintenance'
-import { URL_APP } from '@/lib/constantes'
-import { CHEMIN_SONDE, SIGNATURE_SONDE, estHotePlateforme, estHoteSonoo, hoteSansPort, routeSurDomaine, slugDuChemin } from '@/lib/domaine-boutique'
+import { DOMAINE_PLATEFORME, SOUS_DOMAINES_OUVERTS, URL_APP } from '@/lib/constantes'
+import { CHEMIN_SONDE, SIGNATURE_SONDE, estHotePlateforme, estHoteSonoo, etiquetteSousDomaine, hoteSansPort, hoteSousDomaine, routeSurDomaine, slugDuChemin } from '@/lib/domaine-boutique'
+import { estSlugReserve } from '@/lib/slug-regles'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { etatBoutique, MESSAGE_BOUTIQUE_INDISPONIBLE, type AbonnementPlateformeResume, type BeatmakerVisibilite } from '@/lib/boutique-visible'
 
@@ -37,25 +38,36 @@ type BeatmakerGate = { id: string; statut: string; role: string; abonnement_exem
 // requêtes, inutile de consulter la base à chaque fois.
 const MEMOIRE_DOMAINE_MS = 30_000
 const MEMOIRE_MAX_ENTREES = 5_000
-type BoutiqueDuDomaine = { slug: string | null; visible: boolean }
+// `domaineActif` : sur un sous-domaine seulement, le domaine perso actif de la
+// boutique, vers lequel ses pages renvoient (adresse officielle, décision 3A).
+type BoutiqueDuDomaine = { slug: string | null; visible: boolean; domaineActif?: string | null }
 const memoireDomaines = new Map<string, BoutiqueDuDomaine & { expire: number }>()
 const memoireRedirections = new Map<string, { domaine: string | null; expire: number }>()
 
-async function domaineActifDuSlug(slug: string): Promise<string | null> {
+type LigneDomaine = { domaine: string; statut: string }
+
+function domaineActifDe(lignes: LigneDomaine | LigneDomaine[] | null | undefined): string | null {
+  const liste = Array.isArray(lignes) ? lignes : lignes ? [lignes] : []
+  return liste.find(l => l.statut === 'actif')?.domaine ?? null
+}
+
+// Adresse officielle d'une boutique demandée sur sonoo.app/slug : son domaine
+// actif, sinon (sous-domaines ouverts, rang 9c bis) slug.sonoo.app.
+async function destinationDuSlug(slug: string): Promise<string | null> {
   const memorise = memoireRedirections.get(slug)
   if (memorise && memorise.expire > Date.now()) return memorise.domaine
 
   const { data, error } = await avecTimeout(
     createAdminClient()
-      .from('domaines_boutique')
-      .select('domaine, beatmakers!inner(slug)')
-      .eq('statut', 'actif')
-      .eq('beatmakers.slug', slug)
+      .from('beatmakers')
+      .select('slug, domaines_boutique(domaine, statut)')
+      .eq('slug', slug)
       .maybeSingle()
   )
   if (error) throw error
 
-  const domaine = (data?.domaine as string | undefined) ?? null
+  const actif = data ? domaineActifDe(data.domaines_boutique as unknown as LigneDomaine | LigneDomaine[] | null) : null
+  const domaine = actif ?? (data && SOUS_DOMAINES_OUVERTS ? hoteSousDomaine(slug) : null)
   if (memoireRedirections.size >= MEMOIRE_MAX_ENTREES) memoireRedirections.clear()
   memoireRedirections.set(slug, { domaine, expire: Date.now() + MEMOIRE_DOMAINE_MS })
   return domaine
@@ -72,7 +84,7 @@ async function redirectionVersDomaine(request: NextRequest): Promise<NextRespons
 
   let domaine: string | null
   try {
-    domaine = await domaineActifDuSlug(slug)
+    domaine = await destinationDuSlug(slug)
   } catch {
     return null
   }
@@ -107,6 +119,52 @@ async function boutiqueDuDomaine(hote: string): Promise<BoutiqueDuDomaine> {
   return resultat
 }
 
+type BeatmakerSousDomaine = BeatmakerVisibilite & {
+  slug: string
+  abonnements_plateforme: AbonnementPlateformeResume[] | null
+  domaines_boutique: LigneDomaine | LigneDomaine[] | null
+}
+
+// Rang 9c bis : boutique de slug.sonoo.app, retrouvée par son slug (aucune ligne
+// à créer). Mot réservé (mail, admin…) = aucune boutique, sans lire la base.
+async function boutiqueDuSousDomaine(etiquette: string): Promise<BoutiqueDuDomaine> {
+  if (estSlugReserve(etiquette)) return { slug: null, visible: false }
+  const cle = `sous-domaine:${etiquette}`
+  const memorise = memoireDomaines.get(cle)
+  if (memorise && memorise.expire > Date.now()) return memorise
+
+  const { data, error } = await avecTimeout(
+    createAdminClient()
+      .from('beatmakers')
+      .select('slug, role, abonnement_exempte, statut, abonnements_plateforme(statut, date_annulation, date_fin), domaines_boutique(domaine, statut)')
+      .eq('slug', etiquette)
+      .maybeSingle()
+  )
+  if (error) throw error
+
+  const beatmaker = data as unknown as BeatmakerSousDomaine | null
+  const resultat: BoutiqueDuDomaine = beatmaker
+    ? {
+        slug: beatmaker.slug,
+        visible: etatBoutique(beatmaker, beatmaker.abonnements_plateforme ?? []).visible,
+        domaineActif: domaineActifDe(beatmaker.domaines_boutique),
+      }
+    : { slug: null, visible: false }
+  if (memoireDomaines.size >= MEMOIRE_MAX_ENTREES) memoireDomaines.clear()
+  memoireDomaines.set(cle, { ...resultat, expire: Date.now() + MEMOIRE_DOMAINE_MS })
+  return resultat
+}
+
+// Sous-domaine qui n'a jamais été une boutique (décision 7A) : comme un domaine inconnu.
+const PAGE_AUCUNE_BOUTIQUE = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Aucune boutique</title><style>html,body{margin:0;height:100%;background:#05060B;color:#9ca3af;font-family:system-ui,-apple-system,sans-serif}body{display:flex;align-items:center;justify-content:center;padding:0 16px;text-align:center}</style></head><body><p>Aucune boutique à cette adresse.</p></body></html>`
+
+function reponseAucuneBoutique(): NextResponse {
+  return new NextResponse(PAGE_AUCUNE_BOUTIQUE, {
+    status: 404,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  })
+}
+
 // Domaine sans boutique à montrer (abonnement arrêté, impayé, suspension,
 // domaine pas actif ou plus rattaché) : jamais de 404 ni de redirection. 503 =
 // « temporaire » pour les moteurs de recherche.
@@ -124,9 +182,10 @@ async function reponseDomaineBoutique(request: NextRequest, hote: string) {
     return NextResponse.json({ sonoo: SIGNATURE_SONDE }, { headers: { 'cache-control': 'no-store' } })
   }
 
+  const etiquette = etiquetteSousDomaine(hote)
   let boutique: BoutiqueDuDomaine
   try {
-    boutique = await boutiqueDuDomaine(hote)
+    boutique = etiquette === null ? await boutiqueDuDomaine(hote) : await boutiqueDuSousDomaine(etiquette)
   } catch {
     return new NextResponse('Cette boutique est momentanément injoignable. Réessaie dans un instant.', {
       status: 503,
@@ -134,11 +193,17 @@ async function reponseDomaineBoutique(request: NextRequest, hote: string) {
     })
   }
   const slug = boutique.slug
-  if (!slug) return reponseIndisponible()
+  if (!slug) return etiquette === null && !hote.endsWith(`.${DOMAINE_PLATEFORME}`) ? reponseIndisponible() : reponseAucuneBoutique()
 
   const { pathname, search } = request.nextUrl
   const route = routeSurDomaine(pathname)
   if (route === 'plateforme') return NextResponse.redirect(new URL(pathname + search, URL_APP))
+  // Sous-domaine d'une boutique qui a son domaine actif : ses pages y renvoient,
+  // comme sonoo.app/slug (temporaire : si le domaine tombe, le sous-domaine
+  // réaffiche la boutique). Paiement et téléchargements restent servis ici.
+  if (boutique.domaineActif && route === 'boutique' && (request.method === 'GET' || request.method === 'HEAD')) {
+    return NextResponse.redirect(`https://${boutique.domaineActif}${pathname}${search}`, 307)
+  }
   // Téléchargements des achats passés, désinscription, connexion : toujours servis.
   if (route === 'direct') return avecSessionRafraichie(request, () => NextResponse.next({ request }))
   if (!boutique.visible) return reponseIndisponible()

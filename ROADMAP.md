@@ -1,6 +1,8 @@
 ﻿# Sonoo — Roadmap V1
 
-> Dernière mise à jour : 2026-11-12 — **Rang 9c TERMINÉ : lot 5 ✅ CLOS (T0-T22)** (boutique indisponible sur son domaine, 30 jours puis libération, preuve de propriété `_sonoo`, `www` surveillé, paiements refusés sur une boutique indisponible ; testé avec testjakeb.com). Page « Où on en est » v64. **Prochaine étape : rang 9c bis (sous-domaines `slug.sonoo.app`), ÉTUDE avant code** — passation `HANDOFF_CLAUDE_SOUS_DOMAINES_9CBIS_2026-11-12.md`.
+> Dernière mise à jour : 2026-11-12 (soir) — **Rang 9c bis (sous-domaines `slug.sonoo.app`) : étude faite, 7 décisions, plan en 3 lots validé, lot 1 codé (interrupteur coupé), tests en cours.** Détail : « Détail — Boutiques en sous-domaine » juste en dessous.
+>
+> Mise à jour précédente : 2026-11-12 — **Rang 9c TERMINÉ : lot 5 ✅ CLOS (T0-T22)** (boutique indisponible sur son domaine, 30 jours puis libération, preuve de propriété `_sonoo`, `www` surveillé, paiements refusés sur une boutique indisponible ; testé avec testjakeb.com). Page « Où on en est » v64. **Prochaine étape : rang 9c bis (sous-domaines `slug.sonoo.app`), ÉTUDE avant code** — passation `HANDOFF_CLAUDE_SOUS_DOMAINES_9CBIS_2026-11-12.md`.
 >
 > Mise à jour précédente : 2026-11-11 (fin de journée) — **Rang 9c : lot 4 ✅ CLOS (T0-T22)** : liens des emails/campagnes/automatisations vers le domaine, retour sonoo.app → domaine connecté, « Continuer avec Google » (sonoo.app et domaine, iPhone compris), adresse canonique, robots, plans de site (indexation fermée jusqu'au lancement). Prochaine étape : lot 5 (fin de parcours : abonnement arrêté, 30 jours, libération, domaine entier à bas prix, cas limites), checklist à présenter avant de coder ; puis rang 9c bis (sous-domaines `slug.sonoo.app`).
 >
@@ -37,6 +39,40 @@
 > - **Étape 17 (passage de Stripe en réel)** : renommer le compte Stripe « My Producer » → « Sonoo » (nom interne, décision de Jake de le faire à ce moment-là), remplir nom public + libellé de relevé.
 > - **Étape 17 : supprimer l'ancien espace `myproducer-beats`** (gardé pour les anciens liens d'emails de test et un retour arrière éventuel).
 > - **CHANTIER RENOMMAGE + DOMAINE + STOCKAGE TERMINÉ. Suite : rang 9c (domaine personnalisé par boutique), puis rang 10 (5v2 boutiques).**
+
+## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
+
+> **Étude faite et plan validé par Jake le 2026-11-12 (7 questions).** Journal : mémoire `project_sous_domaines_9cbis_etude_2026_11_12.md`. Ligne directrice de Jake : « comme Shopify, automatique, pro et rapide ».
+>
+> **Décisions (à ne pas rouvrir)**
+> 1. DNS gardé chez GoDaddy : joker par 3 lignes (2 `NS _acme-challenge` → `ns1/ns2.vercel-dns.com`, 1 `CNAME *` → `cname.vercel-dns-0.com`) + « Enable Vercel DNS » sur sonoo.app côté Vercel sans changer de serveurs DNS (doc Vercel « wildcard domains with an external DNS provider »). Un joker ne remplace jamais un nom existant : emails Google/Resend intacts. Relevé avant/après + accord explicite de Jake.
+> 2. Liste large de mots interdits (technique, pages du site, imitation de Sonoo/support/banque/concurrents) + refus de tout slug contenant « sonoo » (`lib/slug-regles.ts`).
+> 3. Une seule adresse officielle : domaine perso actif, sinon `slug.sonoo.app` ; `sonoo.app/slug` et le sous-domaine y renvoient (même page) ; garde-fou du 9c (domaine en panne = le sous-domaine réaffiche la boutique).
+> 4. Le slug automatique (`nom-xxxxxxxx`) est remplacé UNE fois par le beatmaker (avertissement + slug à retaper), ensuite figé ; tout changement suivant = support (Jake, depuis l'Admin).
+> 4 bis. Comme Shopify : un ancien slug choisi renvoie pour toujours vers le nouveau, personne d'autre ne peut le prendre ; Jake seul peut libérer un ancien nom. Le slug automatique n'est jamais gardé.
+> 5. Une connexion client par boutique, jamais de cookie partagé `.sonoo.app` (le dashboard reste isolé).
+> 6. Sommaire `sonoo.app/sitemap.xml` gardé, il pointe vers `slug.sonoo.app/sitemap.xml` ; étape 17 : sonoo.app en propriété « domaine » dans Google Search Console (+ alertes de sécurité = surveiller les boutiques malveillantes) et vérifier que le renvoi temporaire sous-domaine → domaine perso transfère le référencement.
+> 7. Boutique invisible sur son sous-domaine = page 503 « temporairement indisponible » (téléchargements et désinscription servis) ; sous-domaine sans boutique = « Aucune boutique à cette adresse » (404).
+>
+> **Trouvé en préparant** : le slug automatique du trigger d'inscription (`supabase/fix_trigger_role.sql`) ne retire ni accents ni tirets doublés ou en tête et n'a pas de longueur maximale → adresse internet invalide possible (lot 3). Aucun contrôle de mots interdits sur le slug avant ce chantier (un slug `dashboard` aurait été cassé).
+>
+> **Plan (≈ 12-18 h, sans garantie)**
+> 1. **Fondations, interrupteur coupé** (`SOUS_DOMAINES_OUVERTS = false` dans `lib/constantes.ts`) : règles du slug, `proxy.ts` reconnaît `slug.sonoo.app` (même traitement qu'un domaine perso), adresse officielle centralisée, renvois préparés.
+> 2. **DNS et allumage** : relevé, Vercel + 3 lignes GoDaddy, relevé après (emails vérifiés), interrupteur allumé, Google, Apple/Google Pay, plans de site, Supabase si besoin, achat réel, iPhone.
+> 3. **Slug figé et anciens noms** : choix unique avec slug à retaper, table des anciens noms (renvoi), Admin (changer / libérer), slug automatique nettoyé, SQL de contrôle.
+>
+> **Checklist du lot 1 (validée le 2026-11-12)**
+> - [ ] T0 — Après déploiement, sonoo.app inchangé : maintenance, `sonoo.app/jakeb-test` affichée (pas encore renvoyée), dashboard (Claude + Jake pour le dashboard)
+> - [ ] T1 — En local, `jakeb-test.sonoo.app` affiche la boutique sans `/jakeb-test` : accueil, catalogue, fiche, licences, pages légales (Claude)
+> - [ ] T2 — Liens du menu et du bas de page restent sur le sous-domaine, panier OK (Claude)
+> - [ ] T3 — Sur le sous-domaine, `/dashboard` et `/connexion` renvoient vers sonoo.app (Claude)
+> - [ ] T4 — `/paiement` s'ouvre sur le sous-domaine, `/paiement/jakeb-test` y renvoie (Claude)
+> - [ ] T5 — `www.sonoo.app` reste la plateforme ; `mail.`, `send.`, `admin.`, `api.sonoo.app` n'affichent aucune boutique (Claude)
+> - [ ] T6 — `nimportequoi.sonoo.app` → « Aucune boutique à cette adresse » (404) (Claude)
+> - [ ] T7 — jakeb-test10 rendue invisible par SQL : 503 « temporairement indisponible », téléchargement toujours ouvert, remise en état vérifiée (Jake SQL + Claude)
+> - [ ] T8 — Boutique avec domaine perso actif (fausse ligne en base) : son sous-domaine renvoie vers le domaine ; plus de renvoi si le domaine n'est plus actif (Claude, SQL)
+> - [ ] T9 — Règles du slug sur le vrai code + refus côté serveur de la page Profil (Claude)
+> - [ ] T10 — SQL de contrôle : aucune boutique existante avec un slug interdit ou invalide (Jake SQL, Claude lit)
 
 ## Détail — Domaine personnalisé par boutique (rang 9c, ajouté le 2026-10-17)
 

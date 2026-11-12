@@ -4,7 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { URL_APP } from '@/lib/constantes'
 import { cheminInterne } from '@/lib/redirection'
 import { slugBoutiqueDuChemin, hoteSansPort } from '@/lib/domaine-boutique'
-import { slugDuDomaineActif } from '@/lib/boutique-du-domaine'
+import { slugDuSiteBoutique } from '@/lib/boutique-du-domaine'
 import { lierCompteClient } from '@/lib/lier-compte-client'
 import { beatmakerIdDuSlug } from '@/lib/compte-artiste'
 import { confirmationCompteArtiste } from '@/lib/emails'
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   // Domaine revérifié en base : un domaine inventé ou non actif ne reçoit rien.
   const domaineDemande = hoteSansPort(params.get('domaine'))
-  const slugDomaine = domaineDemande ? await slugDuDomaineActif(domaineDemande).catch(() => null) : null
+  const slugDomaine = domaineDemande ? await slugDuSiteBoutique(domaineDemande).catch(() => null) : null
   const origine = slugDomaine ? `https://${domaineDemande}` : URL_APP
   const redirectFinal = domaineDemande && !slugDomaine ? '/mon-compte' : redirect
 

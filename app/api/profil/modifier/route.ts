@@ -1,14 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { fuseauSur } from '@/lib/fuseau-horaire'
-
-function sanitizeSlug(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
+import { messageRefusSlug, nettoyerSlug, refusSlug } from '@/lib/slug-regles'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -20,10 +12,14 @@ export async function PATCH(request: Request) {
 
   const updates: Record<string, string | boolean | null> = {}
 
-  if (rawSlug !== undefined) {
-    const slug = sanitizeSlug(rawSlug)
-    if (slug.length < 3) return Response.json({ error: 'Le slug doit faire au moins 3 caractères.' }, { status: 400 })
-    if (slug.length > 50) return Response.json({ error: 'Le slug ne peut pas dépasser 50 caractères.' }, { status: 400 })
+  const { data: actuel } = await supabase.from('beatmakers').select('slug').eq('id', user.id).maybeSingle()
+  const slugVoulu = rawSlug !== undefined ? nettoyerSlug(String(rawSlug)) : undefined
+
+  // Slug inchangé : jamais refusé, même s'il date d'avant les règles du rang 9c bis.
+  if (slugVoulu !== undefined && slugVoulu !== actuel?.slug) {
+    const slug = slugVoulu
+    const refus = refusSlug(slug)
+    if (refus) return Response.json({ error: messageRefusSlug(refus) }, { status: 400 })
 
     const { data: existing } = await supabase
       .from('beatmakers')
@@ -60,9 +56,10 @@ export async function PATCH(request: Request) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const raw = searchParams.get('slug') ?? ''
-  const slug = sanitizeSlug(raw)
+  const slug = nettoyerSlug(raw)
 
-  if (slug.length < 3) return Response.json({ disponible: false, slug })
+  const refus = refusSlug(slug)
+  if (refus) return Response.json({ disponible: false, slug, refus: messageRefusSlug(refus) })
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

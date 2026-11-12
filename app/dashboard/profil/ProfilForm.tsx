@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FUSEAUX_HORAIRES, FUSEAU_HORAIRE_DEFAUT } from '@/lib/fuseau-horaire'
 import { ErreurFormatImage, reduireImage } from '@/lib/image-navigateur'
+import { DOMAINE_PLATEFORME, SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 
 type Profil = {
   slug: string
@@ -29,7 +30,8 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
   const [tiktok, setTiktok] = useState(profil.tiktok_url ?? '')
   const [fuseauHoraire, setFuseauHoraire] = useState(profil.fuseau_horaire ?? FUSEAU_HORAIRE_DEFAUT)
 
-  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'disponible' | 'pris' | 'court'>('idle')
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'disponible' | 'pris' | 'refuse'>('idle')
+  const [slugRefus, setSlugRefus] = useState('')
   const [slugSanitized, setSlugSanitized] = useState(profil.slug)
   const [logoLoading, setLogoLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -42,11 +44,11 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
 
   const checkSlug = useCallback(async (value: string) => {
     if (value === profil.slug) { setSlugStatus('idle'); return }
-    if (value.length < 3) { setSlugStatus('court'); return }
     setSlugStatus('checking')
     const res = await fetch(`/api/profil/modifier?slug=${encodeURIComponent(value)}`)
     const data = await res.json()
     setSlugSanitized(data.slug)
+    if (data.refus) { setSlugRefus(data.refus); setSlugStatus('refuse'); return }
     setSlugStatus(data.disponible ? 'disponible' : 'pris')
   }, [profil.slug])
 
@@ -80,7 +82,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (slugStatus === 'pris' || slugStatus === 'court') return
+    if (slugStatus === 'pris' || slugStatus === 'refuse') return
     setSaving(true)
     setErreur('')
     setSucces(false)
@@ -116,8 +118,8 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
   const slugIndicator = () => {
     if (slug === profil.slug || slugStatus === 'idle') return null
     if (slugStatus === 'checking') return <span className="text-gray-400 text-xs">Vérification...</span>
-    if (slugStatus === 'court') return <span className="text-yellow-400 text-xs">Minimum 3 caractères</span>
-    if (slugStatus === 'disponible') return <span className="text-green-400 text-xs">✓ Disponible — URL : monproducer.com/{slugSanitized}</span>
+    if (slugStatus === 'refuse') return <span className="text-yellow-400 text-xs">{slugRefus}</span>
+    if (slugStatus === 'disponible') return <span className="text-green-400 text-xs">✓ Disponible — adresse : {SOUS_DOMAINES_OUVERTS ? `${slugSanitized}.${DOMAINE_PLATEFORME}` : `${DOMAINE_PLATEFORME}/${slugSanitized}`}</span>
     if (slugStatus === 'pris') return <span className="text-red-400 text-xs">✗ Déjà pris</span>
   }
 
@@ -195,7 +197,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
       <div>
         <label className="block text-sm text-gray-300 mb-1">URL de ta boutique</label>
         <div className="flex items-center rounded-lg bg-gray-800 border border-gray-700 focus-within:border-indigo-500 overflow-hidden">
-          <span className="pl-4 text-gray-500 text-sm whitespace-nowrap">monproducer.com/</span>
+          <span className="pl-4 text-gray-500 text-sm whitespace-nowrap">{SOUS_DOMAINES_OUVERTS ? 'Adresse :' : `${DOMAINE_PLATEFORME}/`}</span>
           <input
             type="text"
             value={slug}
@@ -266,7 +268,7 @@ export default function ProfilForm({ profil }: { profil: Profil }) {
 
       <button
         type="submit"
-        disabled={saving || slugStatus === 'pris' || slugStatus === 'court'}
+        disabled={saving || slugStatus === 'pris' || slugStatus === 'refuse'}
         className="w-full py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 transition-colors"
       >
         {saving ? 'Enregistrement...' : 'Enregistrer'}

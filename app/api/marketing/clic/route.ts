@@ -2,18 +2,18 @@ import { verifierTokenCampagne, incrementerCompteurCampagne, lienDuSite, COOKIE_
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 import { URL_APP } from '@/lib/constantes'
-import { domaineActifDeLaBoutique } from '@/lib/boutique-du-domaine'
+import { hotePropreDeLaBoutique } from '@/lib/boutique-du-domaine'
 
 export const runtime = 'nodejs'
 
 const APP_URL = URL_APP
 
-// Protection open-redirect : seulement sonoo.app, ou le domaine actif de la
-// boutique qui a envoyé l'email (jamais celui d'une autre boutique).
+// Protection open-redirect : seulement sonoo.app, ou l'adresse propre (domaine
+// actif ou sous-domaine) de la boutique qui a envoyé l'email (jamais celui d'une autre boutique).
 async function destinationAutorisee(urlCible: string | null, beatmakerId: string | null): Promise<string> {
   if (!urlCible) return APP_URL
   if (lienDuSite(urlCible, APP_URL)) return urlCible
-  const domaine = beatmakerId ? await domaineActifDeLaBoutique(beatmakerId).catch(() => null) : null
+  const domaine = beatmakerId ? await hotePropreDeLaBoutique(beatmakerId).catch(() => null) : null
   if (domaine && lienDuSite(urlCible, `https://${domaine}`)) return urlCible
   return domaine ? `https://${domaine}` : APP_URL
 }

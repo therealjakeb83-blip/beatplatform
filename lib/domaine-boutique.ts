@@ -74,6 +74,21 @@ export function estHoteSonoo(hote: string | null | undefined): boolean {
   return h === DOMAINE_PLATEFORME || h === `www.${DOMAINE_PLATEFORME}`
 }
 
+// Rang 9c bis : « lilbeat » pour lilbeat.sonoo.app, null pour tout autre hôte
+// (sonoo.app, www, a.b.sonoo.app, domaine perso). Ne dit pas si la boutique existe.
+export function etiquetteSousDomaine(hote: string | null | undefined): string | null {
+  const h = hoteSansPort(hote)
+  const suffixe = `.${DOMAINE_PLATEFORME}`
+  if (!h.endsWith(suffixe)) return null
+  const etiquette = h.slice(0, -suffixe.length)
+  if (!etiquette || etiquette.includes('.') || etiquette === 'www') return null
+  return etiquette
+}
+
+export function hoteSousDomaine(slug: string): string {
+  return `${slug.toLowerCase()}.${DOMAINE_PLATEFORME}`
+}
+
 const SEGMENTS_HORS_BOUTIQUE = new Set([
   'api',
   'artiste',

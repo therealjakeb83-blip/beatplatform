@@ -1,8 +1,10 @@
 // Adresse officielle d'une boutique dans un lien envoyé hors de toute page
 // (emails, campagnes, automatisations) — rang 9c, lot 4 : son domaine s'il
-// est Actif, sinon sonoo.app/slug. Les emails aux beatmakers restent sur sonoo.app.
-import { URL_APP } from '@/lib/constantes'
+// est Actif, sinon son sous-domaine slug.sonoo.app (rang 9c bis, une fois ouverts),
+// sinon sonoo.app/slug. Les emails aux beatmakers restent sur sonoo.app.
+import { SOUS_DOMAINES_OUVERTS, URL_APP } from '@/lib/constantes'
 import { domaineActifDeLaBoutique } from '@/lib/boutique-du-domaine'
+import { hoteSousDomaine } from '@/lib/domaine-boutique'
 
 export type AdresseBoutique = {
   // Site où vivent les pages hors boutique (/telechargement, /api…), sans « / » final.
@@ -12,7 +14,8 @@ export type AdresseBoutique = {
 }
 
 export function adresseBoutique(slug: string, domaine: string | null): AdresseBoutique {
-  if (domaine) return { site: `https://${domaine}`, accueil: `https://${domaine}` }
+  const hote = domaine ?? (SOUS_DOMAINES_OUVERTS ? hoteSousDomaine(slug) : null)
+  if (hote) return { site: `https://${hote}`, accueil: `https://${hote}` }
   return { site: URL_APP, accueil: `${URL_APP}/${slug}` }
 }
 

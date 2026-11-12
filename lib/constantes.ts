@@ -15,6 +15,13 @@ export const DOMAINE_ENVOI_BOUTIQUES = 'mail.sonoo.app'
 export const EMAIL_EXPEDITEUR_PLATEFORME = `noreply@${DOMAINE_ENVOI_PLATEFORME}`
 export const EMAIL_CONTACT = 'contact@sonoo.app'
 
+// Rang 9c bis : chaque boutique sans domaine perso vit sur slug.sonoo.app.
+// Interrupteur des liens et renvois VERS les sous-domaines (sonoo.app/slug →
+// slug.sonoo.app, emails, plans de site) : à allumer seulement quand le joker
+// DNS *.sonoo.app répond, sinon les boutiques deviendraient injoignables.
+// L'affichage d'une boutique sur son sous-domaine ne dépend pas de ce réglage.
+export const SOUS_DOMAINES_OUVERTS = false
+
 export function expediteurBoutique(boutique: { nom_artiste: string; slug: string | null }): string {
   const local = (boutique.slug ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '') || 'boutique'
   return `${boutique.nom_artiste} <${local}@${DOMAINE_ENVOI_BOUTIQUES}>`

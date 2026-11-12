@@ -3,7 +3,9 @@
 // peut pas choisir librement (Vercel n'envoie ici que les domaines branchés).
 import { headers } from 'next/headers'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { estHotePlateforme, hoteSansPort } from '@/lib/domaine-boutique'
+import { estHotePlateforme, etiquetteSousDomaine, hoteSansPort, hoteSousDomaine } from '@/lib/domaine-boutique'
+import { estSlugReserve } from '@/lib/slug-regles'
+import { SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 
 export type SiteDemande = {
   // Adresse du site où se trouve le client, sans « / » final.
@@ -24,10 +26,21 @@ export async function slugDuDomaineActif(hote: string): Promise<string | null> {
   return beatmaker?.slug ?? null
 }
 
+// Boutique d'un site de boutique : sous-domaine slug.sonoo.app (rang 9c bis) ou
+// domaine perso actif. Null si l'adresse ne mène à aucune boutique.
+export async function slugDuSiteBoutique(hoteBrut: string): Promise<string | null> {
+  const hote = hoteSansPort(hoteBrut)
+  const etiquette = etiquetteSousDomaine(hote)
+  if (etiquette === null) return slugDuDomaineActif(hote)
+  if (estSlugReserve(etiquette)) return null
+  const { data } = await createAdminClient().from('beatmakers').select('slug').eq('slug', etiquette).maybeSingle()
+  return (data?.slug as string | undefined) ?? null
+}
+
 async function siteDepuisHote(hoteBrut: string | null, origineRequete: string): Promise<SiteDemande> {
   if (estHotePlateforme(hoteBrut)) return { origine: origineRequete, slugDomaine: null, surDomaine: false }
   const hote = hoteSansPort(hoteBrut)
-  return { origine: `https://${hote}`, slugDomaine: await slugDuDomaineActif(hote), surDomaine: true }
+  return { origine: `https://${hote}`, slugDomaine: await slugDuSiteBoutique(hote), surDomaine: true }
 }
 
 export async function siteDeLaRequete(request: Request): Promise<SiteDemande> {
@@ -50,4 +63,14 @@ export async function domaineActifDeLaBoutique(beatmakerId: string): Promise<str
     .eq('statut', 'actif')
     .maybeSingle()
   return (data?.domaine as string | undefined) ?? null
+}
+
+// Adresse propre d'une boutique, hors sonoo.app : son domaine actif, sinon son
+// sous-domaine une fois les sous-domaines ouverts (rang 9c bis), sinon null.
+export async function hotePropreDeLaBoutique(beatmakerId: string): Promise<string | null> {
+  const domaine = await domaineActifDeLaBoutique(beatmakerId)
+  if (domaine || !SOUS_DOMAINES_OUVERTS) return domaine
+  const { data } = await createAdminClient().from('beatmakers').select('slug').eq('id', beatmakerId).maybeSingle()
+  const slug = data?.slug as string | undefined
+  return slug ? hoteSousDomaine(slug) : null
 }

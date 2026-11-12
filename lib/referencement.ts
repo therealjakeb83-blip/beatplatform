@@ -5,7 +5,7 @@
 // un beat en vente (sinon noindex et hors plan de site, toujours ouverte).
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
-import { URL_APP } from '@/lib/constantes'
+import { adresseBoutique } from '@/lib/adresse-boutique'
 import { siteDeLaPage } from '@/lib/boutique-du-domaine'
 
 export function indexationOuverte(): boolean {
@@ -150,8 +150,10 @@ export function sommairePlansDeSiteXml(adresses: string[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${lignes}\n</sitemapindex>\n`
 }
 
+// Accueil d'une boutique sans domaine perso : son sous-domaine une fois ouverts
+// (rang 9c bis), sinon sonoo.app/slug.
 export function accueilSonoo(slug: string): string {
-  return `${URL_APP}/${slug}`
+  return adresseBoutique(slug, null).accueil
 }
 
 // Accueil officiel de la boutique pour la page affichée : son domaine, sinon sonoo.app/slug.
