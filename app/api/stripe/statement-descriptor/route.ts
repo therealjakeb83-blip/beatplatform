@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { validerStatementDescriptor } from '@/lib/statement-descriptor'
 import { NextResponse } from 'next/server'
 import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
@@ -36,7 +37,7 @@ export async function PATCH(request: Request) {
     }
   }
 
-  const { error } = await supabase
+  const { error } = await createAdminClient()
     .from('beatmakers')
     .update({ statement_descriptor: descripteur })
     .eq('id', user.id)

@@ -1,6 +1,7 @@
 import { stripe } from '@/lib/stripe'
 import { creerCompteVendeur } from '@/lib/stripe-comptes'
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse } from 'next/server'
 import { adresseBoutique } from '@/lib/adresse-boutique'
 import { paiementsDisponiblesDans, PAYS_PAR_DEFAUT, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     }
     accountId = account.id
 
-    await supabase
+    await createAdminClient()
       .from('beatmakers')
       .update({ stripe_account_id: accountId })
       .eq('id', user.id)

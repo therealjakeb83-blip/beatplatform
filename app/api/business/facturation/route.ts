@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { MANDAT_FACTURATION_VERSION_ACTUELLE, MENTIONS_FACTURE_MAX, formatFacturationValide, modeleFactureValide, normaliserMentionsFacture } from '@/lib/facturation'
 import { NextResponse } from 'next/server'
 import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   if (body.action === 'accepter_mandat') {
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({
         mandat_facturation_version: MANDAT_FACTURATION_VERSION_ACTUELLE,
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     if (!formatFacturationValide(format)) {
       return NextResponse.json({ erreur: 'Format invalide — {NUM} doit apparaître exactement une fois, aucune autre variable dupliquée.' }, { status: 400 })
     }
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({ facturation_format: format, facturation_format_accepte_at: new Date().toISOString() })
       .eq('id', user.id)
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   }
 
   if (body.action === 'reinitialiser_format') {
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({ facturation_format: null, facturation_format_accepte_at: null })
       .eq('id', user.id)
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
     if (mentions && mentions.length > MENTIONS_FACTURE_MAX) {
       return NextResponse.json({ erreur: `Les mentions ne peuvent pas dépasser ${MENTIONS_FACTURE_MAX} caractères.` }, { status: 400 })
     }
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({ facture_modele: body.modele, facture_mentions: mentions })
       .eq('id', user.id)
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
     // uniquement informatif (affichage "tiré au hasard" vs "choisi par toi").
     const valeur = mode === 'manuel' ? (body.offsetManuel as number) : (1000 + Math.floor(Math.random() * 8000))
 
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({
         facturation_offset_mode: mode,

@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { MANDAT_FULFILLMENT_VERSION_ACTUELLE } from '@/lib/fulfillment'
 import { NextResponse } from 'next/server'
 import { rafraichirPretAVendre } from '@/lib/pret-a-vendre-suivi'
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   const { action } = await request.json() as { action?: 'accepter' | 'revoquer' }
 
   if (action === 'accepter') {
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({
         fulfillment_mandat_version: MANDAT_FULFILLMENT_VERSION_ACTUELLE,
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   if (action === 'revoquer') {
-    const { error } = await supabase
+    const { error } = await createAdminClient()
       .from('beatmakers')
       .update({ fulfillment_mandat_revoque_at: new Date().toISOString() })
       .eq('id', user.id)
