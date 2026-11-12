@@ -62,16 +62,16 @@
 > 3. **Slug figé et anciens noms** : choix unique avec slug à retaper, table des anciens noms (renvoi), Admin (changer / libérer), slug automatique nettoyé, SQL de contrôle.
 >
 > **Checklist du lot 1 (validée le 2026-11-12)**
-> - [ ] T0 — Après déploiement, sonoo.app inchangé : maintenance, `sonoo.app/jakeb-test` affichée (pas encore renvoyée), dashboard (Claude + Jake pour le dashboard)
-> - [ ] T1 — En local, `jakeb-test.sonoo.app` affiche la boutique sans `/jakeb-test` : accueil, catalogue, fiche, licences, pages légales (Claude)
-> - [ ] T2 — Liens du menu et du bas de page restent sur le sous-domaine, panier OK (Claude)
-> - [ ] T3 — Sur le sous-domaine, `/dashboard` et `/connexion` renvoient vers sonoo.app (Claude)
-> - [ ] T4 — `/paiement` s'ouvre sur le sous-domaine, `/paiement/jakeb-test` y renvoie (Claude)
-> - [ ] T5 — `www.sonoo.app` reste la plateforme ; `mail.`, `send.`, `admin.`, `api.sonoo.app` n'affichent aucune boutique (Claude)
-> - [ ] T6 — `nimportequoi.sonoo.app` → « Aucune boutique à cette adresse » (404) (Claude)
+> - [ ] T0 — Après déploiement, sonoo.app inchangé : maintenance, `sonoo.app/jakeb-test` affichée (pas encore renvoyée), dashboard (Claude + Jake pour le dashboard) — ✅ partie Claude 2026-11-12 (déploiement `33834e3` Ready) : `/`, `/dashboard`, `/connexion` → maintenance ; `/jakeb-test` et `/jakeb-test/beats` 200 sans renvoi, canonique `sonoo.app/jakeb-test` ; `/paiement/jakeb-test` 200 ; `www` → 308 sonoo.app ; sommaire et plan de site inchangés (adresses sonoo.app/slug) ; robots fermé ; `jakeb-test.sonoo.app` introuvable en ligne (normal, DNS au lot 2). Reste : dashboard par Jake
+> - [x] T1 — En local, `jakeb-test.sonoo.app` affiche la boutique sans `/jakeb-test` : accueil, catalogue, fiche, licences, pages légales (Claude) — ✅ serveur local + faux en-tête Host : `/`, `/beats`, `/selection`, `/licences`, `/cgv`, `/mentions-legales`, `/contact` → 200 ; majuscules et port ignorés (`JAKEB-TEST.sonoo.app:443`) ; canonique `https://jakeb-test.sonoo.app`, noindex (indexation fermée) ; `robots.txt` fermé ; plan de site aux adresses du sous-domaine ; `/jakeb-test10` = page « introuvable » de jakeb-test, identique à `sonoo.app/jakeb-test/jakeb-test10`, jamais une autre boutique
+> - [x] T2 — Liens du menu et du bas de page restent sur le sous-domaine, panier OK (Claude) — ✅ 111 liens internes distincts relevés sur 5 pages : aucun en `/jakeb-test`, aucun vers sonoo.app (liens absolus = canonique du sous-domaine, réseaux sociaux, images) ; panier prouvé par le code (même chemin « sur un domaine » que le 9c, slug transmis par le layout, validé au 9c lot 1 T4)
+> - [x] T3 — Sur le sous-domaine, `/dashboard` et `/connexion` renvoient vers sonoo.app (Claude) — ✅ `/dashboard`, `/connexion`, `/inscription` → 307 vers la plateforme (même règle que le domaine perso, `routeSurDomaine`)
+> - [x] T4 — `/paiement` s'ouvre sur le sous-domaine, `/paiement/jakeb-test` y renvoie (Claude) — ✅ `/paiement` 200, `/paiement/jakeb-test` → 307 `/paiement`, `/paiement/autre` → 404
+> - [x] T5 — `www.sonoo.app` reste la plateforme ; `mail.`, `send.`, `admin.`, `api.sonoo.app` n'affichent aucune boutique (Claude) — ✅ `www.sonoo.app` = chemin plateforme (dashboard → connexion) ; `mail.`, `send.`, `admin.`, `api.`, `support.`, `sonoo-beats.`, `s0noo.sonoo.app` → 404 « Aucune boutique à cette adresse » (sans lire la base) ; 2 niveaux (`a.jakeb-test.sonoo.app`) → même page (corrigé en testant : affichait « indisponible ») ; domaine perso inconnu → 503 inchangé (lot 5)
+> - [x] T6 — `nimportequoi.sonoo.app` → « Aucune boutique à cette adresse » (404) (Claude) — ✅ 404 + message
 > - [ ] T7 — jakeb-test10 rendue invisible par SQL : 503 « temporairement indisponible », téléchargement toujours ouvert, remise en état vérifiée (Jake SQL + Claude)
 > - [ ] T8 — Boutique avec domaine perso actif (fausse ligne en base) : son sous-domaine renvoie vers le domaine ; plus de renvoi si le domaine n'est plus actif (Claude, SQL)
-> - [ ] T9 — Règles du slug sur le vrai code + refus côté serveur de la page Profil (Claude)
+> - [x] T9 — Règles du slug sur le vrai code + refus côté serveur de la page Profil (Claude) — ✅ script `.scratch/9cbis-lot1-T9-regles-slug.mts` 31/31 (mots interdits, « sonoo » même écrit `s0noo`/`so-noo`, tirets en tête/fin/doubles, majuscules, `_`, longueurs, nettoyage des saisies) ; `/api/profil/modifier?slug=` refuse `admin`, `Support`, `sonoo-beats`, `ab` avec le message ; enregistrement (PATCH) : même règle, appliquée seulement si le slug change (un ancien slug n'empêche jamais d'enregistrer le reste du profil) — prouvé par le code
 > - [ ] T10 — SQL de contrôle : aucune boutique existante avec un slug interdit ou invalide (Jake SQL, Claude lit)
 
 ## Détail — Domaine personnalisé par boutique (rang 9c, ajouté le 2026-10-17)
