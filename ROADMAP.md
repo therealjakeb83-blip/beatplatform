@@ -62,7 +62,7 @@
 > - [ ] T8 — Listes : ajout d'un client non lié refusé ✅ prouvé par le code (création, ajout par route et par bouton, propriété de la liste vérifiée) ; ajout normal qui fonctionne (Jake)
 > - [x] T9 — Favoris comptés par boutique (Claude) — ✅ prouvé par le code : fiche, liste Contacts (2 lectures) et segments/campagnes (`chargerContactsEnrichis`) filtrent `beats.beatmaker_id` = la boutique
 > - [x] T10 — Modifier l'identité ne touche plus les fusions des autres boutiques (Claude) — ✅ prouvé par le code : lecture et mise à jour de `fusions_crm` filtrées par `beatmaker_id`
-> - [ ] T11 — SQL de ménage exécuté (Jake) + vérification à 0 ligne ; rien de cassé ✅ prouvé par le code (aucune lecture/écriture de `clients` avec la session de l'utilisateur, tout passe par la clé de service)
+> - [x] T11 — SQL de ménage exécuté (Jake) + vérification à 0 ligne ; rien de cassé — ✅ 2026-11-12 : SQL exécuté par Jake, vérification « No rows returned » (plus aucune règle ni aucun droit pour anon/authenticated sur `clients`) ; rien de cassé prouvé par le code (aucune lecture/écriture de `clients` avec la session de l'utilisateur, tout passe par la clé de service) ; en ligne après exécution : boutique, beats, connexion artiste, paiement 200
 > - [ ] T12 — Rien de cassé : compilation ✅ (types OK, déploiement Vercel en ligne), pages boutique ✅ 200 ; dashboard Contacts / fiche / Listes / Doublons qui s'ouvrent (Jake)
 > - Noté pour le lot 2 : les liens vers la fiche d'un acheteur dans les vues d'un collaborateur (commande collab, analytics d'un beat collab) mènent maintenant à Contacts (pas de fuite, à masquer).
 
