@@ -19,6 +19,8 @@ export async function disponibiliteSlug(brut: string, beatmakerId: string): Prom
   if (refus) return { slug, disponible: false, refus: messageRefusSlug(refus) }
 
   const admin = createAdminClient()
+  const { data: actuel } = await admin.from('beatmakers').select('slug').eq('id', beatmakerId).maybeSingle()
+  if (actuel?.slug === slug) return { slug, disponible: false, refus: "C'est déjà l'adresse actuelle." }
   const [pris, ancien] = await Promise.all([
     admin.from('beatmakers').select('id').eq('slug', slug).neq('id', beatmakerId).limit(1),
     admin.from('anciens_slugs').select('id').eq('slug', slug).is('libere_le', null).neq('beatmaker_id', beatmakerId).limit(1),
