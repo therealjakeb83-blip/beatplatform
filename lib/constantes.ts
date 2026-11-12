@@ -20,7 +20,7 @@ export const EMAIL_CONTACT = 'contact@sonoo.app'
 // slug.sonoo.app, emails, plans de site) : à allumer seulement quand le joker
 // DNS *.sonoo.app répond, sinon les boutiques deviendraient injoignables.
 // L'affichage d'une boutique sur son sous-domaine ne dépend pas de ce réglage.
-export const SOUS_DOMAINES_OUVERTS = false
+export const SOUS_DOMAINES_OUVERTS = true
 
 export function expediteurBoutique(boutique: { nom_artiste: string; slug: string | null }): string {
   const local = (boutique.slug ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '') || 'boutique'

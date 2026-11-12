@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 import { hoteSousDomaine } from '@/lib/domaine-boutique'
+import { sousDomainePossible } from '@/lib/slug-regles'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../../page'
 import Pagination from '../../../../_pagination/Pagination'
 import { usePagination } from '../../../../_pagination/usePagination'
@@ -161,7 +162,7 @@ export default function CodePromoDetailClient({
   const pagination = usePagination(commandes)
 
   const statut    = computeStatut(code)
-  const shareUrl  = SOUS_DOMAINES_OUVERTS
+  const shareUrl  = SOUS_DOMAINES_OUVERTS && sousDomainePossible(slug)
     ? `https://${hoteSousDomaine(slug)}/?code=${code.code}`
     : typeof window !== 'undefined'
     ? `${window.location.origin}/${slug}?code=${code.code}`

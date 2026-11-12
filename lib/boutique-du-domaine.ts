@@ -4,7 +4,7 @@
 import { headers } from 'next/headers'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estHotePlateforme, etiquetteSousDomaine, hoteSansPort, hoteSousDomaine } from '@/lib/domaine-boutique'
-import { estSlugReserve } from '@/lib/slug-regles'
+import { estSlugReserve, sousDomainePossible } from '@/lib/slug-regles'
 import { SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 
 export type SiteDemande = {
@@ -72,5 +72,5 @@ export async function hotePropreDeLaBoutique(beatmakerId: string): Promise<strin
   if (domaine || !SOUS_DOMAINES_OUVERTS) return domaine
   const { data } = await createAdminClient().from('beatmakers').select('slug').eq('id', beatmakerId).maybeSingle()
   const slug = data?.slug as string | undefined
-  return slug ? hoteSousDomaine(slug) : null
+  return slug && sousDomainePossible(slug) ? hoteSousDomaine(slug) : null
 }

@@ -5,7 +5,7 @@ import { aUnAbonnementPlateformeActif, pageAccessibleEnPlanFree } from '@/lib/ac
 import { COOKIE_MAINTENANCE, cheminFermeEnMaintenance, jetonMaintenanceValide, maintenanceActive } from '@/lib/maintenance'
 import { DOMAINE_PLATEFORME, SOUS_DOMAINES_OUVERTS, URL_APP } from '@/lib/constantes'
 import { CHEMIN_SONDE, SIGNATURE_SONDE, estHotePlateforme, estHoteSonoo, etiquetteSousDomaine, hoteSansPort, hoteSousDomaine, routeSurDomaine, slugDuChemin } from '@/lib/domaine-boutique'
-import { estSlugReserve } from '@/lib/slug-regles'
+import { estSlugReserve, sousDomainePossible } from '@/lib/slug-regles'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { etatBoutique, MESSAGE_BOUTIQUE_INDISPONIBLE, type AbonnementPlateformeResume, type BeatmakerVisibilite } from '@/lib/boutique-visible'
 
@@ -67,7 +67,7 @@ async function destinationDuSlug(slug: string): Promise<string | null> {
   if (error) throw error
 
   const actif = data ? domaineActifDe(data.domaines_boutique as unknown as LigneDomaine | LigneDomaine[] | null) : null
-  const domaine = actif ?? (data && SOUS_DOMAINES_OUVERTS ? hoteSousDomaine(slug) : null)
+  const domaine = actif ?? (data && SOUS_DOMAINES_OUVERTS && sousDomainePossible(slug) ? hoteSousDomaine(slug) : null)
   if (memoireRedirections.size >= MEMOIRE_MAX_ENTREES) memoireRedirections.clear()
   memoireRedirections.set(slug, { domaine, expire: Date.now() + MEMOIRE_DOMAINE_MS })
   return domaine

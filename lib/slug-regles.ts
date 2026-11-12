@@ -44,6 +44,12 @@ export function estSlugReserve(slug: string): boolean {
 // à la fin ou en double (adresse internet valide).
 const FORMAT_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
+// Adresse slug.sonoo.app utilisable : un ancien slug mal formé (accent, tiret en tête,
+// plus de 63 caractères) ou réservé reste sur sonoo.app/slug plutôt que vers une adresse morte.
+export function sousDomainePossible(slug: string): boolean {
+  return slug.length <= 63 && FORMAT_SLUG.test(slug) && !estSlugReserve(slug)
+}
+
 export function refusSlug(slug: string): RefusSlug | null {
   if (slug.length < SLUG_LONGUEUR_MIN) return 'court'
   if (slug.length > SLUG_LONGUEUR_MAX) return 'long'

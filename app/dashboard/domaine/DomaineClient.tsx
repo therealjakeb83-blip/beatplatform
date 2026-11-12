@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { DOMAINE_PLATEFORME, SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 import { hoteSousDomaine } from '@/lib/domaine-boutique'
+import { sousDomainePossible } from '@/lib/slug-regles'
 import { promptAssistantDns, type DomaineBoutique, type StatutDomaine, type VerificationDomaine } from '@/lib/domaine-regles'
 
 const RAFRAICHISSEMENT_MS = 30_000
@@ -125,7 +126,7 @@ export default function DomaineClient({
   const [modeChangement, setModeChangement] = useState(false)
   const [confirmeRetrait, setConfirmeRetrait] = useState(false)
 
-  const adresseSonoo = SOUS_DOMAINES_OUVERTS ? hoteSousDomaine(slug) : `${DOMAINE_PLATEFORME}/${slug}`
+  const adresseSonoo = SOUS_DOMAINES_OUVERTS && sousDomainePossible(slug) ? hoteSousDomaine(slug) : `${DOMAINE_PLATEFORME}/${slug}`
 
   const appeler = useCallback(async (action: 'brancher' | 'verifier' | 'retirer', corps?: object) => {
     const reponse = await fetch(`/api/domaine/${action}`, {

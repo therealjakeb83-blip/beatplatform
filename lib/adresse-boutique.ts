@@ -5,6 +5,7 @@
 import { SOUS_DOMAINES_OUVERTS, URL_APP } from '@/lib/constantes'
 import { domaineActifDeLaBoutique } from '@/lib/boutique-du-domaine'
 import { hoteSousDomaine } from '@/lib/domaine-boutique'
+import { sousDomainePossible } from '@/lib/slug-regles'
 
 export type AdresseBoutique = {
   // Site où vivent les pages hors boutique (/telechargement, /api…), sans « / » final.
@@ -14,7 +15,7 @@ export type AdresseBoutique = {
 }
 
 export function adresseBoutique(slug: string, domaine: string | null): AdresseBoutique {
-  const hote = domaine ?? (SOUS_DOMAINES_OUVERTS ? hoteSousDomaine(slug) : null)
+  const hote = domaine ?? (SOUS_DOMAINES_OUVERTS && sousDomainePossible(slug) ? hoteSousDomaine(slug) : null)
   if (hote) return { site: `https://${hote}`, accueil: `https://${hote}` }
   return { site: URL_APP, accueil: `${URL_APP}/${slug}` }
 }
