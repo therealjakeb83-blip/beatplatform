@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
+import { hoteSousDomaine } from '@/lib/domaine-boutique'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../../page'
 import Pagination from '../../../../_pagination/Pagination'
 import { usePagination } from '../../../../_pagination/usePagination'
@@ -159,7 +161,9 @@ export default function CodePromoDetailClient({
   const pagination = usePagination(commandes)
 
   const statut    = computeStatut(code)
-  const shareUrl  = typeof window !== 'undefined'
+  const shareUrl  = SOUS_DOMAINES_OUVERTS
+    ? `https://${hoteSousDomaine(slug)}/?code=${code.code}`
+    : typeof window !== 'undefined'
     ? `${window.location.origin}/${slug}?code=${code.code}`
     : `/${slug}?code=${code.code}`
 

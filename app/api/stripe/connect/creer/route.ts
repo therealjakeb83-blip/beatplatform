@@ -2,6 +2,7 @@ import { stripe } from '@/lib/stripe'
 import { creerCompteVendeur } from '@/lib/stripe-comptes'
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { adresseBoutique } from '@/lib/adresse-boutique'
 import { paiementsDisponiblesDans, PAYS_PAR_DEFAUT, MESSAGE_PAIEMENTS_INDISPONIBLES } from '@/lib/pays'
 
 // Code d'activité Stripe « Digital Goods: Media, Books, Movies, Music ».
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     // infos de configuration, jamais d'identité (nom, adresse, date de
     // naissance) — celles-là exigent un jeton de compte pour une plateforme
     // française. Le beatmaker confirme ou modifie tout chez Stripe.
-    const urlBoutique = new URL(origin).hostname === 'localhost' ? undefined : `${origin}/${beatmaker.slug}`
+    const urlBoutique = new URL(origin).hostname === 'localhost' ? undefined : adresseBoutique(beatmaker.slug, null).accueil
     let account
     try {
       const { compte, dashboard } = await creerCompteVendeur({
