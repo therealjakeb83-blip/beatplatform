@@ -76,16 +76,18 @@ async function proprieteProuvee(domaine: string, jeton: string): Promise<boolean
   }
 }
 
-// Un domaine qui a déjà marché pour une AUTRE boutique : ses lignes peuvent
-// encore pointer vers Sonoo, il faut donc une preuve avant de le réattribuer.
+// Le DERNIER à avoir fait marcher ce domaine est une autre boutique : ses
+// lignes peuvent encore pointer vers Sonoo, il faut donc une preuve avant de le
+// réattribuer. Une boutique qui reprend son propre domaine n'a rien à prouver.
 export async function dejaUtiliseAilleurs(domaine: string, beatmakerId: string): Promise<boolean> {
   const { data } = await createAdminClient()
     .from('domaines_historique')
-    .select('id')
+    .select('beatmaker_id')
     .eq('domaine', domaine)
-    .or(`beatmaker_id.is.null,beatmaker_id.neq.${beatmakerId}`)
+    .order('retire_le', { ascending: false })
     .limit(1)
-  return (data?.length ?? 0) > 0
+    .maybeSingle()
+  return !!data && data.beatmaker_id !== beatmakerId
 }
 
 function premierCname(config: ConfigurationVercel): string | null {
