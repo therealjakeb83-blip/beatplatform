@@ -145,7 +145,8 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       .in('id', lot)),
     parLots<{ client_id: string; beat_id: string | null }>(clientIds, lot => admin
       .from('favoris')
-      .select('client_id, beat_id')
+      .select('client_id, beat_id, beats!inner(beatmaker_id)')
+      .eq('beats.beatmaker_id', beatmakerId)
       .in('client_id', lot)),
     parLots<{ client_id: string; beat_id: string | null }>(clientIds, lot => admin
       .from('free_downloads')

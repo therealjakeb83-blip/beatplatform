@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
 import { lienBoutique } from '@/lib/domaine-boutique'
+import { poserCookieAbonne } from '@/lib/cookie-abonne'
 
 export const runtime = 'nodejs'
 
@@ -46,13 +47,7 @@ export async function GET(request: Request) {
 
     if (email) {
       const cookieStore = await cookies()
-      cookieStore.set(`abo_${slug}`, email, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 365,
-        path: '/',
-        sameSite: 'lax',
-      })
+      poserCookieAbonne(cookieStore, slug, email)
 
       const lienConnexion = await connecterAutomatiquementApresAbonnement(email, nom, slug, origin, chemin)
       if (lienConnexion) redirection = lienConnexion

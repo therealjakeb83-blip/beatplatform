@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { clientsLiesABoutique } from '@/app/dashboard/business/_lib/appartenance'
 
 // POST /api/business/listes
 // Body: { nom: string; description?: string; client_ids: string[] }
@@ -18,6 +19,11 @@ export async function POST(request: Request) {
   if (!nom?.trim()) return NextResponse.json({ erreur: 'Nom requis' }, { status: 400 })
   if (!Array.isArray(client_ids) || client_ids.length === 0)
     return NextResponse.json({ erreur: 'Aucun contact sélectionné' }, { status: 400 })
+
+  // Confidentialité entre boutiques (9d lot 0) : uniquement des clients liés à cette boutique
+  const lies = await clientsLiesABoutique(supabase, user.id, client_ids)
+  if (client_ids.some(id => !lies.has(id)))
+    return NextResponse.json({ erreur: 'Contact introuvable' }, { status: 404 })
 
   const { data: liste, error } = await supabase
     .from('listes_crm')

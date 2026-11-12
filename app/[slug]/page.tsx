@@ -12,6 +12,7 @@ import { agregerStatsParCategorie, statsPour } from '@/lib/categories-stats'
 import type { TypeCategorieDb } from './_lib/categories-urls'
 import type { Metadata } from 'next'
 import { accueilOfficiel } from '@/lib/referencement'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 // Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -56,7 +57,7 @@ export default async function BoutiquePage({
   // Fallback cookie — pour les abonnés qui n'ont pas encore créé de compte
   if (!estAbonne) {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (emailCookie) {
       const { data: abo } = await admin
         .from('abonnements_boutique')

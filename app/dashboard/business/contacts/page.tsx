@@ -89,7 +89,8 @@ export default async function ContactsPage({
         .select('id, prenom, nom, pays')
         .in('id', lot)),
       parLots<AvecBeat & { created_at: string }>(leadClientIds, lot => admin.from('favoris')
-        .select('client_id, created_at, beats(styles, type_beat, ambiances)')
+        .select('client_id, created_at, beats!inner(styles, type_beat, ambiances, beatmaker_id)')
+        .eq('beats.beatmaker_id', beatmakerId)
         .in('client_id', lot)),
       parLots<AvecBeat & { downloaded_at: string }>(leadClientIds, lot => admin.from('free_downloads')
         .select('client_id, downloaded_at, beats(styles, type_beat, ambiances)')
@@ -259,7 +260,8 @@ export default async function ContactsPage({
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
       : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
     parLots<{ client_id: string; beat_id: string | null; created_at: string }>(clientIds, lot => admin.from('favoris')
-      .select('client_id, beat_id, created_at')
+      .select('client_id, beat_id, created_at, beats!inner(beatmaker_id)')
+      .eq('beats.beatmaker_id', beatmakerId)
       .in('client_id', lot)),
     parLots<{ client_id: string; beat_id: string | null; downloaded_at: string }>(clientIds, lot => admin.from('free_downloads')
       .select('client_id, beat_id, downloaded_at')

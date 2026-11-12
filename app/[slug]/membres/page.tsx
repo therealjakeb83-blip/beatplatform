@@ -8,6 +8,7 @@ import type { BeatPublic, LicencePublic } from '../_components/BeatCard'
 import { detailTva } from '@/lib/prix-affiche'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 import type { Metadata } from 'next'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 // Adresse canonique, relative à l'accueil officiel de la boutique (app/[slug]/layout.tsx).
 export const metadata: Metadata = { alternates: { canonical: '/membres' } }
@@ -47,7 +48,7 @@ export default async function MembresPage({
 
   if (!estAbonne) {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (emailCookie) {
       const { data: abo } = await admin
         .from('abonnements_boutique')

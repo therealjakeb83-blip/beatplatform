@@ -1,10 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { clientsLiesABoutique } from '@/app/dashboard/business/_lib/appartenance'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const admin    = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 })
@@ -26,25 +25,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Les deux contacts doivent être différents' }, { status: 400 })
   }
 
-  // Vérifier que les deux clients appartiennent bien à ce beatmaker
-  const [{ count: countConserve }, { count: countArchive }] = await Promise.all([
-    supabase.from('commandes').select('*', { count: 'exact', head: true })
-      .eq('beatmaker_id', user.id).eq('client_id', client_id_conserve)
-      .then(r => r.count !== null && r.count > 0 ? r : supabase.from('abonnements_boutique').select('*', { count: 'exact', head: true })
-        .eq('beatmaker_id', user.id).eq('client_id', client_id_conserve)
-        .then(r2 => r2.count !== null && r2.count > 0 ? r2 : supabase.from('leads').select('*', { count: 'exact', head: true })
-          .eq('beatmaker_id', user.id).eq('client_id', client_id_conserve)
-        )
-      ),
-    supabase.from('commandes').select('*', { count: 'exact', head: true })
-      .eq('beatmaker_id', user.id).eq('client_id', client_id_archive)
-      .then(r => r.count !== null && r.count > 0 ? r : supabase.from('abonnements_boutique').select('*', { count: 'exact', head: true })
-        .eq('beatmaker_id', user.id).eq('client_id', client_id_archive)
-        .then(r2 => r2.count !== null && r2.count > 0 ? r2 : supabase.from('leads').select('*', { count: 'exact', head: true })
-          .eq('beatmaker_id', user.id).eq('client_id', client_id_archive)
-        )
-      ),
-  ])
+  // Vérifier que les deux clients appartiennent bien à ce beatmaker (9d lot 0 :
+  // le contrôle était calculé mais jamais appliqué)
+  const lies = await clientsLiesABoutique(supabase, user.id, [client_id_conserve, client_id_archive])
+  if (!lies.has(client_id_conserve) || !lies.has(client_id_archive)) {
+    return NextResponse.json({ erreur: 'Contact introuvable' }, { status: 404 })
+  }
 
   // Insérer la fusion via le client authentifié (RLS WITH CHECK beatmaker_id = auth.uid())
   const { error } = await supabase.from('fusions_crm').insert({

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { lireStatutNewsletter, inscrireParClient, desinscrireParClient } from '@/lib/newsletter'
 import { lienBoutiqueServeur, surDomaineBoutique } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 type LigneRow = {
   beats: { titre: string; image_url: string | null } | null
@@ -54,7 +55,7 @@ export default async function MonCompteBoutiquePage({
     clientId = user.id
   } else {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (emailCookie) emailIdentifie = emailCookie
   }
 

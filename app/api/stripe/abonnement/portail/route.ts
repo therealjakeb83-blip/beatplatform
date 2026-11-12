@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
 import { lienBoutique } from '@/lib/domaine-boutique'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 export const runtime = 'nodejs'
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
 
   if (!abo) {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (!emailCookie) {
       return NextResponse.json({ erreur: 'Session membre introuvable' }, { status: 401 })
     }

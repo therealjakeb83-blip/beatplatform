@@ -8,6 +8,7 @@ import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
 import { statutFusionne } from '@/lib/newsletter'
+import { clientsLiesABoutique } from '@/app/dashboard/business/_lib/appartenance'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,11 @@ export default async function ListeDetailPage({
     if (!u) return
     const clientIds = JSON.parse(formData.get('client_ids') as string ?? '[]') as string[]
     if (!clientIds.length) return
+    if (u.id !== beatmakerId) return
+    const { data: aMoi } = await s.from('listes_crm').select('id').eq('id', listeId).eq('beatmaker_id', u.id).maybeSingle()
+    if (!aMoi) return
+    const lies = await clientsLiesABoutique(s, u.id, clientIds)
+    if (clientIds.some(id => !lies.has(id))) return
     await s.from('listes_crm_contacts').upsert(
       clientIds.map(clientId => ({ liste_id: listeId, client_id: clientId })),
       { onConflict: 'liste_id,client_id', ignoreDuplicates: true }

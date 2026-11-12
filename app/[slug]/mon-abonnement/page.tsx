@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import GererAbonnementButton from './GererAbonnementButton'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 export default async function MonAbonnementPage({
   params,
@@ -45,7 +46,7 @@ export default async function MonAbonnementPage({
   // Fallback cookie
   if (!aboQuery) {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (emailCookie) {
       emailAbonne = emailCookie
       const { data } = await admin

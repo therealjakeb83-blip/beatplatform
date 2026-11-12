@@ -40,7 +40,8 @@ export async function estClientAbonne({
 
   const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  const { lireEmailCookieAbonne } = await import('@/lib/cookie-abonne')
+  const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
   if (emailCookie) {
     const { data: abo } = await admin
       .from('abonnements_boutique')

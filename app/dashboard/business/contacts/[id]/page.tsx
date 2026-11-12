@@ -14,6 +14,7 @@ import { LigneTableauImportee, MentionsLigne, MontantLigne, TitreLigneImportee }
 import { libelleSource, SOURCE_COLORS } from '@/lib/sources-marketing'
 import { libelleSourceImport } from '@/lib/import-externe/plateformes'
 import TableauPagine from '../../../_pagination/TableauPagine'
+import { clientLieABoutique } from '../../_lib/appartenance'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,18 @@ export default async function FicheClientPage({
   if (!user) redirect('/connexion')
   const beatmakerId = user.id
 
+  // Confidentialité entre boutiques (9d lot 0) : uniquement un client lié à CETTE boutique
+  if (!(await clientLieABoutique(supabase, beatmakerId, clientId))) redirect('/dashboard/business/contacts')
+
+  // Même garde pour chaque action (formulaire rejoué ou page restée ouverte)
+  async function assurerAcces() {
+    const s = await createClient()
+    const { data: { user: u } } = await s.auth.getUser()
+    if (!u || u.id !== beatmakerId || !(await clientLieABoutique(s, beatmakerId, clientId))) {
+      throw new Error('Contact introuvable')
+    }
+  }
+
   const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire, abo_nom').eq('id', beatmakerId).single()
   const tz = fuseauSur(beatmakerRow?.fuseau_horaire)
   // Une commande d'abonnement n'a pas de beat : on affiche le nom de l'abonnement
@@ -226,7 +239,8 @@ export default async function FicheClientPage({
       .maybeSingle(),
     admin
       .from('favoris')
-      .select('beat_id, beats(titre, image_url, styles, type_beat, ambiances, instruments)')
+      .select('beat_id, beats!inner(titre, image_url, styles, type_beat, ambiances, instruments, beatmaker_id)')
+      .eq('beats.beatmaker_id', beatmakerId)
       .in('client_id', allClientIds),
     supabase
       .from('morceaux_clients')
@@ -401,6 +415,7 @@ export default async function FicheClientPage({
 
   async function sauvegarderIdentite(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a           = createAdminClient()
     const surnom      = (formData.get('surnom')      as string ?? '').trim() || null
     const nom_artiste = (formData.get('nom_artiste') as string ?? '').trim() || null
@@ -408,18 +423,19 @@ export default async function FicheClientPage({
     const langue      = (formData.get('langue')      as string ?? '').trim() || null
     await a.from('clients').update({ surnom, nom_artiste, telephone, langue }).eq('id', clientId)
     // Supprimer les overrides fusion pour ces champs — l'édition directe prend le dessus
-    const { data: fusions } = await a.from('fusions_crm').select('id, champs_conserves').eq('client_id_conserve', clientId)
+    const { data: fusions } = await a.from('fusions_crm').select('id, champs_conserves').eq('beatmaker_id', beatmakerId).eq('client_id_conserve', clientId)
     for (const f of fusions ?? []) {
       const champs = { ...(f.champs_conserves as Record<string, string> ?? {}) }
       delete champs.nom_artiste
       delete champs.telephone
-      await a.from('fusions_crm').update({ champs_conserves: champs }).eq('id', f.id)
+      await a.from('fusions_crm').update({ champs_conserves: champs }).eq('id', f.id).eq('beatmaker_id', beatmakerId)
     }
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
   async function toggleNewsletter(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a       = createAdminClient()
     const inscrit = (formData.get('action') as string) === 'inscrire'
     await changerStatutParBeatmaker(a, { clientId, beatmakerId, inscrire: inscrit })
@@ -428,6 +444,7 @@ export default async function FicheClientPage({
 
   async function sauvegarderNotes(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a = createAdminClient()
     await a.from('clients').update({
       notes: (formData.get('notes') as string ?? '').trim() || null,
@@ -437,6 +454,7 @@ export default async function FicheClientPage({
 
   async function ajouterTag(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a   = createAdminClient()
     const tag = (formData.get('tag') as string ?? '').trim()
     if (!tag) return
@@ -450,6 +468,7 @@ export default async function FicheClientPage({
 
   async function supprimerTag(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a   = createAdminClient()
     const tag = (formData.get('tag') as string ?? '').trim()
     const { data: current } = await a.from('clients').select('tags').eq('id', clientId).single()
@@ -460,6 +479,7 @@ export default async function FicheClientPage({
 
   async function sauvegarderSociaux(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a = createAdminClient()
     await a.from('clients').update({
       instagram: (formData.get('instagram') as string ?? '').trim() || null,
@@ -472,6 +492,7 @@ export default async function FicheClientPage({
 
   async function ajouterEmailSecondaire(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a     = createAdminClient()
     const email = (formData.get('email') as string ?? '').trim().toLowerCase()
     if (!email) return
@@ -485,6 +506,7 @@ export default async function FicheClientPage({
 
   async function supprimerEmailSecondaire(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a     = createAdminClient()
     const email = (formData.get('email') as string ?? '').trim().toLowerCase()
     const { data: current } = await a.from('clients').select('emails_secondaires').eq('id', clientId).single()
@@ -500,6 +522,7 @@ export default async function FicheClientPage({
   // L'ancienne principale part dans emails_secondaires pour ne pas être perdue.
   async function definirEmailPrincipal(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a = createAdminClient()
     const nouvelEmail = (formData.get('email') as string ?? '').trim().toLowerCase()
     if (!nouvelEmail) return
@@ -522,6 +545,7 @@ export default async function FicheClientPage({
 
   async function ajouterMorceau(formData: FormData) {
     'use server'
+    await assurerAcces()
     const a     = createAdminClient()
     const titre = (formData.get('titre') as string ?? '').trim()
     const lien  = (formData.get('lien')  as string ?? '').trim()

@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { verifierFeuVertBeat, PAIEMENT_MULTI_VENDEURS_DISPONIBLE } from '@/lib/feu-vert-collab'
 import { plancherPrixCents, appliquerRemiseAvecPlancher, controlerParts, type Participant } from '@/lib/collaboration-parts'
@@ -76,7 +77,7 @@ export async function resoudreRemiseAbonne(
   }
 
   const cookieStore = await cookies()
-  const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+  const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
   if (emailCookie) {
     const { data: abo } = await admin
       .from('abonnements_boutique')

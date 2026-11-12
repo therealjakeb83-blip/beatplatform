@@ -4,6 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 export async function POST(request: Request) {
   const { subscription_id, slug } = await request.json()
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
 
   if (!abo) {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (!emailCookie) {
       return NextResponse.json({ erreur: 'Session membre introuvable' }, { status: 401 })
     }

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
+import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 
 type CmdRow = {
   id: string
@@ -61,7 +62,7 @@ export default async function FacturesBoutiquePage({
     clientId = user.id
   } else {
     const cookieStore = await cookies()
-    const emailCookie = cookieStore.get(`abo_${slug}`)?.value
+    const emailCookie = lireEmailCookieAbonne(cookieStore, slug)
     if (emailCookie) emailIdentifie = emailCookie
   }
 
