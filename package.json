@@ -15,7 +15,7 @@
     "@stripe/stripe-js": "^9.5.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
-    "next": "16.2.4",
+    "next": "16.4.6",
     "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -26,14 +26,14 @@
     "stripe": "^22.1.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sharp": "^0.31.1",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "tailwindcss": "^4",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "^4.3.5",
     "typescript": "^5"
   }
 }
