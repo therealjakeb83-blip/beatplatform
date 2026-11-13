@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const fermes = [
     '/api/', '/artiste/', '/auth/', '/dashboard', '/paiement/', '/telechargement/', '/mon-compte',
     '/connexion', '/inscription', '/mot-de-passe-oublie', '/nouveau-mot-de-passe', '/confirmation-compte',
-    '/maintenance', '/verification-en-cours',
+    '/maintenance', '/verification-en-cours', '/apercu-vitrine',
     ...CHEMINS_PRIVES_BOUTIQUE.map(c => `/*${c}`),
   ]
   return texte(regles(fermes, `${URL_APP}/sitemap.xml`))

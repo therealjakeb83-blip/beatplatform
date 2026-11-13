@@ -1,0 +1,238 @@
+/* Page d'inscription factice — reprend les couleurs et polices de ../vitrine.css. */
+
+.v-inscription {
+  display: grid;
+  min-height: 100vh;
+  background: var(--v-blanc);
+}
+.v-inscription-gauche {
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px;
+}
+.v-inscription-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+}
+.v-inscription-tete a {
+  display: inline-flex;
+}
+.v-inscription-retour {
+  font-size: 15px;
+  color: var(--v-texte-doux) !important;
+}
+.v-inscription-retour:hover {
+  color: var(--v-texte) !important;
+}
+.v-inscription-centre {
+  width: 100%;
+  max-width: 400px;
+  margin: 40px auto 48px;
+}
+.v-inscription-titre {
+  margin: 0;
+  font-family: var(--v-police-titres);
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.v-inscription-sous {
+  margin: 12px 0 26px;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--v-texte-doux);
+}
+.v-formulaire {
+  display: flex;
+  flex-direction: column;
+}
+.v-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 500;
+}
+.v-champ input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid #dad7d1;
+  border-radius: 10px;
+  background: var(--v-blanc);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--v-texte);
+}
+.v-champ input::placeholder {
+  color: #8d8b86;
+}
+.v-champ input:focus-visible {
+  outline: 2px solid var(--v-bleu);
+  outline-offset: 0;
+  border-color: var(--v-bleu);
+}
+.v-champ-mdp {
+  position: relative;
+}
+.v-champ-mdp input {
+  padding-right: 52px;
+}
+.v-champ-oeil {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #5d5c57;
+  cursor: pointer;
+}
+.v-champ-aide {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 -6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--v-texte-doux);
+}
+.v-case {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0 32px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #3d3c38;
+  cursor: pointer;
+}
+.v-case input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--v-bleu);
+}
+.v-formulaire-valider {
+  cursor: pointer;
+  border: 0;
+  font-family: inherit;
+  font-size: 17px;
+}
+.v-formulaire-statut {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.v-formulaire-statut-visible {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--v-bleu-pale);
+  color: var(--v-saphir);
+}
+.v-formulaire-deja {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--v-texte-doux);
+}
+.v-formulaire-deja a {
+  margin-left: 4px;
+  color: var(--v-bleu) !important;
+  font-weight: 500;
+}
+.v-inscription-pied {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding: 0 0 32px;
+  font-size: 12.5px;
+  color: var(--v-texte-doux);
+}
+
+.v-inscription-droite {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .v-inscription {
+    grid-template-columns: 1fr 1fr;
+    min-height: max(100vh, 900px);
+  }
+  .v-inscription-gauche {
+    padding: 0 80px;
+  }
+  .v-inscription-tete {
+    height: 100px;
+  }
+  .v-inscription-centre {
+    margin: 50px auto 0;
+  }
+  .v-inscription-titre {
+    font-size: 36px;
+    line-height: 44px;
+  }
+  .v-inscription-pied {
+    padding-bottom: 36px;
+  }
+  .v-inscription-droite {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    padding: 88px 80px 0;
+    background: var(--v-noir);
+    color: var(--v-blanc);
+  }
+  .v-inscription-slogan {
+    margin: 28px 0 26px;
+    max-width: 560px;
+    font-family: var(--v-police-titres);
+    font-size: 44px;
+    line-height: 48px;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+  }
+  .v-inscription-atouts {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 17px;
+  }
+  .v-inscription-atouts li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    line-height: 24px;
+  }
+  .v-coche-pleine {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--v-bleu);
+  }
+  .v-inscription-visuel {
+    position: absolute;
+    left: 80px;
+    bottom: 0;
+    width: 580px;
+  }
+}

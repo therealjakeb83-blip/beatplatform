@@ -91,6 +91,7 @@ export function hoteSousDomaine(slug: string): string {
 
 const SEGMENTS_HORS_BOUTIQUE = new Set([
   'api',
+  'apercu-vitrine',
   'artiste',
   'auth',
   'confirmation-compte',

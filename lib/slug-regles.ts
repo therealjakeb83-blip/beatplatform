@@ -18,7 +18,7 @@ const MOTS_RESERVES = new Set([
   'dashboard', 'tableau-de-bord', 'connexion', 'deconnexion', 'inscription', 'paiement', 'paiements',
   'telechargement', 'telechargements', 'artiste', 'artistes', 'auth', 'maintenance', 'mon-compte',
   'mot-de-passe-oublie', 'nouveau-mot-de-passe', 'confirmation-compte', 'verification-en-cours', 'sitemap',
-  'robots', 'favicon', 'abonnement', 'abonnements', 'plans', 'tarifs', 'pricing', 'accueil', 'home',
+  'apercu-vitrine', 'robots', 'favicon', 'abonnement', 'abonnements', 'plans', 'tarifs', 'pricing', 'accueil', 'home',
   // Ce qui imiterait Sonoo, son support ou un service de confiance.
   'admin', 'admins', 'administrateur', 'administration', 'administrator', 'root', 'system', 'systeme',
   'support', 'aide', 'help', 'helpdesk', 'assistance', 'contact', 'contacts', 'sav', 'service-client',

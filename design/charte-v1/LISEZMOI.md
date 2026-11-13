@@ -45,6 +45,14 @@ Grille de 24 × 24 px, traits géométriques : `boutique`, `catalogue-beats`, `l
 2. Les maquettes du site ne semblent pas utiliser Surgena pour les titres.
 3. Le fond des maquettes est un blanc cassé chaud, absent de la palette.
 4. Demander le lien Figma des maquettes (mesures exactes) et les fichiers de Surgena.
+5. **Contrastes trop faibles (mesurés le 2026-11-13 sur la page test, norme d'accessibilité WCAG AA)** :
+   - Texte blanc sur le bleu Tech Blue `#2477F5` : 4,2 pour 1, il faut 4,5 pour 1 pour un texte normal. Ça touche tous les boutons bleus et la bannière Affiliation. Un bleu un peu plus foncé passerait partout : `#1E66D8` (5,3 sur blanc, 4,7 sur le fond gris des blocs).
+   - Gris clair de la 2e ligne du titre d'accueil (`#A6A39E` sur le fond blanc cassé) : 2,3 pour 1, il faut au moins 3 pour 1 même en très gros. `#8C8984` passerait (3,25).
+   - Petites étiquettes bleues sur fond gris (« FICHIER CLIENTS », « AUTOMATISATIONS »…) : 3,7 pour 1, il faut 4,5 pour 1. Réglé aussi par `#1E66D8`.
+
+## Page test du site vitrine
+
+`/apercu-vitrine` (et `/apercu-vitrine/inscription`, factice) reproduit les maquettes de cette charte. Elle est cachée par la page de maintenance et n'est pas indexée. Toutes ses couleurs et polices sont regroupées en haut de `app/apercu-vitrine/vitrine.css`. La police DM Sans y remplace Surgena en attendant ses fichiers.
 
 ## Ce que montrent les maquettes du site
 
