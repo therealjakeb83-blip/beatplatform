@@ -44,3 +44,6 @@ next-env.d.ts
 .graphify/cache/
 .graphify/.graphify/
 .scratch/
+
+# charte graphique : sources lourdes du designer (gardées en local)
+/design/*/sources/
