@@ -126,7 +126,7 @@
 > - [x] T8 — Import : fiche remplie avec le fichier (y compris client connu ailleurs, données anciennes = cases vides), fiche commune = email ; annulation garde une fiche modifiée à la main — ✅ PGlite
 > - [x] T9 — Ajout manuel : email connu ailleurs = fiche créée, même réponse ; déjà dans CETTE boutique = « Ce contact est déjà dans tes contacts » ; pays en majuscules ; saisie marquée à la main — ✅ prouvé par le code ; écran : à confirmer par Jake
 > - [x] T10 — Règles par champ — ✅ PGlite (rempli une fois, dernière valeur, listes, main du beatmaker, 1er contact figé, isolation entre boutiques, droits clé de service seule)
-> - [ ] T11 — Reconstruction relancée une dernière fois après la mise en ligne (Jake SQL, Claude lit)
+> - [x] T11 — Reconstruction relancée une dernière fois après la mise en ligne (Jake SQL, Claude lit) — ✅ 2026-11-16 : 0 à créer, 0 modifiée, 2 810 fiches, 0 sans email (aucune connexion ni achat depuis le lot 2) ; ne plus jamais la relancer
 > - [x] T12 — Relevé final : écritures restantes de `clients` = ligne minimale (email), compte de la personne (`lierCompteClient`), complément de ses paiements (préremplissage), Admin (lot 4) — ✅ 2026-11-16
 > - [ ] T13 — Rien de cassé : compilation ✅, déploiement Ready ✅, boutique/paiement 200 ✅ ; journaux Vercel après les tests de Jake
 
