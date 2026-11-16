@@ -59,7 +59,10 @@ export async function POST(req: Request) {
   }
   console.log('[contacts] client inserted:', clientData)
 
-  const { data: leadData, error: leadError } = await supabase.from('leads').insert({
+  // Clé de service : la base n'accepte plus aucune écriture dans `leads` avec la
+  // session d'un beatmaker (9d lot 1, sinon il pouvait se rattacher n'importe
+  // quel client depuis la console et ouvrir sa fiche).
+  const { data: leadData, error: leadError } = await admin.from('leads').insert({
     client_id:          clientId,
     beatmaker_id:       beatmaker.id,
     source:             'manuel',
