@@ -3466,3 +3466,78 @@ html:has(.vitrine3) {
 .x-tarifs3 .x-offre:not(.x-offre-pro) {
   color: var(--x-texte);
 }
+
+/* ——— Mobile et tablette (< 1200 px) ——— */
+@media (max-width: 1199px) {
+  /* Haut de page : deux cartes Sonoo inclinées qui se chevauchent, sous les boutons */
+  .x-hero3-scene {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .x-hero3-centre {
+    width: 100%;
+  }
+  .x-flottant-vente,
+  .x-flottant-revenus {
+    order: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px;
+    border: 1px solid var(--x-bordure);
+    border-radius: 18px;
+    background: var(--x-blanc);
+    box-shadow: 0 24px 48px rgb(5 5 5 / 0.1), 0 2px 6px rgb(5 5 5 / 0.05);
+  }
+  .x-flottant-vente {
+    z-index: 2;
+    width: 214px;
+    margin: 44px -48px 0 0;
+    transform: rotate(-6deg);
+  }
+  .x-flottant-revenus {
+    z-index: 1;
+    width: 168px;
+    margin-top: 92px;
+    transform: rotate(6deg);
+  }
+  .x-flottant-vente small {
+    font-size: 11.5px;
+  }
+  .x-flottant .x-flottant-gros {
+    font-size: 22px;
+  }
+  .x-mini-barres {
+    height: 34px;
+  }
+  .x-hero3 {
+    padding-bottom: calc(var(--x-courbe) + 40px);
+  }
+
+  /* Bandes : un peu moins d'air sur petit écran */
+  .vitrine3 {
+    --x-courbe: 36px;
+  }
+  .x-bande {
+    padding-top: calc(var(--x-courbe) + 48px);
+    padding-bottom: calc(var(--x-courbe) + 48px);
+  }
+  .x-duo-texte .x-titre-2 {
+    font-size: 34px;
+    line-height: 38px;
+  }
+  .x-zero3-chiffre {
+    font-size: 150px;
+  }
+  .x-logo-jb {
+    max-width: 260px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .x-duo-visuel,
+  .x-logo-jb {
+    max-width: 640px;
+  }
+}

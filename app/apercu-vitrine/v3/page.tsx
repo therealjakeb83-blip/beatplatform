@@ -192,7 +192,7 @@ export default function ApercuVitrineV3Page() {
                 alt="Trois boutiques personnalisées sur mobile : Jake B (beats.jakebmusic.com), ACHPRODD (sonoo.app/achprodd) et Nehzia (sonoo.app/nehzia)"
                 ordinateur={telephones}
                 tablette={telephones}
-                mobile={img('telephones-mobile', 780, 1334)}
+                mobile={telephones /* les 3 téléphones entiers, rien de coupé (retour de Jake sur la v2 mobile) */}
               />
               <Annotation texte="sur ton propre nom de domaine" className="x-annot-marque" />
             </div>
