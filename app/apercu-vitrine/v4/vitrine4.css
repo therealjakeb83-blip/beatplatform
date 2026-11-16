@@ -3367,6 +3367,7 @@ html:has(.vitrine4) {
   }
   .y-hero4 .y-hero-boutons {
     flex-direction: row;
+    justify-content: flex-start;
     margin-top: 36px;
   }
   .y-hero4 .y-hero-boutons .y-bouton {
