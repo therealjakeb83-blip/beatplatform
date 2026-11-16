@@ -11,11 +11,11 @@ verif('… parle du compte et de sa suppression', r.t.includes('Confidentialité
 verif('… pas la page de maintenance', !/maintenance/i.test(r.t.slice(0, 3000)) || r.t.includes('Confidentialité du compte'))
 
 for (const url of [`${B}/jakeb-test/confidentialite`, `https://jakeb-test.sonoo.app/confidentialite`, `${B}/nic-beat-2809/confidentialite`]) {
-  r = await get(url)
+  r = await get(url, { redirect: 'follow' })
   verif(`${url} : 200 + bloc « Rôle de Sonoo »`, r.s === 200 && r.t.includes('Rôle de Sonoo') && r.t.includes('Ce que reçoit cette boutique'), r.s)
   verif(`… lien vers sonoo.app/confidentialite`, r.t.includes('https://sonoo.app/confidentialite'))
 }
-r = await get(`${B}/jakeb-test/cgv`)
+r = await get(`${B}/jakeb-test/cgv`, { redirect: 'follow' })
 verif('CGV : pas de bloc (contenu prévu seulement pour Confidentialité)', r.s === 200 && !r.t.includes('Rôle de Sonoo'), r.s)
 
 const json = { 'Content-Type': 'application/json' }
