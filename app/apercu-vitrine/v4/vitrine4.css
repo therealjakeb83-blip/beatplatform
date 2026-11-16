@@ -3846,15 +3846,15 @@ html:has(.vitrine4) {
     transform-origin: 50% 100%;
   }
   .y-tag-contrats {
-    top: calc(37% - 15px);
+    top: calc(42% - 15px);
     left: -137px;
   }
   .y-tag-ventes {
-    top: calc(15% - 15px);
+    top: calc(23% - 15px);
     right: -150px;
   }
   .y-tag-relance {
-    top: calc(48% - 15px);
+    top: calc(55% - 15px);
     right: -150px;
   }
 
