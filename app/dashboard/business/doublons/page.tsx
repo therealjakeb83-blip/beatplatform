@@ -7,6 +7,7 @@ import { montantDepense } from '@/app/dashboard/business/_lib/ltv'
 import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 import { sim } from '@/lib/similarite'
+import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 
 // ── Algorithme de détection ────────────────────────────────────────────────────
 
@@ -26,15 +27,25 @@ function normTel(tel: string | null): string | null {
   return d || null
 }
 
-type Cles = { email: string; nom: string; tel: string | null }
+// Listes accumulées de la fiche de la boutique (9d lot 2) : tous les emails
+// et téléphones servent à la détection, pas seulement le principal.
+type Cles = { email: string; emails: Set<string>; nom: string; tel: string | null; tels: Set<string> }
+type ListesFiche = { emails: string[]; telephones: string[] }
 const clesCache = new WeakMap<ClientData, Cles>()
-function cles(c: ClientData): Cles {
+function cles(c: ClientData, listes?: ListesFiche): Cles {
   let k = clesCache.get(c)
   if (!k) {
-    k = { email: c.email.toLowerCase().trim(), nom: norm(`${c.prenom ?? ''} ${c.nom ?? ''}`), tel: normTel(c.telephone) }
+    const emails = new Set([c.email, ...(listes?.emails ?? [])].map(e => e.toLowerCase().trim()).filter(Boolean))
+    const tels = new Set([c.telephone, ...(listes?.telephones ?? [])].map(normTel).filter((t): t is string => !!t))
+    k = { email: c.email.toLowerCase().trim(), emails, nom: norm(`${c.prenom ?? ''} ${c.nom ?? ''}`), tel: normTel(c.telephone), tels }
     clesCache.set(c, k)
   }
   return k
+}
+
+function seCroisent(a: Set<string>, b: Set<string>): boolean {
+  for (const x of a) if (b.has(x)) return true
+  return false
 }
 
 function comparerPaire(a: ClientData, b: ClientData): RaisonData[] {
@@ -44,7 +55,7 @@ function comparerPaire(a: ClientData, b: ClientData): RaisonData[] {
   // Email
   const ea = ka.email
   const eb = kb.email
-  if (ea === eb) {
+  if ((ea && ea === eb) || seCroisent(ka.emails, kb.emails)) {
     raisons.push({ champ: 'email', type: 'exact', score: 1 })
   } else {
     const s = sim(ea, eb, 0.82)
@@ -66,7 +77,9 @@ function comparerPaire(a: ClientData, b: ClientData): RaisonData[] {
   // Téléphone
   const telA = ka.tel
   const telB = kb.tel
-  if (telA && telB) {
+  if (seCroisent(ka.tels, kb.tels)) {
+    raisons.push({ champ: 'telephone', type: 'exact', score: 1 })
+  } else if (telA && telB) {
     if (telA === telB) {
       raisons.push({ champ: 'telephone', type: 'exact', score: 1 })
     } else {
@@ -125,9 +138,8 @@ export default async function DoublonsPage() {
   // ── Données clients, commandes, abos, doublons ignorés + fusionnés ─────────
   type CommandeDoublon = { client_id: string; prix_paye: number | string | null; statut: string; montant_rembourse_cents: number | null; type_commande: string }
   const [clientsData, commandesNatives, commandesExternes, aboRes, ignoresRes, fusionsRes] = await Promise.all([
-    parLots<{ id: string; prenom: string; nom: string; email: string; pays: string | null; telephone: string | null }>(clientIds, lot => admin.from('clients')
-      .select('id, prenom, nom, email, pays, telephone')
-      .in('id', lot)),
+    // Fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+    chargerFichesBoutique(supabase, beatmakerId, clientIds),
     toutesLesLignes<CommandeDoublon>((d, f) => supabase.from('commandes')
       .select('client_id, prix_paye, statut, montant_rembourse_cents, type_commande')
       .eq('beatmaker_id', beatmakerId)
@@ -147,7 +159,11 @@ export default async function DoublonsPage() {
       .eq('beatmaker_id', beatmakerId),
   ])
 
-  const clientsRaw  = clientsData
+  const clientsRaw  = clientIds.map(id => {
+    const f = clientsData.get(id)
+    return { id, prenom: f?.prenom ?? '', nom: f?.nom ?? '', email: emailPrincipal(f) ?? '', pays: f?.pays ?? null,
+             telephone: f?.telephones[0] ?? null, emails: f?.emails ?? [], telephones: f?.telephones ?? [] }
+  })
   const commandes: CommandeDoublon[] = [...commandesNatives, ...commandesExternes]
   const abos        = aboRes.data ?? []
   const ignores     = ignoresRes.data ?? []
@@ -177,6 +193,7 @@ export default async function DoublonsPage() {
     }
   }
 
+  const listesParClient = new Map(clientsRaw.map(c => [c.id, { emails: c.emails, telephones: c.telephones }]))
   const clients: ClientData[] = clientsRaw.filter(c => !archiveIds.has(c.id)).map(c => ({
     id:         c.id,
     prenom:     c.prenom,
@@ -188,6 +205,8 @@ export default async function DoublonsPage() {
     nb_achats:  achatsMap.get(c.id) ?? 0,
     statut_abo: aboMap.get(c.id) ?? null,
   }))
+  // Clés calculées une fois avec les listes complètes de la fiche
+  for (const c of clients) cles(c, listesParClient.get(c.id))
 
   // ── Détection des doublons ─────────────────────────────────────────────────
   const paires: DoublonPairData[] = []

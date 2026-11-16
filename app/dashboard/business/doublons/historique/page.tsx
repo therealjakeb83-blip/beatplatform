@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -36,11 +37,9 @@ export default async function HistoriquePage() {
   const conserveMap = new Map<string, { prenom: string | null; nom: string | null; email: string; pays: string | null }>()
 
   if (conserveIds.length > 0) {
-    const { data: conserves } = await admin
-      .from('clients')
-      .select('id, prenom, nom, email, pays')
-      .in('id', conserveIds)
-    for (const c of conserves ?? []) conserveMap.set(c.id, c)
+    // Fiches de CETTE boutique (9d lot 2), jamais la fiche commune
+    const fiches = await chargerFichesBoutique(supabase, user.id, conserveIds)
+    for (const [id, f] of fiches) conserveMap.set(id, { prenom: f.prenom, nom: f.nom, email: emailPrincipal(f) ?? '', pays: f.pays })
   }
 
   // LTV des contacts conservés

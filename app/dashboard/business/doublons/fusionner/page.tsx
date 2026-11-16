@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -41,9 +42,17 @@ export default async function FusionnerPage({
 
   // Charger les données des deux clients
   const [clientsRes, commandesRes, commandesExternes] = await Promise.all([
-    admin.from('clients')
-      .select('id, prenom, nom, email, pays, telephone, instagram, spotify, youtube, tiktok, notes, nom_artiste')
-      .in('id', [id_conserve, id_archive]),
+    // Fiches de CETTE boutique (9d lot 2), jamais la fiche commune
+    chargerFichesBoutique(supabase, beatmakerId, [id_conserve, id_archive]).then(fiches => ({
+      data: [id_conserve, id_archive].map(id => {
+        const f = fiches.get(id)
+        return {
+          id, prenom: f?.prenom ?? null, nom: f?.nom ?? '', email: emailPrincipal(f) ?? '', pays: f?.pays ?? null,
+          telephone: f?.telephones[0] ?? null, instagram: f?.instagram ?? null, spotify: f?.spotify ?? null,
+          youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null, notes: f?.notes ?? null, nom_artiste: f?.nom_artiste ?? null,
+        }
+      }),
+    })),
     supabase.from('commandes')
       .select('client_id, prix_paye, statut, montant_rembourse_cents, type_commande')
       .eq('beatmaker_id', beatmakerId)

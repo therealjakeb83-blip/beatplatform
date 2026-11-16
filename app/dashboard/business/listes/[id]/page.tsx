@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -116,10 +117,15 @@ export default async function ListeDetailPage({
   type CommandeListe = { client_id: string; prix_paye: number | string | null; type_commande: string | null; statut: string; montant_rembourse_cents: number | null; created_at: string | null }
   type LeadListe = { client_id: string; newsletter_statut: string; newsletter_statut_at: string | null; source: string; source_plateforme: string | null; created_at: string }
   const [clients, commandesNatives, commandesExternes, abos, leads] = await Promise.all([
-    parLots<ClientListe>(allClientIds, lot => admin
-      .from('clients')
-      .select('id, prenom, nom, surnom, nom_artiste, email, pays, telephone, instagram, spotify, youtube, tiktok')
-      .in('id', lot)),
+    // Fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+    chargerFichesBoutique(supabase, beatmakerId, allClientIds).then(fiches => allClientIds.map((id): ClientListe => {
+      const f = fiches.get(id)
+      return {
+        id, prenom: f?.prenom ?? null, nom: f?.nom ?? '', surnom: f?.surnom ?? null, nom_artiste: f?.nom_artiste ?? null,
+        email: emailPrincipal(f) ?? '', pays: f?.pays ?? null, telephone: f?.telephones[0] ?? null,
+        instagram: f?.instagram ?? null, spotify: f?.spotify ?? null, youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null,
+      }
+    })),
     parLots<CommandeListe>(membreIds, lot => supabase
       .from('commandes')
       .select('client_id, prix_paye, type_commande, statut, montant_rembourse_cents, created_at')

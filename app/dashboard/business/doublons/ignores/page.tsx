@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -109,9 +110,13 @@ export default async function DoublonsIgnoresPage() {
 
   if (allClientIds.length > 0) {
     const [clientsRes, commandesRes] = await Promise.all([
-      admin.from('clients')
-        .select('id, prenom, nom, email, pays, telephone')
-        .in('id', allClientIds),
+      // Fiches de CETTE boutique (9d lot 2), jamais la fiche commune
+      chargerFichesBoutique(supabase, beatmakerId, allClientIds).then(fiches => ({
+        data: [...fiches.values()].map(f => ({
+          id: f.client_id, prenom: f.prenom, nom: f.nom ?? '', email: emailPrincipal(f) ?? '', pays: f.pays,
+          telephone: f.telephones[0] ?? null,
+        })),
+      })),
       supabase.from('commandes')
         .select('client_id, prix_paye, statut')
         .eq('beatmaker_id', beatmakerId)
