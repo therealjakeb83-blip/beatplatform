@@ -14,7 +14,7 @@ import * as M from './_composants/IconesMarque'
 // Page test « v4 » : une AUTRE interprétation du retour envoyé au designer le 2026-11-16
 // (design/charte-v2/retour-jake/NOTES.md), à comparer avec la v3. Priorité ordinateur.
 // - haut de page NOIR : 3 couches d'interface Sonoo empilées (boutique, clients, paiements),
-//   inspiration Stable ; ambiance studio sans photo (grain, onde du logo, piste audio « REC ») ;
+//   inspiration Stable ; ambiance studio sans photo (grain, onde du logo) ;
 // - sections = panneaux arrondis aux 4 coins qui se chevauchent (noir, crème, bleu) ;
 // - section bleue = « L'histoire » (logo Jake B) ; le 0 % devient une ligne géante sur crème ;
 // - annotations = étiquettes techniques reliées par un trait (pas d'écriture à la main) ;
@@ -43,13 +43,6 @@ function Tag({ children, className, trait = 'gauche', longueur = 72 }: { childre
     </span>
   )
 }
-
-// Forme d'onde de la piste du haut de page (calculée, toujours la même).
-const ONDE = Array.from({ length: 132 }, (_, i) => {
-  const v = Math.abs(Math.sin(i * 0.42) * 0.6 + Math.sin(i * 0.13 + 1) * 0.4) * (0.55 + 0.45 * Math.abs(Math.sin(i * 0.051)))
-  return Math.round(14 + v * 86)
-})
-const ONDE_JOUEE = 52
 
 const OUTILS = [
   { icone: M.MarqueBoutique, nom: 'Boutique' },
@@ -178,22 +171,6 @@ export default function ApercuVitrineV4Page() {
             </div>
           </div>
 
-          {/* Piste audio : l'ambiance studio, sans photo */}
-          <div className="y-conteneur" aria-hidden="true">
-            <div className="y-piste">
-              <span className="y-piste-rec">
-                <span className="y-rec-point" />
-                REC
-              </span>
-              <span className="y-piste-titre">Ambitieux — Jake B</span>
-              <span className="y-onde">
-                {ONDE.map((h, i) => (
-                  <span key={i} className={i < ONDE_JOUEE ? 'y-onde-jouee' : undefined} style={{ height: `${h}%` }} />
-                ))}
-              </span>
-              <span className="y-piste-temps">01:12 / 03:04</span>
-            </div>
-          </div>
         </section>
 
         {/* ——— 01 Ta marque — panneau crème ——— */}
