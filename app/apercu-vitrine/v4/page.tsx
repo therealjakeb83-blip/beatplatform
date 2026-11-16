@@ -99,10 +99,6 @@ export default function ApercuVitrineV4Page() {
           <Symbole hauteur={900} couleur="#ffffff" className="y-hero4-onde" />
           <div className="y-conteneur y-hero4-grille">
             <div className="y-hero4-texte">
-              <p className="y-badge4">
-                <span className="y-rec-point" />
-                La plateforme e-commerce des beatmakers
-              </p>
               <h1 className="y-titre-1">
                 {sa('Tes beats méritent mieux')} <span className="y-titre-bleu">{sa('qu’une marketplace.')}</span>
               </h1>
