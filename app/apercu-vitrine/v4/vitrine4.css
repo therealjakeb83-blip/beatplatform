@@ -3718,3 +3718,111 @@ html:has(.vitrine4) {
 .y-panneau-creme .y-chiffres4-note {
   color: var(--y-titre-gris);
 }
+
+/* ——— Tous les titres en Surgena (demande de Jake) ——— */
+.y-titre-2,
+.y-titre-cta,
+.y-zero4,
+.y-affil4-titre {
+  font-family: var(--y-police-titres);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.y-tete4 .y-titre-2 {
+  margin-top: 0;
+}
+
+/* ——— Tarifs façon Deezer : carte claire (Pro) + carte sombre (Gratuit) ——— */
+.y-offres4 {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+  margin: 40px auto;
+}
+.y-offre4 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 24px 32px;
+  border-radius: 20px;
+  text-align: center;
+}
+.y-offre4-pro {
+  background: var(--y-fond);
+  color: var(--y-texte);
+}
+.y-offre4-gratuit {
+  background: #1d1c1a;
+  color: var(--y-blanc);
+}
+.y-offre4-pastille {
+  padding: 4px 14px;
+  border-radius: 8px;
+  background: var(--y-bleu);
+  color: var(--y-blanc);
+  font-family: var(--y-police-titres);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.y-offre4-gratuit .y-offre4-pastille {
+  background: var(--y-blanc);
+  color: var(--y-texte);
+}
+.y-offre4-prix {
+  margin: 24px 0 0;
+  font-family: var(--y-police-titres);
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.y-offre4-sous {
+  margin: 10px 0 28px;
+  font-size: 16px;
+  color: var(--y-texte-doux);
+}
+.y-offre4-gratuit .y-offre4-sous {
+  color: var(--y-sombre-texte);
+}
+.y-offre4 .y-bouton-large {
+  height: 48px;
+}
+.y-offre4-liste {
+  display: grid;
+  gap: 10px;
+  align-self: stretch;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: 15.5px;
+}
+.y-offre4-liste li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.y-offre4-liste svg {
+  flex: none;
+  color: var(--y-bleu);
+}
+.y-offre4-gratuit .y-offre4-liste svg {
+  color: var(--y-blanc);
+}
+.y-offre4-liste .y-offre4-absent {
+  opacity: 0.35;
+}
+@media (min-width: 768px) {
+  .y-offres4 {
+    grid-template-columns: 1fr 1fr;
+    margin: 56px auto 48px;
+  }
+  .y-offre4 {
+    padding: 32px 32px 36px;
+  }
+  .y-offre4-prix {
+    font-size: 72px;
+  }
+}

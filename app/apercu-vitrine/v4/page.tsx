@@ -17,17 +17,8 @@ import * as M from './_composants/IconesMarque'
 //   inspiration Stable ; ambiance studio sans photo (grain, onde du logo) ;
 // - sections = panneaux arrondis aux 4 coins qui se chevauchent (noir, crème, bleu) ;
 // - section bleue = « L'histoire » (logo Jake B) ; le 0 % devient une ligne géante sur crème ;
-// - titres de section en Space Grotesk (police libre), Surgena seulement pour le grand titre ;
+// - tous les titres en Surgena (version d'essai, sans accents) ; chiffres des maquettes en Space Grotesk ;
 // - visuels = maquettes codées (_composants/Maquettes.tsx), sans fond plaqué ni photo.
-
-function Etiquette({ children, centree = false }: { children: React.ReactNode; centree?: boolean }) {
-  return (
-    <p className={centree ? 'y-etiquette y-etiquette-centree' : 'y-etiquette'}>
-      <I.Etincelle taille={12} className="y-etiquette-etoile" />
-      {children}
-    </p>
-  )
-}
 
 const OUTILS = [
   { icone: M.MarqueBoutique, nom: 'Boutique' },
@@ -50,15 +41,15 @@ const CLIENTS_COUCHE = [
   { initiales: 'TR', nom: 'Théo R.', statut: 'À relancer', classe: 'y-statut-relance' },
 ]
 
-const OFFRE_GRATUITE = ['Réception automatique de ta part sur les ventes en collab', 'Accès au compte Sonoo', '[Autres fonctionnalités à confirmer]']
-const OFFRE_PRO = [
-  'Boutique personnalisable sur ton nom de domaine',
-  'Fichier clients, campagnes e-mail et automatisations',
-  'Abonnements, codes promo et téléchargements gratuits',
-  'Contrats de licence et factures automatiques',
-  'Statistiques complètes',
-  'Import de tes clients et de tes ventes',
-  '0 % de commission sur tes ventes',
+// Tarifs façon Deezer : même liste sur les deux cartes, cochée ou barrée.
+const FONCTIONS = [
+  { texte: 'Ta part des ventes en collab', gratuit: true },
+  { texte: 'Accès au compte Sonoo', gratuit: true },
+  { texte: 'Boutique sur ton nom de domaine', gratuit: false },
+  { texte: 'Clients, e-mails et automatisations', gratuit: false },
+  { texte: 'Abonnements et codes promo', gratuit: false },
+  { texte: 'Contrats et factures automatiques', gratuit: false },
+  { texte: 'Statistiques complètes', gratuit: false },
 ]
 
 
@@ -151,7 +142,6 @@ export default function ApercuVitrineV4Page() {
         <section id="fonctionnalites" className="y-panneau y-panneau-creme y-ancre">
           <div className="y-conteneur y-marque4">
             <div className="y-marque4-texte">
-              <Etiquette>01 — Ta marque</Etiquette>
               <h2 className="y-titre-2">Ta marque au premier plan.</h2>
               <p className="y-phrase4">Tes couleurs, ton logo, ton nom de domaine. Sonoo reste en coulisses.</p>
               <a href={lienBoutique} target="_blank" rel="noopener noreferrer" className="y-lien-fleche">
@@ -169,8 +159,7 @@ export default function ApercuVitrineV4Page() {
         <section className="y-panneau y-panneau-noir y-grain">
           <div className="y-conteneur">
             <div className="y-tete4">
-              <Etiquette centree>02 — Croissance</Etiquette>
-              <h2 className="y-titre-2 y-centre">Vends plus. Fidélise mieux.</h2>
+              <h2 className="y-titre-2 y-centre">{sa('Vends plus. Fidélise mieux.')}</h2>
               <p className="y-phrase4 y-centre">Sonoo relance tes clients au bon moment, tout seul.</p>
             </div>
             <div className="y-relance4 y-deborde">
@@ -200,7 +189,6 @@ export default function ApercuVitrineV4Page() {
         <section className="y-panneau y-panneau-noir y-grain y-tout4">
           <div className="y-conteneur">
             <div className="y-tete4">
-              <Etiquette centree>03 — Tout-en-un</Etiquette>
               <h2 className="y-titre-2 y-centre">Un seul abonnement. Au lieu de cinq outils.</h2>
             </div>
             <ul className="y-outils4">
@@ -225,8 +213,7 @@ export default function ApercuVitrineV4Page() {
               <img src="/apercu-vitrine/v3/logo-jake-b-blanc.png" alt="Logo de Jake B" width={1200} height={1200} />
             </div>
             <div>
-              <Etiquette>04 — L’histoire</Etiquette>
-              <h2 className="y-titre-2">Créé par un beatmaker, pour les beatmakers.</h2>
+              <h2 className="y-titre-2">{sa('Créé par un beatmaker, pour les beatmakers.')}</h2>
               <p className="y-phrase4">Jake B compose sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats.</p>
               <dl className="y-chiffres4">
                 {CHIFFRES_JAKE.map(c => (
@@ -244,54 +231,36 @@ export default function ApercuVitrineV4Page() {
         {/* ——— Tarifs + affiliation — panneau noir ——— */}
         <section id="tarifs" className="y-panneau y-panneau-noir y-grain y-tarifs4 y-ancre">
           <div className="y-conteneur">
-            <Etiquette centree>Tarifs</Etiquette>
-            <h2 className="y-titre-2 y-centre">Un prix simple. Zéro commission.</h2>
-            <div className="y-offres">
-              <article className="y-offre">
-                <div className="y-offre-tete">
-                  <h3>Gratuit</h3>
-                  <span className="y-gris-pastille">Pour collaborer</span>
-                </div>
-                <p className="y-offre-desc">Pour recevoir ta part des ventes de beats en collab réalisées sur les boutiques Pro.</p>
-                <p className="y-offre-prix">
-                  0 € <small>/ mois</small>
-                </p>
-                <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-contour y-bouton-large">
-                  Créer un compte gratuit
+            <h2 className="y-titre-2 y-centre">{sa('Un prix simple. Zéro commission.')}</h2>
+            <div className="y-offres4">
+              <article className="y-offre4 y-offre4-pro">
+                <span className="y-offre4-pastille">Pro</span>
+                <p className="y-offre4-prix">49,95 €</p>
+                <p className="y-offre4-sous">par mois · essai gratuit</p>
+                <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-large">
+                  Commencer l’essai gratuit
                 </Link>
-                <ul className="y-offre-liste">
-                  {OFFRE_GRATUITE.map(t => (
-                    <li key={t}>
-                      <span className="y-coche-ronde">
-                        <I.Coche taille={12} />
-                      </span>
-                      {t}
+                <ul className="y-offre4-liste">
+                  {FONCTIONS.map(f => (
+                    <li key={f.texte}>
+                      <I.Coche taille={16} />
+                      {f.texte}
                     </li>
                   ))}
                 </ul>
               </article>
-              <article className="y-offre y-offre-pro">
-                <div className="y-offre-tete">
-                  <h3>Pro</h3>
-                  <span className="y-bientot y-bientot-plein">
-                    <I.Etincelle taille={10} />
-                    Essai gratuit
-                  </span>
-                </div>
-                <p className="y-offre-desc">Pour créer ta boutique et accéder à tous les outils.</p>
-                <p className="y-offre-prix">
-                  [XX] € <small>/ mois · prix à confirmer</small>
-                </p>
-                <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-large">
-                  Commencer l’essai gratuit
+              <article className="y-offre4 y-offre4-gratuit">
+                <span className="y-offre4-pastille">Gratuit</span>
+                <p className="y-offre4-prix">0 €</p>
+                <p className="y-offre4-sous">pour tes collabs</p>
+                <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-blanc y-bouton-large">
+                  Créer un compte gratuit
                 </Link>
-                <ul className="y-offre-liste">
-                  {OFFRE_PRO.map(t => (
-                    <li key={t}>
-                      <span className="y-coche-ronde">
-                        <I.Coche taille={12} />
-                      </span>
-                      {t}
+                <ul className="y-offre4-liste">
+                  {FONCTIONS.map(f => (
+                    <li key={f.texte} className={f.gratuit ? undefined : 'y-offre4-absent'}>
+                      {f.gratuit ? <I.Coche taille={16} /> : <I.Croix taille={16} />}
+                      {f.texte}
                     </li>
                   ))}
                 </ul>
@@ -304,7 +273,7 @@ export default function ApercuVitrineV4Page() {
                   <span className="y-rec-point y-rec-point-bleu" />
                   Programme d’affiliation · bientôt
                 </span>
-                <h3 className="y-affil4-titre">Recommande Sonoo. Touche une commission sur chaque abonnement.</h3>
+                <h3 className="y-affil4-titre">{sa('Recommande Sonoo. Touche une commission sur chaque abonnement.')}</h3>
               </div>
               <a href={`${contact}?subject=${encodeURIComponent('Programme d’affiliation Sonoo')}`} className="y-bouton y-bouton-blanc y-bouton-grand">
                 Être prévenu du lancement
@@ -318,8 +287,7 @@ export default function ApercuVitrineV4Page() {
         <section className="y-panneau y-panneau-creme y-fin4">
           <div id="faq" className="y-conteneur y-ancre y-faq">
             <div className="y-faq-intro">
-              <Etiquette>FAQ</Etiquette>
-              <h2 className="y-titre-2">Questions fréquentes</h2>
+              <h2 className="y-titre-2">{sa('Questions fréquentes')}</h2>
               <p className="y-faq-sous">Une autre question ? Notre équipe te répond.</p>
               <a href={contact} className="y-bouton y-bouton-contour y-bouton-petit">
                 <I.Enveloppe taille={18} />
@@ -333,8 +301,7 @@ export default function ApercuVitrineV4Page() {
             <div className="y-cta y-grain">
               <Symbole hauteur={620} couleur="#2477fb" className="y-cta-deco" />
               <div className="y-cta-contenu">
-                <Etiquette>Prêt à te lancer ?</Etiquette>
-                <h2 className="y-titre-cta">Arrête de louer ton audience. Construis ta marque.</h2>
+                <h2 className="y-titre-cta">{sa('Arrête de louer ton audience. Construis ta marque.')}</h2>
                 <div className="y-cta-boutons">
                   <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-grand">
                     Commencer l’essai gratuit
