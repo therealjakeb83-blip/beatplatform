@@ -94,7 +94,7 @@ export default function ApercuVitrineV4Page() {
       <EnTete lienBoutique={lienBoutique} />
 
       <main id="y-contenu">
-        {/* ——— Accueil : fond noir, couches Sonoo empilées, piste audio ——— */}
+        {/* ——— Accueil : fond noir, couches Sonoo empilées ——— */}
         <section className="y-hero4 y-grain">
           <Symbole hauteur={900} couleur="#ffffff" className="y-hero4-onde" />
           <div className="y-conteneur y-hero4-grille">
