@@ -216,7 +216,7 @@ export default function ApercuVitrineV4Page() {
                 tablette={telephones}
                 mobile={telephones}
               />
-              <Tag className="y-tag-domaine" trait="droite" longueur={84}>Ton nom de domaine</Tag>
+              <Tag className="y-tag-domaine" trait="droite" longueur={110}>Ton nom de domaine</Tag>
               <Tag className="y-tag-couleurs" trait="gauche" longueur={64}>Tes couleurs</Tag>
             </div>
           </div>
@@ -284,7 +284,7 @@ export default function ApercuVitrineV4Page() {
                 tablette={tableau}
                 mobile={img('tableau-mobile', 660, 1320)}
               />
-              <Tag className="y-tag-contrats" trait="droite" longueur={80}>Contrats & factures auto</Tag>
+              <Tag className="y-tag-contrats" trait="droite" longueur={60}>Contrats auto</Tag>
               <Tag className="y-tag-ventes" trait="gauche" longueur={80}>Ventes en direct</Tag>
               <Tag className="y-tag-relance" trait="gauche" longueur={80}>Clients & e-mails</Tag>
             </div>

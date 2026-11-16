@@ -3175,7 +3175,7 @@ html:has(.vitrine4) {
 /* Couches empilées (mobile : cartes posées en décalé) */
 .y-pile-zone {
   position: relative;
-  height: 340px;
+  height: 410px;
 }
 .y-pile {
   position: relative;
@@ -3195,13 +3195,13 @@ html:has(.vitrine4) {
   box-shadow: 0 30px 60px rgb(0 0 0 / 0.45);
 }
 .y-couche-paiement {
-  top: 156px;
-  left: -8px;
+  top: 240px;
+  left: -10px;
   transform: rotate(-2deg);
 }
 .y-couche-clients {
-  top: 78px;
-  left: 18px;
+  top: 120px;
+  left: 16px;
   transform: rotate(3deg);
 }
 .y-couche-boutique {
@@ -3431,7 +3431,7 @@ html:has(.vitrine4) {
   .y-pile {
     position: absolute;
     left: 50%;
-    top: 58%;
+    top: 62%;
     width: 340px;
     height: 230px;
     margin: 0;
@@ -3447,7 +3447,7 @@ html:has(.vitrine4) {
     width: 100%;
     height: 100%;
     padding: 22px 24px;
-    transform: translateZ(calc(var(--i) * 92px));
+    transform: translateZ(calc(var(--i) * 135px));
     box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), -30px 40px 60px rgb(0 0 0 / 0.5);
   }
   .y-couche-gros {
@@ -3591,7 +3591,7 @@ html:has(.vitrine4) {
   border-radius: 999px;
   background: var(--y-blanc);
 }
-.y-flux4 > .y-flux4-toi {
+.y-flux4 > span.y-flux4-toi {
   background: var(--y-noir);
   border-color: var(--y-noir);
   color: var(--y-blanc);
@@ -3659,6 +3659,7 @@ html:has(.vitrine4) {
 .y-histoire4-logo img {
   width: 200px;
   height: auto;
+  mix-blend-mode: screen; /* le fond noir du fichier disparaît, le blanc reste */
 }
 .y-chiffres4 {
   display: grid;
@@ -3732,8 +3733,8 @@ html:has(.vitrine4) {
 }
 
 /* FAQ + appel final (crème) */
-.y-fin4 {
-  padding-bottom: 72px;
+.vitrine4 .y-panneau.y-fin4 {
+  padding-bottom: 16px;
 }
 .y-fin4 .y-faq {
   padding-top: 0;
@@ -3788,8 +3789,8 @@ html:has(.vitrine4) {
     transform: rotate(-4deg);
   }
   .y-tag-domaine {
-    top: 6%;
-    left: -10px;
+    bottom: 7%;
+    right: 58%;
   }
   .y-tag-couleurs {
     bottom: 30%;
@@ -3808,8 +3809,8 @@ html:has(.vitrine4) {
     transform: rotate(2.5deg);
   }
   .y-tag-auto {
-    top: 4%;
-    left: -150px;
+    top: 5%;
+    right: 61%;
   }
   .y-tag-abonne {
     top: 38%;
@@ -3845,15 +3846,15 @@ html:has(.vitrine4) {
     transform-origin: 50% 100%;
   }
   .y-tag-contrats {
-    top: 18%;
-    left: -170px;
+    top: calc(37% - 15px);
+    left: -137px;
   }
   .y-tag-ventes {
-    top: 12%;
+    top: calc(15% - 15px);
     right: -150px;
   }
   .y-tag-relance {
-    top: 52%;
+    top: calc(48% - 15px);
     right: -150px;
   }
 
@@ -3870,7 +3871,8 @@ html:has(.vitrine4) {
     width: 100%;
   }
   .y-chiffres4 dt {
-    font-size: 64px;
+    font-size: 56px;
+    white-space: nowrap;
   }
 
   .y-tarifs4 .y-offres {
@@ -3892,7 +3894,7 @@ html:has(.vitrine4) {
     line-height: 38px;
   }
   .y-zero4 {
-    font-size: 64px;
+    font-size: 54px;
   }
   .y-relance4,
   .y-ecran4,
