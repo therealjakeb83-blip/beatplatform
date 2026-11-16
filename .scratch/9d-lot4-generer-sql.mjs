@@ -37,3 +37,25 @@ COMMIT;
 `
 fs.writeFileSync('supabase/fiches_clients_lot4_rgpd.sql', tete + '-- ── Fiche effacée qui revient = fiche neuve (fonction du lot 3 + ajout) ──\n' + f + '\n' + fin)
 console.log('écrit', (tete + f + fin).split('\n').length, 'lignes')
+
+// Correctif (2026-11-16) : droit de la tâche de nuit + fusions en chaîne
+const tout = fs.readFileSync('supabase/fiches_clients_lot4_rgpd.sql', 'utf8')
+const i2 = tout.indexOf('CREATE OR REPLACE FUNCTION effacer_contact_boutique(')
+const fn = tout.slice(i2, tout.indexOf('$$;', i2) + 3)
+fs.writeFileSync('supabase/fiches_clients_lot4_correctif.sql', `-- Rang 9d, lot 4 — SQL 2 (correctif) :
+-- 1. la tâche de nuit (clé de service) peut effacer les IP arrivées à échéance ;
+-- 2. « Effacer ce contact » suit les fusions en chaîne (A dans B, puis B dans C).
+-- Ne modifie aucune donnée.
+
+BEGIN;
+
+GRANT UPDATE (ip_address, ip_effacer_apres) ON licence_downloads TO service_role;
+
+${fn}
+
+REVOKE ALL ON FUNCTION effacer_contact_boutique(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION effacer_contact_boutique(uuid, uuid) TO service_role;
+
+COMMIT;
+`)
+console.log('correctif écrit')

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { parLots } from './requetes'
+import { parLots, toutesLesLignes } from './requetes'
 
 // Fiche client PAR boutique (rang 9d) = la ligne `leads` client × boutique.
 // Elle ne contient que ce que le client a donné ou fait DANS cette boutique,
@@ -47,10 +47,12 @@ export type FicheBoutique = {
   youtube: string | null
   tiktok: string | null
   champs_manuels: string[]
+  // 9d lot 4 : contact effacé par la boutique (fiche vidée, caché partout)
+  efface_le: string | null
 }
 
 export const COLONNES_FICHE =
-  'id, client_id, source, newsletter_statut, newsletter_statut_at, emails, telephones, adresses, prenom, nom, nom_artiste, pays, langue, premier_contact_le, created_at, notes, tags, surnom, instagram, spotify, youtube, tiktok, champs_manuels'
+  'id, client_id, source, newsletter_statut, newsletter_statut_at, emails, telephones, adresses, prenom, nom, nom_artiste, pays, langue, premier_contact_le, created_at, notes, tags, surnom, instagram, spotify, youtube, tiktok, champs_manuels, efface_le'
 
 function normaliser(f: FicheBoutique): FicheBoutique {
   return {
@@ -87,6 +89,19 @@ export async function chargerFicheBoutique(
   clientId: string,
 ): Promise<FicheBoutique | null> {
   return (await chargerFichesBoutique(db, beatmakerId, [clientId])).get(clientId) ?? null
+}
+
+// Contacts effacés par CETTE boutique (9d lot 4) : cachés de Contacts,
+// segments, listes, doublons, campagnes et automatisations.
+export async function chargerEffacesBoutique(db: SupabaseClient, beatmakerId: string): Promise<Set<string>> {
+  const lignes = await toutesLesLignes<{ client_id: string }>((debut, fin) => db
+    .from('leads')
+    .select('client_id')
+    .eq('beatmaker_id', beatmakerId)
+    .not('efface_le', 'is', null)
+    .order('id')
+    .range(debut, fin))
+  return new Set(lignes.map(r => r.client_id))
 }
 
 export function emailPrincipal(f: Pick<FicheBoutique, 'emails'> | null | undefined): string | null {
@@ -151,7 +166,7 @@ export async function modifierFicheBoutique(
   if (champs.length === 0) return
   const { data: actuelle, error: eLecture } = await admin
     .from('leads')
-    .select('id, champs_manuels')
+    .select('id, champs_manuels, efface_le')
     .eq('beatmaker_id', beatmakerId)
     .eq('client_id', clientId)
     .maybeSingle()
@@ -159,6 +174,7 @@ export async function modifierFicheBoutique(
     console.error('[fiche-boutique] lecture:', JSON.stringify(eLecture))
     throw new Error('Fiche introuvable')
   }
+  if (actuelle?.efface_le) throw new Error('Contact effacé')
   const manuels = [...new Set([...((actuelle?.champs_manuels as string[] | null) ?? []), ...champs])]
   if (actuelle) {
     const { error } = await admin

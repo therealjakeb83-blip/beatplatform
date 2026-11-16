@@ -29,7 +29,7 @@ export default async function FusionnerPage({
   const allIdsRes = await Promise.all([
     supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).in('client_id', [id_conserve, id_archive]),
     supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).in('client_id', [id_conserve, id_archive]),
-    supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId).in('client_id', [id_conserve, id_archive]),
+    supabase.from('leads').select('client_id, efface_le').eq('beatmaker_id', beatmakerId).in('client_id', [id_conserve, id_archive]),
   ])
 
   const knownIds = new Set([
@@ -39,6 +39,8 @@ export default async function FusionnerPage({
   ])
 
   if (!knownIds.has(id_conserve) || !knownIds.has(id_archive)) notFound()
+  // Contact effacé par la boutique (9d lot 4) : jamais fusionné
+  if ((allIdsRes[2].data ?? []).some(r => r.efface_le)) notFound()
 
   // Charger les données des deux clients
   const [clientsRes, commandesRes, commandesExternes] = await Promise.all([

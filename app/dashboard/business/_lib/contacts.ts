@@ -71,6 +71,8 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
     .range(debut, fin))
 
   const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
+  // Contacts effacés par la boutique (9d lot 4) : hors segments et campagnes
+  const effaces = new Set((leadsRaw ?? []).filter(l => l.efface_le).map(l => l.client_id))
 
   // Commandes + abos + beats catalogue + licences catalogue en parallèle
   type CommandeCrm = {
@@ -198,7 +200,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   }
 
   const contacts: ContactEnrichi[] = (clientsRes.data ?? [])
-    .filter(c => !archiveIds.has(c.id))
+    .filter(c => !archiveIds.has(c.id) && !effaces.has(c.id))
     .map(c => {
       const cmdsBase     = commandesParClient.get(c.id) ?? []
       const cmdsArchives = (conserveArchives.get(c.id) ?? []).flatMap(aid => commandesParClient.get(aid) ?? [])

@@ -77,6 +77,8 @@ export default async function ContactsPage({
     .order('id')
     .range(debut, fin))
   const leadClientIds = leadsRaw.map(l => l.client_id)
+  // Contacts effacés par la boutique (9d lot 4) : cachés de toutes les vues
+  const effaces = new Set(leadsRaw.filter(l => l.efface_le).map(l => l.client_id))
 
   // Statut newsletter de CETTE boutique (fiches fusionnées comprises)
   const leadsParId = new Map(leadsRaw.map(l => [l.client_id, l]))
@@ -200,7 +202,7 @@ export default async function ContactsPage({
   }
 
   const leadsData: LeadRow[] = leadsRaw
-    .filter(l => !archiveIds.has(l.client_id) && !clientsAvecCommandeOuAbo.has(l.client_id))
+    .filter(l => !archiveIds.has(l.client_id) && !effaces.has(l.client_id) && !clientsAvecCommandeOuAbo.has(l.client_id))
     .flatMap(l => {
     const client  = leadClientMap.get(l.client_id)
     if (!client) return []
@@ -363,7 +365,7 @@ export default async function ContactsPage({
   }
 
   const contacts: ContactRow[] = clientsRaw
-  .filter(c => !archiveIds.has(c.id))
+  .filter(c => !archiveIds.has(c.id) && !effaces.has(c.id))
   .map(c => {
     // Fusionner les commandes des contacts archivés si ce contact est un conservé
     const cmdsBase = commandesParClient.get(c.id) ?? []

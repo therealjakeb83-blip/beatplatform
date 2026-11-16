@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { clientsLiesABoutique } from '@/app/dashboard/business/_lib/appartenance'
+import { clientsLiesNonEffaces } from '@/app/dashboard/business/_lib/appartenance'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
   // Vérifier que les deux clients appartiennent bien à ce beatmaker (9d lot 0 :
   // le contrôle était calculé mais jamais appliqué)
-  const lies = await clientsLiesABoutique(supabase, user.id, [client_id_conserve, client_id_archive])
+  const lies = await clientsLiesNonEffaces(supabase, user.id, [client_id_conserve, client_id_archive])
   if (!lies.has(client_id_conserve) || !lies.has(client_id_archive)) {
     return NextResponse.json({ erreur: 'Contact introuvable' }, { status: 404 })
   }

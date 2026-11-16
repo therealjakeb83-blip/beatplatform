@@ -151,6 +151,18 @@ verif('commandes gardées', (await q(`SELECT count(*)::int n FROM commandes WHER
 verif('supprimer deux fois : refus', (await erreur(`SELECT supprimer_compte_client($1)`, [LEA]))?.includes('compte_introuvable'))
 verif('même email réutilisable par un nouveau compte', !(await erreur(`INSERT INTO clients (id, email, nom) VALUES (gen_random_uuid(), 'lea@x.fr', '')`)))
 
+// Correctif par-dessus (déjà exécuté le SQL 1) : fusions en chaîne
+await db.exec(sansCR(fs.readFileSync('supabase/fiches_clients_lot4_correctif.sql', 'utf8')))
+const W = '00000000-0000-0000-0000-0000000000f1', X = '00000000-0000-0000-0000-0000000000f2', Y = '00000000-0000-0000-0000-0000000000f3'
+await db.exec(`
+INSERT INTO clients (id, email, nom) VALUES ('${W}', 'w@x.fr', ''), ('${X}', 'x@x.fr', ''), ('${Y}', 'y@x.fr', '');
+INSERT INTO leads (client_id, beatmaker_id, source, emails) VALUES ('${W}', '${B}', 'achat', '{w@x.fr}'), ('${X}', '${B}', 'achat', '{x@x.fr}'), ('${Y}', '${B}', 'achat', '{y@x.fr}');
+INSERT INTO fusions_crm (beatmaker_id, client_id_conserve, client_id_archive) VALUES ('${B}', '${X}', '${Y}'), ('${B}', '${W}', '${X}');`)
+const rc = (await q(`SELECT effacer_contact_boutique($1, $2) AS r`, [B, Y]))[0].r
+const lc = await q(`SELECT client_id, efface_le, emails FROM leads WHERE client_id IN ($1, $2, $3)`, [W, X, Y])
+verif('fusion en chaîne : remonte à W et efface W, X, Y', rc.client_id === W && rc.fiches === 3 && lc.every(l => l.efface_le && l.emails.length === 0), { rc, lc })
+verif('droit de la tâche de nuit sur les IP', (await q(`SELECT has_column_privilege('service_role', 'licence_downloads', 'ip_effacer_apres', 'UPDATE') a`))[0].a === true)
+
 // Droits
 for (const f of ['effacer_contact_boutique(uuid, uuid)', 'supprimer_compte_client(uuid, uuid[])', 'ecrire_fiche_boutique(uuid, uuid, text, jsonb, timestamptz)']) {
   const d = (await q(`SELECT has_function_privilege('anon', '${f}', 'execute') a, has_function_privilege('authenticated', '${f}', 'execute') b, has_function_privilege('service_role', '${f}', 'execute') c`))[0]

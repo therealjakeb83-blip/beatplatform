@@ -93,15 +93,17 @@ export default async function ListeDetailPage({
   type AvecClient = { client_id: string }
   const [cmdIds, leadIds, aboIds] = await Promise.all([
     toutesLesLignes<AvecClient>((d, f) => supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
-    toutesLesLignes<AvecClient>((d, f) => supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId).order('id').range(d, f)),
+    toutesLesLignes<AvecClient & { efface_le: string | null }>((d, f) => supabase.from('leads').select('client_id, efface_le').eq('beatmaker_id', beatmakerId).order('id').range(d, f)),
     toutesLesLignes<AvecClient>((d, f) => supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
   ])
 
+  // Contacts effacés par la boutique (9d lot 4) : jamais proposés
+  const effacesListe = new Set(leadIds.filter(l => l.efface_le).map(l => l.client_id))
   const allClientIds = [...new Set([
     ...cmdIds.map(c => c.client_id),
     ...leadIds.map(l => l.client_id),
     ...aboIds.map(a => a.client_id),
-  ])].filter(id => !fusions.estArchive(id))
+  ])].filter(id => !fusions.estArchive(id) && !effacesListe.has(id))
 
   if (allClientIds.length === 0) {
     return (

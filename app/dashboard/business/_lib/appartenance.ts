@@ -33,3 +33,25 @@ export async function clientsLiesABoutique(
 export async function clientLieABoutique(supabase: SupabaseClient, beatmakerId: string, clientId: string): Promise<boolean> {
   return (await clientsLiesABoutique(supabase, beatmakerId, [clientId])).has(clientId)
 }
+
+// Même garde, sans les contacts effacés par la boutique (9d lot 4) : pour
+// toute action qui ajoute un contact quelque part (liste, fusion, doublon
+// ignoré). La fiche d'un contact effacé reste ouverte en lecture.
+export async function clientsLiesNonEffaces(
+  supabase: SupabaseClient,
+  beatmakerId: string,
+  clientIds: string[],
+): Promise<Set<string>> {
+  const lies = await clientsLiesABoutique(supabase, beatmakerId, clientIds)
+  const ids = [...lies]
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.from('leads').select('client_id')
+      .eq('beatmaker_id', beatmakerId).in('client_id', ids.slice(i, i + 200)).not('efface_le', 'is', null)
+    if (error) {
+      console.error('[appartenance] lecture des effacés impossible', JSON.stringify(error))
+      throw new Error('Vérification des contacts impossible')
+    }
+    for (const r of data ?? []) lies.delete(r.client_id as string)
+  }
+  return lies
+}

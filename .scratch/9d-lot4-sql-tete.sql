@@ -25,6 +25,8 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS supprime_le timestamptz;
 ALTER TABLE licence_downloads ADD COLUMN IF NOT EXISTS ip_effacer_apres timestamptz;
 ALTER TABLE commandes_externes ALTER COLUMN acheteur_email DROP NOT NULL;
 ALTER TABLE email_logs ALTER COLUMN destinataire DROP NOT NULL;
+-- Tâche de nuit (clé de service) : efface les IP arrivées à échéance
+GRANT UPDATE (ip_address, ip_effacer_apres) ON licence_downloads TO service_role;
 
 ALTER TABLE merchant_decisions_log DROP CONSTRAINT IF EXISTS merchant_decisions_log_entity_type_check;
 ALTER TABLE merchant_decisions_log ADD CONSTRAINT merchant_decisions_log_entity_type_check
@@ -50,11 +52,19 @@ BEGIN
   END IF;
 
   -- Le contact affiché = la fiche conservée d'une fusion de cette boutique
-  SELECT client_id_conserve INTO v_principal FROM fusions_crm
-   WHERE beatmaker_id = p_beatmaker_id AND client_id_archive = p_client_id LIMIT 1;
-  v_principal := coalesce(v_principal, p_client_id);
-  v_ids := ARRAY[v_principal] || coalesce((SELECT array_agg(DISTINCT client_id_archive) FROM fusions_crm
-             WHERE beatmaker_id = p_beatmaker_id AND client_id_conserve = v_principal), '{}');
+  -- (fusions en chaîne suivies : A dans B, puis B dans C → C)
+  WITH RECURSIVE haut AS (
+    SELECT p_client_id AS id, 0 AS n
+    UNION
+    SELECT f.client_id_conserve, h.n + 1 FROM fusions_crm f JOIN haut h ON f.client_id_archive = h.id
+     WHERE f.beatmaker_id = p_beatmaker_id AND h.n < 20
+  ) SELECT id INTO v_principal FROM haut ORDER BY n DESC LIMIT 1;
+  WITH RECURSIVE bas AS (
+    SELECT v_principal AS id, 0 AS n
+    UNION
+    SELECT f.client_id_archive, b.n + 1 FROM fusions_crm f JOIN bas b ON f.client_id_conserve = b.id
+     WHERE f.beatmaker_id = p_beatmaker_id AND b.n < 20
+  ) SELECT array_agg(DISTINCT id) INTO v_ids FROM bas;
 
   PERFORM 1 FROM leads WHERE beatmaker_id = p_beatmaker_id AND client_id = ANY(v_ids) FOR UPDATE;
   IF NOT FOUND THEN

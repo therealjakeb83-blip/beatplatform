@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { balayerPaiementsMulti } from '@/lib/paiement-multi'
 import { completerCommandesEnAttente } from '@/lib/completion-commande'
+import { effacerIpEchues } from '@/lib/ip-echues'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,5 +17,7 @@ export async function GET(request: Request) {
   if (!estAutorise(request)) return NextResponse.json({ erreur: 'Non autorisé' }, { status: 401 })
   const resultat = await balayerPaiementsMulti()
   const completion = await completerCommandesEnAttente()
-  return NextResponse.json({ ...resultat, completion })
+  // 9d lot 4 : IP des contacts effacés, 120 jours après l'achat
+  const ip = await effacerIpEchues()
+  return NextResponse.json({ ...resultat, completion, ip })
 }

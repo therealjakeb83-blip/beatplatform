@@ -54,11 +54,13 @@ export async function POST(req: Request) {
     clientId = existing.id
     const { data: dejaIci } = await admin
       .from('leads')
-      .select('id')
+      .select('id, efface_le')
       .eq('beatmaker_id', beatmaker.id)
       .eq('client_id', clientId)
       .maybeSingle()
-    if (dejaIci) {
+    // Contact effacé par la boutique (9d lot 4) : on peut le rajouter, la
+    // fiche repart de zéro avec la saisie (ecrire_fiche_boutique)
+    if (dejaIci && !dejaIci.efface_le) {
       return NextResponse.json({ error: 'Ce contact est déjà dans tes contacts' }, { status: 409 })
     }
   } else {

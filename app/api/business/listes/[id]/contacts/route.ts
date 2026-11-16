@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
-import { clientsLiesABoutique } from '@/app/dashboard/business/_lib/appartenance'
+import { clientsLiesNonEffaces } from '@/app/dashboard/business/_lib/appartenance'
 
 // POST /api/business/listes/[id]/contacts
 // Body: { client_ids: string[] }
@@ -19,7 +19,7 @@ export async function POST(
     return NextResponse.json({ erreur: 'Aucun contact sélectionné' }, { status: 400 })
 
   // Confidentialité entre boutiques (9d lot 0) : uniquement des clients liés à cette boutique
-  const lies = await clientsLiesABoutique(supabase, user.id, client_ids)
+  const lies = await clientsLiesNonEffaces(supabase, user.id, client_ids)
   if (client_ids.some(id => !lies.has(id)))
     return NextResponse.json({ erreur: 'Contact introuvable' }, { status: 404 })
 

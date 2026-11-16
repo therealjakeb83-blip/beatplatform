@@ -6,6 +6,7 @@ import Link from 'next/link'
 import SocialIcon from '../../_components/SocialIcon'
 import IdentiteSaveButton from './_components/IdentiteSaveButton'
 import BoutonNewsletter from './_components/BoutonNewsletter'
+import DonneesPersonnelles from './_components/DonneesPersonnelles'
 import { statutFusionne, changerStatutParBeatmaker, LIBELLE_STATUT_NEWSLETTER } from '@/lib/newsletter'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { totalDepense, panierMoyenLicences, nbAchatsPayants, montantDepense } from '@/app/dashboard/business/_lib/ltv'
@@ -88,6 +89,10 @@ async function assurerAccesContact(beatmakerId: string, clientId: string) {
   if (!u || u.id !== beatmakerId || !(await clientLieABoutique(s, beatmakerId, clientId))) {
     throw new Error('Contact introuvable')
   }
+  // Contact effacé par la boutique (9d lot 4) : plus aucune modification
+  const { data: fiche } = await s.from('leads').select('efface_le')
+    .eq('beatmaker_id', beatmakerId).eq('client_id', clientId).maybeSingle()
+  if (fiche?.efface_le) throw new Error('Contact effacé')
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -185,9 +190,33 @@ export default async function FicheClientPage({
     id: '', client_id: clientId, source: null, newsletter_statut: 'non_inscrit', newsletter_statut_at: null,
     emails: [], telephones: [], adresses: [], prenom: null, nom: null, nom_artiste: null, pays: null, langue: null,
     premier_contact_le: null, created_at: null, notes: null, tags: [], surnom: null,
-    instagram: null, spotify: null, youtube: null, tiktok: null, champs_manuels: [],
+    instagram: null, spotify: null, youtube: null, tiktok: null, champs_manuels: [], efface_le: null,
   }
   const fichesArchives = archiveIds.map(id => fichesLues.get(id)).filter((f): f is FicheBoutique => !!f)
+
+  // Contact effacé par la boutique (9d lot 4) : plus rien de personnel à montrer
+  if (client.efface_le) {
+    const le = new Date(client.efface_le).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: tz })
+    return (
+      <div className="flex-1 flex flex-col overflow-auto">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-800 text-sm flex-shrink-0">
+          <Link href="/dashboard/business/contacts" className="text-gray-500 hover:text-white transition-colors">Contacts</Link>
+          <span className="text-gray-700">›</span>
+          <span className="text-white font-semibold">Contact effacé</span>
+        </div>
+        <div className="max-w-3xl mx-auto w-full px-6 py-8">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-2">
+            <h1 className="text-lg font-bold">Contact effacé le {le}</h1>
+            <p className="text-sm text-gray-400">
+              Ses données personnelles ont été effacées de ta boutique. Ses commandes et factures restent dans Commandes,
+              avec seulement ce qui figure sur la facture.
+            </p>
+            <p className="text-xs text-gray-500">S&apos;il revient (achat, inscription, connexion…), une nouvelle fiche démarre avec ce qu&apos;il redonne.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const emailPrincipalFiche = emailPrincipal(client)
   const emailsFiche:   string[] = client.emails.slice(1)
@@ -1374,6 +1403,8 @@ export default async function FicheClientPage({
             </div>
           </div>
         )}
+
+        <DonneesPersonnelles clientId={clientId} abonnementActif={!!abonnement && abonnement.statut !== 'annule'} />
 
       </div>
     </div>

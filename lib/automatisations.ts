@@ -483,7 +483,7 @@ async function chargerDestinatairePourAutomatisation(clientId: string, beatmaker
     lireStatutNewsletter(admin, clientId, beatmakerId),
   ])
   const email = emailPrincipal(fiche)
-  if (!fiche || !email) {
+  if (!fiche || fiche.efface_le || !email) {
     console.warn('[automatisations] fiche boutique sans email, envoi sauté:', clientId, beatmakerId)
     return null
   }

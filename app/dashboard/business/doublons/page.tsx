@@ -111,17 +111,20 @@ export default async function DoublonsPage() {
 
   // ── Tous les client_ids de ce beatmaker ───────────────────────────────────
   type AvecClient = { client_id: string }
+  type AvecEfface = { client_id: string; efface_le: string | null }
   const [commandesIds, aboIds, leadsIds] = await Promise.all([
     toutesLesLignes<AvecClient>((d, f) => supabase.from('commandes').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
     toutesLesLignes<AvecClient>((d, f) => supabase.from('abonnements_boutique').select('client_id').eq('beatmaker_id', beatmakerId).not('client_id', 'is', null).order('id').range(d, f)),
-    toutesLesLignes<AvecClient>((d, f) => supabase.from('leads').select('client_id').eq('beatmaker_id', beatmakerId).order('id').range(d, f)),
+    toutesLesLignes<AvecEfface>((d, f) => supabase.from('leads').select('client_id, efface_le').eq('beatmaker_id', beatmakerId).order('id').range(d, f)),
   ])
 
+  // Contacts effacés par la boutique (9d lot 4) : jamais proposés en doublon
+  const effaces = new Set(leadsIds.filter(l => l.efface_le).map(l => l.client_id))
   const clientIds = [...new Set([
     ...commandesIds.map(c => c.client_id),
     ...aboIds.map(a => a.client_id),
     ...leadsIds.map(l => l.client_id),
-  ])]
+  ])].filter(id => !effaces.has(id))
 
   if (clientIds.length < 2) {
     return (
