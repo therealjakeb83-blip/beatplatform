@@ -445,7 +445,12 @@ export default async function FicheClientPage({
     const telephone   = (formData.get('telephone')   as string ?? '').trim() || null
     const langue      = (formData.get('langue')      as string ?? '').trim() || null
     const actuelle    = await chargerFicheBoutique(a, beatmakerId, clientId)
+    const prenom      = (formData.get('prenom')      as string ?? '').trim() || null
+    const nom         = (formData.get('nom')         as string ?? '').trim() || null
     const maj: Parameters<typeof modifierFicheBoutique>[3] = {}
+    // Seuls les champs réellement changés sont marqués « modifiés à la main »
+    if (prenom      !== (actuelle?.prenom      ?? null)) maj.prenom      = prenom
+    if (nom         !== (actuelle?.nom         ?? null)) maj.nom         = nom
     if (surnom      !== (actuelle?.surnom      ?? null)) maj.surnom      = surnom
     if (nom_artiste !== (actuelle?.nom_artiste ?? null)) maj.nom_artiste = nom_artiste
     if (langue      !== (actuelle?.langue      ?? null)) maj.langue      = langue
@@ -785,8 +790,8 @@ export default async function FicheClientPage({
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h2 className="font-bold text-sm mb-3">Identité</h2>
               <form action={sauvegarderIdentite}>
-                <Row label="Prénom"            value={client.prenom ?? '–'} />
-                <Row label="Nom"                value={client.nom ?? '–'} />
+                <EditRow label="Prénom"            name="prenom"      value={client.prenom}      placeholder="Prénom…" />
+                <EditRow label="Nom"               name="nom"         value={client.nom}         placeholder="Nom…" />
                 <EditRow label="Prénom de contact" name="surnom"      value={client.surnom}   placeholder="Surnom ou prénom personnalisé…" />
                 <EditRow label="Nom d'artiste"     name="nom_artiste" value={clientDisplay.nom_artiste}  placeholder="Nom d'artiste…" />
                 <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />
