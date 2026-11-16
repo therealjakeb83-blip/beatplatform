@@ -17,7 +17,6 @@ import * as M from './_composants/IconesMarque'
 //   inspiration Stable ; ambiance studio sans photo (grain, onde du logo) ;
 // - sections = panneaux arrondis aux 4 coins qui se chevauchent (noir, crème, bleu) ;
 // - section bleue = « L'histoire » (logo Jake B) ; le 0 % devient une ligne géante sur crème ;
-// - annotations = étiquettes techniques reliées par un trait (pas d'écriture à la main) ;
 // - titres de section en Space Grotesk (police libre), Surgena seulement pour le grand titre ;
 // - visuels = maquettes codées (_composants/Maquettes.tsx), sans fond plaqué ni photo.
 
@@ -27,19 +26,6 @@ function Etiquette({ children, centree = false }: { children: React.ReactNode; c
       <I.Etincelle taille={12} className="y-etiquette-etoile" />
       {children}
     </p>
-  )
-}
-
-/** Étiquette technique (façon écran de logiciel) reliée à l'image par un trait fin. */
-function Tag({ children, className, trait = 'gauche', longueur = 72 }: { children: React.ReactNode; className: string; trait?: 'gauche' | 'droite'; longueur?: number }) {
-  return (
-    <span className={`y-tag y-tag-trait-${trait} ${className}`} style={{ '--y-tag-long': `${longueur}px` } as CSSProperties} aria-hidden="true">
-      <span className="y-tag-pastille">
-        <span className="y-tag-point" />
-        {children}
-      </span>
-      <span className="y-tag-trait" />
-    </span>
   )
 }
 
@@ -156,9 +142,6 @@ export default function ApercuVitrineV4Page() {
                   </span>
                 </div>
               </div>
-              <Tag className="y-tag-boutique" trait="gauche" longueur={90}>01 · Ta boutique</Tag>
-              <Tag className="y-tag-clients" trait="gauche" longueur={70}>02 · Tes clients</Tag>
-              <Tag className="y-tag-paiement" trait="gauche" longueur={60}>03 · Ton argent</Tag>
             </div>
           </div>
 
@@ -178,7 +161,6 @@ export default function ApercuVitrineV4Page() {
             </div>
             <div className="y-marque4-visuel y-deborde">
               <MaquetteMarque />
-              <Tag className="y-tag-couleurs" trait="gauche" longueur={64}>Tes couleurs</Tag>
             </div>
           </div>
         </section>
@@ -193,7 +175,6 @@ export default function ApercuVitrineV4Page() {
             </div>
             <div className="y-relance4 y-deborde">
               <MaquetteRelance />
-              <Tag className="y-tag-auto" trait="droite" longueur={70}>Automatique</Tag>
             </div>
           </div>
         </section>
@@ -232,9 +213,6 @@ export default function ApercuVitrineV4Page() {
             </ul>
             <div className="y-ecran4 y-deborde">
               <MaquetteTableau />
-              <Tag className="y-tag-contrats" trait="droite" longueur={30}>Contrats</Tag>
-              <Tag className="y-tag-ventes" trait="gauche" longueur={30}>En direct</Tag>
-              <Tag className="y-tag-relance" trait="gauche" longueur={30}>Relances</Tag>
             </div>
           </div>
         </section>
