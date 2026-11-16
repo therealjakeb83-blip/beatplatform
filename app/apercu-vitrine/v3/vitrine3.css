@@ -3264,10 +3264,10 @@ html:has(.vitrine3) {
   }
   /* Image qui dépasse du conteneur, vers le bord de l'écran */
   .x-deborde-droite {
-    margin-right: -120px;
+    margin-right: -40px;
   }
   .x-deborde-gauche {
-    margin-left: -120px;
+    margin-left: -40px;
   }
 }
 
@@ -3305,14 +3305,12 @@ html:has(.vitrine3) {
     left: 40px;
   }
   .x-annot-relance {
-    bottom: -84px;
-    right: 40px;
+    top: -72px;
+    right: 70px;
     align-items: flex-end;
   }
   .x-annot-relance .x-annotation-fleche {
-    order: -1;
-    margin: 0 30px 4px 0;
-    transform: scale(-1, -1);
+    margin: 4px 30px 0 0;
   }
   .x-annot-tableau {
     top: -78px;
@@ -3462,4 +3460,9 @@ html:has(.vitrine3) {
   background: var(--x-sombre-carte);
   border-color: var(--x-bleu);
   box-shadow: 0 0 0 1px var(--x-bleu), 0 30px 80px rgb(36 119 251 / 0.18);
+}
+
+/* Carte « Gratuit » : fond blanc sur la bande noire, texte sombre */
+.x-tarifs3 .x-offre:not(.x-offre-pro) {
+  color: var(--x-texte);
 }
