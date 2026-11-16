@@ -91,24 +91,12 @@ const BEATS = [
   { titre: "Mémoire", genre: "R&B", bpm: "85 BPM" },
 ];
 
-const ONGLETS = [
-  { i: I.Boutique, t: 'Accueil' },
-  { i: I.Barres, t: 'Beats' },
-  { i: I.Couronne, t: 'Membres' },
-  { i: I.Document, t: 'Licences' },
-  { i: I.Personne, t: 'Compte' },
-]
-
 function EcranBoutique({ b }: { b: Boutique }) {
   return (
     <div
       className={`y-m-boutique ${b.sombre ? "y-m-boutique-sombre" : ""}`}
       style={{ background: b.fond, "--y-m-accent": b.accent } as CSSProperties}
     >
-      <span className="y-m-url">
-        <I.Cadenas taille={10} />
-        {b.adresse}
-      </span>
       <div className="y-m-boutique-barre">
         <strong>{b.nom}</strong>
         <span className="y-m-rond">
@@ -159,13 +147,13 @@ function EcranBoutique({ b }: { b: Boutique }) {
           <I.Lecture taille={11} />
         </span>
       </div>
-      <div className="y-m-onglets">
-        {ONGLETS.map((o, i) => (
-          <span key={o.t} className={i === 0 ? 'y-m-onglet-actif' : undefined}>
-            <o.i taille={13} />
-            {o.t}
-          </span>
-        ))}
+      <div className="y-m-safari">
+        <span className="y-m-safari-aa">aA</span>
+        <span className="y-m-safari-adresse">
+          <I.Cadenas taille={10} />
+          {b.adresse}
+        </span>
+        <span className="y-m-safari-recharger">↻</span>
       </div>
     </div>
   );

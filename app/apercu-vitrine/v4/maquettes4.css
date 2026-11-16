@@ -966,59 +966,45 @@
   }
 }
 
-/* Barre d'onglets en bas des écrans de boutique */
+/* Barre d'adresse en bas de l'écran, comme Safari sur iPhone */
 .y-m-lecteur {
-  margin-bottom: 0.6em;
+  margin-bottom: 0.7em;
 }
-.y-m-onglets {
+.y-m-safari {
   display: flex;
-  justify-content: space-between;
-  margin: 0 -0.3em;
-  padding-top: 0.6em;
-  border-top: 1px solid rgb(127 127 127 / 0.18);
-}
-.y-m-onglets span {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.35em;
-  font-size: 0.46em;
-  opacity: 0.5;
+  gap: 0.6em;
+  margin: 0 -0.35em;
+  padding: 0.55em 0.85em;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.9);
+  color: #050505;
+  box-shadow: 0 0.3em 1em rgb(5 5 5 / 0.12), inset 0 0 0 1px rgb(5 5 5 / 0.06);
+  font-size: 0.72em;
 }
-.y-m-onglets .y-m-onglet-actif {
-  opacity: 1;
+.y-m-boutique-sombre .y-m-safari {
+  background: rgb(60 60 60 / 0.75);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
-.y-m-onglets svg[viewBox='0 0 24 24'] {
-  width: 2.2em;
-  height: 2.2em;
+.y-m-safari-aa {
+  font-size: 0.85em;
+  font-weight: 600;
 }
-
-/* Barre d'adresse en haut de l'écran de boutique (comme dans un navigateur) */
-.y-m-boutique {
-  padding-top: 2.75em;
-}
-.y-m-url {
-  display: flex;
+.y-m-safari-adresse {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45em;
-  align-self: stretch;
-  margin: 0 0 1em;
-  padding: 0.55em 0.8em;
-  border-radius: 0.8em;
-  background: rgb(5 5 5 / 0.06);
-  font-size: 0.72em;
+  gap: 0.35em;
+  flex: 1;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
-.y-m-boutique-sombre .y-m-url {
-  background: rgb(255 255 255 / 0.12);
+.y-m-safari-adresse svg[viewBox='0 0 24 24'] {
+  width: 0.9em;
+  height: 0.9em;
+  opacity: 0.6;
 }
-.y-m-url svg[viewBox='0 0 24 24'] {
-  width: 1em;
-  height: 1em;
+.y-m-safari-recharger {
+  font-size: 0.95em;
   opacity: 0.7;
-}
-.y-m-boutique-titre {
-  margin-top: 1.2em;
 }
