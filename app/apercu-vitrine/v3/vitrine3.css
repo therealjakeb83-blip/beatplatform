@@ -3490,17 +3490,24 @@ html:has(.vitrine3) {
     background: var(--x-blanc);
     box-shadow: 0 24px 48px rgb(5 5 5 / 0.1), 0 2px 6px rgb(5 5 5 / 0.05);
   }
+  .x-flottant-vente,
+  .x-flottant-revenus {
+    align-self: flex-start;
+  }
   .x-flottant-vente {
     z-index: 2;
-    width: 214px;
-    margin: 44px -48px 0 0;
+    width: 220px;
+    margin: 40px -28px 0 0;
     transform: rotate(-6deg);
   }
   .x-flottant-revenus {
     z-index: 1;
-    width: 168px;
-    margin-top: 92px;
+    width: 150px;
+    margin-top: 96px;
     transform: rotate(6deg);
+  }
+  .x-flottant .x-flottant-montant {
+    white-space: nowrap;
   }
   .x-flottant-vente small {
     font-size: 11.5px;
