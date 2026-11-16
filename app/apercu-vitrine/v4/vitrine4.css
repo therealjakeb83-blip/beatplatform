@@ -3764,20 +3764,20 @@ html:has(.vitrine4) {
     margin-bottom: 64px;
   }
   .y-ecran4 {
-    max-width: 1120px;
+    max-width: 1040px;
     margin: 0 auto -200px;
   }
   .y-tag-contrats {
     top: calc(53% - 15px);
-    left: -137px;
+    right: 100%;
   }
   .y-tag-ventes {
     top: calc(27% - 15px);
-    right: -150px;
+    left: 100%;
   }
   .y-tag-relance {
     top: calc(73% - 15px);
-    right: -150px;
+    left: 100%;
   }
 
   /* L'histoire (bleu) */

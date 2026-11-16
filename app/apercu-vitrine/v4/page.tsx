@@ -194,7 +194,6 @@ export default function ApercuVitrineV4Page() {
             <div className="y-relance4 y-deborde">
               <MaquetteRelance />
               <Tag className="y-tag-auto" trait="droite" longueur={70}>Automatique</Tag>
-              <Tag className="y-tag-abonne" trait="gauche" longueur={70}>Revenu récurrent</Tag>
             </div>
           </div>
         </section>
@@ -233,9 +232,9 @@ export default function ApercuVitrineV4Page() {
             </ul>
             <div className="y-ecran4 y-deborde">
               <MaquetteTableau />
-              <Tag className="y-tag-contrats" trait="droite" longueur={60}>Contrats auto</Tag>
-              <Tag className="y-tag-ventes" trait="gauche" longueur={80}>Ventes en direct</Tag>
-              <Tag className="y-tag-relance" trait="gauche" longueur={80}>Clients & e-mails</Tag>
+              <Tag className="y-tag-contrats" trait="droite" longueur={30}>Contrats</Tag>
+              <Tag className="y-tag-ventes" trait="gauche" longueur={30}>En direct</Tag>
+              <Tag className="y-tag-relance" trait="gauche" longueur={30}>Relances</Tag>
             </div>
           </div>
         </section>
