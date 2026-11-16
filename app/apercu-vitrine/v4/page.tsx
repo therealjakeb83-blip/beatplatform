@@ -4,7 +4,7 @@ import { adresseBoutique } from '@/lib/adresse-boutique'
 import { EMAIL_CONTACT } from '@/lib/constantes'
 import { EnTete } from './_composants/EnTete'
 import { Faq } from './_composants/Faq'
-import { ImageAdaptative } from './_composants/ImageAdaptative'
+import { MaquetteMarque, MaquetteRelance, MaquetteTableau } from './_composants/Maquettes'
 import { Logo, Symbole } from './_composants/Logo'
 import { CHEMIN_INSCRIPTION, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
 import { sansAccents as sa } from './_composants/sansAccents'
@@ -19,8 +19,7 @@ import * as M from './_composants/IconesMarque'
 // - section bleue = « L'histoire » (logo Jake B) ; le 0 % devient une ligne géante sur crème ;
 // - annotations = étiquettes techniques reliées par un trait (pas d'écriture à la main) ;
 // - titres de section en Space Grotesk (police libre), Surgena seulement pour le grand titre ;
-// - visuels inclinés qui débordent sur le panneau suivant ; aucune photo ajoutée.
-// Visuels : découpes WebP de la v2 (public/apercu-vitrine/v2).
+// - visuels = maquettes codées (_composants/Maquettes.tsx), sans fond plaqué ni photo.
 
 function Etiquette({ children, centree = false }: { children: React.ReactNode; centree?: boolean }) {
   return (
@@ -76,15 +75,11 @@ const OFFRE_PRO = [
   '0 % de commission sur tes ventes',
 ]
 
-const img = (nom: string, largeur: number, hauteur: number) => ({ src: `/apercu-vitrine/v2/${nom}.webp`, largeur, hauteur })
 
 export default function ApercuVitrineV4Page() {
   const lienBoutique = adresseBoutique(SLUG_BOUTIQUE_EXEMPLE, null).accueil
   const contact = `mailto:${EMAIL_CONTACT}`
 
-  const telephones = img('telephones-ordinateur', 2564, 1740)
-  const relance = img('relance-ordinateur', 2564, 1375)
-  const tableau = img('tableau-ordinateur', 2564, 1630)
 
   return (
     <>
@@ -182,13 +177,7 @@ export default function ApercuVitrineV4Page() {
               </a>
             </div>
             <div className="y-marque4-visuel y-deborde">
-              <ImageAdaptative
-                className="y-visuel4 y-incline-gauche"
-                alt="Trois boutiques personnalisées sur mobile : Jake B (beats.jakebmusic.com), ACHPRODD (sonoo.app/achprodd) et Nehzia (sonoo.app/nehzia)"
-                ordinateur={telephones}
-                tablette={telephones}
-                mobile={telephones}
-              />
+              <MaquetteMarque />
               <Tag className="y-tag-domaine" trait="droite" longueur={110}>Ton nom de domaine</Tag>
               <Tag className="y-tag-couleurs" trait="gauche" longueur={64}>Tes couleurs</Tag>
             </div>
@@ -204,13 +193,7 @@ export default function ApercuVitrineV4Page() {
               <p className="y-phrase4 y-centre">Sonoo relance tes clients au bon moment, tout seul.</p>
             </div>
             <div className="y-relance4 y-deborde">
-              <ImageAdaptative
-                className="y-visuel4 y-incline-droite"
-                alt="Un client inactif depuis 60 jours reçoit un e-mail « Ça fait longtemps, Luka » avec un code promo, revient et s’abonne à 9,99 € par mois"
-                ordinateur={relance}
-                tablette={relance}
-                mobile={img('relance-mobile', 780, 1378)}
-              />
+              <MaquetteRelance />
               <Tag className="y-tag-auto" trait="droite" longueur={70}>Automatique</Tag>
               <Tag className="y-tag-abonne" trait="gauche" longueur={70}>Revenu récurrent</Tag>
             </div>
@@ -250,13 +233,7 @@ export default function ApercuVitrineV4Page() {
               ))}
             </ul>
             <div className="y-ecran4 y-deborde">
-              <ImageAdaptative
-                className="y-ecran4-image"
-                alt="Le tableau de bord Sonoo : revenus des 30 derniers jours, ventes en direct, clients, top beats et automatisations"
-                ordinateur={tableau}
-                tablette={tableau}
-                mobile={img('tableau-mobile', 660, 1320)}
-              />
+              <MaquetteTableau />
               <Tag className="y-tag-contrats" trait="droite" longueur={60}>Contrats auto</Tag>
               <Tag className="y-tag-ventes" trait="gauche" longueur={80}>Ventes en direct</Tag>
               <Tag className="y-tag-relance" trait="gauche" longueur={80}>Clients & e-mails</Tag>

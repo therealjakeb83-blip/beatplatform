@@ -3721,10 +3721,7 @@ html:has(.vitrine4) {
     align-items: center;
   }
   .y-marque4-visuel {
-    margin: 0 -120px -190px 0;
-  }
-  .y-incline-gauche {
-    transform: rotate(-4deg);
+    margin-right: -40px;
   }
   .y-tag-domaine {
     bottom: 7%;
@@ -3734,17 +3731,10 @@ html:has(.vitrine4) {
     bottom: 30%;
     right: 40px;
   }
-  #fonctionnalites + .y-panneau {
-    padding-top: calc(var(--y-recouvre) + 200px);
-  }
 
   /* 02 : titre centré, parcours de relance incliné qui sort en bas */
   .y-relance4 {
-    max-width: 1080px;
-    margin: 0 auto -170px;
-  }
-  .y-incline-droite {
-    transform: rotate(2.5deg);
+    margin-top: 72px;
   }
   .y-tag-auto {
     top: 5%;
@@ -3757,7 +3747,6 @@ html:has(.vitrine4) {
 
   /* 0 % : ligne géante */
   .y-zero4-panneau {
-    padding-top: calc(var(--y-recouvre) + 230px);
     padding-bottom: calc(var(--y-recouvre) + 110px);
   }
   .y-zero4 {
@@ -3776,12 +3765,7 @@ html:has(.vitrine4) {
   }
   .y-ecran4 {
     max-width: 1120px;
-    margin: 0 auto -220px;
-    perspective: 2200px;
-  }
-  .y-ecran4-image {
-    transform: rotateX(16deg);
-    transform-origin: 50% 100%;
+    margin: 0 auto -200px;
   }
   .y-tag-contrats {
     top: calc(42% - 15px);
@@ -3798,7 +3782,7 @@ html:has(.vitrine4) {
 
   /* L'histoire (bleu) */
   .y-histoire4-panneau {
-    padding-top: calc(var(--y-recouvre) + 300px);
+    padding-top: calc(var(--y-recouvre) + 290px);
   }
   .y-histoire4 {
     grid-template-columns: 440px 1fr;
