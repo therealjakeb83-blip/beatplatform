@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -226,7 +227,6 @@ export default async function CommandeDetailPage({
       acheteur_raison_sociale, acheteur_numero_tva,
       notes, client_id, tva_taux,
       licence_annulee_at, licence_annulee_motif, montant_rembourse_cents, rembourse_at,
-      clients (id, prenom, nom, email, pays),
       commande_lignes (
         id, beat_id, licence_id, prix_paye, reduction_montant, contrat_pdf_url, type_transaction,
         licence_nom, licence_inclut_mp3, licence_inclut_wav, licence_inclut_stems,
@@ -239,7 +239,11 @@ export default async function CommandeDetailPage({
 
   if (!commande) notFound()
 
-  const c = commande as unknown as CommandeDetail & { beatmaker_id: string }
+  // Identité du client = fiche de la boutique de l'utilisateur connecté (9d
+  // lot 2), jamais la fiche commune : un collaborateur, dont l'acheteur n'est
+  // pas le contact, n'a ni identité ni lien vers une fiche (nom/email de la commande).
+  const [commandeAvecFiche] = await remplacerClientsParFiches(admin, user.id, [commande as { client_id: string | null }])
+  const c = commandeAvecFiche as unknown as CommandeDetail & { beatmaker_id: string }
 
   const { data: tranchesRaw } = await admin
     .from('commande_tranches')

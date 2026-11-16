@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createClient } from '@/utils/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../page'
@@ -49,12 +50,14 @@ export default async function CodePromoDetailPage({
   const [rawCommandes, { data: bm }, { data: rawLicences }, rawBeats] = await Promise.all([
     toutesLesLignes((debut, fin) => admin
       .from('commandes')
-      .select('id, created_at, prix_paye, reduction_montant, statut, clients(id, prenom, nom, nom_artiste), commande_lignes(beats(titre), licences(nom))')
+      .select('id, created_at, prix_paye, reduction_montant, statut, client_id, commande_lignes(beats(titre), licences(nom))')
       .eq('beatmaker_id', user.id)
       .eq('code_promo', code.code)
       .order('created_at', { ascending: false })
       .order('id')
-      .range(debut, fin)),
+      .range(debut, fin))
+      // Identité = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+      .then(lignes => remplacerClientsParFiches(admin, user.id, lignes)),
     admin.from('beatmakers').select('slug').eq('id', user.id).single(),
     admin.from('licences').select('id, nom, modele').eq('beatmaker_id', user.id).eq('actif', true).order('ordre'),
     toutesLesLignes((debut, fin) => admin.from('beats').select('id, titre, couleur, statut').eq('beatmaker_id', user.id).is('supprime_le', null).in('statut', ['public', 'prive']).order('created_at', { ascending: false }).order('id').range(debut, fin)),

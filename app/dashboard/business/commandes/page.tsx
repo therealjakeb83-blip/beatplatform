@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import CommandesClient from './_components/CommandesClient'
@@ -62,35 +63,34 @@ export default async function CommandesPage({
 
   // Toutes les commandes, sans plafond (ancien .limit(500) : les plus anciennes
   // n'apparaissaient jamais) — la liste est paginée à l'affichage.
-  const data = await toutesLesLignes((debut, fin) => admin
+  // Identité du client = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+  const data = await remplacerClientsParFiches(admin, user.id, await toutesLesLignes<{ client_id: string | null }>((debut, fin) => admin
     .from('commandes')
     .select(
       `id, created_at, prix_paye, statut,
        code_promo, reduction_montant, fichiers_livres,
-       source_marketing, type_commande,
+       source_marketing, type_commande, client_id,
        acheteur_email, acheteur_nom, methode_paiement, tva_taux, paiement_multi_vendeurs,
-       clients (id, prenom, nom, email, pays),
        commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele))`
     )
     .eq('beatmaker_id', user.id)
     .order('created_at', { ascending: false })
     .order('id')
-    .range(debut, fin))
+    .range(debut, fin)))
 
   // Tentatives non abouties (une tentative réussie devient une vraie commande
   // ci-dessus — inutile de l'afficher deux fois)
-  const tentatives = await toutesLesLignes((debut, fin) => admin
+  const tentatives = await remplacerClientsParFiches(admin, user.id, await toutesLesLignes<{ client_id: string | null }>((debut, fin) => admin
     .from('tentatives_paiement')
     .select(
-      `id, created_at, prix, code_promo, source_marketing, email, statut, type,
-       clients (id, prenom, nom, email, pays),
+      `id, created_at, prix, code_promo, source_marketing, email, statut, type, client_id,
        tentatives_paiement_lignes (beat_id, licence_id, beats (titre, image_url), licences (nom, modele))`
     )
     .eq('beatmaker_id', user.id)
     .neq('statut', 'complete')
     .order('created_at', { ascending: false })
     .order('id')
-    .range(debut, fin))
+    .range(debut, fin)))
 
   type LigneJointe = {
     beat_id: string

@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import LogsClient from './_components/LogsClient'
@@ -64,8 +65,7 @@ export default async function LogsEmailsPage({
   let requetePage = appliquerFiltres(
     admin.from('email_logs').select(`
       id, created_at, destinataire, sujet, type, evenement, statut, erreur,
-      ouvert_at, clique_at, commande_id, automatisation_id, corps_html, corps_texte,
-      clients (id, prenom, nom)
+      ouvert_at, clique_at, commande_id, automatisation_id, corps_html, corps_texte, client_id
     `),
     user.id, type, q, scope,
   )
@@ -80,9 +80,12 @@ export default async function LogsEmailsPage({
     .order('id')
     .range(offset, offset + taille - 1)
 
+  // Identité = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+  const logs = await remplacerClientsParFiches(admin, user.id, (data ?? []) as { client_id: string | null }[])
+
   return (
     <LogsClient
-      logs={(data ?? []) as unknown as EmailLogRow[]}
+      logs={logs as unknown as EmailLogRow[]}
       counts={{ tous: totalCount ?? 0, envoye: envoyeCount ?? 0, echoue: echoueCount ?? 0 }}
       page={page}
       total={total}

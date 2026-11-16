@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -29,12 +30,14 @@ export default async function MailingAutomatisationsPage() {
   const automatisations = (data ?? []) as AutomatisationRow[]
 
   const admin = createAdminClient()
-  const { data: evenementsRaw } = await admin
+  const { data: evenementsBruts } = await admin
     .from('automatisation_evenements')
-    .select('id, beatmaker_id, client_id, type, reference_id, created_at, clients(prenom, nom, email)')
+    .select('id, beatmaker_id, client_id, type, reference_id, created_at')
     .eq('beatmaker_id', user.id)
     .eq('traite', false)
     .order('created_at', { ascending: false })
+  // Identité = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+  const evenementsRaw = await remplacerClientsParFiches(admin, user.id, evenementsBruts ?? [])
 
   type EvenementRaw = EvenementAutomatisation & {
     clients: { prenom: string | null; nom: string; email: string } | null

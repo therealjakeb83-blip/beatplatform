@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createClient } from '@/utils/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -106,12 +107,13 @@ export default async function AbonnementDetailPage({
         statut, date_debut, date_fin, date_annulation,
         methode_paiement, annulation_en_cours,
         mensualites_payees, mois_consecutifs,
-        acheteur_email, acheteur_nom, stripe_subscription_id,
-        clients (id, prenom, nom, email, pays)
+        acheteur_email, acheteur_nom, stripe_subscription_id
       `)
       .eq('id', id)
       .eq('beatmaker_id', user.id)
-      .single(),
+      .single()
+      // Identité = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+      .then(async r => ({ data: r.data ? (await remplacerClientsParFiches(admin, user.id, [r.data as { client_id: string | null }]))[0] : null })),
 
     admin
       .from('beatmakers')
