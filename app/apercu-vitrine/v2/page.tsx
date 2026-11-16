@@ -7,8 +7,10 @@ import { ImageAdaptative } from './_composants/ImageAdaptative'
 import { Logo, Symbole } from './_composants/Logo'
 import { CHEMIN_INSCRIPTION, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
 import * as I from './_composants/Icones'
+import * as M from './_composants/IconesMarque'
 
 // Page test du site vitrine — maquettes de la charte v2 (design/charte-v2/sources/Maquettes site).
+// Icônes : iconographie de marque (IconesMarque.tsx), placées comme sur la maquette.
 // Les visuels complexes (boutique, téléphones, relance, tableau de bord) sont des découpes WebP des maquettes.
 
 function Etiquette({ children, centree = false }: { children: React.ReactNode; centree?: boolean }) {
@@ -32,7 +34,7 @@ function Atouts({ liste, colonnes }: { liste: Atout[]; colonnes: 3 | 4 }) {
       {liste.map(a => (
         <li key={a.titre}>
           <span className="w-atout-icone">
-            <a.icone taille={20} />
+            <a.icone taille={26} />
           </span>
           <h3>{a.titre}</h3>
           <p>{a.texte}</p>
@@ -43,31 +45,31 @@ function Atouts({ liste, colonnes }: { liste: Atout[]; colonnes: 3 | 4 }) {
 }
 
 const ATOUTS_MARQUE: Atout[] = [
-  { icone: I.Globe, titre: 'Ton nom de domaine', texte: 'Ta boutique sur ton adresse, comme beats.tonnom.com.' },
-  { icone: I.Palette, titre: 'Ton identité', texte: 'Couleurs, logo, page d’accueil modulable : tout est à ton image.' },
-  { icone: I.Telephone, titre: 'Pensée pour le mobile', texte: 'Lecteur intégré, filtres par style, ambiance ou BPM, paiement par carte, Apple Pay et Google Pay.' },
-  { icone: I.Cadenas, titre: 'Beats réservés aux membres', texte: 'Playlists, catégories et exclusivités pour tes membres.' },
+  { icone: M.MarqueDomaine, titre: 'Ton nom de domaine', texte: 'Ta boutique sur ton adresse, comme beats.tonnom.com.' },
+  { icone: M.MarquePersonnalisation, titre: 'Ton identité', texte: 'Couleurs, logo, page d’accueil modulable : tout est à ton image.' },
+  { icone: M.MarqueBoutique, titre: 'Pensée pour le mobile', texte: 'Lecteur intégré, filtres par style, ambiance ou BPM, paiement par carte, Apple Pay et Google Pay.' },
+  { icone: M.MarqueCatalogue, titre: 'Beats réservés aux membres', texte: 'Playlists, catégories et exclusivités pour tes membres.' },
 ]
 
 const ATOUTS_CROISSANCE: Atout[] = [
-  { icone: I.PersonneCourbe, titre: 'Tes clients t’appartiennent', texte: 'Achats, dépenses et goûts musicaux de chaque client. Importe ta base depuis BeatStars, Airbit ou toute autre source.' },
-  { icone: I.Envoi, titre: 'Des relances qui tournent seules', texte: 'Bienvenue, remerciement, relance des inactifs avec code promo : des e-mails à ton image, envoyés au bon moment.' },
-  { icone: I.Barres, titre: 'Un revenu chaque mois', texte: 'Abonnements pour tes beats exclusifs, codes promo, offres groupées et téléchargements gratuits contre e-mail.' },
+  { icone: M.MarqueMembres, titre: 'Tes clients t’appartiennent', texte: 'Achats, dépenses et goûts musicaux de chaque client. Importe ta base depuis BeatStars, Airbit ou toute autre source.' },
+  { icone: M.MarqueCloud, titre: 'Des relances qui tournent seules', texte: 'Bienvenue, remerciement, relance des inactifs avec code promo : des e-mails à ton image, envoyés au bon moment.' },
+  { icone: M.MarqueStatistiques, titre: 'Un revenu chaque mois', texte: 'Abonnements pour tes beats exclusifs, codes promo, offres groupées et téléchargements gratuits contre e-mail.' },
 ]
 
 const OUTILS = [
-  { icone: I.Boutique, nom: 'Boutique' },
-  { icone: I.Couronne, nom: 'Catalogue' },
-  { icone: I.Document, nom: 'Licences' },
-  { icone: I.Personnes, nom: 'Clients & e-mails' },
-  { icone: I.Barres, nom: 'Statistiques' },
-  { icone: I.FactureDollar, nom: 'Paiements' },
+  { icone: M.MarqueBoutique, nom: 'Boutique' },
+  { icone: M.MarqueCatalogue, nom: 'Catalogue' },
+  { icone: M.MarqueLicence, nom: 'Licences' },
+  { icone: M.MarqueMembres, nom: 'Clients & e-mails' },
+  { icone: M.MarqueStatistiques, nom: 'Statistiques' },
+  { icone: M.MarquePaiementSecurise, nom: 'Paiements' },
 ]
 
 const ATOUTS_TABLEAU: Atout[] = [
-  { icone: I.Barres, titre: 'Ventes et revenus', texte: 'Suis ton chiffre d’affaires jour après jour, beat par beat.' },
-  { icone: I.PersonneCourbe, titre: 'Clients et membres', texte: 'Vois qui achète, qui revient et qui décroche.' },
-  { icone: I.Courbe, titre: 'Top beats et trafic', texte: 'Écoutes, meilleures ventes, sources de trafic : tu ne rates aucune donnée.' },
+  { icone: M.MarqueStatistiques, titre: 'Ventes et revenus', texte: 'Suis ton chiffre d’affaires jour après jour, beat par beat.' },
+  { icone: M.MarqueMembres, titre: 'Clients et membres', texte: 'Vois qui achète, qui revient et qui décroche.' },
+  { icone: M.MarqueDomaine, titre: 'Top beats et trafic', texte: 'Écoutes, meilleures ventes, sources de trafic : tu ne rates aucune donnée.' },
 ]
 
 const LIGNES_CONTRAT = [
@@ -213,7 +215,7 @@ export default function ApercuVitrineV2Page() {
             <ul className="w-outils">
               {OUTILS.map(o => (
                 <li key={o.nom}>
-                  <o.icone taille={18} />
+                  <o.icone taille={22} />
                   {o.nom}
                 </li>
               ))}
@@ -308,14 +310,14 @@ export default function ApercuVitrineV2Page() {
 
           <div className="w-admin-petits">
             <article className="w-petit-bloc">
-              <I.PoigneeMains taille={22} className="w-bleu" />
+              <M.MarqueMembres taille={26} className="w-bleu" />
               <div>
                 <h3>Collabs simplifiées</h3>
                 <p>La part de chaque collaborateur est versée automatiquement.</p>
               </div>
             </article>
             <article className="w-petit-bloc">
-              <I.Barres taille={22} className="w-bleu" />
+              <M.MarqueStatistiques taille={26} className="w-bleu" />
               <div>
                 <h3>
                   Suivi des sorties

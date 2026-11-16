@@ -2966,3 +2966,9 @@ html:has(.vitrine2) {
     font-size: 42px;
   }
 }
+
+/* Iconographie de marque (bleue, comme sur la maquette) */
+.w-atout-icone,
+.w-outils svg {
+  color: var(--w-bleu);
+}
