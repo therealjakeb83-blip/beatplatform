@@ -1,7 +1,8 @@
 ﻿# Sonoo — Roadmap V1
 
-> Dernière mise à jour : 2026-11-16 — **Rang 9d (fiches clients confidentielles) : lot 0 (failles) ✅ CLOS, lot 1 (fiche par boutique = `leads` enrichie + reconstruction, faille d'écriture de `leads` fermée) ✅ CLOS le 2026-11-16 (T0-T10). Lot 2 (les écrans lisent la fiche boutique) ✅ CLOS le 2026-11-16 (T0-T13), faille 8 fermée. Prochaine étape : checklist du lot 3 (écritures automatiques) à présenter avant de coder.** Détail : « Détail — Fiches clients confidentielles par boutique » juste en dessous.
-> Mise à jour précédente : 2026-11-12 (soir) — Rang 9c bis (sous-domaines) TERMINÉ (lots 1-3).
+> Dernière mise à jour : 2026-11-16 (après-midi) — **Rang 9d (fiches clients confidentielles) : lots 0, 1, 2 ✅ CLOS ; lot 3 (écritures automatiques dans la fiche de la boutique, fonction unique `ecrire_fiche_boutique`) ✅ CLOS le 2026-11-16 (T0-T13), failles 5, 9, 10 fermées + perte de données au passage invité → compte corrigée. Prochaine étape : checklist du lot 4 (RGPD + Admin) à présenter avant de coder, passation `HANDOFF_CLAUDE_FICHES_CLIENTS_9D_LOT4_2026-11-16.md`.** Détail : « Détail — Fiches clients confidentielles par boutique » juste en dessous.
+> Mise à jour précédente : 2026-11-16 (midi) — lot 2 du 9d clos (les écrans lisent la fiche boutique).
+> Mise à jour antérieure : 2026-11-12 (soir) — Rang 9c bis (sous-domaines) TERMINÉ (lots 1-3).
 >
 > Mise à jour précédente : 2026-11-12 — **Rang 9c TERMINÉ : lot 5 ✅ CLOS (T0-T22)** (boutique indisponible sur son domaine, 30 jours puis libération, preuve de propriété `_sonoo`, `www` surveillé, paiements refusés sur une boutique indisponible ; testé avec testjakeb.com). Page « Où on en est » v64. **Prochaine étape : rang 9c bis (sous-domaines `slug.sonoo.app`), ÉTUDE avant code** — passation `HANDOFF_CLAUDE_SOUS_DOMAINES_9CBIS_2026-11-12.md`.
 >
