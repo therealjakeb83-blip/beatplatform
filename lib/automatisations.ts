@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { chargerFicheBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { envoyerEmailUnique } from './email-logger'
 import { lireStatutNewsletter, peutRecevoirAutomatisation } from './newsletter'
 import { remplacerTokens, genererLienDesinscription, type Destinataire } from './mailing'
@@ -376,8 +377,9 @@ async function resoudreTokensSupplementaires(
       return { code_promo: 'APERÇU-XXXXXX', pourcentage_remise: String(pourcentage), date_expiration_code: dateExpirationFormatee }
     }
 
-    const { data: client } = await admin.from('clients').select('email').eq('id', clientId).maybeSingle()
-    const code = await creerCodePromoRelance(beatmakerId, client?.email ?? null, pourcentage, dateExpiration)
+    // Email de la fiche de CETTE boutique (9d lot 2)
+    const fiche = await chargerFicheBoutique(admin, beatmakerId, clientId)
+    const code = await creerCodePromoRelance(beatmakerId, emailPrincipal(fiche), pourcentage, dateExpiration)
 
     return {
       code_promo: code ?? 'ERREUR-CODE',
@@ -474,29 +476,41 @@ async function chargerConfigs(beatmakerId: string, types: TypeAutomatisation[]):
 // l'identité et la boutique — à enrichir si un futur workflow a besoin de plus.
 async function chargerDestinatairePourAutomatisation(clientId: string, beatmakerId: string): Promise<Destinataire | null> {
   const admin = createAdminClient()
-  const [{ data: client }, statutNewsletter] = await Promise.all([
-    admin
-      .from('clients')
-      .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, instagram, spotify, youtube, tiktok, tags, created_at')
-      .eq('id', clientId)
-      .single(),
+  // Fiche de CETTE boutique (9d lot 2), jamais la fiche commune ; sans email
+  // (vente arrivée avant le lot 3) = rien à envoyer
+  const [fiche, statutNewsletter] = await Promise.all([
+    chargerFicheBoutique(admin, beatmakerId, clientId),
     lireStatutNewsletter(admin, clientId, beatmakerId),
   ])
-  if (!client) return null
+  const email = emailPrincipal(fiche)
+  if (!fiche || !email) {
+    console.warn('[automatisations] fiche boutique sans email, envoi sauté:', clientId, beatmakerId)
+    return null
+  }
 
   return {
-    ...client,
+    id: clientId,
+    prenom: fiche.prenom,
+    surnom: fiche.surnom,
+    nom: fiche.nom ?? '',
+    nom_artiste: fiche.nom_artiste,
+    email,
+    pays: fiche.pays,
+    instagram: fiche.instagram,
+    spotify: fiche.spotify,
+    youtube: fiche.youtube,
+    tiktok: fiche.tiktok,
     newsletter_statut: statutNewsletter,
     newsletter_consent: statutNewsletter === 'inscrit',
-    langue: (client.langue === 'EN' ? 'EN' : 'FR'),
-    tags: client.tags ?? [],
+    langue: (fiche.langue === 'EN' ? 'EN' : 'FR'),
+    tags: fiche.tags,
     statut: 'abonne',
     ltv: 0,
     nb_achats: 0,
     panier_moyen: null,
     mensualites_payees: 0,
     dernier_achat_iso: null,
-    premierContactISO: client.created_at,
+    premierContactISO: fiche.premier_contact_le ?? fiche.created_at ?? new Date().toISOString(),
     pref_style: null,
     pref_type_beat: null,
     pref_ambiance: null,

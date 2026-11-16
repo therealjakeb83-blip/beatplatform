@@ -8,6 +8,7 @@ import { totalDepense, panierMoyenLicences, nbAchatsPayants, datePlusRecente, da
 import { statutFusionne } from '@/lib/newsletter'
 import { toutesLesLignes, parLots } from './requetes'
 import { chargerCommandesExternesCrm } from './commandes-externes'
+import { COLONNES_FICHE, emailPrincipal, type FicheBoutique } from './fiche-boutique'
 
 const PAYS_FR = new Set(['FR', 'BE', 'CH', 'RE', 'GP', 'MQ', 'GF', 'QC'])
 
@@ -60,10 +61,11 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
     conserveArchives.set(f.client_id_conserve, arr)
   }
 
-  // Leads
-  const leadsRaw = await toutesLesLignes<{ client_id: string; source: string; newsletter_statut: string; newsletter_statut_at: string | null }>((debut, fin) => supabase
+  // Leads = fiches client de CETTE boutique (9d lot 2) : identité, email
+  // d'envoi (1er de la liste), pays, langue, tags, réseaux — jamais la fiche commune
+  const leadsRaw = await toutesLesLignes<FicheBoutique>((debut, fin) => supabase
     .from('leads')
-    .select('client_id, source, newsletter_statut, newsletter_statut_at')
+    .select(COLONNES_FICHE)
     .eq('beatmaker_id', beatmakerId)
     .order('id')
     .range(debut, fin))
@@ -139,10 +141,17 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
     tiktok: string | null; tags: string[] | null
   }
   const [clientsData, favorisData, freeDLData] = await Promise.all([
-    parLots<ClientCrm>(clientIds, lot => admin
-      .from('clients')
-      .select('id, prenom, surnom, nom, nom_artiste, email, pays, langue, instagram, spotify, youtube, tiktok, tags')
-      .in('id', lot)),
+    // Un client lié par une vente encore sans fiche (vente arrivée avant le
+    // lot 3) reste compté, sans email : il ne reçoit aucune campagne.
+    Promise.resolve(clientIds.map((id): ClientCrm => {
+      const f = leadMap.get(id)
+      return {
+        id, prenom: f?.prenom ?? null, surnom: f?.surnom ?? null, nom: f?.nom ?? '', nom_artiste: f?.nom_artiste ?? null,
+        email: emailPrincipal(f) ?? '', pays: f?.pays ?? null, langue: f?.langue ?? null,
+        instagram: f?.instagram ?? null, spotify: f?.spotify ?? null, youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null,
+        tags: f?.tags ?? [],
+      }
+    })),
     parLots<{ client_id: string; beat_id: string | null }>(clientIds, lot => admin
       .from('favoris')
       .select('client_id, beat_id, beats!inner(beatmaker_id)')
@@ -202,7 +211,9 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       const ltv         = totalDepense(cmds)
       const panierMoyen = panierMoyenLicences(licenceCmds)
       const dernierAchat = datePlusRecente(licenceCmds)
-      const premierContact = datePlusAncienne(cmds) ?? new Date().toISOString()
+      // 1er contact avec CETTE boutique : 1re vente ou date figée de la fiche
+      const premierContact = [datePlusAncienne(cmds), lead?.premier_contact_le ?? lead?.created_at]
+        .filter((d): d is string => !!d).sort()[0] ?? new Date().toISOString()
 
       let statut: ContactFiltre['statut']
       if (abo && (abo.statut === 'actif' || abo.statut === 'impaye')) statut = 'abonne'

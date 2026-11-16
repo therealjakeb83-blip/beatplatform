@@ -22,7 +22,8 @@ export type Destinataire = ContactEnrichi
 
 export async function resolveDestinataires(beatmakerId: string, cible: CibleCampagne): Promise<Destinataire[]> {
   const { contacts } = await chargerContactsEnrichis(beatmakerId)
-  const consentants = contacts.filter(c => peutRecevoirCampagne(c.newsletter_statut))
+  // Fiche sans email (vente arrivée avant le lot 3 du 9d) : sautée, jamais d'envoi vide
+  const consentants = contacts.filter(c => peutRecevoirCampagne(c.newsletter_statut) && !!c.email)
 
   if (cible.mode === 'segment') {
     const supabase = await createServerClient()

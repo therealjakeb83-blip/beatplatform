@@ -9,6 +9,7 @@ import { statutFusionne, type StatutNewsletter } from '@/lib/newsletter'
 import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
+import { COLONNES_FICHE, emailPrincipal, type FicheBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
@@ -58,10 +59,12 @@ export default async function ContactsPage({
 
   // ── 1. Leads — fetch indépendant AVANT le return anticipé ─────────────────
   // Utilise supabase (client authentifié) car leads n'a pas GRANT service_role
-  type LeadBrut = { client_id: string; source: string; source_plateforme: string | null; created_at: string; newsletter_statut: string; newsletter_statut_at: string | null }
+  // Ces lignes SONT les fiches client de la boutique (9d lot 2) : identité,
+  // emails, téléphone, réseaux viennent d'ici, jamais de la fiche commune.
+  type LeadBrut = FicheBoutique & { source: string; source_plateforme: string | null; created_at: string }
   const leadsRaw = await toutesLesLignes<LeadBrut>((debut, fin) => supabase
     .from('leads')
-    .select('client_id, source, source_plateforme, created_at, newsletter_statut, newsletter_statut_at')
+    .select(`${COLONNES_FICHE}, source_plateforme`)
     .eq('beatmaker_id', beatmakerId)
     .order('id')
     .range(debut, fin))
@@ -85,9 +88,7 @@ export default async function ContactsPage({
   if (leadClientIds.length > 0) {
     type AvecBeat = { client_id: string; beats: unknown }
     const [leadClientsData, leadFavorisData, freeDLsData] = await Promise.all([
-      parLots<LeadClient>(leadClientIds, lot => admin.from('clients')
-        .select('id, prenom, nom, pays')
-        .in('id', lot)),
+      Promise.resolve(leadsRaw.map(l => ({ id: l.client_id, prenom: l.prenom, nom: l.nom ?? '', pays: l.pays }))),
       parLots<AvecBeat & { created_at: string }>(leadClientIds, lot => admin.from('favoris')
         .select('client_id, created_at, beats!inner(styles, type_beat, ambiances, beatmaker_id)')
         .eq('beats.beatmaker_id', beatmakerId)
@@ -252,10 +253,17 @@ export default async function ContactsPage({
   }
   type EnvoiBrut = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
   const [clientsData, licencesRes, favorisClientsData, freeDLsClientsData, envoisNewsletterData] = await Promise.all([
-    parLots<ClientBrut>(clientIds, lot => admin
-      .from('clients')
-      .select('id, prenom, surnom, nom, nom_artiste, email, pays, telephone, created_at, instagram, spotify, youtube, tiktok')
-      .in('id', lot)),
+    // Fiche de la boutique ; un client lié par une vente encore sans fiche
+    // (vente arrivée avant le lot 3) reste listé, identité vide
+    Promise.resolve(clientIds.map((id): ClientBrut => {
+      const f = leadsParId.get(id)
+      return {
+        id, prenom: f?.prenom ?? '', surnom: f?.surnom ?? null, nom: f?.nom ?? '', nom_artiste: f?.nom_artiste ?? null,
+        email: emailPrincipal(f) ?? '', pays: f?.pays ?? null, telephone: f?.telephones?.[0] ?? null,
+        created_at: f?.premier_contact_le ?? f?.created_at ?? new Date().toISOString(),
+        instagram: f?.instagram ?? null, spotify: f?.spotify ?? null, youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null,
+      }
+    })),
     licenceIds.length > 0
       ? supabase.from('licences').select('id, modele').in('id', licenceIds)
       : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
