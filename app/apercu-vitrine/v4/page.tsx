@@ -235,7 +235,7 @@ export default function ApercuVitrineV4Page() {
             <div className="y-offres4">
               <article className="y-offre4 y-offre4-pro">
                 <span className="y-offre4-pastille">Pro</span>
-                <p className="y-offre4-prix">49,95 €</p>
+                <p className="y-offre4-prix">49 €</p>
                 <p className="y-offre4-sous">par mois · essai gratuit</p>
                 <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-large">
                   Commencer l’essai gratuit
