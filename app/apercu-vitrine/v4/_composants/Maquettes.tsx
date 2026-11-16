@@ -329,17 +329,6 @@ const SEGMENTS = [
 export function MaquetteTableau() {
   return (
     <div className="y-m-fenetre" aria-hidden="true">
-      <div className="y-m-fenetre-barre">
-        <span className="y-m-feux">
-          <i />
-          <i />
-          <i />
-        </span>
-        <span className="y-m-adresse">
-          <I.Cadenas taille={11} />
-          sonoo.app/dashboard
-        </span>
-      </div>
       <div className="y-m-tdb">
         <aside className="y-m-tdb-menu">
           <span className="y-m-tdb-logo">
