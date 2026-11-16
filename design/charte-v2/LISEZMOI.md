@@ -16,11 +16,12 @@ L'original reste dans `Téléchargements/Sonoo brand v2` tant que Jake ne l'a pa
 ### Le PDF de la charte (36 pages)
 Quasi identique. Seuls changements :
 - Photos de couverture (p. 1, 2, 4) et deux maquettes (p. 33 affiche, p. 35 ordinateur portable) remplacées.
+- Brand Voice (p. 7) : le dernier curseur est déplacé vers « High Energy ».
 - Code du bleu Tech Blue passé de `#2477F5` à `#2477FB` (p. 23), mais la valeur RGB affichée juste à côté (36, 119, 245) correspond toujours à `#2477F5`.
 
 ### Livrables
 - **Icônes refaites** : les 10 icônes sont maintenant dessinées sur une vraie grille 24 × 24 (avant : 2000 × 2000 mis à l'échelle). Mêmes dessins.
-- 5 nouvelles photos dans `Images/new/` (dont deux photos de « hackers », hors sujet).
+- 5 nouvelles photos dans `Images/new/`. Les deux photos nommées « hacker » sont celles de la couverture du guide (p. 1 et 2) : elles passent pour un studio, mais ce sont des photos de banque d'images prévues pour illustrer le piratage.
 - 2 mockups de logo remplacés.
 - Logo, favicons, icône d'appli : **inchangés** (fichiers identiques octet pour octet).
 
@@ -31,7 +32,6 @@ Quasi identique. Seuls changements :
 - 01 Ta marque : le panneau de personnalisation a disparu, il reste les 3 téléphones.
 - 02 Croissance : les 4 cartes denses sont remplacées par un parcours en 3 étapes (il décroche → Sonoo le relance → il revient et s'abonne).
 - 03 Tableau de bord redessiné (barre latérale bleu nuit, grosse carte revenus bleue).
-- 04 : ajout « Suivi des sorties (Spotify) — Bientôt ».
 - 05 L'histoire : bloc témoignages supprimé ; mention « parcours de Jake B, fondateur — pas des résultats clients Sonoo » ajoutée ; photo de Jake à fournir.
 - Menu mobile repensé (titres numérotés 01 à 05).
 - Les maquettes **Inscription** et **Présentation** de la v1 ne sont pas dans la v2.
@@ -45,4 +45,29 @@ Quasi identique. Seuls changements :
 5. **Tablette** : le tableau de bord de la section 03 est coupé sur la droite (texte coupé en plein mot).
 6. Logo du tableau de bord : losange en tablette, onde en ordinateur.
 7. Lien Figma toujours à demander.
-8. Photos `hacker-*` à retirer.
+
+## Retours de Jake (PDF du 2026-11-13) : ce que la v2 a fait
+
+Source : `Téléchargements/Sonoo_Feedback_Abhi_EN_Final.pdf` (9 pages).
+
+| Demande de Jake | État en v2 |
+|---|---|
+| Accueil : retirer le gros bloc bleu, boutique sur fond blanc | Fait |
+| Ta marque : retirer le panneau de réglages, garder les 3 téléphones | Fait |
+| Vends plus : section à refaire, plus simple | Fait (parcours en 3 étapes) |
+| 4 visuels « trop back-office » (fichier client, automatisations, cartes, apparence) | Retirés |
+| Tableau de bord trop proche de BeatStars | Redessiné (barre bleu nuit, carte revenus bleue), à juger par Jake |
+| L'histoire : moins d'infos | Fait (témoignages retirés, 3 chiffres) |
+| Compositions plus audacieuses (références BeatStars, Airbit, Vvault) | Peu fait : mise en page toujours centrée et classique, pas de téléphones inclinés ni de grille de pochettes |
+| Photos plus rap / trap / urbain | En partie : couverture plus urbaine, mais DJ en soirée chic (p. 4) et homme au piano en pull jaune sur l'affiche (p. 33) |
+| Affiche : retirer le guitariste, recomposer | Fait, mais la nouvelle photo n'est toujours pas rap |
+| Moodboard | Pas renvoyé en v2 |
+| Brand Voice plus « High Energy » | Fait |
+| Menu mobile plus de personnalité | Fait (numéros, gros titres, motif d'onde) |
+| Un seul bleu dans tous les fichiers | Pas fait |
+| Surgena dans les maquettes | Fait |
+| Fichiers de la police Surgena ou licence | Pas fournis |
+| Lien Figma | Pas fourni |
+| Inscription en tablette et mobile | Pas fournies |
+| « Voir une boutique » dans les deux menus | Fait (ajouté sur ordinateur) |
+| Source des icônes en plus des 10 | Pas de réponse, toujours 10 SVG |
