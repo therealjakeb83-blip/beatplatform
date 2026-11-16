@@ -1,4 +1,5 @@
 import { createClient }      from '@/utils/supabase/server'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
@@ -18,21 +19,26 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  const SELECT_COMMANDES = 'id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email, clients(prenom, nom)'
+  const SELECT_COMMANDES = 'id, created_at, prix_paye, reduction_montant, type_commande, source_marketing, acheteur_nom, acheteur_email'
   const SELECT_LIGNES = 'id, commande_id, beat_id, licence_id, prix_paye, reduction_montant, created_at, beats(titre), licences(nom), commandes!inner(beatmaker_id, statut)'
   const [
     commandesBoutique,
     lignesBoutique,
     { data: beatmaker },
   ] = await Promise.all([
+    // Nom du client = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
     toutesLesLignes((debut, fin) => admin.from('commandes')
-      .select(SELECT_COMMANDES)
+      .select(`${SELECT_COMMANDES}, client_id`)
       .eq('beatmaker_id', user.id)
       .in('statut', STATUTS_ANALYTICS)
       .or('type_commande.eq.LICENCE,type_commande.is.null')
       .order('created_at', { ascending: false })
       .order('id')
-      .range(debut, fin)),
+      .range(debut, fin))
+      .then(lignes => remplacerClientsParFiches(admin, user.id, lignes))
+      .then(lignes => lignes.map(({ client_id: _id, clients, ...reste }) => ({
+        ...reste, clients: clients ? { prenom: clients.prenom, nom: clients.nom } : null,
+      }))),
     // Niveau article — pour le KPI "beats vendus" (compte les articles, pas les paniers)
     toutesLesLignes((debut, fin) => admin.from('commande_lignes')
       .select(SELECT_LIGNES)

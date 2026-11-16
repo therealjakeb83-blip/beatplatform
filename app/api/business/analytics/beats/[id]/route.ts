@@ -5,6 +5,7 @@ import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/bu
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { chargerPartsVendeur, partsDeLignes, STATUTS_ANALYTICS } from '@/lib/analytics-parts'
 import { toutesLesLignes } from '@/app/dashboard/business/_lib/requetes'
+import { chargerFichesBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 
 export const runtime = 'nodejs'
 
@@ -60,7 +61,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     toutesLesLignes((debut, fin) => admin.from('commande_lignes')
       .select(`
         commande_id, beat_id, licence_id, created_at, prix_paye, reduction_montant, licences(nom),
-        commandes!inner(beatmaker_id, statut, source_marketing, client_id, clients(id, prenom, nom))
+        commandes!inner(beatmaker_id, statut, source_marketing, client_id)
       `)
       .eq('beat_id', id)
       .eq('commandes.beatmaker_id', user.id)
@@ -69,14 +70,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .order('id')
       .range(debut, fin)),
     toutesLesLignes((debut, fin) => admin.from('beat_plays')
-      .select('id, played_at, client_id, pays, device_type, source_marketing, duree_secondes, clients(id, prenom, nom)')
+      .select('id, played_at, client_id, pays, device_type, source_marketing, duree_secondes')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
       .order('played_at', { ascending: false })
       .order('id')
       .range(debut, fin)),
     toutesLesLignes((debut, fin) => admin.from('free_downloads')
-      .select('id, downloaded_at, client_id, clients(id, prenom, nom)')
+      .select('id, downloaded_at, client_id')
       .eq('beatmaker_id', user.id)
       .eq('beat_id', id)
       .order('downloaded_at', { ascending: false })
@@ -86,12 +87,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .select('id, email_invite, pourcentage, statut, beatmakers(nom_artiste)')
       .eq('beat_id', id),
     toutesLesLignes((debut, fin) => admin.from('favoris')
-      .select('id, created_at, client_id, clients(id, prenom, nom)')
+      .select('id, created_at, client_id')
       .eq('beat_id', id)
       .order('created_at', { ascending: false })
       .order('id')
       .range(debut, fin)),
   ])
+
+  // Nom et lien du client = fiche de CETTE boutique (9d lot 2), jamais la
+  // fiche commune ; quelqu'un qui n'est pas contact de la boutique reste anonyme.
+  const fiches = await chargerFichesBoutique(admin, user.id, [
+    ...lignesBoutique.map(l => commandeInfo(l.commandes).client_id),
+    ...allPlays.map(p => p.client_id as string | null),
+    ...allFreeDl.map(f => f.client_id as string | null),
+    ...allFavoris.map(f => (f as { client_id: string | null }).client_id),
+  ].filter((v): v is string => !!v))
+  const joindre = (clientId: unknown): ClientJoin => {
+    const f = typeof clientId === 'string' ? fiches.get(clientId) : undefined
+    return f ? { id: f.client_id, prenom: f.prenom, nom: f.nom } : null
+  }
 
   // CA d'un beat collab = part du propriétaire (Phase 13, lot 3).
   const allCommandes = partsDeLignes(lignesBoutique, await chargerPartsVendeur(admin, user.id))
@@ -140,7 +154,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const ventes_detail = cmds.map((c: RawCmd) => {
     const l  = Array.isArray(c.licences) ? c.licences[0] : c.licences
     const cmdInfo = commandeInfo(c.commandes)
-    const { client_id, client_nom } = clientInfo(cmdInfo.clients)
+    const { client_id, client_nom } = clientInfo(joindre(cmdInfo.client_id))
     return {
       id:                c.commande_id,
       created_at:        c.created_at,
@@ -148,7 +162,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       source_marketing:  cmdInfo.source_marketing ?? 'direct',
       prix_paye:         c.prix_paye,
       reduction_montant: c.reduction_montant,
-      client_id:         client_id ?? cmdInfo.client_id ?? null,
+      client_id,
       client_nom,
     }
   })
@@ -156,10 +170,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // Table écoutes
   const ecoutes_detail = plays.map(p => {
     const pr = p as Record<string, unknown>
-    const { client_id, client_nom } = clientInfo(pr.clients)
+    const { client_id, client_nom } = clientInfo(joindre(pr.client_id))
     return {
       played_at:        p.played_at,
-      client_id:        client_id ?? pr.client_id as string | null ?? null,
+      client_id,
       client_nom,
       pays:             pr.pays as string | null ?? null,
       device_type:      pr.device_type as string | null ?? null,
@@ -171,20 +185,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // Table favoris
   const favoris_detail = favoris.map(f => {
     const fr = f as Record<string, unknown>
-    const { client_id, client_nom } = clientInfo(fr.clients)
+    const { client_id, client_nom } = clientInfo(joindre(fr.client_id))
     return {
       created_at: fr.created_at as string,
-      client_id:  client_id ?? fr.client_id as string | null ?? null,
+      client_id,
       client_nom,
     }
   })
 
   // Table free downloads
   const free_dl_detail = freeDl.map(f => {
-    const { client_id, client_nom } = clientInfo((f as Record<string, unknown>).clients)
+    const { client_id, client_nom } = clientInfo(joindre((f as Record<string, unknown>).client_id))
     return {
       downloaded_at: f.downloaded_at,
-      client_id:     client_id ?? (f as Record<string, unknown>).client_id as string | null ?? null,
+      client_id,
       client_nom,
     }
   })

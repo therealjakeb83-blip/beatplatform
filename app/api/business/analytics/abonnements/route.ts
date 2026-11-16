@@ -1,4 +1,5 @@
 import { createClient }      from '@/utils/supabase/server'
+import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { NextResponse }       from 'next/server'
 import { getPeriodDates, inPeriod, getHistoriqueSlots } from '@/app/dashboard/business/analytics/_lib/periode'
@@ -28,11 +29,13 @@ export async function GET(request: Request) {
 
   const [abonnements, commandes, { data: beatmaker }] = await Promise.all([
     toutesLesLignes((debut, fin) => admin.from('abonnements_boutique')
-      .select('id, created_at, prix, statut, periode, date_debut, date_fin, annulation_en_cours, mois_consecutifs, mensualites_payees, acheteur_nom, acheteur_email, clients(id, prenom, nom, email, pays)')
+      .select('id, created_at, prix, statut, periode, date_debut, date_fin, annulation_en_cours, mois_consecutifs, mensualites_payees, acheteur_nom, acheteur_email, client_id')
       .eq('beatmaker_id', user.id)
       .order('date_debut', { ascending: false })
       .order('id')
-      .range(debut, fin)),
+      .range(debut, fin))
+      // Identité = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
+      .then(lignes => remplacerClientsParFiches(admin, user.id, lignes)),
     toutesLesLignes((debut, fin) => admin.from('commandes')
       .select('client_id, acheteur_email, created_at')
       .eq('beatmaker_id', user.id)
@@ -84,7 +87,7 @@ export async function GET(request: Request) {
   for (const a of abos) {
     const cl      = Array.isArray(a.clients) ? a.clients[0] : a.clients
     const email   = (cl as { email: string } | null)?.email ?? a.acheteur_email
-    const clientId = (cl as { id?: string } | null)?.id
+    const clientId = a.client_id ?? undefined
     const finAbo  = finReelle(a) ?? now.toISOString()
     achatsMap.set(a.id, cmds.filter(c =>
       c.created_at > a.date_debut &&
@@ -157,7 +160,7 @@ export async function GET(request: Request) {
       return abos.some(a => {
         const cl       = Array.isArray(a.clients) ? a.clients[0] : a.clients
         const email    = (cl as { email: string } | null)?.email ?? a.acheteur_email
-        const clientId = (cl as { id?: string } | null)?.id
+        const clientId = a.client_id ?? undefined
         const finAbo   = finReelle(a) ?? now.toISOString()
         return c.created_at > a.date_debut && c.created_at <= finAbo &&
                (c.client_id === clientId || c.acheteur_email === email)
