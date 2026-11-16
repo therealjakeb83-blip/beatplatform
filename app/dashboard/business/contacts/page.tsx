@@ -11,6 +11,14 @@ import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/comma
 import { libellePlateforme } from '@/lib/import-externe/plateformes'
 import { COLONNES_FICHE, emailPrincipal, type FicheBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 
+// Fiche sans nom (la boutique n'a reçu que l'email, ex. simple connexion) :
+// l'écran affiche le début de l'email, comme avant — rien n'est enregistré.
+function nomOuEmail(f: Pick<FicheBoutique, 'prenom' | 'nom' | 'surnom' | 'emails'> | null | undefined): string {
+  if (f?.nom) return f.nom
+  if (f?.prenom || f?.surnom) return ''
+  return emailPrincipal(f)?.split('@')[0] ?? ''
+}
+
 function topPreference(vals: string[]): string | null {
   if (vals.length === 0) return null
   const counts: Record<string, number> = {}
@@ -88,7 +96,7 @@ export default async function ContactsPage({
   if (leadClientIds.length > 0) {
     type AvecBeat = { client_id: string; beats: unknown }
     const [leadClientsData, leadFavorisData, freeDLsData] = await Promise.all([
-      Promise.resolve(leadsRaw.map(l => ({ id: l.client_id, prenom: l.prenom, nom: l.nom ?? '', pays: l.pays }))),
+      Promise.resolve(leadsRaw.map(l => ({ id: l.client_id, prenom: l.prenom, nom: nomOuEmail(l), pays: l.pays }))),
       parLots<AvecBeat & { created_at: string }>(leadClientIds, lot => admin.from('favoris')
         .select('client_id, created_at, beats!inner(styles, type_beat, ambiances, beatmaker_id)')
         .eq('beats.beatmaker_id', beatmakerId)
@@ -258,7 +266,7 @@ export default async function ContactsPage({
     Promise.resolve(clientIds.map((id): ClientBrut => {
       const f = leadsParId.get(id)
       return {
-        id, prenom: f?.prenom ?? '', surnom: f?.surnom ?? null, nom: f?.nom ?? '', nom_artiste: f?.nom_artiste ?? null,
+        id, prenom: f?.prenom ?? '', surnom: f?.surnom ?? null, nom: nomOuEmail(f), nom_artiste: f?.nom_artiste ?? null,
         email: emailPrincipal(f) ?? '', pays: f?.pays ?? null, telephone: f?.telephones?.[0] ?? null,
         created_at: f?.premier_contact_le ?? f?.created_at ?? new Date().toISOString(),
         instagram: f?.instagram ?? null, spotify: f?.spotify ?? null, youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null,
