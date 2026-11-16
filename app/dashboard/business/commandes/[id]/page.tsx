@@ -385,9 +385,9 @@ export default async function CommandeDetailPage({
 
   /* Données affichage */
   const s = STATUT[c.statut] ?? { label: c.statut, cls: 'bg-gray-700 text-gray-300 border border-gray-600' }
-  const nomClient = c.clients
-    ? [c.clients.prenom, c.clients.nom].filter(Boolean).join(' ')
-    : c.acheteur_nom ?? c.acheteur_email ?? '—'
+  // Fiche sans nom (ex. contact effacé, 9d lot 4) : le nom gardé sur la commande (celui de la facture)
+  const nomClient = (c.clients ? [c.clients.prenom, c.clients.nom].filter(Boolean).join(' ') : '')
+    || c.acheteur_nom || c.acheteur_email || '—'
   const emailClient = c.clients?.email ?? c.acheteur_email
   const destinataire = emailClient ?? ''
   const sourceDisplay = c.source_marketing ? (SOURCE_LABEL[c.source_marketing] ?? c.source_marketing) : 'Direct'

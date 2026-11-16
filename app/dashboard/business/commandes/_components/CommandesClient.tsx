@@ -65,8 +65,9 @@ const PERIODES = [
 /* ─── helpers ────────────────────────────────────────────────────── */
 
 function nomClient(c: CommandeRow): string {
-  if (c.clients) return [c.clients.prenom, c.clients.nom].filter(Boolean).join(' ')
-  return c.acheteur_nom ?? c.acheteur_email ?? '—'
+  // Fiche sans nom (ex. contact effacé, 9d lot 4) : le nom gardé sur la commande
+  const nom = c.clients ? [c.clients.prenom, c.clients.nom].filter(Boolean).join(' ') : ''
+  return nom || c.acheteur_nom || c.acheteur_email || '—'
 }
 
 function fmtDate(iso: string) {
