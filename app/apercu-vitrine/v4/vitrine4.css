@@ -3007,25 +3007,6 @@ html:has(.vitrine4) {
   font-weight: 500;
 }
 
-/* ——— Barre de menu sombre ——— */
-.y-entete {
-  background: rgb(5 5 5 / 0.92);
-  backdrop-filter: blur(10px);
-  border-bottom-color: #1c1b19;
-  color: var(--y-blanc);
-}
-.y-entete-nav a {
-  color: #a9a7a1;
-}
-.y-entete-nav a:hover {
-  color: var(--y-blanc);
-}
-.y-entete > .y-entete-barre .y-bouton-rond {
-  background: #141312;
-  border-color: #2a2926;
-  color: var(--y-blanc);
-}
-
 /* ——— Grain (ambiance studio, sans photo) ——— */
 .y-grain {
   position: relative;

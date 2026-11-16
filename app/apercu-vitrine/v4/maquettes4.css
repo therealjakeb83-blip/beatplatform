@@ -992,3 +992,33 @@
   width: 2.2em;
   height: 2.2em;
 }
+
+/* Barre d'adresse en haut de l'écran de boutique (comme dans un navigateur) */
+.y-m-boutique {
+  padding-top: 2.75em;
+}
+.y-m-url {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  align-self: stretch;
+  margin: 0 0 1em;
+  padding: 0.55em 0.8em;
+  border-radius: 0.8em;
+  background: rgb(5 5 5 / 0.06);
+  font-size: 0.6em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.y-m-boutique-sombre .y-m-url {
+  background: rgb(255 255 255 / 0.12);
+}
+.y-m-url svg[viewBox='0 0 24 24'] {
+  width: 1em;
+  height: 1em;
+  opacity: 0.7;
+}
+.y-m-boutique-titre {
+  margin-top: 1.2em;
+}

@@ -67,7 +67,7 @@ export function EnTete({ lienBoutique }: { lienBoutique: string }) {
     <header className="y-entete">
       <div className="y-entete-barre">
         <Link href={CHEMIN_VITRINE} className="y-entete-logo" aria-label="Sonoo, accueil">
-          <Logo hauteur={30} sombre />
+          <Logo hauteur={30} />
         </Link>
         <nav className="y-entete-nav" aria-label="Navigation principale">
           {liensMenu.map(l =>

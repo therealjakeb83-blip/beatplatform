@@ -47,7 +47,7 @@ const BOUTIQUES: Boutique[] = [
   {
     nom: "ACHPRODD",
     titre: "Trouve l’instru qu’il te faut, prod. by ACHPRODD",
-    adresse: "sonoo.app/achprodd",
+    adresse: "achprodd.com",
     accent: "#ef4444",
     sombre: true,
     fond: "radial-gradient(120% 60% at 50% 0%, #4a0d12 0%, #0b0b0b 60%)",
@@ -60,7 +60,7 @@ const BOUTIQUES: Boutique[] = [
   {
     nom: "JAKE B",
     titre: "Trouve l’instru qu’il te faut, composée par Jake B",
-    adresse: "beats.jakebmusic.com",
+    adresse: "jakebmusic.com",
     accent: "#050505",
     sombre: false,
     fond: "#ffffff",
@@ -73,7 +73,7 @@ const BOUTIQUES: Boutique[] = [
   {
     nom: "NEHZIA",
     titre: "Trouve l’instru qu’il te faut, prod. by Nehzia",
-    adresse: "sonoo.app/nehzia",
+    adresse: "nehziabeats.com",
     accent: "#8b5cf6",
     sombre: true,
     fond: "radial-gradient(120% 60% at 50% 0%, #2e1065 0%, #0b0b0b 60%)",
@@ -105,6 +105,10 @@ function EcranBoutique({ b }: { b: Boutique }) {
       className={`y-m-boutique ${b.sombre ? "y-m-boutique-sombre" : ""}`}
       style={{ background: b.fond, "--y-m-accent": b.accent } as CSSProperties}
     >
+      <span className="y-m-url">
+        <I.Cadenas taille={10} />
+        {b.adresse}
+      </span>
       <div className="y-m-boutique-barre">
         <strong>{b.nom}</strong>
         <span className="y-m-rond">
@@ -175,22 +179,6 @@ export function MaquetteMarque() {
           <Telephone sombre={b.sombre}>
             <EcranBoutique b={b} />
           </Telephone>
-          <figcaption>
-            <span
-              className="y-m-point"
-              style={{
-                background: b.accent === "#050505" ? "#2477fb" : b.accent,
-              }}
-            />
-            <strong>
-              {b.nom === "JAKE B"
-                ? "Jake B"
-                : b.nom === "NEHZIA"
-                  ? "Nehzia"
-                  : b.nom}
-            </strong>
-            <span>{b.adresse}</span>
-          </figcaption>
         </figure>
       ))}
     </div>
