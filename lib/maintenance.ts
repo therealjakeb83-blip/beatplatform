@@ -15,8 +15,9 @@ export const COOKIE_MAINTENANCE = 'sonoo_acces'
 export const DUREE_ACCES_MAINTENANCE_S = 30 * 24 * 60 * 60
 
 const CHEMINS_FERMES_EXACTS = ['/', '/connexion', '/inscription', '/mot-de-passe-oublie', '/confirmation-compte']
-// /apercu-vitrine : page test du site vitrine (charte v1 ; charte v2 sur /apercu-vitrine/v2), temporaire.
-const PREFIXES_FERMES = ['/dashboard', '/nouveau-mot-de-passe', '/apercu-vitrine']
+// /apercu-vitrine (pages test du site vitrine v1, v2, v3) : OUVERTES depuis le 2026-11-16 à la demande de Jake,
+// comme les boutiques (non indexées : robots noindex dans leurs layouts).
+const PREFIXES_FERMES = ['/dashboard', '/nouveau-mot-de-passe']
 
 export function maintenanceActive(): boolean {
   return process.env.MAINTENANCE_ACTIVE === 'true'
