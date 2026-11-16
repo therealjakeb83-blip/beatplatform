@@ -3826,3 +3826,107 @@ html:has(.vitrine4) {
     font-size: 72px;
   }
 }
+
+/* ——— Tarifs recalés sur la charte (Full White / Tech Blue / Dark Sapphire / Seashell / Blue Whale) ——— */
+.y-offres4 {
+  gap: 20px;
+}
+.y-offre4 {
+  align-items: flex-start;
+  padding: 32px;
+  border-radius: var(--y-rayon-bloc);
+  text-align: left;
+}
+.y-offre4-pro {
+  background: var(--y-blanc);
+  box-shadow: 0 0 0 1px var(--y-bleu), 0 30px 80px rgb(36 119 251 / 0.22);
+}
+.y-offre4-gratuit {
+  background: var(--y-saphir);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+.y-offre4-pastille {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--y-bleu-clair);
+  color: var(--y-bleu);
+  font-family: var(--y-police-texte);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+}
+.y-offre4-gratuit .y-offre4-pastille {
+  background: rgb(255 255 255 / 0.1);
+  color: var(--y-blanc);
+}
+.y-offre4-prix {
+  margin-top: 28px;
+  font-size: 64px;
+}
+.y-offre4-prix small {
+  font-family: var(--y-police-texte);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--y-gris-bleu);
+}
+.y-offre4-gratuit .y-offre4-prix small {
+  color: #9aa6ba;
+}
+.y-offre4-sous {
+  margin: 12px 0 28px;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--y-gris-bleu);
+}
+.y-offre4-gratuit .y-offre4-sous {
+  color: #9aa6ba;
+}
+.y-offre4 .y-bouton-large {
+  height: 52px;
+}
+.y-offre4-liste {
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid var(--y-bordure);
+  font-size: 15px;
+}
+.y-offre4-gratuit .y-offre4-liste {
+  border-top-color: rgb(255 255 255 / 0.1);
+}
+.y-offre4-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--y-bleu);
+  color: var(--y-blanc);
+}
+.y-offre4-liste .y-offre4-icone svg {
+  color: inherit;
+}
+.y-offre4-gratuit .y-offre4-icone {
+  background: var(--y-bleu-clair);
+  color: var(--y-saphir);
+}
+.y-offre4-liste .y-offre4-absent {
+  opacity: 1;
+  color: var(--y-gris-bleu);
+}
+.y-offre4-gratuit .y-offre4-absent .y-offre4-icone {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgb(110 125 148 / 0.6);
+  color: var(--y-gris-bleu);
+}
+@media (min-width: 768px) {
+  .y-offre4 {
+    padding: 36px;
+  }
+  .y-offre4-prix {
+    font-size: 72px;
+  }
+}

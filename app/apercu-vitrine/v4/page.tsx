@@ -235,15 +235,19 @@ export default function ApercuVitrineV4Page() {
             <div className="y-offres4">
               <article className="y-offre4 y-offre4-pro">
                 <span className="y-offre4-pastille">Pro</span>
-                <p className="y-offre4-prix">49 €</p>
-                <p className="y-offre4-sous">par mois · essai gratuit</p>
+                <p className="y-offre4-prix">
+                  49 € <small>/ mois</small>
+                </p>
+                <p className="y-offre4-sous">Ta boutique et tous les outils. Essai gratuit.</p>
                 <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-large">
                   Commencer l’essai gratuit
                 </Link>
                 <ul className="y-offre4-liste">
                   {FONCTIONS.map(f => (
                     <li key={f.texte}>
-                      <I.Coche taille={16} />
+                      <span className="y-offre4-icone">
+                        <I.Coche taille={12} />
+                      </span>
                       {f.texte}
                     </li>
                   ))}
@@ -251,15 +255,17 @@ export default function ApercuVitrineV4Page() {
               </article>
               <article className="y-offre4 y-offre4-gratuit">
                 <span className="y-offre4-pastille">Gratuit</span>
-                <p className="y-offre4-prix">0 €</p>
-                <p className="y-offre4-sous">pour tes collabs</p>
+                <p className="y-offre4-prix">
+                  0 € <small>/ mois</small>
+                </p>
+                <p className="y-offre4-sous">Pour recevoir ta part des ventes en collab.</p>
                 <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-blanc y-bouton-large">
                   Créer un compte gratuit
                 </Link>
                 <ul className="y-offre4-liste">
                   {FONCTIONS.map(f => (
                     <li key={f.texte} className={f.gratuit ? undefined : 'y-offre4-absent'}>
-                      {f.gratuit ? <I.Coche taille={16} /> : <I.Croix taille={16} />}
+                      <span className="y-offre4-icone">{f.gratuit ? <I.Coche taille={12} /> : <I.Croix taille={12} />}</span>
                       {f.texte}
                     </li>
                   ))}
