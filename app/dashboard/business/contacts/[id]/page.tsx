@@ -15,6 +15,10 @@ import { libelleSource, SOURCE_COLORS } from '@/lib/sources-marketing'
 import { libelleSourceImport } from '@/lib/import-externe/plateformes'
 import TableauPagine from '../../../_pagination/TableauPagine'
 import { clientLieABoutique } from '../../_lib/appartenance'
+import {
+  chargerFicheBoutique, chargerFichesBoutique, modifierFicheBoutique, emailPrincipal, adresseAffichee,
+  type FicheBoutique,
+} from '../../_lib/fiche-boutique'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,34 +165,44 @@ export default async function FicheClientPage({
   // (même repli que lib/abonnement-boutique.ts)
   const nomAbonnement = beatmakerRow?.abo_nom || 'Abonnement boutique'
 
-  // Client — admin car RLS clients = acheteurs seulement
-  const { data: client } = await admin
-    .from('clients')
-    .select('id, email, nom, prenom, surnom, nom_artiste, created_at, pays, langue, telephone, adresse, ville, code_postal, instagram, spotify, youtube, tiktok, notes, tags, emails_secondaires')
-    .eq('id', clientId)
-    .single()
-
-  if (!client) redirect('/dashboard/business/contacts')
-
   // Fusion virtuelle — ce contact est-il un conservé ?
   const { data: fusionRows } = await supabase
     .from('fusions_crm')
-    .select('client_id_archive, emails_archives, champs_conserves')
+    .select('client_id_archive, champs_conserves')
     .eq('beatmaker_id', beatmakerId)
     .eq('client_id_conserve', clientId)
 
   const fusions        = fusionRows ?? []
-  const archiveIds     = fusions.map(f => f.client_id_archive)
-  // Emails secondaires = ceux des contacts fusionnés + ceux ajoutés manuellement
-  const emailsFusion:   string[] = fusions.flatMap(f => (f.emails_archives as string[]) ?? [])
-  const emailsManuels:  string[] = (client?.emails_secondaires as string[]) ?? []
-  const emailsSecondaires: string[] = [...new Set([...emailsFusion, ...emailsManuels])]
+  const archiveIds     = fusions.map(f => f.client_id_archive as string)
+
+  // Fiche de CETTE boutique (9d lot 2) — jamais la fiche commune `clients`.
+  // Les fiches des contacts fusionnés dans celui-ci (même boutique) rejoignent
+  // ses listes accumulées à l'affichage ; la fusion reste virtuelle et annulable.
+  const fichesLues = await chargerFichesBoutique(supabase, beatmakerId, [clientId, ...archiveIds])
+  const client: FicheBoutique = fichesLues.get(clientId) ?? {
+    // Client lié par une vente arrivée avant le lot 3, encore sans fiche :
+    // fiche vide, complétée à la prochaine reconstruction
+    id: '', client_id: clientId, source: null, newsletter_statut: 'non_inscrit', newsletter_statut_at: null,
+    emails: [], telephones: [], adresses: [], prenom: null, nom: null, nom_artiste: null, pays: null, langue: null,
+    premier_contact_le: null, created_at: null, notes: null, tags: [], surnom: null,
+    instagram: null, spotify: null, youtube: null, tiktok: null, champs_manuels: [],
+  }
+  const fichesArchives = archiveIds.map(id => fichesLues.get(id)).filter((f): f is FicheBoutique => !!f)
+
+  const emailPrincipalFiche = emailPrincipal(client)
+  const emailsFiche:   string[] = client.emails.slice(1)
+  // Emails des fiches fusionnées qui ne sont pas déjà dans la liste de la fiche
+  const emailsFusion:  string[] = [...new Set(fichesArchives.flatMap(f => f.emails))].filter(e => !client.emails.includes(e))
+  const emailsSecondaires: string[] = [...emailsFiche, ...emailsFusion]
+  const telephonesTous = [...new Set([...client.telephones, ...fichesArchives.flatMap(f => f.telephones)])]
+  const adressesToutes = [...client.adresses, ...fichesArchives.flatMap(f => f.adresses)]
+    .filter((a, i, arr) => arr.findIndex(b => adresseAffichee(b) === adresseAffichee(a)) === i)
   const champsOverride = fusions.reduce((acc, f) => ({ ...acc, ...(f.champs_conserves as Record<string, string>) }), {} as Record<string, string>)
 
   // Appliquer les overrides sur les champs en conflit
   const clientDisplay = {
     ...client,
-    telephone:   (champsOverride.telephone   ?? client.telephone)   as string | null,
+    telephone:   (champsOverride.telephone   ?? telephonesTous[0] ?? null) as string | null,
     pays:        (champsOverride.pays         ?? client.pays)        as string | null,
     instagram:   (champsOverride.instagram    ?? client.instagram)   as string | null,
     spotify:     (champsOverride.spotify      ?? client.spotify)     as string | null,
@@ -197,12 +211,13 @@ export default async function FicheClientPage({
     notes:       (champsOverride.notes        ?? client.notes)       as string | null,
     nom_artiste: (champsOverride.nom_artiste  ?? client.nom_artiste) as string | null,
   }
+  const autresTelephones = telephonesTous.filter(t => t !== clientDisplay.telephone)
 
   // Construire les clauses OR pour inclure les archivés
   const allClientIds  = [clientId, ...archiveIds]
-  const allEmails     = [client.email, ...emailsSecondaires]
+  const allEmails     = [...new Set([...client.emails, ...emailsFusion])]
   const orCommandes   = allClientIds.map(id => `client_id.eq.${id}`)
-    .concat(allEmails.map(e => `acheteur_email.eq.${e}`))
+    .concat(allEmails.map(e => `acheteur_email.eq."${e.replace(/"/g, '')}"`))
     .join(',')
 
   // Toutes les données en parallèle
@@ -255,9 +270,8 @@ export default async function FicheClientPage({
       .in('client_id', allClientIds)
       .eq('beatmaker_id', beatmakerId)
       .order('downloaded_at', { ascending: false }),
-    archiveIds.length > 0
-      ? admin.from('clients').select('created_at').in('id', archiveIds)
-      : Promise.resolve({ data: [] as { created_at: string }[] }),
+    // 1er contact des fiches fusionnées (même boutique)
+    Promise.resolve({ data: fichesArchives.map(f => ({ created_at: f.premier_contact_le ?? f.created_at })) }),
     admin
       .from('leads')
       .select('newsletter_statut, newsletter_statut_at')
@@ -303,9 +317,14 @@ export default async function FicheClientPage({
 
   // "Client depuis" = date la plus ancienne parmi conservé + archivés
   // (commande importée sans date : ne touche pas l'ancienneté)
-  const allDates  = [client.created_at, ...(archivesDateRaw ?? []).map(a => a.created_at), ...commandesImportees.map(c => c.date_vente)]
-    .filter((d): d is string => !!d)
-  const clientDepuis = allDates.sort()[0]
+  // « Client depuis » = 1er contact avec CETTE boutique (9d lot 2)
+  const allDates  = [
+    client.premier_contact_le ?? client.created_at,
+    ...(archivesDateRaw ?? []).map(a => a.created_at),
+    ...commandesImportees.map(c => c.date_vente),
+    ...commandes.map(c => c.created_at),
+  ].filter((d): d is string => !!d)
+  const clientDepuis = allDates.sort()[0] ?? null
 
   // Métriques
   const payees         = commandes.filter(c => c.statut === 'payee')
@@ -414,6 +433,9 @@ export default async function FicheClientPage({
 
   // ── Server actions ─────────────────────────────────────────────────────────
 
+  // Toutes les actions écrivent dans la fiche de CETTE boutique (leads) et
+  // marquent le champ « modifié à la main » (9d lot 2) — la fiche commune
+  // `clients` n'est plus jamais touchée depuis le CRM.
   async function sauvegarderIdentite(formData: FormData) {
     'use server'
     await assurerAccesContact(beatmakerId, clientId)
@@ -422,7 +444,20 @@ export default async function FicheClientPage({
     const nom_artiste = (formData.get('nom_artiste') as string ?? '').trim() || null
     const telephone   = (formData.get('telephone')   as string ?? '').trim() || null
     const langue      = (formData.get('langue')      as string ?? '').trim() || null
-    await a.from('clients').update({ surnom, nom_artiste, telephone, langue }).eq('id', clientId)
+    const actuelle    = await chargerFicheBoutique(a, beatmakerId, clientId)
+    const maj: Parameters<typeof modifierFicheBoutique>[3] = {}
+    if (surnom      !== (actuelle?.surnom      ?? null)) maj.surnom      = surnom
+    if (nom_artiste !== (actuelle?.nom_artiste ?? null)) maj.nom_artiste = nom_artiste
+    if (langue      !== (actuelle?.langue      ?? null)) maj.langue      = langue
+    // Téléphone affiché = le principal (1er de la liste) : le remplacer le met
+    // en tête, l'ancien reste dans la liste (accumulés) ; vidé = retiré.
+    const telephones = actuelle?.telephones ?? []
+    if (telephone !== (telephones[0] ?? null)) {
+      maj.telephones = telephone
+        ? [telephone, ...telephones.filter(t => t !== telephone)]
+        : telephones.slice(1)
+    }
+    await modifierFicheBoutique(a, beatmakerId, clientId, maj)
     // Supprimer les overrides fusion pour ces champs — l'édition directe prend le dessus
     const { data: fusions } = await a.from('fusions_crm').select('id, champs_conserves').eq('beatmaker_id', beatmakerId).eq('client_id_conserve', clientId)
     for (const f of fusions ?? []) {
@@ -446,10 +481,9 @@ export default async function FicheClientPage({
   async function sauvegarderNotes(formData: FormData) {
     'use server'
     await assurerAccesContact(beatmakerId, clientId)
-    const a = createAdminClient()
-    await a.from('clients').update({
+    await modifierFicheBoutique(createAdminClient(), beatmakerId, clientId, {
       notes: (formData.get('notes') as string ?? '').trim() || null,
-    }).eq('id', clientId)
+    })
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -459,10 +493,9 @@ export default async function FicheClientPage({
     const a   = createAdminClient()
     const tag = (formData.get('tag') as string ?? '').trim()
     if (!tag) return
-    const { data: current } = await a.from('clients').select('tags').eq('id', clientId).single()
-    const tags = current?.tags ?? []
+    const tags = (await chargerFicheBoutique(a, beatmakerId, clientId))?.tags ?? []
     if (!tags.includes(tag)) {
-      await a.from('clients').update({ tags: [...tags, tag] }).eq('id', clientId)
+      await modifierFicheBoutique(a, beatmakerId, clientId, { tags: [...tags, tag] })
     }
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
@@ -472,9 +505,8 @@ export default async function FicheClientPage({
     await assurerAccesContact(beatmakerId, clientId)
     const a   = createAdminClient()
     const tag = (formData.get('tag') as string ?? '').trim()
-    const { data: current } = await a.from('clients').select('tags').eq('id', clientId).single()
-    const tags = (current?.tags ?? []).filter((t: string) => t !== tag)
-    await a.from('clients').update({ tags }).eq('id', clientId)
+    const tags = (await chargerFicheBoutique(a, beatmakerId, clientId))?.tags ?? []
+    await modifierFicheBoutique(a, beatmakerId, clientId, { tags: tags.filter(t => t !== tag) })
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -482,12 +514,13 @@ export default async function FicheClientPage({
     'use server'
     await assurerAccesContact(beatmakerId, clientId)
     const a = createAdminClient()
-    await a.from('clients').update({
-      instagram: (formData.get('instagram') as string ?? '').trim() || null,
-      spotify:   (formData.get('spotify')   as string ?? '').trim() || null,
-      youtube:   (formData.get('youtube')   as string ?? '').trim() || null,
-      tiktok:    (formData.get('tiktok')    as string ?? '').trim() || null,
-    }).eq('id', clientId)
+    const actuelle = await chargerFicheBoutique(a, beatmakerId, clientId)
+    const maj: Parameters<typeof modifierFicheBoutique>[3] = {}
+    for (const r of ['instagram', 'spotify', 'youtube', 'tiktok'] as const) {
+      const v = (formData.get(r) as string ?? '').trim() || null
+      if (v !== (actuelle?.[r] ?? null)) maj[r] = v
+    }
+    await modifierFicheBoutique(a, beatmakerId, clientId, maj)
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -497,10 +530,9 @@ export default async function FicheClientPage({
     const a     = createAdminClient()
     const email = (formData.get('email') as string ?? '').trim().toLowerCase()
     if (!email) return
-    const { data: current } = await a.from('clients').select('emails_secondaires').eq('id', clientId).single()
-    const existants = (current?.emails_secondaires as string[]) ?? []
-    if (!existants.includes(email)) {
-      await a.from('clients').update({ emails_secondaires: [...existants, email] }).eq('id', clientId)
+    const emails = (await chargerFicheBoutique(a, beatmakerId, clientId))?.emails ?? []
+    if (!emails.includes(email)) {
+      await modifierFicheBoutique(a, beatmakerId, clientId, { emails: [...emails, email] })
     }
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
@@ -510,37 +542,33 @@ export default async function FicheClientPage({
     await assurerAccesContact(beatmakerId, clientId)
     const a     = createAdminClient()
     const email = (formData.get('email') as string ?? '').trim().toLowerCase()
-    const { data: current } = await a.from('clients').select('emails_secondaires').eq('id', clientId).single()
-    const existants = (current?.emails_secondaires as string[]) ?? []
-    await a.from('clients').update({ emails_secondaires: existants.filter(e => e !== email) }).eq('id', clientId)
+    const emails = (await chargerFicheBoutique(a, beatmakerId, clientId))?.emails ?? []
+    // Le principal (1er) ne se supprime pas : en choisir un autre d'abord
+    if (emails[0] === email || !emails.includes(email)) return
+    await modifierFicheBoutique(a, beatmakerId, clientId, { emails: emails.filter(e => e !== email) })
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
-  // Promeut une adresse secondaire (manuelle ou issue d'une fusion) au rang
-  // de principale — c'est clients.email qui sert d'adresse d'envoi partout
-  // (marketing, automatisations, résolution client Stripe), donc "définir
-  // comme principale" = permuter les deux plutôt qu'ajouter un nouveau champ.
-  // L'ancienne principale part dans emails_secondaires pour ne pas être perdue.
+  // Le 1er email de la fiche de la boutique = adresse d'envoi de CETTE
+  // boutique (campagnes, automatisations). « Définir comme principal » ne
+  // change que l'ordre de cette liste — jamais l'adresse de connexion ni la
+  // fiche d'une autre boutique (faille 8, 9d lot 2). Une adresse venue d'une
+  // fiche fusionnée rejoint la liste.
   async function definirEmailPrincipal(formData: FormData) {
     'use server'
     await assurerAccesContact(beatmakerId, clientId)
     const a = createAdminClient()
     const nouvelEmail = (formData.get('email') as string ?? '').trim().toLowerCase()
     if (!nouvelEmail) return
-
-    const { data: current } = await a.from('clients').select('email, emails_secondaires').eq('id', clientId).single()
-    if (!current || current.email === nouvelEmail) return
-
-    const ancienEmail = current.email
-    const existants = (current.emails_secondaires as string[]) ?? []
-    const nouveauxSecondaires = existants.filter(e => e !== nouvelEmail)
-    if (!nouveauxSecondaires.includes(ancienEmail)) nouveauxSecondaires.push(ancienEmail)
-
-    const { error } = await a.from('clients')
-      .update({ email: nouvelEmail, emails_secondaires: nouveauxSecondaires })
-      .eq('id', clientId)
-    if (error) console.error('[fiche-client] Erreur définition email principal:', JSON.stringify(error))
-
+    const emails = (await chargerFicheBoutique(a, beatmakerId, clientId))?.emails ?? []
+    if (emails[0] === nouvelEmail) return
+    if (!emails.includes(nouvelEmail)) {
+      // Seule une adresse d'une fiche fusionnée dans celle-ci peut être promue
+      const { data: f } = await a.from('fusions_crm').select('client_id_archive').eq('beatmaker_id', beatmakerId).eq('client_id_conserve', clientId)
+      const archives = await chargerFichesBoutique(a, beatmakerId, (f ?? []).map(x => x.client_id_archive as string))
+      if (![...archives.values()].some(x => x.emails.includes(nouvelEmail))) return
+    }
+    await modifierFicheBoutique(a, beatmakerId, clientId, { emails: [nouvelEmail, ...emails.filter(e => e !== nouvelEmail)] })
     revalidatePath(`/dashboard/business/contacts/${clientId}`)
   }
 
@@ -562,7 +590,7 @@ export default async function FicheClientPage({
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
 
-  const prenomDisplay = (client as Record<string, unknown>).surnom as string | null ?? client.prenom
+  const prenomDisplay = client.surnom ?? client.prenom
   const nomComplet  = `${prenomDisplay ?? ''} ${client.nom ?? ''}`.trim()
   const initiales   = [client.prenom?.[0], client.nom?.[0]].filter(Boolean).join('').toUpperCase() || '?'
   const statutLabel = statut_abo === 'abonne' ? 'Abonné' : nbCommandes > 0 ? 'Client' : 'Lead'
@@ -592,7 +620,7 @@ export default async function FicheClientPage({
           Contacts
         </Link>
         <span className="text-gray-700">›</span>
-        <span className="text-white font-semibold">{nomComplet || client.email}</span>
+        <span className="text-white font-semibold">{nomComplet || emailPrincipalFiche || 'Contact sans email'}</span>
       </div>
 
       <div className="max-w-3xl mx-auto w-full px-6 py-8 space-y-4">
@@ -615,20 +643,20 @@ export default async function FicheClientPage({
               </div>
               <div>
                 <div className="flex items-baseline gap-2 flex-wrap">
-                  <h1 className="text-lg font-bold leading-tight">{nomComplet || client.email}</h1>
+                  <h1 className="text-lg font-bold leading-tight">{nomComplet || emailPrincipalFiche || 'Contact sans email'}</h1>
                   {clientDisplay.nom_artiste && (
                     <span className="text-sm text-gray-500 italic">{clientDisplay.nom_artiste}</span>
                   )}
                 </div>
                 <a
-                  href={`mailto:${client.email}`}
+                  href={emailPrincipalFiche ? `mailto:${emailPrincipalFiche}` : undefined}
                   className="text-indigo-400 text-xs mt-0.5 hover:text-indigo-300 transition-colors block"
                 >
-                  {client.email}
+                  {emailPrincipalFiche ?? '–'}
                 </a>
                 {emailsSecondaires.map(e => (
                   <a key={e} href={`mailto:${e}`} className="text-gray-600 text-xs hover:text-gray-400 transition-colors block">
-                    {e} <span className="text-gray-700 text-[10px]">· archivé</span>
+                    {e}{emailsFusion.includes(e) && <span className="text-gray-700 text-[10px]"> · fusion</span>}
                   </a>
                 ))}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -759,7 +787,7 @@ export default async function FicheClientPage({
               <form action={sauvegarderIdentite}>
                 <Row label="Prénom"            value={client.prenom ?? '–'} />
                 <Row label="Nom"                value={client.nom ?? '–'} />
-                <EditRow label="Prénom de contact" name="surnom"      value={(client as Record<string, unknown>).surnom as string | null}   placeholder="Surnom ou prénom personnalisé…" />
+                <EditRow label="Prénom de contact" name="surnom"      value={client.surnom}   placeholder="Surnom ou prénom personnalisé…" />
                 <EditRow label="Nom d'artiste"     name="nom_artiste" value={clientDisplay.nom_artiste}  placeholder="Nom d'artiste…" />
                 <Row label="Pays"              value={clientDisplay.pays?.toUpperCase() ?? '–'} />
                 <div className="flex items-center justify-between py-2 border-b border-gray-800 gap-4">
@@ -775,8 +803,13 @@ export default async function FicheClientPage({
                   </select>
                 </div>
                 <EditRow label="Téléphone"         name="telephone"   value={clientDisplay.telephone}    placeholder="+33 6 00 00 00 00" />
-                <Row label="Adresse"           value={[client.adresse, client.ville, client.code_postal].filter(Boolean).join(', ') || '–'} />
-                <Row label="Client depuis"     value={fmtDate(clientDepuis)} />
+                {autresTelephones.length > 0 && (
+                  <Row label="Autres téléphones" value={autresTelephones.join(' · ')} />
+                )}
+                <Row label={adressesToutes.length > 1 ? 'Adresses' : 'Adresse'} value={adressesToutes.length > 0
+                  ? <>{adressesToutes.map(a => <span key={adresseAffichee(a)} className="block">{adresseAffichee(a)}</span>)}</>
+                  : '–'} />
+                <Row label="Client depuis"     value={clientDepuis ? fmtDate(clientDepuis) : '–'} />
                 <IdentiteSaveButton />
               </form>
 
@@ -838,7 +871,7 @@ export default async function FicheClientPage({
 
               {/* Email principal */}
               <div className="flex items-center gap-3 py-2 border-b border-gray-800">
-                <span className="flex-1 text-xs text-gray-200 truncate">{client.email}</span>
+                <span className="flex-1 text-xs text-gray-200 truncate">{emailPrincipalFiche ?? '–'}</span>
                 <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-medium flex-shrink-0">
                   Principal
                 </span>
@@ -847,7 +880,7 @@ export default async function FicheClientPage({
               {/* Emails secondaires des fusions (lecture seule sauf promotion) —
                   exclut l'adresse déjà principale (peut arriver après une
                   promotion : fusions_crm.emails_archives n'est pas modifié) */}
-              {emailsFusion.filter(e => e !== client.email).map(e => (
+              {emailsFusion.map(e => (
                 <div key={e} className="flex items-center gap-3 py-2 border-b border-gray-800">
                   <span className="flex-1 text-xs text-gray-400 truncate">{e}</span>
                   <form action={definirEmailPrincipal}>
@@ -866,7 +899,7 @@ export default async function FicheClientPage({
               ))}
 
               {/* Emails secondaires ajoutés manuellement (promotion + suppression) */}
-              {emailsManuels.map(e => (
+              {emailsFiche.map(e => (
                 <div key={e} className="flex items-center gap-3 py-2 border-b border-gray-800">
                   <span className="flex-1 text-xs text-gray-400 truncate">{e}</span>
                   <form action={definirEmailPrincipal}>
