@@ -11,6 +11,10 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Connecte-toi pour supprimer ton compte.' }, { status: 401 })
 
+  // Requête JSON seulement : un formulaire d'un autre site ne peut pas l'envoyer
+  if (!(request.headers.get('content-type') ?? '').includes('application/json')) {
+    return NextResponse.json({ error: 'Requête invalide' }, { status: 415 })
+  }
   const body = await request.json().catch(() => ({}))
   if (body?.confirmation !== 'SUPPRIMER') {
     return NextResponse.json({ error: 'Tape SUPPRIMER pour confirmer.' }, { status: 400 })

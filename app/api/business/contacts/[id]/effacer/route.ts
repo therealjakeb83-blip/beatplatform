@@ -18,6 +18,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: beatmaker } = await supabase.from('beatmakers').select('id').eq('id', user.id).maybeSingle()
   if (!beatmaker) return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
 
+  // Requête JSON seulement : un formulaire d'un autre site ne peut pas l'envoyer
+  if (!(req.headers.get('content-type') ?? '').includes('application/json')) {
+    return NextResponse.json({ error: 'Requête invalide' }, { status: 415 })
+  }
   const body = await req.json().catch(() => ({}))
   if (body?.confirmation !== 'EFFACER') {
     return NextResponse.json({ error: 'Tape EFFACER pour confirmer.' }, { status: 400 })

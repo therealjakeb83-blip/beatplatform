@@ -30,10 +30,22 @@ async function ecrireStatut(
   }
   const { data: lead } = await admin
     .from('leads')
-    .select('id')
+    .select('id, efface_le')
     .eq('client_id', params.clientId)
     .eq('beatmaker_id', params.beatmakerId)
     .maybeSingle()
+
+  // 9d lot 4 : contact effacé par la boutique qui se réinscrit lui-même = il
+  // revient, fiche neuve avec l'email de son compte (ecrire_fiche_boutique)
+  if (lead?.efface_le && params.statut === 'inscrit') {
+    const { data: client } = await admin.from('clients').select('email, supprime_le').eq('id', params.clientId).maybeSingle()
+    if (client && !client.supprime_le) {
+      const { error } = await admin.rpc('ecrire_fiche_boutique', {
+        p_client_id: params.clientId, p_beatmaker_id: params.beatmakerId, p_source: params.sourceLead, p_donnees: { email: client.email },
+      })
+      if (error) console.error('[newsletter] fiche effacée, retour:', JSON.stringify(error))
+    }
+  }
 
   if (lead) {
     const { error } = await admin.from('leads').update(maj).eq('id', lead.id)
