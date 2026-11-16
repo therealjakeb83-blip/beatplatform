@@ -1,0 +1,68 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useLienBoutique } from '@/app/[slug]/_components/DomaineBoutique'
+
+type Etat = { kind: 'chargement' } | { kind: 'ok' } | { kind: 'erreur'; message: string }
+
+export default function ConfirmationNewsletter({ slug, nomArtiste, jeton }: { slug: string; nomArtiste: string; jeton: string }) {
+  const lien = useLienBoutique(slug)
+  const [etat, setEtat] = useState<Etat>({ kind: 'chargement' })
+  const lance = useRef(false)
+
+  useEffect(() => {
+    if (lance.current) return
+    lance.current = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/artiste/newsletter-publique/confirmer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ t: jeton }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setEtat({ kind: 'erreur', message: data.erreur ?? 'Une erreur est survenue.' })
+          return
+        }
+        setEtat({ kind: 'ok' })
+      } catch {
+        setEtat({ kind: 'erreur', message: 'Une erreur est survenue. Réessaie dans un instant.' })
+      }
+    })()
+  }, [jeton])
+
+  return (
+    <div className="max-w-md mx-auto px-6 py-16 text-center">
+      {etat.kind === 'chargement' && (
+        <>
+          <svg className="animate-spin w-8 h-8 mx-auto mb-4 text-gray-400" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+          <p className="text-sm text-gray-400">Confirmation de ton inscription…</p>
+        </>
+      )}
+
+      {etat.kind === 'ok' && (
+        <>
+          <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-2xl mx-auto mb-4 text-green-400">✓</div>
+          <h1 className="text-xl font-black text-white mb-2">Inscription confirmée</h1>
+          <p className="text-sm text-gray-400">Tu recevras à nouveau la newsletter de {nomArtiste}.</p>
+        </>
+      )}
+
+      {etat.kind === 'erreur' && (
+        <>
+          <h1 className="text-xl font-black text-white mb-2">Confirmation impossible</h1>
+          <p className="text-sm text-gray-400">{etat.message}</p>
+        </>
+      )}
+
+      <Link href={lien()} className="inline-block mt-8 text-gray-500 hover:text-white text-sm transition-colors">
+        ← Boutique de {nomArtiste}
+      </Link>
+    </div>
+  )
+}

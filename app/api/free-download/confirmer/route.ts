@@ -33,9 +33,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ce beat n'est plus disponible en téléchargement gratuit." }, { status: 403 })
   }
 
-  const clientId = await resoudreClientFreeDownload(admin, d)
+  const clientId = await resoudreClientFreeDownload(admin, d.email)
   await enregistrerFreeDownload(admin, {
-    clientId, beatmakerId: d.beatmakerId, beatId: d.beatId, newsletterConsent: true, depuis: d.emisLe,
+    clientId, beatmakerId: d.beatmakerId, beatId: d.beatId, newsletterConsent: true, depuis: d.emisLe, formulaire: d,
   })
 
   const downloadUrl = await urlFichierFreeDownload({ titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })

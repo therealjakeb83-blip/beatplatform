@@ -10,6 +10,7 @@ import { fuseauSur } from '@/lib/fuseau-horaire'
 import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { completerCommande } from '@/lib/completion-commande'
 import { inscrireParClient } from '@/lib/newsletter'
+import { ecrireFicheBoutique } from '@/lib/fiche-boutique-ecriture'
 
 // Abonnements boutique (artiste → beatmaker) : traitement des événements
 // Stripe reçus par le webhook des comptes vendeurs (paiement direct, lot 1 du
@@ -461,6 +462,24 @@ async function enregistrerAbonnementDirect(
   }
   console.log('[abonnement] Abonnement direct créé:', abonnement.id, 'sur', stripeAccountId)
 
+  // Fiche client de la boutique (9d lot 3) : ce que l'abonné a saisi, avant
+  // tout email ou automatisation qui la lit.
+  await ecrireFicheBoutique(supabase, {
+    clientId,
+    beatmakerId: meta.beatmaker_id,
+    source: 'achat',
+    donnees: {
+      email: acheteur.email,
+      prenom: meta.prenom?.trim() || null,
+      nom: meta.nom?.trim() || null,
+      telephone: acheteur.telephone,
+      adresse: acheteur.adresseRaw
+        ? { ligne: acheteur.adresse, adresse: acheteur.adresseRaw.line1, code_postal: acheteur.adresseRaw.postal_code, ville: acheteur.adresseRaw.city, pays: acheteur.adresseRaw.country }
+        : null,
+      pays: acheteur.adresseRaw?.country ?? null,
+    },
+  })
+
   await envoyerNouvelAbonnement({ beatmakerId: meta.beatmaker_id, periode: 'mensuel', prixCents })
     .catch(err => console.error('[abonnement] Erreur envoi email nouvel abonnement:', err))
 
@@ -482,18 +501,9 @@ async function enregistrerAbonnementDirect(
     }
   }
 
-  // Lead + newsletter, comme après un achat de licence (opt-in seulement).
+  // Newsletter, comme après un achat de licence (opt-in seulement).
   if (newsletterOptIn) {
-    await inscrireParClient(supabase, { clientId, beatmakerId: meta.beatmaker_id, origine: 'paiement', sourceLead: 'visite' })
-  } else {
-    const { data: lead } = await supabase.from('leads').select('id')
-      .eq('client_id', clientId).eq('beatmaker_id', meta.beatmaker_id).maybeSingle()
-    if (!lead) {
-      const { error: leadError } = await supabase.from('leads').insert({
-        client_id: clientId, beatmaker_id: meta.beatmaker_id, source: 'visite',
-      })
-      if (leadError) console.error('[abonnement] Erreur insert lead:', JSON.stringify(leadError))
-    }
+    await inscrireParClient(supabase, { clientId, beatmakerId: meta.beatmaker_id, origine: 'paiement', sourceLead: 'achat' })
   }
 
   return abonnement as AboPourPaiement

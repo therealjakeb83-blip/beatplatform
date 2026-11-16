@@ -17,7 +17,7 @@ const PAGES_PUBLIQUES = ['', '/beats', '/selection', '/licences', '/comment-ca-m
 const PAGES_ABONNEMENT = ['/abonnement', '/membres']
 
 // Pages personnelles d'une boutique, jamais à référencer.
-export const CHEMINS_PRIVES_BOUTIQUE = ['/mon-compte', '/mon-abonnement', '/telechargement-gratuit']
+export const CHEMINS_PRIVES_BOUTIQUE = ['/mon-compte', '/mon-abonnement', '/telechargement-gratuit', '/newsletter-confirmee']
 
 type BeatmakerReferencement = {
   id: string

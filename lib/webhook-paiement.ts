@@ -14,6 +14,7 @@ import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { completerCommande, remplirFraisTranches } from '@/lib/completion-commande'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { inscrireParClient } from '@/lib/newsletter'
+import { ecrireFicheBoutique, separerNomComplet } from '@/lib/fiche-boutique-ecriture'
 import type Stripe from 'stripe'
 
 // Traitement des paiements de vente (panier classique + achat express) —
@@ -365,6 +366,35 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
 
   const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone)
 
+  // Fiche client de la boutique qui vend (9d lot 3 ; beat collab : le vendeur
+  // principal seul) : ce que l'acheteur a saisi pour CETTE commande.
+  if (clientId) {
+    const identite = tentative.prenom || tentative.nom
+      ? { prenom: tentative.prenom ?? null, nom: tentative.nom ?? null }
+      : separerNomComplet(acheteurNom)
+    await ecrireFicheBoutique(supabase, {
+      clientId,
+      beatmakerId: meta.beatmaker_id,
+      source: 'achat',
+      donnees: {
+        email: acheteurEmail,
+        prenom: identite.prenom,
+        nom: identite.nom,
+        telephone: acheteurTelephone,
+        adresse: acheteurAdresseRaw
+          ? {
+              ligne: acheteurAdresse,
+              adresse: [acheteurAdresseRaw.line1, acheteurAdresseRaw.line2].filter(Boolean).join(' ') || null,
+              code_postal: acheteurAdresseRaw.postal_code,
+              ville: acheteurAdresseRaw.city,
+              pays: acheteurAdresseRaw.country,
+            }
+          : acheteurAdresse ? { ligne: acheteurAdresse } : null,
+        pays: acheteurAdresseRaw?.country ?? null,
+      },
+    })
+  }
+
   const beatIds = [...new Set(tentativeLignes.map(l => l.beat_id as string))]
   const licenceIds = [...new Set(tentativeLignes.map(l => l.licence_id as string))]
 
@@ -705,28 +735,11 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
     }
   }
 
-  // Créer un lead pour ce beatmaker si le client n'en a pas déjà un. Case
-  // newsletter cochée = inscription à CETTE boutique (geste du client, peut
-  // réinscrire un désinscrit) ; non cochée = on ne touche à rien.
-  if (clientId) {
-    if (newsletterOptIn) {
-      await inscrireParClient(supabase, { clientId, beatmakerId: meta.beatmaker_id, origine: 'paiement', sourceLead: 'visite' })
-    } else {
-      const { data: existingLead } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('client_id', clientId)
-        .eq('beatmaker_id', meta.beatmaker_id)
-        .maybeSingle()
-      if (!existingLead) {
-        const { error: leadError } = await supabase.from('leads').insert({
-          client_id:    clientId,
-          beatmaker_id: meta.beatmaker_id,
-          source:       'visite',
-        })
-        if (leadError) console.error('[webhook-paiement] Erreur insert lead:', JSON.stringify(leadError))
-      }
-    }
+  // Case newsletter cochée = inscription à CETTE boutique (geste du client,
+  // peut réinscrire un désinscrit) ; non cochée = on ne touche à rien. La
+  // fiche de la boutique a été écrite juste après la résolution du client.
+  if (clientId && newsletterOptIn) {
+    await inscrireParClient(supabase, { clientId, beatmakerId: meta.beatmaker_id, origine: 'paiement', sourceLead: 'achat' })
   }
 
   return commande.id

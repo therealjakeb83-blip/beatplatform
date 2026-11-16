@@ -1,50 +1,25 @@
 import { createClient } from '@/utils/supabase/server'
-import { createAdminClient } from '@/utils/supabase/admin'
 import { lierCompteClient } from '@/lib/lier-compte-client'
 import { NextResponse } from 'next/server'
 import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
-  const { nom, prenom, newsletter_consent, slug, userId: bodyUserId, userEmail: bodyUserEmail } = body as {
-    nom?: string
-    prenom?: string
-    newsletter_consent?: boolean
-    slug?: string
-    userId?: string
-    userEmail?: string
-  }
+  const { newsletter_consent, slug } = body as { newsletter_consent?: boolean; slug?: string }
 
+  // Connecté seulement (9d lot 3, faille 9) : l'ancien chemin « sans session »
+  // (identifiant + email dans la requête, connus d'un beatmaker pour chacun de
+  // ses contacts) permettait de rendre n'importe qui contact d'une autre
+  // boutique et de l'inscrire à sa newsletter. Plus aucune page ne l'utilisait.
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
 
-  let finalUserId: string
-  let finalEmail: string
-  let finalNom: string | undefined
-  let finalPrenom: string | undefined
-
-  if (user?.email) {
-    // Flux normal : utilisateur authentifié
-    const meta = user.user_metadata as { prenom?: string; nom?: string } | undefined
-    finalUserId = user.id
-    finalEmail = user.email
-    finalNom = nom || meta?.nom
-    finalPrenom = prenom || meta?.prenom
-  } else if (bodyUserId && bodyUserEmail) {
-    // Flux inscription sans session (email non encore confirmé) :
-    // on vérifie que l'userId existe réellement dans auth.users avant de procéder
-    const admin = createAdminClient()
-    const { data: authUser } = await admin.auth.admin.getUserById(bodyUserId)
-    if (!authUser.user || authUser.user.email !== bodyUserEmail) {
-      return NextResponse.json({ erreur: 'Utilisateur invalide' }, { status: 401 })
-    }
-    finalUserId = bodyUserId
-    finalEmail = bodyUserEmail
-    finalNom = nom
-    finalPrenom = prenom
-  } else {
-    return NextResponse.json({ erreur: 'Non authentifié' }, { status: 401 })
-  }
+  const meta = user.user_metadata as { prenom?: string; nom?: string } | undefined
+  const finalUserId = user.id
+  const finalEmail = user.email
+  const finalNom = meta?.nom
+  const finalPrenom = meta?.prenom
 
   // Sur le domaine d'une boutique, c'est elle, quoi qu'envoie la page.
   const site = await siteDeLaRequete(request)

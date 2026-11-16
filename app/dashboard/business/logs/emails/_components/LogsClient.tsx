@@ -21,6 +21,7 @@ const EVENEMENT_LABEL: Record<string, string> = {
   confirmation_expiration:  'Confirmation expiration',
   renvoi_commande:          'Renvoi commande',
   telechargement_gratuit:   'Téléchargement gratuit',
+  confirmation_newsletter:  'Confirmation newsletter',
   remboursement_commande:   'Remboursement de commande',
   annulation_commande:      'Annulation de commande',
 }

@@ -5,6 +5,7 @@ import { r2, R2_BUCKET, cleR2 } from '@/lib/r2'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { automatisationActive } from '@/lib/automatisations'
 import { inscrireParClient } from '@/lib/newsletter'
+import { ecrireFicheBoutique } from '@/lib/fiche-boutique-ecriture'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -68,36 +69,47 @@ export async function urlFichierFreeDownload(beat: { titre: string; mp3_tague_ur
   )
 }
 
-// Fiche client du visiteur, retrouvée ou créée par email (jamais d'écrasement
-// d'une donnée déjà renseignée par une valeur vide).
-export async function resoudreClientFreeDownload(admin: Admin, d: Pick<DemandeFreeDownload, 'email' | 'prenom' | 'nom' | 'nomArtiste' | 'pays'>): Promise<string> {
-  const { data: existing } = await admin.from('clients').select('id').eq('email', d.email).maybeSingle()
-  if (existing) {
-    const updates: Record<string, unknown> = {}
-    if (d.prenom)     updates.prenom      = d.prenom
-    if (d.nom)        updates.nom         = d.nom
-    if (d.nomArtiste) updates.nom_artiste = d.nomArtiste
-    if (d.pays)       updates.pays        = d.pays
-    if (Object.keys(updates).length > 0) await admin.from('clients').update(updates).eq('id', existing.id)
-    return existing.id
-  }
+// Identifiant du visiteur, retrouvé ou créé par son email. La fiche commune
+// `clients` ne reçoit plus rien du formulaire (9d lot 3) : prénom, nom, nom
+// d'artiste et pays vont dans la fiche de la boutique (enregistrerFreeDownload).
+export async function resoudreClientFreeDownload(admin: Admin, email: string): Promise<string> {
+  const { data: existing } = await admin.from('clients').select('id').eq('email', email).maybeSingle()
+  if (existing) return existing.id
   const id = crypto.randomUUID()
-  const nom = d.nom || d.email.split('@')[0].replace(/[._+\-]/g, ' ').replace(/\s+/g, ' ').trim() || d.email
-  await admin.from('clients').insert({
-    id, email: d.email, prenom: d.prenom || null, nom, nom_artiste: d.nomArtiste || null, pays: d.pays || null,
-  })
+  const { error } = await admin.from('clients').insert({ id, email, nom: '' })
+  if (error) {
+    // Créé au même moment par une autre requête : on reprend celui-là
+    const { data: course } = await admin.from('clients').select('id').eq('email', email).maybeSingle()
+    if (course) return course.id
+    console.error('[free-download] Erreur insert client:', JSON.stringify(error))
+  }
   return id
 }
 
-// Inscription newsletter (si cochée), trace du téléchargement, relance
-// automatique. `depuis` : un nouveau clic sur le même lien ne recompte pas.
+// Fiche de la boutique (toujours, inscrit ou non), inscription newsletter (si
+// cochée), trace du téléchargement, relance automatique. `depuis` : un nouveau
+// clic sur le même lien ne recompte pas.
 export async function enregistrerFreeDownload(admin: Admin, params: {
   clientId: string
   beatmakerId: string
   beatId: string
   newsletterConsent: boolean
   depuis?: number
+  formulaire: Pick<DemandeFreeDownload, 'email' | 'prenom' | 'nom' | 'nomArtiste' | 'pays'>
 }): Promise<void> {
+  await ecrireFicheBoutique(admin, {
+    clientId: params.clientId,
+    beatmakerId: params.beatmakerId,
+    source: 'free_download',
+    donnees: {
+      email: params.formulaire.email,
+      prenom: params.formulaire.prenom,
+      nom: params.formulaire.nom,
+      nom_artiste: params.formulaire.nomArtiste,
+      pays: params.formulaire.pays,
+    },
+  })
+
   if (params.newsletterConsent) {
     await inscrireParClient(admin, { clientId: params.clientId, beatmakerId: params.beatmakerId, origine: 'free_download', sourceLead: 'free_download' })
   }

@@ -49,7 +49,20 @@ export async function POST(request: Request) {
   }
 
   const newsletter = contexte.slug ? body.newsletter === true : undefined
-  await lierCompteClient(data.user.id, email, nom, prenom, newsletter, contexte.slug)
+  // La boutique reçoit l'email + le prénom/nom saisis (9d lot 3). Case
+  // newsletter cochée par une adresse désinscrite de cette boutique : appliquée
+  // seulement quand le compte est confirmé (preuve que l'adresse est à elle),
+  // voir /api/artiste/compte-confirme.
+  const { newsletterReportee } = await lierCompteClient(data.user.id, email, nom, prenom, newsletter, contexte.slug, {
+    transmis: { prenom, nom },
+    reporterSiDesinscrit: true,
+  })
+  if (newsletterReportee) {
+    const { error: erreurMeta } = await admin.auth.admin.updateUserById(data.user.id, {
+      user_metadata: { prenom, nom, newsletter_a_confirmer: newsletterReportee },
+    })
+    if (erreurMeta) console.error('[artiste/inscription] newsletter à confirmer:', JSON.stringify(erreurMeta))
+  }
 
   const params = new URLSearchParams({ token_hash: data.properties.hashed_token, redirect: contexte.redirect })
   await envoyerEmailCompteArtiste({

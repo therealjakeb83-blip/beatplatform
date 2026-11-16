@@ -1,6 +1,14 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { automatisationActive } from './automatisations'
-import { inscrireParClient } from './newsletter'
+import { inscrireParClient, lireStatutNewsletter } from './newsletter'
+import { ecrireFicheBoutique } from './fiche-boutique-ecriture'
+
+// Ce que la boutique reçoit en plus de l'email (9d lot 3) : prénom/nom saisis
+// à l'inscription, ou transmis par Google. Rien pour une simple connexion.
+export type OptionsLierCompte = {
+  transmis?: { prenom?: string | null; nom?: string | null }
+  reporterSiDesinscrit?: boolean
+}
 
 export async function lierCompteClient(
   userId: string,
@@ -9,8 +17,10 @@ export async function lierCompteClient(
   prenom?: string | null,
   newsletter_consent?: boolean,
   slug?: string | null,
-) {
+  options?: OptionsLierCompte,
+): Promise<{ newsletterReportee?: string }> {
   const admin = createAdminClient()
+  const resultat: { newsletterReportee?: string } = {}
   // Normalisé en minuscule — sinon la même personne peut se retrouver
   // dupliquée en 2 fiches clients selon la casse de l'email (bug découvert
   // en testant Phase 5.9, 2026-07-16).
@@ -45,7 +55,7 @@ export async function lierCompteClient(
     })
     if (error) {
       console.error('[lierCompteClient] Erreur fusion de compte :', guestClient.id, JSON.stringify(error))
-      return
+      return resultat
     }
 
   } else if (!guestClient) {
@@ -78,7 +88,10 @@ export async function lierCompteClient(
     .eq('acheteur_email', emailNorm)
     .is('client_id', null)
 
-  // Créer un lead pour le beatmaker de la boutique si on connaît le slug
+  // Fiche de la boutique où la personne se connecte / s'inscrit (9d lot 3) :
+  // elle ne reçoit que ce qui lui est transmis à ce moment-là — l'email du
+  // compte, + le prénom/nom saisis à l'inscription ou transmis par Google
+  // (options.transmis). Une simple connexion ne transmet que l'email.
   if (slug) {
     const { data: beatmaker } = await admin
       .from('beatmakers')
@@ -87,27 +100,22 @@ export async function lierCompteClient(
       .maybeSingle()
 
     if (beatmaker) {
-      // Case « recevoir les actualités » cochée à l'inscription = inscription à
-      // la newsletter de CETTE boutique. Non cochée : on ne touche à rien.
-      let lead: { id: string } | null = null
+      const { leadId, cree } = await ecrireFicheBoutique(admin, {
+        clientId: userId,
+        beatmakerId: beatmaker.id,
+        source: 'visite',
+        donnees: { email: emailNorm, prenom: options?.transmis?.prenom, nom: options?.transmis?.nom },
+      })
+
+      // Case « recevoir les actualités » cochée = inscription à la newsletter
+      // de CETTE boutique. Non cochée : on ne touche à rien. Une adresse
+      // désinscrite de cette boutique n'est réinscrite qu'une fois le compte
+      // confirmé (options.reporterSiDesinscrit, inscription d'un compte).
       if (newsletter_consent === true) {
-        const res = await inscrireParClient(admin, { clientId: userId, beatmakerId: beatmaker.id, origine: 'inscription_compte', sourceLead: 'visite' })
-        lead = res.leadCree && res.leadId ? { id: res.leadId } : null
-      } else {
-        const { data: existingLead } = await admin
-          .from('leads')
-          .select('id')
-          .eq('client_id', userId)
-          .eq('beatmaker_id', beatmaker.id)
-          .maybeSingle()
-        if (!existingLead) {
-          const { data, error } = await admin.from('leads').insert({
-            client_id:    userId,
-            beatmaker_id: beatmaker.id,
-            source:       'visite',
-          }).select('id').single()
-          if (error) console.error('[lierCompteClient] Erreur insert lead:', JSON.stringify(error))
-          lead = data
+        if (options?.reporterSiDesinscrit && (await lireStatutNewsletter(admin, userId, beatmaker.id)) === 'desinscrit') {
+          resultat.newsletterReportee = beatmaker.id
+        } else {
+          await inscrireParClient(admin, { clientId: userId, beatmakerId: beatmaker.id, origine: 'inscription_compte', sourceLead: 'visite' })
         }
       }
 
@@ -115,15 +123,17 @@ export async function lierCompteClient(
       // beatmaker (nouveau compte global ou connexion sur une nouvelle
       // boutique). La règle de suppression (rien d'autre le même jour) est
       // vérifiée à l'envoi, pas ici — voir doitEtreIgnore dans automatisations.ts.
-      if (lead && await automatisationActive(beatmaker.id, 'bienvenue_perso')) {
+      if (cree && leadId && await automatisationActive(beatmaker.id, 'bienvenue_perso')) {
         const { error: evenementError } = await admin.from('automatisation_evenements').insert({
           beatmaker_id: beatmaker.id,
           client_id:    userId,
           type:         'bienvenue_perso',
-          reference_id: lead.id,
+          reference_id: leadId,
         })
         if (evenementError) console.error('[lierCompteClient] Erreur insert automatisation_evenements:', JSON.stringify(evenementError))
       }
     }
   }
+
+  return resultat
 }

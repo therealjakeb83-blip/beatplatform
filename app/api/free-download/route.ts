@@ -92,7 +92,7 @@ export async function POST(req: Request) {
   } else {
     // Compte beatmaker connecté : fiche client retrouvée/créée par son email
     clientEmail = normaliserEmail(user.email ?? '')
-    clientId    = await resoudreClientFreeDownload(admin, { email: clientEmail, prenom: null, nom: null, nomArtiste: null, pays: null })
+    clientId    = await resoudreClientFreeDownload(admin, clientEmail)
   }
 
   // 3. Free download = inscription à la newsletter de CETTE boutique,
@@ -101,7 +101,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: MESSAGE_NEWSLETTER }, { status: 400 })
   }
 
-  await enregistrerFreeDownload(admin, { clientId, beatmakerId, beatId, newsletterConsent: newsletterConsent === true })
+  // Connecté : la boutique reçoit l'email du compte seul (pas de formulaire)
+  await enregistrerFreeDownload(admin, {
+    clientId, beatmakerId, beatId, newsletterConsent: newsletterConsent === true,
+    formulaire: { email: normaliserEmail(clientEmail), prenom: null, nom: null, nomArtiste: null, pays: null },
+  })
 
   const downloadUrl = await urlFichierFreeDownload({ titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })
 

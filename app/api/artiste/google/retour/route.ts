@@ -54,7 +54,10 @@ export async function GET(request: Request) {
   // Le nom Google ne remplace jamais celui que le client a déjà sur sa fiche.
   const prenom = ficheExistante?.prenom?.trim() ? null : prenomGoogle
   const nom = ficheExistante?.nom?.trim() ? null : nomGoogle
-  await lierCompteClient(user.id, email, nom, prenom, undefined, slug).catch(err =>
+  // La boutique reçoit ce que Google transmet (9d lot 3), indépendamment du compte.
+  await lierCompteClient(user.id, email, nom, prenom, undefined, slug, {
+    transmis: { prenom: prenomGoogle, nom: nomGoogle },
+  }).catch(err =>
     console.error('[artiste/google/retour] lierCompteClient:', err),
   )
 

@@ -1424,6 +1424,41 @@ export async function telechargementGratuit({
   return !error && !!data
 }
 
+// Réinscription à la newsletter d'une adresse désinscrite, demandée par le
+// formulaire public (9d lot 3) : rien ne change sans clic sur ce lien. Texte
+// fixe (pas de modèle personnalisable), branding de la boutique.
+export async function confirmationNewsletter({
+  to,
+  beatmakerId,
+  lien,
+}: {
+  to: string
+  beatmakerId: string
+  lien: string
+}): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('beatmakers').select(SELECT_BRANDING).eq('id', beatmakerId).single()
+  const branding = data as BrandingTransactionnel | null
+  if (!branding) return false
+
+  const { data: envoi, error } = await envoyerEmailUnique({
+    beatmakerId,
+    from: expediteurBoutique(branding),
+    type: 'transactionnel',
+    evenement: 'confirmation_newsletter',
+    to,
+    subject: `Confirme ton inscription à la newsletter de ${branding.nom_artiste}`,
+    html: rendreEmailTransactionnel({
+      branding,
+      titre: 'Confirme ton inscription',
+      intro: `Quelqu'un (sans doute toi) a demandé à recevoir à nouveau la newsletter de ${echapper(branding.nom_artiste)} avec cette adresse. Clique sur le bouton pour confirmer.`,
+      corpsHtml: `<p style="font-size:12px;color:#9ca3af;margin:0 0 20px;">Si ce n'est pas toi, ignore cet email : tu ne recevras rien. Ce lien reste valable 7 jours.</p>`,
+      cta: { texte: 'Confirmer mon inscription', lien },
+    }),
+  })
+  return !error && !!envoi
+}
+
 // ── Aperçu (page réglages) — mêmes titre/intro par défaut que l'envoi réel,
 // données d'exemple à la place des vraies commandes/abonnements. Ne passe
 // jamais par envoyerEmailUnique (pas d'envoi, pas de log).
