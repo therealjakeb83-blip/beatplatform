@@ -362,7 +362,7 @@ export function MaquetteTableau() {
             <span className="y-m-avatar y-m-avatar-blanc">JB</span>
             <span>
               <strong>Jake B</strong>
-              <small>beats.jakebmusic.com</small>
+              <small>jakebmusic.com</small>
             </span>
           </span>
           <span className="y-m-tdb-actif">
