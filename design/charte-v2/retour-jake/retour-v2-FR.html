@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonoo — Retour v2</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --bleu:#2477FB; --noir:#050505; --gris:#5b6475; --clair:#F4F1EC; --ligne:#e4e0d8; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--noir); font-size: 10.5pt; line-height: 1.5; margin: 0; background:#fff; }
+  h1 { font-size: 26pt; line-height: 1.1; margin: 0 0 6pt; letter-spacing: -0.5pt; }
+  h2 { font-size: 16pt; margin: 0 0 4pt; letter-spacing: -0.2pt; }
+  h2 .num { color: var(--bleu); font-size: 11pt; font-weight: 600; display:block; letter-spacing: 1pt; margin-bottom: 2pt; }
+  h3 { font-size: 12pt; margin: 14pt 0 4pt; }
+  p { margin: 0 0 6pt; }
+  ul { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 3pt; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .cover { padding-top: 40mm; }
+  .cover .sous { color: var(--gris); font-size: 12pt; margin-bottom: 26pt; }
+  .encart { background: var(--clair); border-left: 4px solid var(--bleu); padding: 10pt 12pt; margin: 10pt 0 12pt; border-radius: 4px; }
+  .encart.noir { background: var(--noir); color:#fff; border-left-color: var(--bleu); }
+  .tag { display:inline-block; font-size: 8pt; font-weight: 700; letter-spacing: .8pt; text-transform: uppercase; padding: 2pt 7pt; border-radius: 20pt; margin-right: 4pt; }
+  .tag.ok { background:#dff3e4; color:#17633a; }
+  .tag.ko { background:#fde2e1; color:#9b1c1c; }
+  .tag.demande { background:#dceaff; color:#1a4fa8; }
+  .tag.plus-tard { background:#ece9e3; color:#5b6475; }
+  figure { margin: 8pt 0 10pt; }
+  figure img { width: 100%; border: 1px solid var(--ligne); border-radius: 6px; display:block; }
+  figcaption { font-size: 8.5pt; color: var(--gris); margin-top: 3pt; }
+  .duo { display:flex; gap: 8pt; }
+  .duo figure { flex:1; }
+  .mobile img { width: auto; max-width: 100%; height: 210pt; margin: 0 auto; }
+  .lien { color: var(--bleu); word-break: break-all; font-size: 9pt; }
+  .grille-photos { display:grid; grid-template-columns: repeat(4, 1fr); gap: 5pt; }
+  .grille-photos img { width:100%; height: 168pt; object-fit: cover; border-radius: 4px; display:block; }
+  .logo-jb { display:flex; gap: 14pt; align-items:center; }
+  .logo-jb img { height: 70pt; }
+  .logo-jb .fond-noir { background:#000; padding: 8pt; border-radius: 6px; }
+  .petit { font-size: 9pt; color: var(--gris); }
+  .som li { margin-bottom: 2pt; }
+  .section { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ============ COUVERTURE + INTRO ============ -->
+<div class="page cover">
+  <p class="tag demande">Retour sur la v2</p>
+  <h1>Sonoo — Brand Style Guide &amp; landing page</h1>
+  <p class="sous">Retour de Jake sur la version 2 · 16 novembre 2026</p>
+
+  <p>Salut Abhi,</p>
+  <p>Merci pour cette v2, on sent bien que tu as pris en compte mon premier retour. Voici mes remarques, avec des captures et des exemples pour que la direction soit claire.</p>
+
+  <div class="encart noir">
+    <p><strong>Priorité : uniquement la landing page sur ordinateur (desktop).</strong></p>
+    <p>La plupart de mes clients travaillent toute la journée sur leur ordinateur et piloteront leur business Sonoo depuis leur PC. C'est donc la version la plus importante. Ça te fera aussi moins de travail.</p>
+    <p style="margin:0">Une fois que j'aurai validé la version ordinateur, on l'adaptera à la tablette et au mobile. Les remarques sur le mobile sont regroupées à la fin (« Pour plus tard ») pour ne pas les perdre, mais tu n'as pas à t'en occuper maintenant.</p>
+  </div>
+
+  <h3>Sommaire</h3>
+  <ol class="som">
+    <li>Ce qui me plaît</li>
+    <li>La direction générale (avec 5 exemples)</li>
+    <li>Remarques section par section</li>
+    <li>La police Surgena</li>
+    <li>Les images</li>
+    <li>Le Brand Style Guide</li>
+    <li>Pour plus tard (tablette et mobile)</li>
+  </ol>
+</div>
+
+<!-- ============ 1. CE QUI ME PLAIT ============ -->
+<div class="page">
+  <h2><span class="num">01</span>Ce qui me plaît</h2>
+  <ul>
+    <li><span class="tag ok">J'aime</span> <strong>Le nouveau haut de page</strong> : il est bien mieux que celui de la v1 (voir aussi la remarque 3.1).</li>
+    <li><span class="tag ok">J'aime</span> <strong>La section 01 « Ta marque » sur ordinateur</strong>, avec les 3 téléphones.</li>
+    <li><span class="tag ok">J'aime</span> <strong>Le fond noir de la section 03 « Tout-en-un »</strong> : c'est exactement le genre de contraste que je veux voir plus souvent.</li>
+    <li><span class="tag ok">J'aime</span> <strong>Le tableau de bord</strong> : c'est déjà mieux, il ressemble moins à BeatStars. On le retravaillera entièrement plus tard, quand on fera l'interface de l'application, donc pas besoin d'y passer du temps maintenant.</li>
+  </ul>
+  <figure>
+    <img src="captures/01-section03-fond-noir.png">
+    <figcaption>Section 03 « Tout-en-un » : le fond noir me plaît beaucoup.</figcaption>
+  </figure>
+</div>
+
+<!-- ============ 2. DIRECTION GENERALE ============ -->
+<div class="page">
+  <h2><span class="num">02</span>La direction générale</h2>
+  <p>Pour l'instant la page est très classique. J'aimerais que tu prennes plus de risques sur les mises en page. Voici les quatre grandes idées :</p>
+
+  <h3>2.1 · Alterner les fonds noirs et blancs</h3>
+  <p>Je voudrais plus de sections sur fond noir, comme la section 03, en alternance avec les sections claires. Ce contraste donne du rythme et rend la page plus lisible.</p>
+
+  <h3>2.2 · Une section sur fond bleu, sur toute la largeur</h3>
+  <p>J'aimerais aussi une section sur fond bleu (le bleu du logo), comme le bloc boutique de la v1, mais <strong>sur toute la largeur de l'écran</strong>. Je te laisse choisir à quel endroit de la page elle a le plus d'impact.</p>
+
+  <h3>2.3 · Beaucoup moins de texte</h3>
+  <p>Trop d'information tue l'information. Chaque section devrait montrer <strong>une seule idée forte</strong> : une belle illustration qui parle d'elle-même, un titre et un texte court. Pas besoin de tout détailler à chaque fois (voir la remarque 3.2).</p>
+  <p>Sonoo a beaucoup de fonctionnalités, donc on ne sera jamais aussi épuré qu'un site comme Deezer, mais c'est la direction à suivre : <strong>moins, mais mieux montré</strong>.</p>
+
+  <h3>2.4 · Des mises en page plus audacieuses</h3>
+  <p>Illustrations qui sortent de leur cadre, téléphones et cartes inclinés qui se chevauchent, texte et image qui changent de côté d'une section à l'autre, petites annotations dessinées à la main… Les 5 exemples des pages suivantes montrent ce que j'ai en tête.</p>
+
+  <div class="encart">
+    <p style="margin:0"><strong>Important :</strong> ce sont des sources d'inspiration pour l'ambiance et la façon de composer la page. Je ne veux pas qu'on copie un de ces sites.</p>
+  </div>
+</div>
+
+<!-- Deezer -->
+<div class="page">
+  <h2><span class="num">Exemple 1</span>Deezer — deezer.com/fr</h2>
+  <p>Ce que j'aime : la page est <strong>très épurée</strong> (très peu d'informations), elle joue sur un <strong>fort contraste noir / blanc</strong>, la navigation est agréable et les <strong>transitions arrondies</strong> entre les sections noires et blanches sont top.</p>
+  <p class="petit">Je sais que pour le logo je t'avais demandé d'éviter toute ressemblance avec Deezer : ça reste vrai. Ici, c'est seulement la structure et le rythme de la page qui m'intéressent, pas leur look.</p>
+  <figure>
+    <img src="captures/09c-inspi-deezer-vue-ensemble.png">
+    <figcaption>Vue d'ensemble dézoomée : très peu d'informations, alternance blanc / noir.</figcaption>
+  </figure>
+  <div class="duo">
+    <figure><img src="captures/09a-inspi-deezer-courbe-noir-blanc.png"><figcaption>Transition arrondie entre noir et blanc.</figcaption></figure>
+    <figure><img src="captures/09b-inspi-deezer-offres.png"><figcaption>Section sombre, titre fort, peu de texte.</figcaption></figure>
+  </div>
+</div>
+
+<!-- Pro Finance -->
+<div class="page">
+  <h2><span class="num">Exemple 2</span>Pro Finance (Dribbble, Conceptzilla)</h2>
+  <p class="lien">https://dribbble.com/shots/16709886-Landing-Page-Design-For-a-Finance-Investment-Platform</p>
+  <p>Ce que j'aime : le style épuré et <strong>la façon de placer les illustrations et les informations</strong>. Les téléphones inclinés qui se chevauchent et débordent du bloc de couleur, le texte et l'image qui alternent à gauche puis à droite, un titre et 2-3 lignes par section, le bandeau noir arrondi pour l'appel à l'action.</p>
+  <div class="duo">
+    <figure><img src="captures/10-inspi-dribbble-profinance-1.png"></figure>
+    <figure><img src="captures/10-inspi-dribbble-profinance-2.png"></figure>
+  </div>
+  <div class="duo">
+    <figure><img src="captures/10-inspi-dribbble-profinance-3.png"></figure>
+    <figure><img src="captures/10-inspi-dribbble-profinance-4.png"></figure>
+  </div>
+</div>
+
+<!-- HackerRank -->
+<div class="page">
+  <h2><span class="num">Exemple 3</span>HackerRank (Dribbble, Ramotion)</h2>
+  <p class="lien">https://dribbble.com/shots/26414267-B2B-SaaS-Landing-Page-Design-for-HackerRank</p>
+  <p>Ici, ce n'est pas tant le haut de page qui me plaît. C'est surtout <strong>l'utilisation des couleurs avec une alternance de contraste</strong> (cartes sombres sur fond clair, sections noires), <strong>le placement des illustrations</strong> (une vraie photo avec des cartes d'interface posées par-dessus) et <strong>les annotations</strong> (la flèche écrite à la main « AI Delegated »).</p>
+  <div class="duo">
+    <figure><img src="captures/11-inspi-dribbble-hackerrank-2.png"></figure>
+    <figure><img src="captures/11-inspi-dribbble-hackerrank-3.png"></figure>
+  </div>
+  <figure><img src="captures/11-inspi-dribbble-hackerrank-4.png"></figure>
+</div>
+
+<!-- Stable -->
+<div class="page">
+  <h2><span class="num">Exemple 4</span>Stable (Dribbble, Ramotion)</h2>
+  <p class="lien">https://dribbble.com/shots/19461210-B2B-Web-Design-for-Stable-business-landing-web-site-page</p>
+  <p>Ce que j'aime : très stylé, <strong>un jeu de contraste de couleurs bien fait</strong>, et un <strong>texte très épuré qui va à l'essentiel</strong>.</p>
+  <div class="duo">
+    <figure><img src="captures/12-inspi-dribbble-stable-1.png"></figure>
+    <figure><img src="captures/12-inspi-dribbble-stable-2.png"></figure>
+  </div>
+
+  <h2 style="margin-top:14pt"><span class="num">Exemple 5</span>ChronoTask (Dribbble, Outcrowd)</h2>
+  <p class="lien">https://dribbble.com/shots/25000009-ChronoTask-Landing-Page</p>
+  <p>Ce que j'aime : <strong>la disposition des illustrations pour présenter les fonctionnalités</strong>, et le haut de page (titre au centre, petites cartes et icônes posées autour, légèrement inclinées). Par contre, <strong>il manque de contraste</strong> : tout est clair et gris. Prends la disposition, pas les couleurs.</p>
+  <div class="duo">
+    <figure><img src="captures/13-inspi-dribbble-chronotask-1.png"></figure>
+    <figure><img src="captures/13-inspi-dribbble-chronotask-3.png"></figure>
+  </div>
+</div>
+
+<!-- ============ 3. SECTION PAR SECTION ============ -->
+<div class="page">
+  <h2><span class="num">03</span>Remarques section par section</h2>
+
+  <div class="section">
+  <h3>3.1 · Haut de page</h3>
+  <p><span class="tag ok">J'aime</span> Je préfère le nouveau haut de page à celui de la v1.</p>
+  <p><span class="tag demande">À revoir</span> Je me demande si c'est judicieux de montrer une boutique comme image principale, alors que la section 01 juste en dessous présente déjà des modèles de boutiques : on voit deux fois la même chose. Il faudrait trouver <strong>une image plus distinctive et plus marquante</strong>. Je te laisse proposer (les exemples 4 et 5 peuvent t'inspirer, mais tu es libre).</p>
+  <figure><img src="captures/05-haut-de-page.png" style="width:80%"></figure>
+  </div>
+</div>
+
+<div class="page">
+  <div class="section">
+  <h3>3.2 · Les rangées « icône + titre + texte » sous les illustrations</h3>
+  <p><span class="tag ko">Je n'aime pas</span> Sous les illustrations des sections 01, 02 et 03, il y a à chaque fois une rangée de 3 ou 4 blocs avec une icône, un titre et un paragraphe. Même si l'info est utile, ça fait trop : ça gâche un peu les sections.</p>
+  <p><span class="tag demande">À revoir</span> Les illustrations doivent parler davantage d'elles-mêmes, avec un texte court pour expliquer, sans tout détailler à chaque fois.</p>
+  <figure><img src="captures/04a-blocs-icones-section01.png"><figcaption>Section 01</figcaption></figure>
+  <figure><img src="captures/04b-blocs-icones-section02.png"><figcaption>Section 02</figcaption></figure>
+  <figure><img src="captures/04c-blocs-icones-section03.png"><figcaption>Section 03</figcaption></figure>
+  </div>
+</div>
+
+<div class="page">
+  <div class="section">
+  <h3>3.3 · Section 04 « Administratif &amp; paiements » : à supprimer</h3>
+  <p><span class="tag demande">À revoir</span> Je préfère ne pas avoir de section dédiée. Les contrats et factures automatiques peuvent simplement être <strong>cités dans la section 03 « Tout-en-un »</strong>. Le bloc « 0 % de commission » part avec cette section ; on pourra le citer ailleurs (il est déjà sous les boutons du haut de page).</p>
+  </div>
+
+  <div class="section">
+  <h3>3.4 · Section 05 « L'histoire »</h3>
+  <p><span class="tag demande">À revoir</span> À la place de la photo, <strong>intègre mon logo Jake B</strong> (fichiers joints : noir détouré, et deux versions blanches). Je trouverai peut-être une photo de moi en studio plus tard.</p>
+  <div class="logo-jb">
+    <img src="logo-jake-b/LOGO noir GROS détouré.png">
+    <span class="fond-noir"><img src="logo-jake-b/LOGO blanc GROS.png"></span>
+  </div>
+  <figure style="margin-top:10pt"><img src="captures/06-section05-histoire.png" style="width:80%"></figure>
+  </div>
+</div>
+
+<!-- ============ 4. POLICE ============ -->
+<div class="page">
+  <h2><span class="num">04</span>La police Surgena</h2>
+  <p><span class="tag ok">J'aime</span> Dans le <strong>titre du haut de page</strong>, son côté très typé ne me dérange pas, au contraire.</p>
+  <p><span class="tag ko">Je n'aime pas</span> Maintenant que je la vois sur toute la page, je trouve bizarre <strong>les « s » à moitié coupés dans les titres des sections</strong> : on perd en lisibilité.</p>
+  <figure><img src="captures/07b-surgena-hero.png" style="width:75%"><figcaption>Haut de page : ça fonctionne.</figcaption></figure>
+  <figure><img src="captures/07a-surgena-titre-section.png"><figcaption>Titre de section : les « s » gênent la lecture.</figcaption></figure>
+  <p><span class="tag demande">Question</span> Quelle solution te paraît la meilleure ?</p>
+  <ol>
+    <li>Une version plus sage de Surgena (par exemple avec un « s » plus classique), si elle existe ;</li>
+    <li>une autre police dans un style proche, plus lisible ;</li>
+    <li>un compromis : Surgena seulement pour le titre du haut de page, et une police plus lisible pour les titres des sections.</li>
+  </ol>
+  <p class="petit">J'achèterai la licence quand on se sera mis d'accord définitivement sur la police.</p>
+</div>
+
+<!-- ============ 5. IMAGES ============ -->
+<div class="page">
+  <h2><span class="num">05</span>Les images</h2>
+  <p>Je ne suis toujours pas en accord avec les images fournies dans le guide. Ce n'est pas très grave en soi, car je suis le seul à voir le Brand Style Guide, mais c'est important que <strong>tu comprennes la direction</strong> qu'on prend, parce qu'elle va guider tout le reste.</p>
+  <div class="encart">
+    <p style="margin:0">Ça peut paraître paradoxal : on construit une plateforme professionnelle, mais le marché des type beats est en immense majorité tourné vers le rap. <strong>On doit être pro tout en représentant le rap.</strong></p>
+  </div>
+  <p>Voici des photos qui définissent mieux l'image que j'attends. Ce qu'elles ont en commun :</p>
+  <ul>
+    <li>du studio ou de la scène, de nuit ou en faible lumière ;</li>
+    <li>soit un noir et blanc très contrasté, soit une ambiance bleue / violette (qui va très bien avec le bleu Sonoo) ;</li>
+    <li>de la fumée, des casques, des micros, des consoles, des écrans de logiciel ;</li>
+    <li>des personnes souvent de profil, de dos ou le visage en partie caché ;</li>
+    <li>des moments pris sur le vif, pas des poses ; un rendu granuleux, cinéma ;</li>
+    <li>un vrai style rap / trap.</li>
+  </ul>
+  <p class="petit">Toutes ces photos viennent de Pinterest. C'est uniquement pour t'inspirer, pas forcément à utiliser telles quelles.</p>
+</div>
+
+<div class="page">
+  <div class="grille-photos">
+    <img src="captures/photos-reference/photo-01.png"><img src="captures/photos-reference/photo-02.png"><img src="captures/photos-reference/photo-03.png"><img src="captures/photos-reference/photo-04.png">
+    <img src="captures/photos-reference/photo-05.png"><img src="captures/photos-reference/photo-06.png"><img src="captures/photos-reference/photo-07.png"><img src="captures/photos-reference/photo-08.png">
+    <img src="captures/photos-reference/photo-09.png"><img src="captures/photos-reference/photo-10.png"><img src="captures/photos-reference/photo-11.png"><img src="captures/photos-reference/photo-12.png">
+    <img src="captures/photos-reference/photo-13.png"><img src="captures/photos-reference/photo-14.png"><img src="captures/photos-reference/photo-15.png"><img src="captures/photos-reference/photo-16.png">
+  </div>
+  <p class="petit" style="margin-top:6pt">Sources : Pinterest — inspiration uniquement.</p>
+</div>
+
+<!-- ============ 6. GUIDE ============ -->
+<div class="page">
+  <h2><span class="num">06</span>Le Brand Style Guide</h2>
+  <ul>
+    <li><span class="tag ok">J'aime</span> <strong>Le fond blanc crème</strong> des maquettes de la landing page : j'aime beaucoup. Mais il n'apparaît pas dans la palette du guide, qui ne montre que le blanc pur. <span class="tag demande">À ajouter</span> Peux-tu l'ajouter officiellement à la palette, avec son code ?</li>
+    <li><span class="tag demande">À la fin</span> <strong>Le moodboard</strong> : merci de le renvoyer, mis à jour avec cette nouvelle direction, quand on aura terminé.</li>
+  </ul>
+
+  <!-- ============ 7. PLUS TARD ============ -->
+  <h2 style="margin-top:22pt"><span class="num">07</span>Pour plus tard (tablette et mobile)</h2>
+  <p class="petit">À traiter seulement une fois la version ordinateur validée. Je les note ici pour ne pas les perdre.</p>
+  <ul>
+    <li><span class="tag plus-tard">Mobile</span> <strong>Section 01 « Ta marque »</strong> : les téléphones sont trop gros, ceux des côtés sont coupés. On a l'impression que c'est mal cadré, ça surprend au scroll (pas dans le bon sens). La version ordinateur, elle, me plaît.</li>
+    <li><span class="tag plus-tard">Mobile</span> <strong>Menu ouvert</strong> : les noms des pages en gras me gênent, je préférais la police de la v1. Par contre, j'aime beaucoup le motif du logo ajouté en fond.</li>
+    <li><span class="tag plus-tard">Tablette / mobile</span> Les maquettes de la page <strong>Inscription</strong>.</li>
+    <li><span class="tag plus-tard">Tablette</span> Le tableau de bord de la section 03 est coupé à droite (texte coupé en plein mot), et son logo est un losange alors que c'est l'onde sur ordinateur.</li>
+  </ul>
+  <div class="duo" style="margin-top:8pt">
+    <figure class="mobile"><img src="captures/03-section01-telephones-mobile.png"><figcaption style="text-align:center">Section 01 en mobile</figcaption></figure>
+    <figure class="mobile"><img src="captures/08-menu-mobile.png"><figcaption style="text-align:center">Menu mobile</figcaption></figure>
+  </div>
+
+  <p style="margin-top:16pt">Merci encore, hâte de voir la suite !<br><strong>Jake</strong></p>
+</div>
+
+</body>
+</html>

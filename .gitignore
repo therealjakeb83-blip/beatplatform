@@ -47,3 +47,8 @@ next-env.d.ts
 
 # charte graphique : sources lourdes du designer (gardées en local)
 /design/*/sources/
+
+# Retour v2 au designer : captures, photos Pinterest, logo et PDF restent en local
+design/charte-v2/retour-jake/captures/
+design/charte-v2/retour-jake/logo-jake-b/
+design/charte-v2/retour-jake/*.pdf
