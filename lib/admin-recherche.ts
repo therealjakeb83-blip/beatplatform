@@ -2,7 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 
 export type ResultatRechercheAdmin = {
   beatmakers: { id: string; nom_artiste: string; slug: string; email: string; statut: string; ancien_nom?: string }[]
-  clients: { id: string; nom: string; prenom: string; email: string }[]
+  clients: { id: string; nom: string; prenom: string; email: string; par_fiche?: boolean }[]
   commandes: { id: string; beatmaker_id: string; client_id: string; acheteur_email: string | null; prix_paye: number; statut: string; created_at: string }[]
   abonnements: { id: string; beatmaker_id: string; client_id: string; acheteur_email: string | null; statut: string; created_at: string }[]
 }
@@ -74,7 +74,25 @@ export async function rechercherAdmin(requete: string, onglet: OngletRecherche):
       .select('id, nom, prenom, email')
       .or(`email.ilike.${motif},nom.ilike.${motif},prenom.ilike.${motif}`)
       .limit(10)
-    return { ...VIDE, clients: data ?? [] }
+    const trouves: ResultatRechercheAdmin['clients'] = data ?? []
+    // 9d lot 4 : une personne se retrouve aussi par un email ou un nom présent
+    // seulement dans la fiche d'une boutique (et pas dans son compte)
+    const qEmail = q.toLowerCase().replace(/["{},]/g, '')
+    const { data: fiches } = await admin
+      .from('leads')
+      .select('client_id')
+      .or([
+        ...(qEmail.includes('@') ? [`emails.cs.{"${qEmail}"}`] : []),
+        `prenom.ilike.${motif}`, `nom.ilike.${motif}`, `nom_artiste.ilike.${motif}`,
+      ].join(','))
+      .limit(30)
+    const dejaLa = new Set(trouves.map(c => c.id))
+    const enPlus = [...new Set((fiches ?? []).map(f => f.client_id as string))].filter(id => !dejaLa.has(id)).slice(0, 10)
+    if (enPlus.length > 0) {
+      const { data: parFiche } = await admin.from('clients').select('id, nom, prenom, email').in('id', enPlus)
+      for (const c of parFiche ?? []) trouves.push({ ...c, par_fiche: true })
+    }
+    return { ...VIDE, clients: trouves }
   }
 
   // onglet === 'commandes' — commandes ET abonnements, uniquement par

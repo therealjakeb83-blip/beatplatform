@@ -1,31 +1,20 @@
 'use server'
 
 import { estAdmin } from '@/lib/admin'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { supprimerCompteClient } from '@/lib/suppression-compte'
 
-// Périmètre bas risque uniquement (15a) — pas d'email (identifiant de
-// connexion partagé entre boutiques, cf. cadrage 2026-07-24).
-// Pas de revalidatePath() — voir la même note dans
-// boutiques/[id]/_lib/actions.ts (ça réinitialise l'état local du composant
-// client juste après l'action, découvert le 2026-07-24).
-const CHAMPS_AUTORISES = ['nom', 'prenom', 'telephone', 'langue'] as const
-type ChampAutorise = typeof CHAMPS_AUTORISES[number]
-
-export async function corrigerClientAction(
+// 9d lot 4 (option C1 de Jake) : l'Admin lit les fiches pour le support, sans
+// jamais les modifier ; sa seule action est de supprimer le compte Sonoo de la
+// personne, à sa demande. L'ancienne « correction manuelle » de `clients`
+// (corrigerClientAction, dernière écriture CRM de la fiche commune) est retirée.
+export async function supprimerCompteAdminAction(
   clientId: string,
-  champs: Partial<Record<ChampAutorise, string>>
+  confirmation: string,
+  desinscrire: string[],
 ): Promise<{ erreur?: string }> {
   if (!(await estAdmin())) return { erreur: 'Non autorisé.' }
-
-  const maj: Record<string, string | null> = {}
-  for (const cle of CHAMPS_AUTORISES) {
-    if (cle in champs) maj[cle] = champs[cle]?.trim() || null
-  }
-  if (Object.keys(maj).length === 0) return {}
-
-  const admin = createAdminClient()
-  const { error } = await admin.from('clients').update(maj).eq('id', clientId)
-  if (error) return { erreur: error.message }
-
-  return {}
+  if (confirmation !== 'SUPPRIMER') return { erreur: 'Tape SUPPRIMER pour confirmer.' }
+  if (!/^[0-9a-f-]{36}$/i.test(clientId)) return { erreur: 'Compte introuvable.' }
+  const r = await supprimerCompteClient({ clientId, desinscrire: Array.isArray(desinscrire) ? desinscrire : [] })
+  return r.ok ? {} : { erreur: r.erreur }
 }

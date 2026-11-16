@@ -140,7 +140,7 @@ export default function RechercheClient({ rechercher }: Props) {
             <Link key={c.id} href={`/dashboard/admin/clients/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-800/50 transition-colors">
               <div>
                 <p className="text-sm text-white">{c.prenom} {c.nom}</p>
-                <p className="text-xs text-gray-500">{c.email}</p>
+                <p className="text-xs text-gray-500">{c.email}{c.par_fiche && <span className="text-gray-600"> · trouvé dans une fiche de boutique</span>}</p>
               </div>
             </Link>
           ))}
