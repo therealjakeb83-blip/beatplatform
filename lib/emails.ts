@@ -466,6 +466,28 @@ export async function envoyerBienvenuePlateforme({
   })
 }
 
+// 9d lot 4 : suppression du compte Sonoo par la personne (Sonoo responsable
+// du compte). Rappelle que les boutiques, commerces indépendants, gardent leur
+// fiche : pour en être effacé, leur écrire. Email de Sonoo hors boutique.
+export async function envoyerCompteSupprime({ to, le }: { to: string; le: Date }) {
+  const date = le.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
+  const titre = `Ton compte ${NOM_PLATEFORME} a été supprimé`
+  await envoyerEmailUnique({
+    beatmakerId: null,
+    type: 'transactionnel',
+    evenement: 'plateforme_compte_supprime',
+    to,
+    subject: titre,
+    html: rendreEmailTransactionnel({
+      branding: BRANDING_PLATEFORME,
+      titre,
+      intro: `Ton compte ${NOM_PLATEFORME} a été supprimé le ${date}. Tu ne peux plus te connecter avec cette adresse, et tes favoris ont été effacés.`,
+      corpsHtml: `<p style="margin:0 0 12px 0;">Les boutiques où tu as acheté, téléchargé un beat ou t'es inscrit sont des commerces indépendants : elles gardent leur fiche client et leurs factures. Pour être effacé d'une boutique, écris-lui directement (page Contact de la boutique).</p>
+<p style="margin:0;">Si ce n'est pas toi qui as supprimé ce compte, écris-nous tout de suite à <a href="mailto:${EMAIL_CONTACT}">${EMAIL_CONTACT}</a>.</p>`,
+    }),
+  })
+}
+
 export async function envoyerConfirmationEssaiPlateforme({
   to,
   beatmakerId,

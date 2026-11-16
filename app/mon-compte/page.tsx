@@ -3,6 +3,8 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LienVersBoutique from './_components/LienVersBoutique'
+import SupprimerCompte from './_components/SupprimerCompte'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 type AboRow = {
   id: string
@@ -67,6 +69,18 @@ export default async function MonComptePage() {
     .single()
 
   const prenomAffiche = client?.nom_artiste || client?.prenom || email.split('@')[0]
+
+  // Suppression du compte (9d lot 4) : boutiques où la personne est inscrite à
+  // la newsletter (une case chacune) et abonnements qui bloquent la suppression
+  const [{ data: inscriptions }, { data: abosEnCours }] = await Promise.all([
+    admin.from('leads').select('beatmaker_id, beatmakers(nom_artiste)')
+      .eq('client_id', user.id).eq('newsletter_statut', 'inscrit').is('efface_le', null),
+    admin.from('abonnements_boutique').select('beatmakers(nom_artiste)')
+      .eq('client_id', user.id).neq('statut', 'annule'),
+  ])
+  const nomBoutique = (b: unknown) => ((Array.isArray(b) ? b[0] : b) as { nom_artiste?: string } | null)?.nom_artiste ?? 'une boutique'
+  const newslettersCompte = (inscriptions ?? []).map(l => ({ id: l.beatmaker_id as string, nom: nomBoutique(l.beatmakers) }))
+  const abonnementsBloquants = [...new Set((abosEnCours ?? []).map(a => nomBoutique(a.beatmakers)))]
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-16">
@@ -198,6 +212,15 @@ export default async function MonComptePage() {
             </div>
           )}
         </section>
+
+        <div className="mt-12">
+          <SupprimerCompte
+            nomPlateforme={NOM_PLATEFORME}
+            newsletters={newslettersCompte}
+            abonnementsEnCours={abonnementsBloquants}
+            estBoutique={false}
+          />
+        </div>
       </div>
     </main>
   )
