@@ -78,6 +78,6 @@ Source : `Téléchargements/Sonoo_Feedback_Abhi_EN_Final.pdf` (9 pages).
 
 - Code : `app/apercu-vitrine/v2/` (copie de la v1 avec des noms de classes `w-` au lieu de `v-`, pour que les deux pages ne se mélangent pas). Toutes les retouches v2 sont en fin de `vitrine2.css`, bloc « Charte v2 ».
 - Visuels (boutique, 3 téléphones, parcours de relance, tableau de bord, photo studio) : découpes WebP des maquettes dans `public/apercu-vitrine/v2/` (764 Ko). En tablette, on reprend les découpes ordinateur.
-- Polices : **Jost remplace Surgena** (fichiers non fournis) ; texte en Geist (charte). Bleu : `#2477FB` (code du PDF v2).
+- Polices : titres en **Surgena version d'essai** (`app/apercu-vitrine/v2/polices/surgena-essai.ttf`, téléchargée par Jake sur fontspace le 2026-11-16 : licence usage personnel non commercial, demi-gras, **sans accents** : é, è, ê, à, ç… s'affichent en Jost). Aperçu seulement : Jake achètera la licence web s'il garde la police, il faudra alors remplacer ce fichier par la version achetée. Texte en Geist (charte). Bleu : `#2477FB` (code du PDF v2).
 - « Essai gratuit » mène à l'inscription factice de la v1 (validée, pas refaite en v2).
 - Hauteurs mesurées le 2026-11-16 : ordinateur 11 035 px (maquette 11 213), tablette 12 079 (12 398), mobile 13 744 (13 666). Aucun débordement sur le côté.

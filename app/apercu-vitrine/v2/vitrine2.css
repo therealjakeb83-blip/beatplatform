@@ -30,8 +30,8 @@
   --w-ambre-fond: #fdf0d9;
   --w-cyan: #2ee6e0;
 
-  /* Polices : Jost remplace Surgena (titres) en attendant ses fichiers ; texte en Geist (charte) */
-  --w-police-titres: var(--w-police-jost), system-ui, sans-serif;
+  /* Polices : Surgena version d'essai (sans accents : ceux-ci tombent sur Jost) ; texte en Geist (charte) */
+  --w-police-titres: var(--w-police-surgena), var(--w-police-jost), system-ui, sans-serif;
   --w-police-texte: var(--font-geist-sans), system-ui, sans-serif;
   --w-police-mono: var(--font-geist-sans), system-ui, sans-serif;
 
@@ -2690,7 +2690,7 @@ html:has(.vitrine2) {
 
 /* ═════════════ Charte v2 — retouches par rapport à la v1 ═════════════ */
 
-/* Titres en Surgena (remplacée par Jost) */
+/* Titres en Surgena (version d'essai, accents en Jost) */
 .w-titre-1,
 .w-titre-2,
 .w-titre-cta,
