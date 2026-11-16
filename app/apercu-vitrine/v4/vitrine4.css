@@ -3930,3 +3930,40 @@ html:has(.vitrine4) {
     font-size: 72px;
   }
 }
+
+/* Affiliation : carte au bleu du logo, seulement « Bientôt » */
+.y-affil4 {
+  border: 0;
+  background: var(--y-bleu);
+  color: var(--y-blanc);
+}
+.y-affil4-pastille {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  color: var(--y-blanc);
+  font-family: var(--y-police-texte);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Appel final : logo en fond comme sur la v1 (gris très sombre, à moitié hors du bloc) */
+.y-cta-deco {
+  opacity: 1;
+}
+.y-cta .y-titre-cta + p {
+  margin: 24px 0 32px;
+}
+
+/* Haut de page mobile : même traitement que l'appel final, on ne voit que la moitié gauche du logo */
+@media (max-width: 1199px) {
+  .y-hero4-onde {
+    right: -230px;
+    top: 50%;
+    height: 560px;
+    transform: translateY(-50%);
+    opacity: 0.045;
+  }
+}

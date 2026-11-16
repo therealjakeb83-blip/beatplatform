@@ -275,10 +275,7 @@ export default function ApercuVitrineV4Page() {
 
             <div id="affiliation" className="y-affil4 y-ancre">
               <div>
-                <span className="y-affil4-pastille">
-                  <span className="y-rec-point y-rec-point-bleu" />
-                  Programme d’affiliation · bientôt
-                </span>
+                <span className="y-affil4-pastille">Bientôt</span>
                 <h3 className="y-affil4-titre">{sa('Recommande Sonoo. Touche une commission sur chaque abonnement.')}</h3>
               </div>
               <a href={`${contact}?subject=${encodeURIComponent('Programme d’affiliation Sonoo')}`} className="y-bouton y-bouton-blanc y-bouton-grand">
@@ -305,9 +302,10 @@ export default function ApercuVitrineV4Page() {
 
           <div className="y-conteneur y-cta-section">
             <div className="y-cta y-grain">
-              <Symbole hauteur={620} couleur="#2477fb" className="y-cta-deco" />
+              <Symbole hauteur={620} couleur="#141312" className="y-cta-deco" />
               <div className="y-cta-contenu">
                 <h2 className="y-titre-cta">{sa('Arrête de louer ton audience. Construis ta marque.')}</h2>
+                <p>Lance ta boutique Sonoo et garde la relation avec tes clients.</p>
                 <div className="y-cta-boutons">
                   <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-grand">
                     Commencer l’essai gratuit
