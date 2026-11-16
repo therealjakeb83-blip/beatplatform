@@ -208,3 +208,25 @@ export async function identiteAcheteurBoutique(
     nomFamille: f.nom,
   }
 }
+
+// Fusions de doublons de la boutique (virtuelles, annulables) : chaque fiche
+// archivée renvoie à la fiche conservée (en suivant les fusions en chaîne).
+export async function chargerFusionsBoutique(db: SupabaseClient, beatmakerId: string): Promise<{
+  conserveDe: (clientId: string) => string
+  archivesDe: (clientId: string) => string[]
+  estArchive: (clientId: string) => boolean
+}> {
+  const { data } = await db.from('fusions_crm').select('client_id_conserve, client_id_archive').eq('beatmaker_id', beatmakerId)
+  const versConserve = new Map((data ?? []).map(f => [f.client_id_archive as string, f.client_id_conserve as string]))
+  const conserveDe = (id: string) => {
+    let x = id
+    for (let i = 0; i < 20 && versConserve.has(x); i++) x = versConserve.get(x)!
+    return x
+  }
+  const archives = new Map<string, string[]>()
+  for (const a of versConserve.keys()) {
+    const c = conserveDe(a)
+    archives.set(c, [...(archives.get(c) ?? []), a])
+  }
+  return { conserveDe, archivesDe: id => archives.get(id) ?? [], estArchive: id => versConserve.has(id) }
+}

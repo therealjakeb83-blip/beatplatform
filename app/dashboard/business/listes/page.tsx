@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { chargerFusionsBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import ListesClient from './_components/ListesClient'
@@ -59,12 +60,14 @@ export default async function ListesPage() {
     .eq('beatmaker_id', user.id)
     .order('created_at', { ascending: false })
 
+  // Un contact fusionné compte pour une seule personne (comme la page d'une liste)
+  const fusions = await chargerFusionsBoutique(supabase, user.id)
   const listes = (listesRaw ?? []).map(l => ({
     id:          l.id,
     nom:         l.nom,
     description: l.description,
     dateLabel:   formatDate(l.created_at, tz),
-    count:       ((l.listes_crm_contacts ?? []) as { client_id: string }[]).length,
+    count:       new Set(((l.listes_crm_contacts ?? []) as { client_id: string }[]).map(m => fusions.conserveDe(m.client_id))).size,
   }))
 
   return (

@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
+import { chargerFichesBoutique, chargerFusionsBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -61,12 +61,14 @@ export default async function ListeDetailPage({
     'use server'
     const s = await createClient()
     const { data: { user: u } } = await s.auth.getUser()
-    if (!u) return
+    if (!u || u.id !== beatmakerId) return
     const clientId = formData.get('client_id') as string
+    // Contact fusionné : retirer aussi les fiches fusionnées dans celle-ci
+    const fusions = await chargerFusionsBoutique(s, beatmakerId)
     await s.from('listes_crm_contacts')
       .delete()
       .eq('liste_id', listeId)
-      .eq('client_id', clientId)
+      .in('client_id', [clientId, ...fusions.archivesDe(clientId)])
     revalidatePath(`/dashboard/business/listes/${listeId}`)
     revalidatePath('/dashboard/business/listes')
   }
@@ -80,8 +82,12 @@ export default async function ListeDetailPage({
     .order('client_id')
     .range(debut, fin))
 
-  const membreIds = (membresRaw ?? []).map(m => m.client_id)
-  const membreSet = new Set(membreIds)
+  // Fusions de doublons (comme Contacts et Segments) : un membre fusionné
+  // dans un autre contact apparaît sous la fiche conservée, une seule ligne,
+  // avec les achats des deux fiches
+  const fusions   = await chargerFusionsBoutique(supabase, beatmakerId)
+  const membreSet = new Set((membresRaw ?? []).map(m => fusions.conserveDe(m.client_id)))
+  const membreIds = [...membreSet].flatMap(id => [id, ...fusions.archivesDe(id)])
 
   // Tous les IDs clients du beatmaker
   type AvecClient = { client_id: string }
@@ -95,7 +101,7 @@ export default async function ListeDetailPage({
     ...cmdIds.map(c => c.client_id),
     ...leadIds.map(l => l.client_id),
     ...aboIds.map(a => a.client_id),
-  ])]
+  ])].filter(id => !fusions.estArchive(id))
 
   if (allClientIds.length === 0) {
     return (
@@ -146,13 +152,16 @@ export default async function ListeDetailPage({
   const commandes: CommandeListe[] = [...commandesNatives, ...commandesExternes]
 
   // Maps
+  // Tout est rangé sous la fiche conservée (fusions)
   const aboParClient = new Map<string, string>()
   for (const abo of abos) {
-    if (!aboParClient.has(abo.client_id as string)) aboParClient.set(abo.client_id as string, abo.statut)
+    const id = fusions.conserveDe(abo.client_id as string)
+    const ex = aboParClient.get(id)
+    if (!ex || abo.statut === 'actif' || abo.statut === 'impaye') aboParClient.set(id, abo.statut)
   }
   const cmdsParClient = new Map<string, typeof commandes>()
   for (const cmd of commandes) {
-    const id  = cmd.client_id as string
+    const id  = fusions.conserveDe(cmd.client_id as string)
     const arr = cmdsParClient.get(id) ?? []
     arr.push(cmd)
     cmdsParClient.set(id, arr)
@@ -211,7 +220,7 @@ export default async function ListeDetailPage({
         dernier_achat_iso:    dernierAchat,
         premiere_contact_iso: premiereContactISO,
         dernier_contact_iso:  dernierContactISO,
-        newsletter_consent:   statutFusionne(leadData ? [leadData] : []) === 'inscrit',
+        newsletter_consent:   statutFusionne(leads.filter(l => fusions.conserveDe(l.client_id) === c.id)) === 'inscrit',
         lead_source:          leadData?.source === 'import' ? `Import — ${libellePlateforme(leadData.source_plateforme)}` : leadData?.source ?? null,
         lead_nb_favoris:      0,
         lead_nb_free_dl:      0,

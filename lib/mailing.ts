@@ -7,6 +7,7 @@ import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '@/ap
 import { evaluerFiltres, type Condition } from '@/app/dashboard/business/_lib/segments'
 import { peutRecevoirCampagne } from './newsletter'
 import { URL_APP, expediteurBoutique } from './constantes'
+import { chargerFusionsBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 
 const APP_URL = URL_APP
 const LOT_TAILLE = 100 // limite du batch send Resend
@@ -49,7 +50,9 @@ export async function resolveDestinataires(beatmakerId: string, cible: CibleCamp
     if (!liste) return []
     const admin = createAdminClient()
     const { data: membres } = await admin.from('listes_crm_contacts').select('client_id').eq('liste_id', cible.id)
-    const ids = new Set((membres ?? []).map(m => m.client_id))
+    // Membre fusionné dans un autre contact = la fiche conservée (fusions)
+    const fusions = await chargerFusionsBoutique(supabase, beatmakerId)
+    const ids = new Set((membres ?? []).map(m => fusions.conserveDe(m.client_id as string)))
     return consentants.filter(c => ids.has(c.id))
   }
 
