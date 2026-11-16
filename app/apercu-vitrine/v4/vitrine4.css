@@ -3703,3 +3703,18 @@ html:has(.vitrine4) {
     line-height: 66px;
   }
 }
+
+/* L'histoire sur fond crème (demande de Jake) : logo Jake B en noir, textes sombres */
+.y-panneau-creme .y-histoire4-logo img {
+  filter: invert(1);
+  mix-blend-mode: multiply; /* le fond du fichier se fond dans le crème */
+}
+.y-panneau-creme .y-chiffres4 div {
+  border-top-color: var(--y-bordure);
+}
+.y-panneau-creme .y-chiffres4 dd {
+  color: var(--y-texte-doux);
+}
+.y-panneau-creme .y-chiffres4-note {
+  color: var(--y-titre-gris);
+}

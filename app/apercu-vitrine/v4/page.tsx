@@ -217,8 +217,8 @@ export default function ApercuVitrineV4Page() {
           </div>
         </section>
 
-        {/* ——— L'histoire — panneau BLEU pleine largeur, logo Jake B ——— */}
-        <section className="y-panneau y-panneau-bleu y-histoire4-panneau">
+        {/* ——— L'histoire — panneau crème, logo Jake B ——— */}
+        <section className="y-panneau y-panneau-creme y-histoire4-panneau">
           <div className="y-conteneur y-histoire4">
             <div className="y-histoire4-logo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
