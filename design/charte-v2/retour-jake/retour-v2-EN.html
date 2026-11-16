@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sonoo — v2 Feedback</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --bleu:#2477FB; --noir:#050505; --gris:#5b6475; --clair:#F4F1EC; --ligne:#e4e0d8; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--noir); font-size: 10.5pt; line-height: 1.5; margin: 0; background:#fff; }
+  h1 { font-size: 26pt; line-height: 1.1; margin: 0 0 6pt; letter-spacing: -0.5pt; }
+  h2 { font-size: 16pt; margin: 0 0 4pt; letter-spacing: -0.2pt; }
+  h2 .num { color: var(--bleu); font-size: 11pt; font-weight: 600; display:block; letter-spacing: 1pt; margin-bottom: 2pt; }
+  h3 { font-size: 12pt; margin: 14pt 0 4pt; }
+  p { margin: 0 0 6pt; }
+  ul { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 3pt; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .cover { padding-top: 40mm; }
+  .cover .sous { color: var(--gris); font-size: 12pt; margin-bottom: 26pt; }
+  .encart { background: var(--clair); border-left: 4px solid var(--bleu); padding: 10pt 12pt; margin: 10pt 0 12pt; border-radius: 4px; }
+  .encart.noir { background: var(--noir); color:#fff; border-left-color: var(--bleu); }
+  .tag { display:inline-block; font-size: 8pt; font-weight: 700; letter-spacing: .8pt; text-transform: uppercase; padding: 2pt 7pt; border-radius: 20pt; margin-right: 4pt; }
+  .tag.ok { background:#dff3e4; color:#17633a; }
+  .tag.ko { background:#fde2e1; color:#9b1c1c; }
+  .tag.demande { background:#dceaff; color:#1a4fa8; }
+  .tag.plus-tard { background:#ece9e3; color:#5b6475; }
+  .tag.mieux { background:#fff1d6; color:#8a5a00; }
+  figure { margin: 8pt 0 10pt; }
+  figure img { width: 100%; border: 1px solid var(--ligne); border-radius: 6px; display:block; }
+  figcaption { font-size: 8.5pt; color: var(--gris); margin-top: 3pt; }
+  .duo { display:flex; gap: 8pt; }
+  .duo figure { flex:1; }
+  .mobile img { width: auto; max-width: 100%; height: 210pt; margin: 0 auto; }
+  .lien { color: var(--bleu); word-break: break-all; font-size: 9pt; }
+  .grille-photos { display:grid; grid-template-columns: repeat(4, 1fr); gap: 5pt; }
+  .grille-photos img { width:100%; height: 168pt; object-fit: cover; border-radius: 4px; display:block; }
+  .logo-jb { display:flex; gap: 14pt; align-items:center; }
+  .logo-jb img { height: 70pt; }
+  .logo-jb .fond-noir { background:#000; padding: 8pt; border-radius: 6px; }
+  .petit { font-size: 9pt; color: var(--gris); }
+  .som li { margin-bottom: 2pt; }
+  .section { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER + INTRO ============ -->
+<div class="page cover">
+  <p class="tag demande">Feedback on v2</p>
+  <h1>Sonoo — Brand Style Guide &amp; landing page</h1>
+  <p class="sous">Jake’s feedback on version 2 · November 16, 2026</p>
+
+  <p>Hi Abhi,</p>
+  <p>Thank you for this v2, I can clearly see you took my first feedback into account. Here are my comments, with screenshots and examples so the direction is clear.</p>
+
+  <div class="encart noir">
+    <p><strong>Priority: the desktop landing page only.</strong></p>
+    <p>Most of my customers work on their computer all day and will run their Sonoo business from their PC. So this is the most important version. It will also save you some work.</p>
+    <p style="margin:0">Once I have approved the desktop version, we will adapt it to tablet and mobile. My mobile comments are grouped at the end (“For later”) so they don’t get lost, but you don’t need to work on them now.</p>
+  </div>
+
+  <h3>Contents</h3>
+  <ol class="som">
+    <li>What I like</li>
+    <li>Overall direction (with 5 examples)</li>
+    <li>Section-by-section comments</li>
+    <li>The Surgena font</li>
+    <li>Imagery</li>
+    <li>The Brand Style Guide</li>
+    <li>For later (tablet and mobile)</li>
+  </ol>
+</div>
+
+<!-- ============ 1 ============ -->
+<div class="page">
+  <h2><span class="num">01</span>What I like</h2>
+  <ul>
+    <li><span class="tag mieux">Better</span> <strong>The new hero section</strong>: it’s better than in v1, but there is still room for improvement (see comment 3.1).</li>
+    <li><span class="tag ok">I like</span> <strong>Section 01 “Ta marque” on desktop</strong>, with the 3 phones.</li>
+    <li><span class="tag ok">I like</span> <strong>The black background of section 03 “Tout-en-un”</strong>: this is exactly the kind of contrast I want to see more often.</li>
+    <li><span class="tag mieux">Better</span> <strong>The dashboard</strong>: it’s already better, it looks less like BeatStars. We will fully redesign it later, when we work on the app UI, so no need to spend time on it now.</li>
+  </ul>
+  <figure>
+    <img src="captures/01-section03-fond-noir.png">
+    <figcaption>Section 03 “Tout-en-un”: I really like the black background.</figcaption>
+  </figure>
+</div>
+
+<!-- ============ 2 ============ -->
+<div class="page">
+  <h2><span class="num">02</span>Overall direction</h2>
+  <p>For now the page is very classic. I’d like you to take more risks with the layouts. Here are the four main ideas:</p>
+
+  <h3>2.1 · Alternate black and white backgrounds</h3>
+  <p>I’d like more sections with a black background, like section 03, alternating with the light sections. This contrast gives rhythm and makes the page easier to read.</p>
+
+  <h3>2.2 · One full-width blue section</h3>
+  <p>I’d also like one section with a blue background (the logo blue), like the store block in v1, but <strong>spanning the full width of the screen</strong>. I’ll let you choose where on the page it has the most impact.</p>
+
+  <h3>2.3 · Much less text</h3>
+  <p>Too much information kills the information. Each section should show <strong>one strong idea</strong>: a great visual that speaks for itself, a headline and a short text. No need to detail everything every time (see comment 3.2).</p>
+  <p>Sonoo has a lot of features, so we will never be as minimal as a site like Deezer, but that’s the direction: <strong>less, but better shown</strong>.</p>
+
+  <h3>2.4 · Bolder layouts</h3>
+  <p>Visuals that break out of their frame, tilted phones and cards that overlap, text and image switching sides from one section to the next, small hand-drawn annotations… The 5 examples on the following pages show what I have in mind.</p>
+
+  <div class="encart">
+    <p style="margin:0"><strong>Important:</strong> these are inspiration for the mood and the way the page is composed. I don’t want to copy any of these sites.</p>
+  </div>
+</div>
+
+<!-- Deezer -->
+<div class="page">
+  <h2><span class="num">Example 1</span>Deezer — deezer.com/fr</h2>
+  <p>What I like: the page is <strong>very clean</strong> (very little information), it plays with a <strong>strong black / white contrast</strong>, navigation feels nice and the <strong>curved transitions</strong> between the black and white sections are great.</p>
+  <p class="petit">I know I asked you to avoid any resemblance to Deezer for the logo: that’s still true. Here, I’m only interested in the structure and rhythm of the page, not their look.</p>
+  <figure>
+    <img src="captures/09c-inspi-deezer-vue-ensemble.png">
+    <figcaption>Zoomed-out overview: very little information, white / black alternation.</figcaption>
+  </figure>
+  <div class="duo">
+    <figure><img src="captures/09a-inspi-deezer-courbe-noir-blanc.png"><figcaption>Curved transition between black and white.</figcaption></figure>
+    <figure><img src="captures/09b-inspi-deezer-offres.png"><figcaption>Dark section, strong headline, little text.</figcaption></figure>
+  </div>
+</div>
+
+<!-- Pro Finance -->
+<div class="page">
+  <h2><span class="num">Example 2</span>Pro Finance (Dribbble, Conceptzilla)</h2>
+  <p class="lien">https://dribbble.com/shots/16709886-Landing-Page-Design-For-a-Finance-Investment-Platform</p>
+  <p>What I like: the clean style and <strong>the way visuals and information are placed</strong>. Tilted, overlapping phones breaking out of the color block, text and image alternating left then right, one headline and 2-3 lines per section, the rounded black banner for the call to action.</p>
+  <div class="duo">
+    <figure><img src="captures/10-inspi-dribbble-profinance-1.png"></figure>
+    <figure><img src="captures/10-inspi-dribbble-profinance-2.png"></figure>
+  </div>
+  <div class="duo">
+    <figure><img src="captures/10-inspi-dribbble-profinance-3.png"></figure>
+    <figure><img src="captures/10-inspi-dribbble-profinance-4.png"></figure>
+  </div>
+</div>
+
+<!-- HackerRank -->
+<div class="page">
+  <h2><span class="num">Example 3</span>HackerRank (Dribbble, Ramotion)</h2>
+  <p class="lien">https://dribbble.com/shots/26414267-B2B-SaaS-Landing-Page-Design-for-HackerRank</p>
+  <p>Here, it’s not so much the hero I like. It’s mainly <strong>the use of color with alternating contrast</strong> (dark cards on a light background, black sections), <strong>the placement of the visuals</strong> (a real photo with UI cards layered on top) and <strong>the annotations</strong> (the hand-written “AI Delegated” arrow).</p>
+  <div class="duo">
+    <figure><img src="captures/11-inspi-dribbble-hackerrank-2.png"></figure>
+    <figure><img src="captures/11-inspi-dribbble-hackerrank-3.png"></figure>
+  </div>
+  <figure><img src="captures/11-inspi-dribbble-hackerrank-4.png"></figure>
+</div>
+
+<!-- Stable + ChronoTask -->
+<div class="page">
+  <h2><span class="num">Example 4</span>Stable (Dribbble, Ramotion)</h2>
+  <p class="lien">https://dribbble.com/shots/19461210-B2B-Web-Design-for-Stable-business-landing-web-site-page</p>
+  <p>What I like: very stylish, <strong>well-executed color contrast</strong>, and <strong>very concise text that gets straight to the point</strong>.</p>
+  <div class="duo">
+    <figure><img src="captures/12-inspi-dribbble-stable-1.png"></figure>
+    <figure><img src="captures/12-inspi-dribbble-stable-2.png"></figure>
+  </div>
+
+  <h2 style="margin-top:14pt"><span class="num">Example 5</span>ChronoTask (Dribbble, Outcrowd)</h2>
+  <p class="lien">https://dribbble.com/shots/25000009-ChronoTask-Landing-Page</p>
+  <p>What I like: <strong>the way visuals are arranged to present the features</strong>, and the hero (centered headline, small cards and icons placed around it, slightly tilted). However, <strong>it lacks contrast</strong>: everything is light and grey. Take the layout, not the colors.</p>
+  <div class="duo">
+    <figure><img src="captures/13-inspi-dribbble-chronotask-1.png"></figure>
+    <figure><img src="captures/13-inspi-dribbble-chronotask-3.png"></figure>
+  </div>
+</div>
+
+<!-- ============ 3 ============ -->
+<div class="page">
+  <h2><span class="num">03</span>Section-by-section comments</h2>
+
+  <div class="section">
+  <h3>3.1 · Hero</h3>
+  <p><span class="tag mieux">Better</span> The new hero is better than the v1 one, but I want to rework it. Here are the areas for improvement:</p>
+  <p><span class="tag demande">To change</span> I wonder if showing a store as the main visual is the right choice, since section 01 right below already presents store templates: we see the same thing twice. We should find <strong>a more distinctive, more striking visual</strong>. I’ll let you suggest something (examples 4 and 5 may inspire you, but you’re free).</p>
+  <p><span class="tag demande">To change</span> A <strong>bolder composition</strong>, less centered and classic (see 2.4 and examples 2 and 5: tilted, overlapping elements, or elements breaking out of the frame).</p>
+  <p><span class="tag ok">I like</span> The Surgena font works well in this headline (see part 04).</p>
+  <figure><img src="captures/05-haut-de-page.png" style="width:80%"></figure>
+  </div>
+</div>
+
+<div class="page">
+  <div class="section">
+  <h3>3.2 · The “icon + title + text” rows under the visuals</h3>
+  <p><span class="tag ko">I don’t like</span> Under the visuals of sections 01, 02 and 03, there is each time a row of 3 or 4 blocks with an icon, a title and a paragraph. Even if the info is useful, it’s too much: it spoils the sections a bit.</p>
+  <p><span class="tag demande">To change</span> The visuals should speak more for themselves, with a short text to explain, without detailing everything every time.</p>
+  <figure><img src="captures/04a-blocs-icones-section01.png"><figcaption>Section 01</figcaption></figure>
+  <figure><img src="captures/04b-blocs-icones-section02.png"><figcaption>Section 02</figcaption></figure>
+  <figure><img src="captures/04c-blocs-icones-section03.png"><figcaption>Section 03</figcaption></figure>
+  </div>
+</div>
+
+<div class="page">
+  <div class="section">
+  <h3>3.3 · Section 04 “Administratif &amp; paiements”: to remove</h3>
+  <p><span class="tag demande">To change</span> I’d rather not have a dedicated section. Automatic contracts and invoices can simply be <strong>mentioned in section 03 “Tout-en-un”</strong>. The “0 % commission” block goes with this section; we can mention it elsewhere (it’s already under the hero buttons).</p>
+  </div>
+
+  <div class="section">
+  <h3>3.4 · Section 05 “L’histoire”</h3>
+  <p><span class="tag demande">To change</span> Instead of the photo, <strong>please use my Jake B logo</strong> (files attached: black transparent version, and two white versions). I may find a photo of me in the studio later.</p>
+  <div class="logo-jb">
+    <img src="logo-jake-b/LOGO noir GROS détouré.png">
+    <span class="fond-noir"><img src="logo-jake-b/LOGO blanc GROS.png"></span>
+  </div>
+  <figure style="margin-top:10pt"><img src="captures/06-section05-histoire.png" style="width:80%"></figure>
+  </div>
+</div>
+
+<!-- ============ 4 ============ -->
+<div class="page">
+  <h2><span class="num">04</span>The Surgena font</h2>
+  <p><span class="tag ok">I like</span> In the <strong>hero headline</strong>, its strong character doesn’t bother me, quite the opposite.</p>
+  <p><span class="tag ko">I don’t like</span> Now that I see it across the whole page, I find <strong>the half-cut “s” in the section headings</strong> odd: we lose readability.</p>
+  <figure><img src="captures/07b-surgena-hero.png" style="width:75%"><figcaption>Hero: it works.</figcaption></figure>
+  <figure><img src="captures/07a-surgena-titre-section.png"><figcaption>Section heading: the “s” hurts readability.</figcaption></figure>
+  <p><span class="tag demande">Question</span> Which solution seems best to you?</p>
+  <ol>
+    <li>A softer version of Surgena (for example with a more classic “s”), if it exists;</li>
+    <li>another font in a similar style, more readable;</li>
+    <li>a compromise: Surgena only for the hero headline, and a more readable font for the section headings.</li>
+  </ol>
+  <p class="petit">I’ll buy the license once we have made a final decision on the font.</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<div class="page">
+  <h2><span class="num">05</span>Imagery</h2>
+  <p>I’m still not on board with the images in the guide. It’s not a big deal in itself, since I’m the only one who sees the Brand Style Guide, but it’s important that <strong>you understand the direction</strong> we’re taking, because it will guide everything else.</p>
+  <div class="encart">
+    <p style="margin:0">It may seem paradoxical: we’re building a professional platform, but the type beat market is overwhelmingly rap. <strong>We need to be professional while representing rap culture.</strong></p>
+  </div>
+  <p>Here are photos that better define the image I expect. What they have in common:</p>
+  <ul>
+    <li>studio or stage, at night or in low light;</li>
+    <li>either high-contrast black and white, or a blue / purple mood (which fits the Sonoo blue very well);</li>
+    <li>smoke, headphones, mics, mixing desks, DAW screens;</li>
+    <li>people often in profile, from behind, or with their face partly hidden;</li>
+    <li>candid moments, not posed; a grainy, cinematic look;</li>
+    <li>a real rap / trap style.</li>
+  </ul>
+  <p class="petit">All these photos come from Pinterest. They are only meant to inspire you, not necessarily to be used as they are.</p>
+</div>
+
+<div class="page">
+  <div class="grille-photos">
+    <img src="captures/photos-reference/photo-01.png"><img src="captures/photos-reference/photo-02.png"><img src="captures/photos-reference/photo-03.png"><img src="captures/photos-reference/photo-04.png">
+    <img src="captures/photos-reference/photo-05.png"><img src="captures/photos-reference/photo-06.png"><img src="captures/photos-reference/photo-07.png"><img src="captures/photos-reference/photo-08.png">
+    <img src="captures/photos-reference/photo-09.png"><img src="captures/photos-reference/photo-10.png"><img src="captures/photos-reference/photo-11.png"><img src="captures/photos-reference/photo-12.png">
+    <img src="captures/photos-reference/photo-13.png"><img src="captures/photos-reference/photo-14.png"><img src="captures/photos-reference/photo-15.png"><img src="captures/photos-reference/photo-16.png">
+  </div>
+  <p class="petit" style="margin-top:6pt">Source: Pinterest — inspiration only.</p>
+</div>
+
+<!-- ============ 6 + 7 ============ -->
+<div class="page">
+  <h2><span class="num">06</span>The Brand Style Guide</h2>
+  <ul>
+    <li><span class="tag ok">I like</span> <strong>The cream white background</strong> of the landing page mockups: I really like it. But it doesn’t appear in the guide’s palette, which only shows pure white. <span class="tag demande">To add</span> Could you officially add it to the palette, with its color code?</li>
+    <li><span class="tag demande">At the end</span> <strong>The moodboard</strong>: please send it again, updated with this new direction, once we’re done.</li>
+  </ul>
+
+  <h2 style="margin-top:22pt"><span class="num">07</span>For later (tablet and mobile)</h2>
+  <p class="petit">To handle only once the desktop version is approved. I’m noting them here so they don’t get lost.</p>
+  <ul>
+    <li><span class="tag plus-tard">Mobile</span> <strong>Section 01 “Ta marque”</strong>: the phones are too big and the side ones are cut off. It feels badly framed and surprising when scrolling (not in a good way). I like the desktop version, though.</li>
+    <li><span class="tag plus-tard">Mobile</span> <strong>Open menu</strong>: the bold page names bother me, I preferred the v1 font. However, I really like the logo pattern added in the background.</li>
+    <li><span class="tag plus-tard">Tablet / mobile</span> The <strong>Sign-up</strong> page mockups.</li>
+    <li><span class="tag plus-tard">Tablet</span> The section 03 dashboard is cut off on the right (text cut mid-word), and its logo is a diamond whereas it’s the wave on desktop.</li>
+  </ul>
+  <div class="duo" style="margin-top:8pt">
+    <figure class="mobile"><img src="captures/03-section01-telephones-mobile.png"><figcaption style="text-align:center">Section 01 on mobile</figcaption></figure>
+    <figure class="mobile"><img src="captures/08-menu-mobile.png"><figcaption style="text-align:center">Mobile menu</figcaption></figure>
+  </div>
+
+  <p style="margin-top:16pt">Thanks again, can’t wait to see what’s next!<br><strong>Jake</strong></p>
+</div>
+
+</body>
+</html>
