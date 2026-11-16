@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
+import { identiteAcheteurBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { envoyerEmailUnique } from './email-logger'
 import { NOM_PLATEFORME, URL_APP, EMAIL_CONTACT, expediteurBoutique } from './constantes'
 import { libelleMotifLitige } from './litiges-libelles'
@@ -1568,12 +1569,14 @@ async function destinataireClient(commandeId: string) {
   const admin = createAdminClient()
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, beatmaker_id, client_id, acheteur_email, clients(email)')
+    .select('id, beatmaker_id, client_id, acheteur_email')
     .eq('id', commandeId)
     .maybeSingle()
   if (!commande) return null
-  const client = commande.clients as unknown as { email: string | null } | null
-  const email = commande.acheteur_email ?? client?.email ?? null
+  // Repli : fiche de la boutique qui a vendu (9d lot 2), jamais la fiche commune
+  const email = commande.acheteur_email
+    ?? (await identiteAcheteurBoutique(admin, commande.beatmaker_id, commande.client_id))?.email
+    ?? null
   const { data: lignes } = await admin
     .from('commande_lignes')
     .select('licence_nom, beats(titre)')

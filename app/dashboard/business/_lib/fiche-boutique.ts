@@ -188,3 +188,23 @@ export async function modifierFicheBoutique(
     throw new Error('Enregistrement impossible')
   }
 }
+
+// Identité d'un acheteur pour un document ou un email d'une commande, quand la
+// commande n'a pas sa propre copie (ex. commande d'abonnement) : fiche de la
+// boutique qui a vendu (9d lot 2), jamais la fiche commune.
+export async function identiteAcheteurBoutique(
+  admin: SupabaseClient,
+  beatmakerId: string,
+  clientId: string | null,
+): Promise<{ email: string | null; nom: string | null; adresse: string | null; prenom: string | null; nomFamille: string | null } | null> {
+  if (!clientId) return null
+  const f = await chargerFicheBoutique(admin, beatmakerId, clientId)
+  if (!f) return null
+  return {
+    email: emailPrincipal(f),
+    nom: nomCompletFiche(f) || null,
+    adresse: f.adresses[0] ? adresseAffichee(f.adresses[0]) : null,
+    prenom: f.prenom,
+    nomFamille: f.nom,
+  }
+}

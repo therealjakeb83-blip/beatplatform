@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { identiteAcheteurBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from '@/lib/email-logger'
@@ -29,8 +30,7 @@ export async function POST(
   const { data: commande } = await admin
     .from('commandes')
     .select(`
-      id, acheteur_email, acheteur_nom, beatmaker_id, client_id, licence_annulee_at,
-      clients (email, prenom, nom)
+      id, acheteur_email, acheteur_nom, beatmaker_id, client_id, licence_annulee_at
     `)
     .eq('id', commandeId)
     .eq('beatmaker_id', user.id)
@@ -56,14 +56,14 @@ export async function POST(
     acheteur_nom: string | null
     beatmaker_id: string
     client_id: string | null
-    clients: { email: string; prenom: string | null; nom: string } | null
   }
   const items = (lignes ?? []) as unknown as { beats: { titre: string } | null; licences: { nom: string } | null }[]
 
-  const destinataire = c.clients?.email ?? c.acheteur_email
-  const nomDestinataire = c.clients
-    ? [c.clients.prenom, c.clients.nom].filter(Boolean).join(' ')
-    : c.acheteur_nom ?? destinataire
+  // Email et nom de la commande d'abord, sinon fiche de CETTE boutique (9d
+  // lot 2) — jamais l'adresse de la fiche commune
+  const fiche = (!c.acheteur_email || !c.acheteur_nom) ? await identiteAcheteurBoutique(admin, user.id, c.client_id) : null
+  const destinataire = c.acheteur_email ?? fiche?.email ?? null
+  const nomDestinataire = c.acheteur_nom ?? fiche?.nom ?? destinataire
 
   if (!destinataire) {
     return NextResponse.json({ error: 'Aucun email pour ce client' }, { status: 400 })

@@ -1,4 +1,5 @@
 import type Stripe from 'stripe'
+import { identiteAcheteurBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { PDFDocument } from 'pdf-lib'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
@@ -377,11 +378,13 @@ async function fusionnerPdf(contenus: Buffer[]): Promise<Buffer> {
 async function preparerPreuvesCommande(admin: Admin, commandeId: string) {
   const { data: commande } = await admin
     .from('commandes')
-    .select('id, created_at, beatmaker_id, acheteur_email, acheteur_nom, acheteur_adresse, facture_pdf_url, clients(email, prenom, nom)')
+    .select('id, created_at, beatmaker_id, acheteur_email, acheteur_nom, acheteur_adresse, facture_pdf_url, client_id')
     .eq('id', commandeId)
     .single()
   if (!commande) throw new Error('Commande introuvable')
-  const client = commande.clients as unknown as { email: string | null; prenom: string | null; nom: string | null } | null
+  // Repli : fiche de la boutique qui a vendu (9d lot 2), jamais la fiche commune
+  const fiche = await identiteAcheteurBoutique(admin, commande.beatmaker_id, commande.client_id)
+  const client = fiche ? { email: fiche.email, prenom: fiche.prenom, nom: fiche.nomFamille } : null
 
   const [{ data: boutique }, { data: lignes }, { data: telechargements }] = await Promise.all([
     admin.from('beatmakers').select('nom_artiste, slug, fuseau_horaire').eq('id', commande.beatmaker_id).single(),

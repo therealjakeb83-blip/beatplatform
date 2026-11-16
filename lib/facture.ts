@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, rgb, StandardFonts } from 'pdf-lib'
+import { identiteAcheteurBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 import sharp from 'sharp'
 import type { createAdminClient } from '@/utils/supabase/admin'
 import { NOM_PLATEFORME } from './constantes'
@@ -362,16 +363,13 @@ async function chargerFactureCommande(
   let acheteurEmail = commande.acheteur_email
   let acheteurAdresse = commande.acheteur_adresse
   if (!acheteurNom && !acheteurEmail && commande.client_id) {
-    const { data: client } = await admin
-      .from('clients')
-      .select('prenom, nom, email, adresse, ville, code_postal, pays')
-      .eq('id', commande.client_id)
-      .maybeSingle()
-    if (client) {
-      acheteurNom = [client.prenom, client.nom].filter(Boolean).join(' ') || null
-      acheteurEmail = client.email
-      const codePostalVille = [client.code_postal, client.ville].filter(Boolean).join(' ')
-      acheteurAdresse = [client.adresse, codePostalVille, client.pays].filter(Boolean).join(', ') || null
+    // Fiche de la boutique qui a vendu (9d lot 2), jamais la fiche commune :
+    // une adresse donnée à une autre boutique ne doit pas apparaître ici
+    const fiche = await identiteAcheteurBoutique(admin, commande.beatmaker_id, commande.client_id)
+    if (fiche) {
+      acheteurNom = fiche.nom
+      acheteurEmail = fiche.email
+      acheteurAdresse = fiche.adresse
     }
   }
 
