@@ -54,7 +54,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     admin.from('listes_crm_contacts').select('added_at, listes_crm!inner(nom, beatmaker_id)')
       .eq('listes_crm.beatmaker_id', bm).in('client_id', ids),
     admin.from('favoris').select('created_at, beats!inner(titre, beatmaker_id)').eq('beats.beatmaker_id', bm).in('client_id', ids),
-    admin.from('morceaux_clients').select('created_at, titre, lien_spotify').eq('beatmaker_id', bm).in('client_id', ids),
+    // morceaux_clients : pas de droit pour la clé de service, lu avec la session du beatmaker (règle « own »)
+    supabase.from('morceaux_clients').select('created_at, titre, lien_spotify').eq('beatmaker_id', bm).in('client_id', ids),
   ])
   const erreur = [commandes, abos, freeDl, externes, logs, listes, favoris, morceaux].find(r => r.error)?.error
   if (erreur) {
