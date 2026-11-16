@@ -128,7 +128,7 @@
 > - [x] T10 — Règles par champ — ✅ PGlite (rempli une fois, dernière valeur, listes, main du beatmaker, 1er contact figé, isolation entre boutiques, droits clé de service seule)
 > - [x] T11 — Reconstruction relancée une dernière fois après la mise en ligne (Jake SQL, Claude lit) — ✅ 2026-11-16 : 0 à créer, 0 modifiée, 2 810 fiches, 0 sans email (aucune connexion ni achat depuis le lot 2) ; ne plus jamais la relancer
 > - [x] T12 — Relevé final : écritures restantes de `clients` = ligne minimale (email), compte de la personne (`lierCompteClient`), complément de ses paiements (préremplissage), Admin (lot 4) — ✅ 2026-11-16
-> - [ ] T13 — Rien de cassé : compilation ✅, déploiement Ready ✅, boutique/paiement 200 ✅ ; journaux Vercel après les tests de Jake
+> - [ ] T13 — Rien de cassé : compilation ✅, déploiement Ready ✅, boutique/paiement 200 ✅ ; tests de Claude en ligne le 2026-11-16 : inscription `nicojacob83+9d3@` sur jakeb-test (API, 200), newsletter `nicojacob83+9d3nl@` sur nic-beat-2809 (API, 200), achat visiteur `nicojacob83+9d3achat@` sur jakeb-test (navigateur de test, carte 4242, beat collab « Ambitieux » MP3, commande 95ec936b, « Paiement confirmé ») ; 0 erreur dans les journaux Vercel (1 h) ; fiches à lire par Jake (`.scratch/9d-lot3-T13-fiches.sql`) ; réinscription d'une adresse désinscrite = test de Jake (email dans sa boîte)
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
 
