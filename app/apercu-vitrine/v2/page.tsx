@@ -6,6 +6,7 @@ import { Faq } from './_composants/Faq'
 import { ImageAdaptative } from './_composants/ImageAdaptative'
 import { Logo, Symbole } from './_composants/Logo'
 import { CHEMIN_INSCRIPTION, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
+import { sansAccents as sa } from './_composants/sansAccents'
 import * as I from './_composants/Icones'
 import * as M from './_composants/IconesMarque'
 
@@ -123,7 +124,7 @@ export default function ApercuVitrineV2Page() {
             La plateforme e-commerce des beatmakers
           </p>
           <h1 className="w-titre-1">
-            Tes beats méritent mieux <span className="w-titre-bleu">qu’une marketplace.</span>
+            {sa('Tes beats méritent mieux')} <span className="w-titre-bleu">qu’une marketplace.</span>
           </h1>
           <p className="w-hero-texte">
             Ta boutique à ton image, tes clients rien qu’à toi et tous les outils pour faire grandir ton business. Sans
@@ -183,7 +184,7 @@ export default function ApercuVitrineV2Page() {
         <section className="w-section w-conteneur">
           <div className="w-tete-centree">
             <Etiquette centree>02 — Croissance</Etiquette>
-            <h2 className="w-titre-2">Vends plus. Fidélise mieux.</h2>
+            <h2 className="w-titre-2">{sa('Vends plus. Fidélise mieux.')}</h2>
             <p className="w-tete-texte">
               Sonoo garde le lien avec chacun de tes clients, les relance au bon moment et transforme tes fans en abonnés.
               Automatiquement.
@@ -344,7 +345,7 @@ export default function ApercuVitrineV2Page() {
             />
             <div className="w-histoire-texte">
               <Etiquette>05 — L’histoire</Etiquette>
-              <h2 className="w-titre-2">Créé par un beatmaker, pour les beatmakers.</h2>
+              <h2 className="w-titre-2">{sa('Créé par un beatmaker, pour les beatmakers.')}</h2>
               <p className="w-histoire-intro">
                 Jake B compose sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats,
                 ouvert à tous les beatmakers.
@@ -412,7 +413,7 @@ export default function ApercuVitrineV2Page() {
         <section id="tarifs" className="w-tarifs w-ancre">
           <div className="w-section w-conteneur">
             <Etiquette centree>Tarifs</Etiquette>
-            <h2 className="w-titre-2 w-centre">Un prix simple. Zéro commission.</h2>
+            <h2 className="w-titre-2 w-centre">{sa('Un prix simple. Zéro commission.')}</h2>
             <p className="w-tete-texte w-centre w-tarifs-intro">
               Un abonnement fixe, tous les outils inclus. Essai gratuit disponible sur l’offre Pro.
             </p>
@@ -480,7 +481,7 @@ export default function ApercuVitrineV2Page() {
         <section id="faq" className="w-section w-conteneur w-ancre w-faq">
           <div className="w-faq-intro">
             <Etiquette>FAQ</Etiquette>
-            <h2 className="w-titre-2">Questions fréquentes</h2>
+            <h2 className="w-titre-2">{sa('Questions fréquentes')}</h2>
             <p className="w-faq-sous">Une autre question ? Notre équipe te répond.</p>
             <a href={contact} className="w-bouton w-bouton-contour w-bouton-petit">
               <I.Enveloppe taille={18} />
@@ -496,7 +497,7 @@ export default function ApercuVitrineV2Page() {
             <Symbole hauteur={620} couleur="#141312" className="w-cta-deco" />
             <div className="w-cta-contenu">
               <Etiquette>Prêt à te lancer ?</Etiquette>
-              <h2 className="w-titre-cta">Arrête de louer ton audience. Construis ta marque.</h2>
+              <h2 className="w-titre-cta">{sa('Arrête de louer ton audience. Construis ta marque.')}</h2>
               <p>Lance ta boutique Sonoo et garde la relation avec tes clients.</p>
               <div className="w-cta-boutons">
                 <Link href={CHEMIN_INSCRIPTION} className="w-bouton w-bouton-bleu w-bouton-grand">

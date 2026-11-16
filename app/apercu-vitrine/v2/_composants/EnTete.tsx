@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Logo, Symbole } from './Logo'
 import { Croix, Etincelle, Fleche, FlecheDiagonale, Menu } from './Icones'
 import { CHEMIN_INSCRIPTION, CHEMIN_VITRINE } from './liens'
+import { sansAccents } from './sansAccents'
 
 const LIENS = [
   { libelle: 'Fonctionnalités', href: '#fonctionnalites' },
@@ -117,7 +118,7 @@ export function EnTete({ lienBoutique }: { lienBoutique: string }) {
               const contenu = (
                 <>
                   <span className="w-menu-numero">{String(i + 1).padStart(2, '0')}</span>
-                  <span className="w-menu-libelle">{l.libelle}</span>
+                  <span className="w-menu-libelle">{sansAccents(l.libelle)}</span>
                   <FlecheDiagonale taille={20} />
                 </>
               )
