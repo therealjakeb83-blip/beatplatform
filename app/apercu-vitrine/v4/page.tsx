@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import { adresseBoutique } from '@/lib/adresse-boutique'
 import { EMAIL_CONTACT } from '@/lib/constantes'
 import { EnTete } from './_composants/EnTete'
@@ -10,16 +11,16 @@ import { sansAccents as sa } from './_composants/sansAccents'
 import * as I from './_composants/Icones'
 import * as M from './_composants/IconesMarque'
 
-// Page test « v3 » : la v2 retravaillée selon le retour envoyé au designer le 2026-11-16
-// (design/charte-v2/retour-jake/NOTES.md). Priorité ordinateur.
-// - fonds alternés crème / noir / bleu, transitions arrondies (inspiration Deezer) ;
-// - haut de page sans boutique : cartes Sonoo inclinées autour du titre (inspiration ChronoTask) ;
-// - plus de rangées « icône + titre + texte » : une idée, une image, une phrase par section ;
-// - texte et image qui changent de côté, annotations « à la main » (inspirations Pro Finance, HackerRank) ;
-// - section 04 supprimée (contrats/factures cités dans « Tout-en-un », 0 % dans la section bleue) ;
-// - « L'histoire » : logo Jake B au lieu de la photo ; aucune photo sur la page ;
-// - Surgena seulement pour le grand titre du haut ; titres de section en Geist.
-// Visuels (téléphones, relance, tableau de bord) : découpes WebP de la v2 (public/apercu-vitrine/v2).
+// Page test « v4 » : une AUTRE interprétation du retour envoyé au designer le 2026-11-16
+// (design/charte-v2/retour-jake/NOTES.md), à comparer avec la v3. Priorité ordinateur.
+// - haut de page NOIR : 3 couches d'interface Sonoo empilées (boutique, clients, paiements),
+//   inspiration Stable ; ambiance studio sans photo (grain, onde du logo, piste audio « REC ») ;
+// - sections = panneaux arrondis aux 4 coins qui se chevauchent (noir, crème, bleu) ;
+// - section bleue = « L'histoire » (logo Jake B) ; le 0 % devient une ligne géante sur crème ;
+// - annotations = étiquettes techniques reliées par un trait (pas d'écriture à la main) ;
+// - titres de section en Space Grotesk (police libre), Surgena seulement pour le grand titre ;
+// - visuels inclinés qui débordent sur le panneau suivant ; aucune photo ajoutée.
+// Visuels : découpes WebP de la v2 (public/apercu-vitrine/v2).
 
 function Etiquette({ children, centree = false }: { children: React.ReactNode; centree?: boolean }) {
   return (
@@ -30,22 +31,28 @@ function Etiquette({ children, centree = false }: { children: React.ReactNode; c
   )
 }
 
-/** Annotation « écrite à la main » avec une flèche courbe. */
-function Annotation({ texte, className, sens = 'bas-gauche' }: { texte: string; className: string; sens?: 'bas-gauche' | 'bas-droite' }) {
+/** Étiquette technique (façon écran de logiciel) reliée à l'image par un trait fin. */
+function Tag({ children, className, trait = 'gauche', longueur = 72 }: { children: React.ReactNode; className: string; trait?: 'gauche' | 'droite'; longueur?: number }) {
   return (
-    <span className={`y-annotation ${className}`} aria-hidden="true">
-      <span className="y-annotation-texte">{texte}</span>
-      <svg className={`y-annotation-fleche y-annotation-${sens}`} width="64" height="56" viewBox="0 0 64 56" fill="none">
-        <path d="M58 4C46 10 30 18 22 34c-3 6-4 11-4 16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-        <path d="M10 42l8 9 8-8" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+    <span className={`y-tag y-tag-trait-${trait} ${className}`} style={{ '--y-tag-long': `${longueur}px` } as CSSProperties} aria-hidden="true">
+      <span className="y-tag-pastille">
+        <span className="y-tag-point" />
+        {children}
+      </span>
+      <span className="y-tag-trait" />
     </span>
   )
 }
 
+// Forme d'onde de la piste du haut de page (calculée, toujours la même).
+const ONDE = Array.from({ length: 132 }, (_, i) => {
+  const v = Math.abs(Math.sin(i * 0.42) * 0.6 + Math.sin(i * 0.13 + 1) * 0.4) * (0.55 + 0.45 * Math.abs(Math.sin(i * 0.051)))
+  return Math.round(14 + v * 86)
+})
+const ONDE_JOUEE = 52
+
 const OUTILS = [
   { icone: M.MarqueBoutique, nom: 'Boutique' },
-  { icone: M.MarqueCatalogue, nom: 'Catalogue' },
   { icone: M.MarqueLicence, nom: 'Licences' },
   { icone: I.Document, nom: 'Contrats & factures' },
   { icone: M.MarqueMembres, nom: 'Clients & e-mails' },
@@ -59,6 +66,12 @@ const CHIFFRES_JAKE = [
   { valeur: '250 M+', texte: 'streams sur sa musique' },
 ]
 
+const CLIENTS_COUCHE = [
+  { initiales: 'LM', nom: 'Luka M.', statut: 'Gold', classe: 'y-statut-gold' },
+  { initiales: 'NK', nom: 'Naya K.', statut: 'Fidèle', classe: 'y-statut-fidele' },
+  { initiales: 'TR', nom: 'Théo R.', statut: 'À relancer', classe: 'y-statut-relance' },
+]
+
 const OFFRE_GRATUITE = ['Réception automatique de ta part sur les ventes en collab', 'Accès au compte Sonoo', '[Autres fonctionnalités à confirmer]']
 const OFFRE_PRO = [
   'Boutique personnalisable sur ton nom de domaine',
@@ -69,8 +82,6 @@ const OFFRE_PRO = [
   'Import de tes clients et de tes ventes',
   '0 % de commission sur tes ventes',
 ]
-
-const BARRES_REVENUS = [38, 52, 44, 60, 56, 72, 66, 84, 78, 100]
 
 const img = (nom: string, largeur: number, hauteur: number) => ({ src: `/apercu-vitrine/v2/${nom}.webp`, largeur, hauteur })
 
@@ -90,207 +101,208 @@ export default function ApercuVitrineV4Page() {
       <EnTete lienBoutique={lienBoutique} />
 
       <main id="y-contenu">
-        {/* ——— Accueil : titre centré, cartes Sonoo inclinées autour ——— */}
-        <section className="y-hero3">
-          <div className="y-conteneur y-hero3-scene">
-            <div className="y-flottant y-flottant-vente" aria-hidden="true">
-              <span className="y-flottant-tete">
-                <span className="y-point-vert" />
-                Nouvelle vente
-              </span>
-              <span className="y-flottant-ligne">
-                <span className="y-pochette" />
-                <span>
-                  <strong>Ambitieux</strong>
-                  <small>Licence WAV · Luka M.</small>
-                </span>
-                <strong className="y-flottant-montant">+49 €</strong>
-              </span>
-            </div>
-
-            <div className="y-flottant y-flottant-revenus" aria-hidden="true">
-              <span className="y-flottant-tete">Revenus · 30 jours</span>
-              <strong className="y-flottant-gros">4 280 €</strong>
-              <span className="y-flottant-hausse">+12,4 %</span>
-              <span className="y-mini-barres">
-                {BARRES_REVENUS.map((h, i) => (
-                  <span key={i} style={{ height: `${h}%` }} />
-                ))}
-              </span>
-            </div>
-
-            <div className="y-flottant y-flottant-relance" aria-hidden="true">
-              <span className="y-avatar">LM</span>
-              <span>
-                <strong>Luka M. est revenu</strong>
-                <small>grâce à la relance automatique</small>
-              </span>
-            </div>
-
-            <div className="y-flottant y-flottant-membre" aria-hidden="true">
-              <span className="y-flottant-icone">
-                <I.Couronne taille={18} />
-              </span>
-              <span>
-                <strong>Nouveau membre Gold</strong>
-                <small>Naya K. · 9,99 € / mois</small>
-              </span>
-            </div>
-
-            <div className="y-flottant y-flottant-symbole" aria-hidden="true">
-              <Symbole hauteur={30} couleur="#2477fb" />
-            </div>
-
-            <div className="y-hero3-centre">
-              <p className="y-badge">
-                <I.Etincelle taille={14} className="y-etiquette-etoile" />
+        {/* ——— Accueil : fond noir, couches Sonoo empilées, piste audio ——— */}
+        <section className="y-hero4 y-grain">
+          <Symbole hauteur={900} couleur="#ffffff" className="y-hero4-onde" />
+          <div className="y-conteneur y-hero4-grille">
+            <div className="y-hero4-texte">
+              <p className="y-badge4">
+                <span className="y-rec-point" />
                 La plateforme e-commerce des beatmakers
               </p>
               <h1 className="y-titre-1">
                 {sa('Tes beats méritent mieux')} <span className="y-titre-bleu">{sa('qu’une marketplace.')}</span>
               </h1>
-              <p className="y-hero-texte">
-                Ta boutique à ton image, tes clients rien qu’à toi et tous les outils pour faire grandir ton business.
-              </p>
+              <p className="y-hero-texte">Ta boutique, tes clients, ton argent. Sans intermédiaire.</p>
               <div className="y-hero-boutons">
                 <Link href={CHEMIN_INSCRIPTION} className="y-bouton y-bouton-bleu y-bouton-grand">
                   Commencer l’essai gratuit
                   <I.Fleche taille={20} />
                 </Link>
-                <a href={lienBoutique} target="_blank" rel="noopener noreferrer" className="y-bouton y-bouton-contour y-bouton-grand">
+                <a href={lienBoutique} target="_blank" rel="noopener noreferrer" className="y-bouton y-bouton-sombre y-bouton-grand">
                   <I.Lecture taille={20} />
                   Voir une boutique
                 </a>
               </div>
-              <ul className="y-hero-preuves">
-                {['0 % de commission', 'Paiements directs', 'Ton nom de domaine'].map(t => (
-                  <li key={t}>
-                    <I.Coche taille={16} />
-                    {t}
-                  </li>
+            </div>
+
+            <div className="y-pile-zone" aria-hidden="true">
+              <div className="y-pile">
+                {/* Couche du bas : paiements */}
+                <div className="y-couche y-couche-paiement" style={{ '--i': 0 } as CSSProperties}>
+                  <span className="y-couche-tete">Versé sur ton compte</span>
+                  <strong className="y-couche-gros">+ 4 280 €</strong>
+                  <span className="y-couche-pastille">0 % de commission</span>
+                </div>
+                {/* Couche du milieu : clients */}
+                <div className="y-couche y-couche-clients" style={{ '--i': 1 } as CSSProperties}>
+                  <span className="y-couche-tete">Tes clients</span>
+                  <ul>
+                    {CLIENTS_COUCHE.map(c => (
+                      <li key={c.nom}>
+                        <span className="y-couche-avatar">{c.initiales}</span>
+                        <span className="y-couche-nom">{c.nom}</span>
+                        <span className={`y-couche-statut ${c.classe}`}>{c.statut}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* Couche du haut : la boutique */}
+                <div className="y-couche y-couche-boutique" style={{ '--i': 2 } as CSSProperties}>
+                  <span className="y-couche-barre">
+                    <strong>JAKE B</strong>
+                    <span className="y-couche-icone">
+                      <I.Boutique taille={14} />
+                    </span>
+                  </span>
+                  <span className="y-couche-pochettes">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                  <span className="y-couche-lecteur">
+                    <span className="y-couche-play">
+                      <I.Lecture taille={12} />
+                    </span>
+                    <span>
+                      <strong>Ambitieux</strong>
+                      <small>Trap · 142 BPM</small>
+                    </span>
+                    <strong className="y-couche-prix">49 €</strong>
+                  </span>
+                </div>
+              </div>
+              <Tag className="y-tag-boutique" trait="gauche" longueur={90}>01 · Ta boutique</Tag>
+              <Tag className="y-tag-clients" trait="gauche" longueur={70}>02 · Tes clients</Tag>
+              <Tag className="y-tag-paiement" trait="gauche" longueur={60}>03 · Ton argent</Tag>
+            </div>
+          </div>
+
+          {/* Piste audio : l'ambiance studio, sans photo */}
+          <div className="y-conteneur" aria-hidden="true">
+            <div className="y-piste">
+              <span className="y-piste-rec">
+                <span className="y-rec-point" />
+                REC
+              </span>
+              <span className="y-piste-titre">Ambitieux — Jake B</span>
+              <span className="y-onde">
+                {ONDE.map((h, i) => (
+                  <span key={i} className={i < ONDE_JOUEE ? 'y-onde-jouee' : undefined} style={{ height: `${h}%` }} />
                 ))}
-              </ul>
+              </span>
+              <span className="y-piste-temps">01:12 / 03:04</span>
             </div>
           </div>
         </section>
 
-        {/* ——— 01 Ta marque — fond noir, texte à gauche ——— */}
-        <section id="fonctionnalites" className="y-bande y-bande-noir y-ancre">
-          <div className="y-conteneur y-duo">
-            <div className="y-duo-texte">
+        {/* ——— 01 Ta marque — panneau crème ——— */}
+        <section id="fonctionnalites" className="y-panneau y-panneau-creme y-ancre">
+          <div className="y-conteneur y-marque4">
+            <div className="y-marque4-texte">
               <Etiquette>01 — Ta marque</Etiquette>
-              <h2 className="y-titre-2">Ta marque au premier plan. Sonoo reste en coulisses.</h2>
-              <p className="y-duo-phrase">Tes couleurs, ton logo, ton nom de domaine. Sonoo ne se voit pas.</p>
-              <a href={lienBoutique} target="_blank" rel="noopener noreferrer" className="y-lien-fleche y-lien-clair">
+              <h2 className="y-titre-2">Ta marque au premier plan.</h2>
+              <p className="y-phrase4">Tes couleurs, ton logo, ton nom de domaine. Sonoo reste en coulisses.</p>
+              <a href={lienBoutique} target="_blank" rel="noopener noreferrer" className="y-lien-fleche">
                 Voir une boutique
                 <I.Fleche taille={16} />
               </a>
             </div>
-            <div className="y-duo-visuel y-deborde-droite">
+            <div className="y-marque4-visuel y-deborde">
               <ImageAdaptative
-                className="y-visuel"
+                className="y-visuel4 y-incline-gauche"
                 alt="Trois boutiques personnalisées sur mobile : Jake B (beats.jakebmusic.com), ACHPRODD (sonoo.app/achprodd) et Nehzia (sonoo.app/nehzia)"
                 ordinateur={telephones}
                 tablette={telephones}
-                mobile={telephones /* les 3 téléphones entiers, rien de coupé (retour de Jake sur la v2 mobile) */}
+                mobile={telephones}
               />
-              <Annotation texte="sur ton propre nom de domaine" className="y-annot-marque" />
+              <Tag className="y-tag-domaine" trait="droite" longueur={84}>Ton nom de domaine</Tag>
+              <Tag className="y-tag-couleurs" trait="gauche" longueur={64}>Tes couleurs</Tag>
             </div>
           </div>
         </section>
 
-        {/* ——— 02 Croissance — fond crème, image à gauche ——— */}
-        <section className="y-bande y-bande-creme">
-          <div className="y-conteneur y-duo y-duo-inverse">
-            <div className="y-duo-visuel y-deborde-gauche">
+        {/* ——— 02 Croissance — panneau noir ——— */}
+        <section className="y-panneau y-panneau-noir y-grain">
+          <div className="y-conteneur">
+            <div className="y-tete4">
+              <Etiquette centree>02 — Croissance</Etiquette>
+              <h2 className="y-titre-2 y-centre">Vends plus. Fidélise mieux.</h2>
+              <p className="y-phrase4 y-centre">Sonoo relance tes clients au bon moment, tout seul.</p>
+            </div>
+            <div className="y-relance4 y-deborde">
               <ImageAdaptative
-                className="y-visuel"
+                className="y-visuel4 y-incline-droite"
                 alt="Un client inactif depuis 60 jours reçoit un e-mail « Ça fait longtemps, Luka » avec un code promo, revient et s’abonne à 9,99 € par mois"
                 ordinateur={relance}
                 tablette={relance}
                 mobile={img('relance-mobile', 780, 1378)}
               />
-              <Annotation texte="envoyé tout seul, au bon moment" className="y-annot-relance" sens="bas-droite" />
-            </div>
-            <div className="y-duo-texte">
-              <Etiquette>02 — Croissance</Etiquette>
-              <h2 className="y-titre-2">Vends plus. Fidélise mieux.</h2>
-              <p className="y-duo-phrase">Sonoo relance tes clients au bon moment et transforme tes fans en abonnés.</p>
+              <Tag className="y-tag-auto" trait="droite" longueur={70}>Automatique</Tag>
+              <Tag className="y-tag-abonne" trait="gauche" longueur={70}>Revenu récurrent</Tag>
             </div>
           </div>
         </section>
 
-        {/* ——— Section bleue pleine largeur : 0 % ——— */}
-        <section className="y-bande y-bande-bleu">
-          <div className="y-conteneur y-zero3">
-            <p className="y-zero3-chiffre">
-              0<span>%</span>
-            </p>
-            <div className="y-zero3-texte">
-              <h2 className="y-titre-2">de commission sur tes ventes.</h2>
-              <p className="y-duo-phrase">L’argent va directement de l’acheteur à toi. Sonoo n’y touche jamais.</p>
-              <div className="y-zero3-flux" role="img" aria-label="49 € vont directement de l’acheteur à ta boutique, Sonoo prélève 0 €">
-                <span className="y-zero3-bout">
-                  <I.Personne taille={20} />
-                  Acheteur
-                </span>
-                <span className="y-zero3-trait">49 €</span>
-                <span className="y-zero3-bout y-zero3-bout-plein">
-                  <I.Boutique taille={20} />
-                  Toi
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ——— 03 Tout-en-un — fond noir ——— */}
-        <section className="y-bande y-bande-noir">
+        {/* ——— 0 % — ligne géante sur crème ——— */}
+        <section className="y-panneau y-panneau-creme y-zero4-panneau">
           <div className="y-conteneur">
-            <div className="y-tete y-tete3">
-              <div>
-                <Etiquette>03 — Tout-en-un</Etiquette>
-                <h2 className="y-titre-2">Un seul abonnement. Au lieu de cinq outils.</h2>
-              </div>
-              <p className="y-tete-texte">
-                Boutique, licences, contrats et factures automatiques, clients, marketing, statistiques : tout se pilote d’ici.
-              </p>
+            <p className="y-zero4">
+              <span className="y-zero4-chiffre">0 %</span> de commission.
+            </p>
+            <div className="y-zero4-bas">
+              <p className="y-phrase4">L’argent va directement de l’acheteur à toi. Sonoo n’y touche jamais.</p>
+              <span className="y-flux4" role="img" aria-label="49 € vont directement de l’acheteur à toi, Sonoo prélève 0 €">
+                <span>Acheteur</span>
+                <span className="y-flux4-trait">49 €</span>
+                <span className="y-flux4-toi">Toi</span>
+              </span>
             </div>
-            <ul className="y-outils">
+          </div>
+        </section>
+
+        {/* ——— 03 Tout-en-un — panneau noir, écran incliné ——— */}
+        <section className="y-panneau y-panneau-noir y-grain y-tout4">
+          <div className="y-conteneur">
+            <div className="y-tete4">
+              <Etiquette centree>03 — Tout-en-un</Etiquette>
+              <h2 className="y-titre-2 y-centre">Un seul abonnement. Au lieu de cinq outils.</h2>
+            </div>
+            <ul className="y-outils4">
               {OUTILS.map(o => (
                 <li key={o.nom}>
-                  <o.icone taille={22} />
+                  <o.icone taille={20} />
                   {o.nom}
                 </li>
               ))}
             </ul>
-            <div className="y-tableau3">
+            <div className="y-ecran4 y-deborde">
               <ImageAdaptative
-                className="y-tableau"
+                className="y-ecran4-image"
                 alt="Le tableau de bord Sonoo : revenus des 30 derniers jours, ventes en direct, clients, top beats et automatisations"
                 ordinateur={tableau}
                 tablette={tableau}
                 mobile={img('tableau-mobile', 660, 1320)}
               />
-              <Annotation texte="tout ton business sur un seul écran" className="y-annot-tableau" />
+              <Tag className="y-tag-contrats" trait="droite" longueur={80}>Contrats & factures auto</Tag>
+              <Tag className="y-tag-ventes" trait="gauche" longueur={80}>Ventes en direct</Tag>
+              <Tag className="y-tag-relance" trait="gauche" longueur={80}>Clients & e-mails</Tag>
             </div>
           </div>
         </section>
 
-        {/* ——— 05 L'histoire — fond crème, logo Jake B ——— */}
-        <section className="y-bande y-bande-creme">
-          <div className="y-conteneur y-histoire3">
-            <div className="y-logo-jb">
+        {/* ——— L'histoire — panneau BLEU pleine largeur, logo Jake B ——— */}
+        <section className="y-panneau y-panneau-bleu y-histoire4-panneau">
+          <div className="y-conteneur y-histoire4">
+            <div className="y-histoire4-logo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/apercu-vitrine/v3/logo-jake-b-blanc.png" alt="Logo de Jake B" width={1200} height={1200} />
             </div>
-            <div className="y-histoire-texte">
+            <div>
               <Etiquette>04 — L’histoire</Etiquette>
               <h2 className="y-titre-2">Créé par un beatmaker, pour les beatmakers.</h2>
-              <p className="y-histoire-intro">
-                Jake B compose sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats.
-              </p>
-              <dl className="y-chiffres">
+              <p className="y-phrase4">Jake B compose sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats.</p>
+              <dl className="y-chiffres4">
                 {CHIFFRES_JAKE.map(c => (
                   <div key={c.valeur}>
                     <dt>{c.valeur}</dt>
@@ -298,59 +310,16 @@ export default function ApercuVitrineV4Page() {
                   </div>
                 ))}
               </dl>
-              <p className="y-chiffres-note">Le parcours de Jake B, fondateur — pas des résultats clients Sonoo.</p>
-            </div>
-          </div>
-
-          {/* ——— Affiliation (carte noire, la grande section bleue étant plus haut) ——— */}
-          <div id="affiliation" className="y-conteneur y-ancre y-affiliation-section">
-            <div className="y-affiliation y-affiliation-noire">
-              <div className="y-affiliation-texte">
-                <span className="y-pastille-claire">
-                  <span className="y-point y-point-blanc" />
-                  Programme d’affiliation · bientôt
-                </span>
-                <h2 className="y-titre-3">Recommande Sonoo. Touche une commission sur chaque abonnement.</h2>
-                <a href={`${contact}?subject=${encodeURIComponent('Programme d’affiliation Sonoo')}`} className="y-bouton y-bouton-blanc y-bouton-grand">
-                  Être prévenu du lancement
-                  <I.Fleche taille={20} />
-                </a>
-              </div>
-              <div className="y-carte-blanche y-parrainage" role="img" aria-label="Exemple de lien de parrainage, bientôt disponible">
-                <div className="y-parrainage-tete">
-                  <span>Ton lien de parrainage</span>
-                  <span className="y-bientot">
-                    <I.Etincelle taille={10} />
-                    Bientôt
-                  </span>
-                </div>
-                <div className="y-parrainage-lien">
-                  <span className="y-mono">sonoo.app/r/jakeb</span>
-                  <span className="y-parrainage-copier">
-                    <I.Copier taille={16} />
-                  </span>
-                </div>
-                <dl className="y-parrainage-lignes">
-                  <div>
-                    <dt>Beatmakers parrainés</dt>
-                    <dd>—</dd>
-                  </div>
-                  <div>
-                    <dt>Commission</dt>
-                    <dd className="y-ambre">[Taux à définir]</dd>
-                  </div>
-                </dl>
-              </div>
+              <p className="y-chiffres4-note">Le parcours de Jake B, fondateur — pas des résultats clients Sonoo.</p>
             </div>
           </div>
         </section>
 
-        {/* ——— Tarifs — fond noir ——— */}
-        <section id="tarifs" className="y-bande y-bande-noir y-tarifs3 y-ancre">
+        {/* ——— Tarifs + affiliation — panneau noir ——— */}
+        <section id="tarifs" className="y-panneau y-panneau-noir y-grain y-tarifs4 y-ancre">
           <div className="y-conteneur">
             <Etiquette centree>Tarifs</Etiquette>
             <h2 className="y-titre-2 y-centre">Un prix simple. Zéro commission.</h2>
-            <p className="y-tete-texte y-centre y-tarifs-intro">Un abonnement fixe, tous les outils inclus.</p>
             <div className="y-offres">
               <article className="y-offre">
                 <div className="y-offre-tete">
@@ -402,11 +371,25 @@ export default function ApercuVitrineV4Page() {
                 </ul>
               </article>
             </div>
+
+            <div id="affiliation" className="y-affil4 y-ancre">
+              <div>
+                <span className="y-affil4-pastille">
+                  <span className="y-rec-point y-rec-point-bleu" />
+                  Programme d’affiliation · bientôt
+                </span>
+                <h3 className="y-affil4-titre">Recommande Sonoo. Touche une commission sur chaque abonnement.</h3>
+              </div>
+              <a href={`${contact}?subject=${encodeURIComponent('Programme d’affiliation Sonoo')}`} className="y-bouton y-bouton-blanc y-bouton-grand">
+                Être prévenu du lancement
+                <I.Fleche taille={20} />
+              </a>
+            </div>
           </div>
         </section>
 
-        {/* ——— FAQ + appel final — fond crème ——— */}
-        <section className="y-bande y-bande-creme y-bande-fin">
+        {/* ——— FAQ + appel final — panneau crème ——— */}
+        <section className="y-panneau y-panneau-creme y-fin4">
           <div id="faq" className="y-conteneur y-ancre y-faq">
             <div className="y-faq-intro">
               <Etiquette>FAQ</Etiquette>
@@ -421,8 +404,8 @@ export default function ApercuVitrineV4Page() {
           </div>
 
           <div className="y-conteneur y-cta-section">
-            <div className="y-cta">
-              <Symbole hauteur={620} couleur="#141312" className="y-cta-deco" />
+            <div className="y-cta y-grain">
+              <Symbole hauteur={620} couleur="#2477fb" className="y-cta-deco" />
               <div className="y-cta-contenu">
                 <Etiquette>Prêt à te lancer ?</Etiquette>
                 <h2 className="y-titre-cta">Arrête de louer ton audience. Construis ta marque.</h2>
