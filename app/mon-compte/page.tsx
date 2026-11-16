@@ -64,11 +64,12 @@ export default async function MonComptePage() {
   // Profil client
   const { data: client } = await admin
     .from('clients')
-    .select('prenom, nom, nom_artiste')
+    .select('prenom')
     .eq('id', user.id)
     .single()
 
-  const prenomAffiche = client?.nom_artiste || client?.prenom || email.split('@')[0]
+  // 9d lot 5 : prénom du COMPTE (jamais un nom d'artiste venu d'une boutique)
+  const prenomAffiche = client?.prenom || email.split('@')[0]
 
   // Suppression du compte (9d lot 4) : boutiques où la personne est inscrite à
   // la newsletter (une case chacune) et abonnements qui bloquent la suppression

@@ -417,7 +417,7 @@ async function enregistrerAbonnementDirect(
   const newsletterOptIn = meta.newsletter_opt_in === 'true'
   // Résolution par email comme pour une licence (fiche créée si besoin,
   // adresse complétée) ; le compte artiste connecté au paiement prime.
-  const clientIdParEmail = await resoudreOuCreerClient(supabase, acheteur.email, acheteur.nom, acheteur.adresseRaw, acheteur.telephone)
+  const clientIdParEmail = await resoudreOuCreerClient(supabase, acheteur.email)
   let clientId = meta.client_id || clientIdParEmail
   if (!clientId) throw new EvenementARejouer(`Client introuvable pour l'abonnement ${subscriptionId}`)
 
@@ -450,7 +450,7 @@ async function enregistrerAbonnementDirect(
     .insert({ ...ligne, client_id: clientId }).select('id, client_id, beatmaker_id, tva_taux, source_marketing').single()
   // Fiche disparue entre-temps (fusion de comptes) : la fiche à jour par email.
   if (error?.code === '23503' && acheteur.email) {
-    const parEmail = await resoudreOuCreerClient(supabase, acheteur.email, acheteur.nom)
+    const parEmail = await resoudreOuCreerClient(supabase, acheteur.email)
     if (parEmail) {
       clientId = parEmail
       ;({ data: abonnement, error } = await supabase.from('abonnements_boutique')

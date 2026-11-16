@@ -47,76 +47,39 @@ export async function resoudreClientParEmail(supabase: ReturnType<typeof createA
   return client?.id ?? null
 }
 
-// Résolution client par email — crée un compte invité si inconnu (contrairement
-// à resoudreClientParEmail qui ne fait que chercher, sans créer)
+// Résolution client par email — crée la ligne `clients` si inconnue (contrairement
+// à resoudreClientParEmail qui ne fait que chercher, sans créer).
 // Email normalisé en minuscule (comparaison ET stockage) — sinon la même
 // personne peut se retrouver dupliquée en 2 fiches clients selon la casse
 // tapée au checkout (bug découvert en testant Phase 5.9, 2026-07-16).
-// address n'est renseignée que par les flux d'achat de licence (voir
-// commentaire sur clients.adresse dans schema.sql : "demandée au premier
-// achat"). Sur un client déjà existant, on ne remplit que si le champ est
-// encore vide — jamais d'écrasement d'une adresse déjà connue.
+// 9d lot 5 : la ligne `clients` d'un acheteur sans compte = son email SEUL.
+// Nom, téléphone et adresse du paiement vont sur la commande et dans la fiche
+// de la boutique (ecrireFicheBoutique), plus jamais sur la fiche commune.
 export async function resoudreOuCreerClient(
   supabase: ReturnType<typeof createAdminClient>,
   email: string | null,
-  nom: string | null,
-  address?: Stripe.Address | null,
-  telephone?: string | null,
 ): Promise<string | null> {
   if (!email) return null
   const emailNorm = email.toLowerCase().trim()
 
   const { data: existingClient } = await supabase
     .from('clients')
-    .select('id, adresse, prenom, telephone')
+    .select('id')
     .eq('email', emailNorm)
     .maybeSingle()
+  if (existingClient) return existingClient.id
 
-  if (existingClient) {
-    const backfill: Record<string, string | boolean | null> = {}
-    if (address && !existingClient.adresse) {
-      backfill.adresse = [address.line1, address.line2].filter(Boolean).join(' ') || null
-      backfill.ville = address.city ?? null
-      backfill.code_postal = address.postal_code ?? null
-      backfill.pays = address.country ?? null
-    }
-    // Prénom vide (client créé avant qu'un paiement express ne remonte de
-    // nom — cf correctif du même chantier) : on le complète dès qu'un vrai
-    // nom est disponible, jamais d'écrasement d'un prénom déjà renseigné.
-    if (nom && !existingClient.prenom) {
-      const parts = nom.trim().split(' ')
-      backfill.prenom = parts[0] || null
-      backfill.nom = parts.slice(1).join(' ') || parts[0] || null
-    }
-    if (telephone && !existingClient.telephone) {
-      backfill.telephone = telephone
-    }
-    if (Object.keys(backfill).length > 0) {
-      const { error } = await supabase.from('clients').update(backfill).eq('id', existingClient.id)
-      if (error) console.error('[webhook-paiement] Erreur backfill client:', JSON.stringify(error))
-    }
-    return existingClient.id
-  }
-
-  const parts = (nom ?? '').trim().split(' ')
-  const prenom = parts[0] || null
-  const nomFamille = parts.slice(1).join(' ') || parts[0] || emailNorm.split('@')[0]
   const { data: newClient, error: clientError } = await supabase
     .from('clients')
-    .insert({
-      id: crypto.randomUUID(),
-      email: emailNorm,
-      nom: nomFamille,
-      prenom,
-      telephone: telephone ?? null,
-      adresse: address ? ([address.line1, address.line2].filter(Boolean).join(' ') || null) : null,
-      ville: address?.city ?? null,
-      code_postal: address?.postal_code ?? null,
-      pays: address?.country ?? null,
-    })
+    .insert({ id: crypto.randomUUID(), email: emailNorm, nom: '' })
     .select('id')
     .single()
-  if (clientError) console.error('[webhook-paiement] Erreur insert client invité:', JSON.stringify(clientError))
+  if (clientError) {
+    // Créée au même moment par une autre requête (webhook en double) : on reprend celle-là
+    const { data: course } = await supabase.from('clients').select('id').eq('email', emailNorm).maybeSingle()
+    if (course) return course.id
+    console.error('[webhook-paiement] Erreur insert client invité:', JSON.stringify(clientError))
+  }
   return newClient?.id ?? null
 }
 
@@ -364,7 +327,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
   const acheteurRaisonSociale = meta.acheteur_raison_sociale?.trim() || null
   const acheteurNumeroTva = meta.acheteur_numero_tva?.trim() || null
 
-  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail, acheteurNom, acheteurAdresseRaw, acheteurTelephone)
+  const clientId = await resoudreOuCreerClient(supabase, acheteurEmail)
 
   // Fiche client de la boutique qui vend (9d lot 3 ; beat collab : le vendeur
   // principal seul) : ce que l'acheteur a saisi pour CETTE commande.

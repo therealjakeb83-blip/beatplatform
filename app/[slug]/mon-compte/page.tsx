@@ -122,10 +122,11 @@ export default async function MonCompteBoutiquePage({
   if (clientId) {
     const { data: client } = await admin
       .from('clients')
-      .select('prenom, nom, nom_artiste')
+      .select('prenom')
       .eq('id', clientId)
       .maybeSingle()
-    prenomAffiche = client?.nom_artiste || client?.prenom || prenomAffiche
+    // 9d lot 5 : prénom du COMPTE (jamais un nom d'artiste venu d'une boutique)
+    prenomAffiche = client?.prenom || prenomAffiche
     // Newsletter de CETTE boutique uniquement
     newsletterConsent = (await lireStatutNewsletter(admin, clientId, beatmaker.id)) === 'inscrit'
   }
