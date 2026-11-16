@@ -31,5 +31,5 @@ export default async function MentionsLegalesPage({
 
   const contenu = pageAdoptee?.contenu ?? 'Contenu à compléter.'
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Mentions légales" contenu={contenu} adopteLe={pageAdoptee?.adopte_le} />
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Mentions légales" contenu={contenu} adopteLe={pageAdoptee?.adopte_le} typePage="mentions_legales" />
 }

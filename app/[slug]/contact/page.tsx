@@ -31,5 +31,5 @@ export default async function ContactPage({
 
   const contenu = pageAdoptee?.contenu ?? 'Contenu à compléter.'
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Contact" contenu={contenu} />
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Contact" contenu={contenu} typePage="contact" />
 }

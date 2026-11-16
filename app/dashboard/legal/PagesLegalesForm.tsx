@@ -9,6 +9,7 @@ import {
   resoudreVariables,
   infosLegalesCompletes,
 } from '@/lib/pages-legales'
+import { blocPlateforme } from '@/lib/bloc-plateforme-legal'
 
 type Page = {
   type: TypePageLegale
@@ -216,6 +217,21 @@ export default function PagesLegalesForm({
             : 'Pas encore publiée — tes clients ne voient rien tant que tu n\'as pas cliqué "Enregistrer et publier"'}
         </p>
       </div>
+
+      {/* Bloc obligatoire de la plateforme (9d lot 4) : affiché sous ton texte, non modifiable */}
+      {(() => {
+        const bloc = blocPlateforme(ongletActif)
+        if (!bloc) return null
+        return (
+          <div className="mt-4 rounded-lg border border-gray-800 bg-gray-900/60 p-4 space-y-2">
+            <p className="text-xs text-gray-500">Ajouté automatiquement sous ton texte, sur ta boutique (non modifiable) :</p>
+            <p className="text-sm font-semibold text-gray-300">{bloc.titre}</p>
+            {bloc.paragraphes.map((p, i) => (
+              <p key={i} className="text-xs text-gray-400 leading-relaxed">{p.texte}{p.lien ? ` ${p.lien.libelle} : ${p.lien.href}` : ''}</p>
+            ))}
+          </div>
+        )
+      })()}
 
       {erreur && <p className="text-red-400 text-sm mt-3">{erreur}</p>}
       {succes === ongletActif && <p className="text-green-400 text-sm mt-3">✓ Enregistré et publié</p>}

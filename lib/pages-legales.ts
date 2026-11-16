@@ -96,13 +96,13 @@ Sauf mention contraire, les contenus proposés à la vente sur cette boutique so
     case 'confidentialite':
       return `POLITIQUE DE CONFIDENTIALITÉ
 
-{{raison_sociale}} (ci-après "le vendeur") collecte certaines données personnelles des clients de cette boutique (nom, email, informations de commande) dans le cadre du traitement des commandes et de la relation client.
+{{raison_sociale}} (ci-après "le vendeur") collecte certaines données personnelles des clients de cette boutique (email, nom, coordonnées et informations de commande, inscription à la newsletter) dans le cadre du traitement des commandes et de la relation client. Le vendeur est responsable de ces données ; la plateforme technique utilisée par la boutique agit pour son compte (voir l'encadré en bas de cette page).
 
 Ces données sont nécessaires à l'exécution des commandes (livraison des fichiers, facturation) et sont utilisées pour communiquer avec le client au sujet de sa commande. Elles ne sont pas cédées à des tiers à des fins commerciales. Le vendeur peut modifier cette politique à tout moment (par exemple pour ajouter une communication marketing avec consentement préalable).
 
 Le paiement est traité par un prestataire de paiement tiers, qui applique sa propre politique de confidentialité.
 
-Conformément au Règlement Général sur la Protection des Données (RGPD), le client dispose d'un droit d'accès, de rectification et de suppression de ses données personnelles. Pour exercer ce droit, il peut contacter le vendeur à {{email_contact}}.`
+Conformément au Règlement Général sur la Protection des Données (RGPD), le client dispose d'un droit d'accès, de rectification, d'opposition et d'effacement de ses données personnelles. Pour exercer ce droit, il peut contacter le vendeur à {{email_contact}}. Les informations figurant sur une facture sont conservées pendant la durée imposée par la loi.`
 
     case 'contact':
       return `CONTACT

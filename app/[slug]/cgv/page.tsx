@@ -31,5 +31,5 @@ export default async function CgvPage({
 
   const contenu = pageAdoptee?.contenu ?? 'Contenu à compléter.'
 
-  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Conditions générales de vente" contenu={contenu} adopteLe={pageAdoptee?.adopte_le} />
+  return <PageLegale slug={slug} nomArtiste={beatmaker.nom_artiste} titre="Conditions générales de vente" contenu={contenu} adopteLe={pageAdoptee?.adopte_le} typePage="cgv" />
 }
