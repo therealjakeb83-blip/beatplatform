@@ -178,7 +178,6 @@ export default function ApercuVitrineV4Page() {
             </div>
             <div className="y-marque4-visuel y-deborde">
               <MaquetteMarque />
-              <Tag className="y-tag-domaine" trait="droite" longueur={110}>Ton nom de domaine</Tag>
               <Tag className="y-tag-couleurs" trait="gauche" longueur={64}>Tes couleurs</Tag>
             </div>
           </div>

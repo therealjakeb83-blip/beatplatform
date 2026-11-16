@@ -965,3 +965,30 @@
     flex-wrap: wrap;
   }
 }
+
+/* Barre d'onglets en bas des écrans de boutique */
+.y-m-lecteur {
+  margin-bottom: 0.6em;
+}
+.y-m-onglets {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 -0.3em;
+  padding-top: 0.6em;
+  border-top: 1px solid rgb(127 127 127 / 0.18);
+}
+.y-m-onglets span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.46em;
+  opacity: 0.5;
+}
+.y-m-onglets .y-m-onglet-actif {
+  opacity: 1;
+}
+.y-m-onglets svg[viewBox='0 0 24 24'] {
+  width: 2.2em;
+  height: 2.2em;
+}

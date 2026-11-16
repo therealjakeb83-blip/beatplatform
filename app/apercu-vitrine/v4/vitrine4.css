@@ -3741,8 +3741,8 @@ html:has(.vitrine4) {
     right: 61%;
   }
   .y-tag-abonne {
-    top: 38%;
-    right: -150px;
+    top: 27%;
+    right: 0;
   }
 
   /* 0 % : ligne géante */
@@ -3768,15 +3768,15 @@ html:has(.vitrine4) {
     margin: 0 auto -200px;
   }
   .y-tag-contrats {
-    top: calc(42% - 15px);
+    top: calc(53% - 15px);
     left: -137px;
   }
   .y-tag-ventes {
-    top: calc(23% - 15px);
+    top: calc(27% - 15px);
     right: -150px;
   }
   .y-tag-relance {
-    top: calc(55% - 15px);
+    top: calc(73% - 15px);
     right: -150px;
   }
 

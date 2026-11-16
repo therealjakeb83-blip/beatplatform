@@ -91,6 +91,14 @@ const BEATS = [
   { titre: "Mémoire", genre: "R&B", bpm: "85 BPM" },
 ];
 
+const ONGLETS = [
+  { i: I.Boutique, t: 'Accueil' },
+  { i: I.Barres, t: 'Beats' },
+  { i: I.Couronne, t: 'Membres' },
+  { i: I.Document, t: 'Licences' },
+  { i: I.Personne, t: 'Compte' },
+]
+
 function EcranBoutique({ b }: { b: Boutique }) {
   return (
     <div
@@ -146,6 +154,14 @@ function EcranBoutique({ b }: { b: Boutique }) {
         <span className="y-m-lecteur-play">
           <I.Lecture taille={11} />
         </span>
+      </div>
+      <div className="y-m-onglets">
+        {ONGLETS.map((o, i) => (
+          <span key={o.t} className={i === 0 ? 'y-m-onglet-actif' : undefined}>
+            <o.i taille={13} />
+            {o.t}
+          </span>
+        ))}
       </div>
     </div>
   );
