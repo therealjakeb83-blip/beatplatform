@@ -155,7 +155,7 @@ export default function ApercuVitrineV5Page() {
         </section>
 
         {/* ——— 0 % — ligne géante sur crème ——— */}
-        <section className="z-panneau z-panneau-noir z-grain z-zero4-panneau">
+        <section className="z-panneau z-panneau-bleu z-zero4-panneau">
           <div className="z-conteneur">
             <p className="z-zero4">
               <span className="z-zero4-chiffre">0 %</span> de commission.

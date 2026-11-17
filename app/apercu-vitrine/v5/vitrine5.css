@@ -4105,3 +4105,8 @@ html:has(.vitrine5) {
 .z-panneau-creme .z-offre4-pro {
   box-shadow: 0 0 0 1px var(--z-bordure);
 }
+
+/* 0 % sur fond bleu plein (comme la v3, demande de Jake 2026-11-17) : tout en blanc */
+.z-panneau-bleu .z-zero4-chiffre {
+  color: var(--z-blanc);
+}
