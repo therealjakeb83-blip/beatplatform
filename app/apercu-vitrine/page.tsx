@@ -88,7 +88,7 @@ const LIGNES_CONTRAT = [
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à mes beats' },
   { valeur: '50 k', texte: 'abonnés sur YouTube' },
-  { valeur: '300 M+', texte: 'streams sur ma musique' },
+  { valeur: '300 M+', texte: 'streams sur ma musique', source: 'Certifié by muso.ai' },
 ]
 
 const OFFRE_GRATUITE = ['Réception automatique de ta part sur les ventes en collab', 'Accès au compte Sonoo', '[Autres fonctionnalités à confirmer]']
@@ -587,7 +587,7 @@ export default function ApercuVitrinePage() {
                 {CHIFFRES_JAKE.map(c => (
                   <div key={c.valeur}>
                     <dt>{c.valeur}</dt>
-                    <dd>{c.texte}</dd>
+                    <dd>{c.texte}{c.source && <span style={{ display: 'block', marginTop: '0.3em', fontSize: '0.8em', opacity: 0.6 }}>{c.source}</span>}</dd>
                   </div>
                 ))}
               </dl>

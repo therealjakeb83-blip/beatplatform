@@ -56,7 +56,7 @@ const OUTILS = [
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à ses beats' },
   { valeur: '50 k', texte: 'abonnés YouTube' },
-  { valeur: '300 M+', texte: 'streams sur sa musique' },
+  { valeur: '300 M+', texte: 'streams sur sa musique', source: 'Certifié by muso.ai' },
 ]
 
 const OFFRE_GRATUITE = ['Réception automatique de ta part sur les ventes en collab', 'Accès au compte Sonoo', '[Autres fonctionnalités à confirmer]']
@@ -294,7 +294,7 @@ export default function ApercuVitrineV3Page() {
                 {CHIFFRES_JAKE.map(c => (
                   <div key={c.valeur}>
                     <dt>{c.valeur}</dt>
-                    <dd>{c.texte}</dd>
+                    <dd>{c.texte}{c.source && <span style={{ display: 'block', marginTop: '0.3em', fontSize: '0.8em', opacity: 0.6 }}>{c.source}</span>}</dd>
                   </div>
                 ))}
               </dl>
