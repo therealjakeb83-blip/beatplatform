@@ -133,6 +133,9 @@ function EcranContrats() {
           <i style={{ width: '70%' }} />
           <i style={{ width: '100%' }} />
           <i style={{ width: '84%' }} />
+          <i style={{ width: '98%' }} />
+          <i style={{ width: '90%' }} />
+          <i style={{ width: '60%' }} />
         </span>
         <span className="y-f-signature">Jake B</span>
       </div>

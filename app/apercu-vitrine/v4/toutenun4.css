@@ -835,3 +835,12 @@
     margin: -1.6em;
   }
 }
+
+/* Finitions : écrans à une colonne centrés en hauteur, légende plus large */
+.y-f-pile-v {
+  justify-content: center;
+  height: 100%;
+}
+.y-f-legende span {
+  max-width: 620px;
+}
