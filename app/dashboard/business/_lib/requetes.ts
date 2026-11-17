@@ -20,12 +20,25 @@ export async function toutesLesLignes<T>(page: (debut: number, fin: number) => R
   }
 }
 
-// Une requête .in() par paquet d'ids, résultats concaténés
+// Paquets envoyés en même temps par appel de parLots (rang 9e) : sans plafond,
+// 2 800 contacts = des dizaines de requêtes simultanées vers la base gratuite,
+// le genre de rafale qui fait sauter le chrono de 5 s de proxy.ts.
+const PAQUETS_SIMULTANES = 6
+
+// Une requête .in() par paquet d'ids, résultats concaténés dans l'ordre des paquets
 export async function parLots<T>(ids: string[], requete: (lot: string[]) => Reponse<T>, taille = 150): Promise<T[]> {
   const uniques = [...new Set(ids)]
   const lots: string[][] = []
   for (let i = 0; i < uniques.length; i += taille) lots.push(uniques.slice(i, i + taille))
-  const reponses = await Promise.all(lots.map(lot => requete(lot)))
+  const reponses: Awaited<Reponse<T>>[] = new Array(lots.length)
+  let suivant = 0
+  async function ouvrier() {
+    while (suivant < lots.length) {
+      const i = suivant++
+      reponses[i] = await requete(lots[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(PAQUETS_SIMULTANES, lots.length) }, ouvrier))
   const res: T[] = []
   for (const { data, error } of reponses) {
     if (error) {

@@ -48,11 +48,47 @@ export default async function ContactsPage({
 
   const beatmakerId = user.id
 
-  // ── 0. Fusions — nécessaire pour filtrer les archivés dans leads ──────────
-  const { data: fusionsEarly } = await supabase
-    .from('fusions_crm')
-    .select('client_id_conserve, client_id_archive, champs_conserves')
-    .eq('beatmaker_id', beatmakerId)
+  // ── 0. Vague 1 (rang 9e) : tout ce qui ne dépend que de la boutique part en
+  // même temps — fusions, fiches, commandes, abos, listes ──────────────────
+  // Leads : client authentifié car leads n'a pas GRANT service_role. Ces
+  // lignes SONT les fiches client de la boutique (9d lot 2) : identité,
+  // emails, téléphone, réseaux viennent d'ici, jamais de la fiche commune.
+  type LeadBrut = FicheBoutique & { source: string; source_plateforme: string | null; created_at: string }
+  type CommandeCrm = {
+    client_id: string | null; created_at: string | null; prix_paye: number | string | null; statut: string
+    montant_rembourse_cents: number | null; type_commande: string
+    commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
+  }
+  const [{ data: fusionsEarly }, leadsRaw, commandesNatives, commandesExternes, aboRes, listesRes] = await Promise.all([
+    supabase
+      .from('fusions_crm')
+      .select('client_id_conserve, client_id_archive, champs_conserves')
+      .eq('beatmaker_id', beatmakerId),
+    toutesLesLignes<LeadBrut>((debut, fin) => supabase
+      .from('leads')
+      .select(`${COLONNES_FICHE}, source_plateforme`)
+      .eq('beatmaker_id', beatmakerId)
+      .order('id')
+      .range(debut, fin)),
+    toutesLesLignes<CommandeCrm>((debut, fin) => supabase
+      .from('commandes')
+      .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
+      .eq('beatmaker_id', beatmakerId)
+      .not('client_id', 'is', null)
+      .order('id')
+      .range(debut, fin)),
+    chargerCommandesExternesCrm(supabase, beatmakerId),
+    supabase
+      .from('abonnements_boutique')
+      .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
+      .eq('beatmaker_id', beatmakerId)
+      .not('client_id', 'is', null),
+    supabase
+      .from('listes_crm')
+      .select('id, nom, listes_crm_contacts(count)')
+      .eq('beatmaker_id', beatmakerId)
+      .order('nom'),
+  ])
 
   const archiveIds = new Set((fusionsEarly ?? []).map(f => f.client_id_archive))
   const conserveToArchives = new Map<string, string[]>()
@@ -65,17 +101,7 @@ export default async function ContactsPage({
     champsOverrideMap.set(f.client_id_conserve, { ...existing, ...((f.champs_conserves as Record<string, string>) ?? {}) })
   }
 
-  // ── 1. Leads — fetch indépendant AVANT le return anticipé ─────────────────
-  // Utilise supabase (client authentifié) car leads n'a pas GRANT service_role
-  // Ces lignes SONT les fiches client de la boutique (9d lot 2) : identité,
-  // emails, téléphone, réseaux viennent d'ici, jamais de la fiche commune.
-  type LeadBrut = FicheBoutique & { source: string; source_plateforme: string | null; created_at: string }
-  const leadsRaw = await toutesLesLignes<LeadBrut>((debut, fin) => supabase
-    .from('leads')
-    .select(`${COLONNES_FICHE}, source_plateforme`)
-    .eq('beatmaker_id', beatmakerId)
-    .order('id')
-    .range(debut, fin))
+  // ── 1. Leads ─────────────────────────────────────────────────────────────
   const leadClientIds = leadsRaw.map(l => l.client_id)
   // Contacts effacés par la boutique (9d lot 4) : cachés de toutes les vues
   const effaces = new Set(leadsRaw.filter(l => l.efface_le).map(l => l.client_id))
@@ -85,6 +111,58 @@ export default async function ContactsPage({
   const statutNewsletterDe = (clientId: string): StatutNewsletter => statutFusionne(
     [clientId, ...(conserveToArchives.get(clientId) ?? [])].flatMap(id => leadsParId.get(id) ?? []),
   )
+
+  const commandes: CommandeCrm[] = [...commandesNatives, ...commandesExternes]
+  const abos      = aboRes.data      ?? []
+  const listesRaw = listesRes.data   ?? []
+
+  // Client IDs (pour onglet Tous/Clients)
+  const clientIds = [...new Set([
+    ...commandes.map(c => c.client_id as string),
+    ...abos.map(a => a.client_id as string),
+    ...leadsRaw.map(l => l.client_id),
+  ])]
+
+  // Beat IDs & Licence IDs from LICENCE commandes (via commande_lignes — voir phase2c_panier.sql)
+  const licenceCmdsAll = commandes.filter(c => c.type_commande === 'LICENCE')
+  const lignesAll  = licenceCmdsAll.flatMap(c => c.commande_lignes ?? [])
+  const beatIds    = [...new Set(lignesAll.map(l => l.beat_id).filter(Boolean) as string[])]
+  const licenceIds = [...new Set(lignesAll.map(l => l.licence_id).filter(Boolean) as string[])]
+
+  // ── Vague 2 (rang 9e) : favoris et free downloads (fiches puis clients),
+  // licences achetées, envois newsletter — ne dépendent que de la vague 1.
+  // parLots sur une liste vide ne lance aucune requête.
+  type AvecBeat  = { client_id: string; beats: unknown }
+  type EnvoiBrut = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
+  const [leadFavorisData, freeDLsData, licencesRes, favorisClientsData, freeDLsClientsData, envoisNewsletterData] = await Promise.all([
+    parLots<AvecBeat & { created_at: string }>(leadClientIds, lot => admin.from('favoris')
+      .select('client_id, created_at, beats!inner(styles, type_beat, ambiances, beatmaker_id)')
+      .eq('beats.beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
+    parLots<AvecBeat & { downloaded_at: string }>(leadClientIds, lot => admin.from('free_downloads')
+      .select('client_id, downloaded_at, beats(styles, type_beat, ambiances)')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
+    licenceIds.length > 0
+      ? supabase.from('licences').select('id, modele').in('id', licenceIds)
+      : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
+    parLots<{ client_id: string; beat_id: string | null; created_at: string }>(clientIds, lot => admin.from('favoris')
+      .select('client_id, beat_id, created_at, beats!inner(beatmaker_id)')
+      .eq('beats.beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
+    parLots<{ client_id: string; beat_id: string | null; downloaded_at: string }>(clientIds, lot => admin.from('free_downloads')
+      .select('client_id, beat_id, downloaded_at')
+      .eq('beatmaker_id', beatmakerId)
+      .in('client_id', lot)),
+    // RLS : visible seulement pour les campagnes de ce beatmaker — inclut les archivés (fusion)
+    // pour rattacher l'historique newsletter d'avant-fusion au contact conservé
+    clientIds.length > 0
+      ? parLots<EnvoiBrut>([...clientIds, ...archiveIds], lot => supabase
+        .from('campagne_envois')
+        .select('client_id, envoye_at, ouvert_at, clique_at, converti_at')
+        .in('client_id', lot))
+      : Promise.resolve([] as EnvoiBrut[]),
+  ])
 
   type LeadClient = { id: string; prenom: string | null; nom: string; pays: string | null }
   type FavBeat    = { styles: string[] | null; type_beat: string[] | null; ambiances: string[] | null }
@@ -96,18 +174,7 @@ export default async function ContactsPage({
   let leadDerniereMap  = new Map<string, { at: string; type: string }>()
 
   if (leadClientIds.length > 0) {
-    type AvecBeat = { client_id: string; beats: unknown }
-    const [leadClientsData, leadFavorisData, freeDLsData] = await Promise.all([
-      Promise.resolve(leadsRaw.map(l => ({ id: l.client_id, prenom: l.prenom, nom: nomOuEmail(l), pays: l.pays }))),
-      parLots<AvecBeat & { created_at: string }>(leadClientIds, lot => admin.from('favoris')
-        .select('client_id, created_at, beats!inner(styles, type_beat, ambiances, beatmaker_id)')
-        .eq('beats.beatmaker_id', beatmakerId)
-        .in('client_id', lot)),
-      parLots<AvecBeat & { downloaded_at: string }>(leadClientIds, lot => admin.from('free_downloads')
-        .select('client_id, downloaded_at, beats(styles, type_beat, ambiances)')
-        .eq('beatmaker_id', beatmakerId)
-        .in('client_id', lot)),
-    ])
+    const leadClientsData = leadsRaw.map(l => ({ id: l.client_id, prenom: l.prenom, nom: nomOuEmail(l), pays: l.pays }))
     const leadClientsRes = { data: leadClientsData }
     const leadFavorisRes = { data: leadFavorisData }
     const freeDLsRes     = { data: freeDLsData }
@@ -149,37 +216,7 @@ export default async function ContactsPage({
     }
   }
 
-  // ── 2. Commandes + abos + listes ─────────────────────────────────────────
-  type CommandeCrm = {
-    client_id: string | null; created_at: string | null; prix_paye: number | string | null; statut: string
-    montant_rembourse_cents: number | null; type_commande: string
-    commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
-  }
-  const [commandesNatives, commandesExternes, aboRes, listesRes] = await Promise.all([
-    toutesLesLignes<CommandeCrm>((debut, fin) => supabase
-      .from('commandes')
-      .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
-      .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null)
-      .order('id')
-      .range(debut, fin)),
-    chargerCommandesExternesCrm(supabase, beatmakerId),
-    supabase
-      .from('abonnements_boutique')
-      .select('client_id, statut, mensualites_payees, annulation_en_cours, created_at, date_fin')
-      .eq('beatmaker_id', beatmakerId)
-      .not('client_id', 'is', null),
-    supabase
-      .from('listes_crm')
-      .select('id, nom, listes_crm_contacts(count)')
-      .eq('beatmaker_id', beatmakerId)
-      .order('nom'),
-  ])
-
-  const commandes: CommandeCrm[] = [...commandesNatives, ...commandesExternes]
-  const abos      = aboRes.data      ?? []
-  const listesRaw = listesRes.data   ?? []
-
+  // ── 2. Commandes + abos + listes (lus dans la vague 1) ───────────────────
   // Un lead qui a depuis passé commande ou pris un abonnement (même annulé)
   // n'est plus un lead — l'onglet Leads doit être strictement réservé aux
   // contacts qui n'ont jamais rien acheté (bug remonté par Jake, 2026-07-16).
@@ -239,59 +276,26 @@ export default async function ContactsPage({
     nb:  ((l.listes_crm_contacts ?? []) as { count: number }[])[0]?.count ?? 0,
   }))
 
-  // Client IDs (pour onglet Tous/Clients)
-  const clientIds = [...new Set([
-    ...commandes.map(c => c.client_id as string),
-    ...abos.map(a => a.client_id as string),
-    ...leadsRaw.map(l => l.client_id),
-  ])]
-
   if (clientIds.length === 0) {
     return <ContactsClient contacts={[]} listes={listes} leadsData={leadsData} newsletterData={[]} vue={vue} />
   }
-
-  // Beat IDs & Licence IDs from LICENCE commandes (via commande_lignes — voir phase2c_panier.sql)
-  const licenceCmdsAll = commandes.filter(c => c.type_commande === 'LICENCE')
-  const lignesAll  = licenceCmdsAll.flatMap(c => c.commande_lignes ?? [])
-  const beatIds    = [...new Set(lignesAll.map(l => l.beat_id).filter(Boolean) as string[])]
-  const licenceIds = [...new Set(lignesAll.map(l => l.licence_id).filter(Boolean) as string[])]
 
   type ClientBrut = {
     id: string; prenom: string; surnom: string | null; nom: string; nom_artiste: string | null; email: string
     pays: string | null; telephone: string | null; created_at: string; instagram: string | null; spotify: string | null
     youtube: string | null; tiktok: string | null
   }
-  type EnvoiBrut = { client_id: string; envoye_at: string; ouvert_at: string | null; clique_at: string | null; converti_at: string | null }
-  const [clientsData, licencesRes, favorisClientsData, freeDLsClientsData, envoisNewsletterData] = await Promise.all([
-    // Fiche de la boutique ; un client lié par une vente encore sans fiche
-    // (vente arrivée avant le lot 3) reste listé, identité vide
-    Promise.resolve(clientIds.map((id): ClientBrut => {
-      const f = leadsParId.get(id)
-      return {
-        id, prenom: f?.prenom ?? '', surnom: f?.surnom ?? null, nom: nomOuEmail(f), nom_artiste: f?.nom_artiste ?? null,
-        email: emailPrincipal(f) ?? '', pays: f?.pays ?? null, telephone: f?.telephones?.[0] ?? null,
-        created_at: f?.premier_contact_le ?? f?.created_at ?? new Date().toISOString(),
-        instagram: f?.instagram ?? null, spotify: f?.spotify ?? null, youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null,
-      }
-    })),
-    licenceIds.length > 0
-      ? supabase.from('licences').select('id, modele').in('id', licenceIds)
-      : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
-    parLots<{ client_id: string; beat_id: string | null; created_at: string }>(clientIds, lot => admin.from('favoris')
-      .select('client_id, beat_id, created_at, beats!inner(beatmaker_id)')
-      .eq('beats.beatmaker_id', beatmakerId)
-      .in('client_id', lot)),
-    parLots<{ client_id: string; beat_id: string | null; downloaded_at: string }>(clientIds, lot => admin.from('free_downloads')
-      .select('client_id, beat_id, downloaded_at')
-      .eq('beatmaker_id', beatmakerId)
-      .in('client_id', lot)),
-    // RLS : visible seulement pour les campagnes de ce beatmaker — inclut les archivés (fusion)
-    // pour rattacher l'historique newsletter d'avant-fusion au contact conservé
-    parLots<EnvoiBrut>([...clientIds, ...archiveIds], lot => supabase
-      .from('campagne_envois')
-      .select('client_id, envoye_at, ouvert_at, clique_at, converti_at')
-      .in('client_id', lot)),
-  ])
+  // Fiche de la boutique ; un client lié par une vente encore sans fiche
+  // (vente arrivée avant le lot 3) reste listé, identité vide
+  const clientsData = clientIds.map((id): ClientBrut => {
+    const f = leadsParId.get(id)
+    return {
+      id, prenom: f?.prenom ?? '', surnom: f?.surnom ?? null, nom: nomOuEmail(f), nom_artiste: f?.nom_artiste ?? null,
+      email: emailPrincipal(f) ?? '', pays: f?.pays ?? null, telephone: f?.telephones?.[0] ?? null,
+      created_at: f?.premier_contact_le ?? f?.created_at ?? new Date().toISOString(),
+      instagram: f?.instagram ?? null, spotify: f?.spotify ?? null, youtube: f?.youtube ?? null, tiktok: f?.tiktok ?? null,
+    }
+  })
   const clientsRes          = { data: clientsData }
   const favorisClientsRes   = { data: favorisClientsData }
   const freeDLsClientsRes   = { data: freeDLsClientsData }

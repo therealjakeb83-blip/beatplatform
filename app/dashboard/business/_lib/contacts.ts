@@ -47,40 +47,26 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
   const supabase = await createClient()
   const admin    = createAdminClient()
 
-  // Fusions
-  const { data: fusions } = await supabase
-    .from('fusions_crm')
-    .select('client_id_conserve, client_id_archive')
-    .eq('beatmaker_id', beatmakerId)
-
-  const archiveIds       = new Set((fusions ?? []).map(f => f.client_id_archive))
-  const conserveArchives = new Map<string, string[]>()
-  for (const f of fusions ?? []) {
-    const arr = conserveArchives.get(f.client_id_conserve) ?? []
-    arr.push(f.client_id_archive)
-    conserveArchives.set(f.client_id_conserve, arr)
-  }
-
-  // Leads = fiches client de CETTE boutique (9d lot 2) : identité, email
-  // d'envoi (1er de la liste), pays, langue, tags, réseaux — jamais la fiche commune
-  const leadsRaw = await toutesLesLignes<FicheBoutique>((debut, fin) => supabase
-    .from('leads')
-    .select(COLONNES_FICHE)
-    .eq('beatmaker_id', beatmakerId)
-    .order('id')
-    .range(debut, fin))
-
-  const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
-  // Contacts effacés par la boutique (9d lot 4) : hors segments et campagnes
-  const effaces = new Set((leadsRaw ?? []).filter(l => l.efface_le).map(l => l.client_id))
-
-  // Commandes + abos + beats catalogue + licences catalogue en parallèle
+  // Tout ce qui ne dépend que de la boutique part en même temps (rang 9e) :
+  // fusions, fiches, commandes, abos, beats et licences du catalogue
   type CommandeCrm = {
     client_id: string | null; created_at: string | null; prix_paye: number | string | null; statut: string
     montant_rembourse_cents: number | null; type_commande: string
     commande_lignes: { beat_id: string | null; licence_id: string | null }[] | null
   }
-  const [commandesNatives, commandesExternes, aboRes, beatsAllRes, licencesAllRes] = await Promise.all([
+  const [{ data: fusions }, leadsRaw, commandesNatives, commandesExternes, aboRes, beatsAllRes, licencesAllRes] = await Promise.all([
+    supabase
+      .from('fusions_crm')
+      .select('client_id_conserve, client_id_archive')
+      .eq('beatmaker_id', beatmakerId),
+    // Leads = fiches client de CETTE boutique (9d lot 2) : identité, email
+    // d'envoi (1er de la liste), pays, langue, tags, réseaux — jamais la fiche commune
+    toutesLesLignes<FicheBoutique>((debut, fin) => supabase
+      .from('leads')
+      .select(COLONNES_FICHE)
+      .eq('beatmaker_id', beatmakerId)
+      .order('id')
+      .range(debut, fin)),
     toutesLesLignes<CommandeCrm>((debut, fin) => supabase
       .from('commandes')
       .select('client_id, created_at, prix_paye, statut, montant_rembourse_cents, type_commande, commande_lignes(beat_id, licence_id)')
@@ -104,6 +90,18 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       .eq('beatmaker_id', beatmakerId),
   ])
 
+  const archiveIds       = new Set((fusions ?? []).map(f => f.client_id_archive))
+  const conserveArchives = new Map<string, string[]>()
+  for (const f of fusions ?? []) {
+    const arr = conserveArchives.get(f.client_id_conserve) ?? []
+    arr.push(f.client_id_archive)
+    conserveArchives.set(f.client_id_conserve, arr)
+  }
+
+  const leadMap = new Map((leadsRaw ?? []).map(l => [l.client_id, l]))
+  // Contacts effacés par la boutique (9d lot 4) : hors segments et campagnes
+  const effaces = new Set((leadsRaw ?? []).filter(l => l.efface_le).map(l => l.client_id))
+
   const commandes: CommandeCrm[] = [...commandesNatives, ...commandesExternes]
   const abos        = aboRes.data       ?? []
   const beatsAll    = beatsAllRes.data  ?? []
@@ -123,11 +121,6 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
     commandes.flatMap(c => (c.commande_lignes ?? []).map(l => l.licence_id)).filter((id): id is string => !!id)
   )]
 
-  const licencesRes = licenceIds.length
-    ? await supabase.from('licences').select('id, modele').in('id', licenceIds)
-    : { data: [] as { id: string; modele: string }[] }
-  const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
-
   const clientIds = [...new Set([
     ...commandes.map(c => c.client_id as string),
     ...abos.map(a => a.client_id as string),
@@ -136,13 +129,16 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
 
   if (clientIds.length === 0) return { contacts: [], catalog }
 
-  // Clients + favoris + free_downloads en parallèle
+  // Licences achetées + clients + favoris + free_downloads en parallèle
   type ClientCrm = {
     id: string; prenom: string | null; surnom: string | null; nom: string; nom_artiste: string | null; email: string
     pays: string | null; langue: string | null; instagram: string | null; spotify: string | null; youtube: string | null
     tiktok: string | null; tags: string[] | null
   }
-  const [clientsData, favorisData, freeDLData] = await Promise.all([
+  const [licencesRes, clientsData, favorisData, freeDLData] = await Promise.all([
+    licenceIds.length
+      ? supabase.from('licences').select('id, modele').in('id', licenceIds)
+      : Promise.resolve({ data: [] as { id: string; modele: string }[] }),
     // Un client lié par une vente encore sans fiche (vente arrivée avant le
     // lot 3) reste compté, sans email : il ne reçoit aucune campagne.
     Promise.resolve(clientIds.map((id): ClientCrm => {
@@ -165,6 +161,7 @@ export async function chargerContactsEnrichis(beatmakerId: string): Promise<{
       .eq('beatmaker_id', beatmakerId)
       .in('client_id', lot)),
   ])
+  const licenceMap = new Map((licencesRes.data ?? []).map(l => [l.id, l]))
   const clientsRes = { data: clientsData }
   const favorisRes = { data: favorisData }
   const freeDLRes  = { data: freeDLData }
