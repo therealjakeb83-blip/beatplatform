@@ -107,6 +107,7 @@ export default async function PaiementPage({
         tvaTaux={beatmaker.tva_taux}
         clientEmail={clientEmail}
         compteClient={clientId !== null}
+        connecte={user !== null}
         preremplissage={preremplissage}
         abonnement={abonnement}
       />

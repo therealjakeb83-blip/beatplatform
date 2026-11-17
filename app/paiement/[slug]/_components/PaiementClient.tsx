@@ -51,6 +51,8 @@ type Props = {
   // Compte client connecté (ligne clients) : seul cas où la case « se
   // souvenir de mes infos » est proposée.
   compteClient: boolean
+  // Une session est ouverte (compte client ou beatmaker) : plus de lien « Connexion ».
+  connecte: boolean
   // Infos lues par le serveur pour le client connecté (fiche de cette
   // boutique et/ou infos gardées sur son compte), voir lib/preremplissage-paiement.ts.
   preremplissage: Preremplissage | null
@@ -335,7 +337,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, compteClient, preremplissage, multiVendeurs, abonnement }: PropsForm) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, compteClient, connecte, preremplissage, multiVendeurs, abonnement }: PropsForm) {
   const lien = useLienBoutique(slug)
   const surDomaine = useSurDomaineBoutique()
   const stripe = useStripe()
@@ -984,26 +986,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
             <span className="pmt-newsletter-label">Je veux recevoir les nouveaux beats et les offres par e-mail</span>
           </label>
 
-          {/* Consentement explicite (modèle Shop Pay) : décochée par défaut,
-              clients connectés seulement ; décocher = infos effacées du compte. */}
-          {compteClient && (
-            <label className="pmt-newsletter">
-              <input
-                type="checkbox"
-                checked={memoriser}
-                onChange={e => setMemoriser(e.target.checked)}
-                className="pmt-newsletter-input"
-              />
-              <span className={`pmt-newsletter-box${memoriser ? ' is-checked' : ''}`}>
-                {memoriser && CHECK_ICON}
-              </span>
-              <span className="pmt-newsletter-label">
-                Se souvenir de mes infos pour mes achats dans les autres boutiques {NOM_PLATEFORME}
-                {preremplissage?.memoriserActif && (
-                  <span style={{ display: 'block', opacity: 0.7, fontSize: 12 }}>
-                    {memoriser ? 'Tes infos seront mises à jour avec celles de ce paiement.' : 'Tes infos gardées seront effacées.'}
-                  </span>
-                )}
               </span>
             </label>
           )}
@@ -1018,7 +1000,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
               items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))}
               codePromo={codeApplique?.code}
               newsletterOptIn={newsletterOptIn}
-              memoriserInfos={memoriserEnvoye}
+              memoriserInfos={undefined}
               professionnel={pro}
               raisonSociale={champs.raisonSociale}
               numeroTva={champs.numeroTva}
@@ -1047,7 +1029,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                 {/* Informations de facturation — toujours visibles dès l'ouverture
                     de l'accordéon "Payer par carte" (plus de sous-accordéon
                     imbriqué, décision Jake 2026-09-16 : un seul niveau). */}
-                {!emailImpose && (
+                {!emailImpose && !connecte && (
                   <div className="pmt-connexion-row">
                     <span>Déjà client ?</span>
                     <Link href={`/artiste/connexion?redirect=${encodeURIComponent(lienPaiement(slug, surDomaine, enAbonnement ? '?abonnement=1' : ''))}`} className="pmt-connexion-link">Connexion</Link>
@@ -1147,6 +1129,27 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                   </div>
                 </div>
                 </>)}
+
+                {/* Consentement explicite (modèle Shop Pay), juste avant de payer : décochée par défaut,
+                    clients connectés seulement ; décocher = infos effacées du compte. */}
+                {compteClient && (
+                  <label className="pmt-newsletter">
+                    <input
+                      type="checkbox"
+                      checked={memoriser}
+                      onChange={e => setMemoriser(e.target.checked)}
+                      className="pmt-newsletter-input"
+                    />
+                    <span className={`pmt-newsletter-box${memoriser ? ' is-checked' : ''}`}>
+                      {memoriser && CHECK_ICON}
+                    </span>
+                    <span className="pmt-newsletter-label">
+                      Se souvenir de mes infos pour mes achats dans les autres boutiques {NOM_PLATEFORME}
+                      {preremplissage?.memoriserActif && (
+                        <span style={{ display: 'block', opacity: 0.7, fontSize: 12 }}>
+                          {memoriser ? 'Tes infos seront mises à jour avec celles de ce paiement.' : 'Tes infos gardées seront effacées.'}
+                        </span>
+                      )}
 
                 {(erreurGlobale || erreurPrix) && <p className="pmt-error-global">{erreurGlobale ?? erreurPrix}</p>}
                 {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
