@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 
 const STYLES_NOM_MARQUE: { valeur: string; label: string }[] = [
   { valeur: 'hero', label: 'Hero' },

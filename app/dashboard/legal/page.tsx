@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { TYPES_PAGES_LEGALES, texteTemplate } from '@/lib/pages-legales'
 import PagesLegalesForm from './PagesLegalesForm'
 

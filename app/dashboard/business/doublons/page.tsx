@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import DoublonsView, { DoublonPairData, ClientData, RaisonData } from './_components/DoublonsView'
 import { montantDepense } from '@/app/dashboard/business/_lib/ltv'
 import { toutesLesLignes, parLots } from '@/app/dashboard/business/_lib/requetes'

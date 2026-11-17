@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import SocialIcon from '../../../_components/SocialIcon'
 import Pagination from '../../../../_pagination/Pagination'
 import { usePagination } from '../../../../_pagination/usePagination'

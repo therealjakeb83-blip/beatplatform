@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { Apercu } from '@/lib/import-externe/preparation'
 import { ecrireCsv } from '@/lib/import-externe/csv'
 import type { BesoinAssistant } from '@/lib/import-externe/entree'

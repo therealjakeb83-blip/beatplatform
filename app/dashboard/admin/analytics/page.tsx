@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { getAnalyticsPlateforme } from '@/lib/admin-analytics'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 

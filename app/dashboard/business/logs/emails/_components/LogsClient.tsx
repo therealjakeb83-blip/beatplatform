@@ -2,7 +2,7 @@
 
 import { LIBELLES_EVENEMENTS_PLATEFORME } from '@/lib/email-libelles'
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { EmailLogRow } from '../page'
 import RenvoyerLogButton from './RenvoyerLogButton'
 import { messageErreurNaturel } from '@/lib/email-erreurs'

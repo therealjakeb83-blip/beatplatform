@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { fuseauSur } from '@/lib/fuseau-horaire'

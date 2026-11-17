@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { BlocEmail } from '@/lib/email-blocs'
 import BlocEditor, { type BeatOption, type ContactOption } from '../../../../_components/BlocEditor'
 

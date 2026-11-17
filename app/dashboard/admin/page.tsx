@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 
 export default function AdminPage() {

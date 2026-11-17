@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import IgnorerButton from './IgnorerButton'
 import Pagination from '../../../_pagination/Pagination'
 import { usePagination } from '../../../_pagination/usePagination'

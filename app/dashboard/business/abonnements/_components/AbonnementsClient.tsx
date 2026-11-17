@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { AboRow } from '../page'
 import Pagination from '../../../_pagination/Pagination'
 import { usePagination } from '../../../_pagination/usePagination'

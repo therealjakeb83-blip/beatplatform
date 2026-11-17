@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 
 type Abonnement = {

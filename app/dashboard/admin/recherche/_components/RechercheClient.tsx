@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { ResultatRechercheAdmin, OngletRecherche } from '@/lib/admin-recherche'
 
 type Props = {

@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { TemplateRow } from '../page'
 import { CATEGORIE_LABEL, CATEGORIE_CLS } from '../../_lib/categories'
 

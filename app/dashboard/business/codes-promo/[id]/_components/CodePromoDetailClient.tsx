@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 import { hoteSousDomaine } from '@/lib/domaine-boutique'
 import { sousDomainePossible } from '@/lib/slug-regles'

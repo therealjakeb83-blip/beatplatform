@@ -2,7 +2,7 @@
 
 import { LIBELLES_EVENEMENTS_PLATEFORME } from '@/lib/email-libelles'
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import RenvoyerLogPlateformeButton from './RenvoyerLogPlateformeButton'
 import { messageErreurNaturel } from '@/lib/email-erreurs'
 import { NOM_PLATEFORME } from '@/lib/constantes'

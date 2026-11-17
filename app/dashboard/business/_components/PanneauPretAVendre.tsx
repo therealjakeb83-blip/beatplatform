@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { ResultatPretAVendre } from '@/lib/pret-a-vendre'
 
 // Panneau « Ce qu'il te manque pour vendre » (Phase 12 lot 2, T7-T9) —

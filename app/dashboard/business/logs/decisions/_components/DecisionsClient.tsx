@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { DecisionLogRow } from '../page'
 import { TYPES_PAGES_LEGALES } from '@/lib/pages-legales'
 import PaginationAdresse from '../../../../_pagination/PaginationAdresse'

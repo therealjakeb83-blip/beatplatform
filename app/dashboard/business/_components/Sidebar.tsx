@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { initiales } from '../_lib/utils'

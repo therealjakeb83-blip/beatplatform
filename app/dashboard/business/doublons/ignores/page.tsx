@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import DesignorerButton from './_components/DesignorerButton'
 import { fuseauSur } from '@/lib/fuseau-horaire'
 

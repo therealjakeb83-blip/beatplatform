@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { joursDepuis } from '../../_lib/utils'
 import { LIBELLE_STATUT_NEWSLETTER, type StatutNewsletter } from '@/lib/newsletter-statut'
 import Pagination from '../../../_pagination/Pagination'

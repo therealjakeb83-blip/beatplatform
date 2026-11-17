@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { CategorieOptions } from '@/lib/categories'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import { MESSAGE_ADRESSE_REFUSEE } from '@/lib/collaboration-messages'

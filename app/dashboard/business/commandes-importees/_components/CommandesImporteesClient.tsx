@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { useRouter } from 'next/navigation'
 import type { CommandeDetail } from '@/app/dashboard/business/_lib/commandes-externes'
 import { LigneTableauImportee, BadgePlateforme, MentionsLigne, MontantCommande, TitreLigneImportee, fmtDevise } from '@/app/dashboard/business/_components/CommandeImportee'

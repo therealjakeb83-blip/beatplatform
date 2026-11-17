@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { ContactRow } from './ContactsClient'
 import { joursDepuis } from '../../_lib/utils'
 import Pagination from '../../../_pagination/Pagination'

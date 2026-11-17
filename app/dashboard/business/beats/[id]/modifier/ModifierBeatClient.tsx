@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import BeatForm, { BeatFormValues, ExistingUrls, Collaborateur, CollaborationHistorique, LicenceInfo, CategoriesOptions } from '../../_components/BeatForm'
 
 // États encore "à traiter" dans la fiche du beat : invitée (attend une

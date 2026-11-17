@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { CampagneRow, CibleOption, TemplateOption } from '../page'
 import NouvelleCampagneWizard from './NouvelleCampagneWizard'
 import EnvoyerCampagneButton from './EnvoyerCampagneButton'

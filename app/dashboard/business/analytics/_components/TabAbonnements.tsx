@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link              from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import KpiCard            from './KpiCard'
 import Pagine             from '../../../_pagination/Pagine'
 import AnalyticsLineChart from './AnalyticsLineChart'

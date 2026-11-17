@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Pagination from '../../../_pagination/Pagination'
 import { usePagination } from '../../../_pagination/usePagination'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { CommandeRow } from '../page'
 import { SOURCE_LABELS as SOURCE_LABEL } from '@/lib/sources-marketing'
 

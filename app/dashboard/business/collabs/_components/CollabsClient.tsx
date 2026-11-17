@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SplitRow, CritereManquant } from '../page'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { CONDITIONS_COLLAB_TEXTES, CONDITIONS_COLLAB_VERSION_ACTUELLE } from '@/lib/collaboration-conditions'
 
 type Onglet = 'demandes' | 'collabs' | 'refusees'

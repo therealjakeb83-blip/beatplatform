@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'

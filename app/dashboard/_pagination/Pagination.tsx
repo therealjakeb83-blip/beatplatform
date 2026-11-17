@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { useRef } from 'react'
 import { TAILLES_PAGE, nbPages, type TaillePage } from '@/lib/pagination'
 

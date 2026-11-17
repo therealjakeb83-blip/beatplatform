@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams }           from 'next/navigation'
-import Link                    from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import KpiCard                 from '../../_components/KpiCard'
 import Pagination              from '../../../../_pagination/Pagination'
 import { usePagination }       from '../../../../_pagination/usePagination'

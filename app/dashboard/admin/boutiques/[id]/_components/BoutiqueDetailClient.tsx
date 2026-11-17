@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { RapportSuspension } from '@/lib/admin-boutiques'
 import { MOTIFS_SUSPENSION, libelleMotifSuspension, type MotifSuspension } from '@/lib/suspension'
 

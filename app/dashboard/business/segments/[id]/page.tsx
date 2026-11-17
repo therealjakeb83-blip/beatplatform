@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { evaluerFiltres, couleurCls, type Condition } from '../../_lib/segments'
 import { chargerContactsEnrichis, nomAffichage, type ContactEnrichi } from '../../_lib/contacts'
 import TableauPagine from '../../../_pagination/TableauPagine'

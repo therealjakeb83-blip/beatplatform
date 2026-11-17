@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { useCallback, useEffect, useState } from 'react'
 import { DOMAINE_PLATEFORME, SOUS_DOMAINES_OUVERTS } from '@/lib/constantes'
 import { hoteSousDomaine } from '@/lib/domaine-boutique'

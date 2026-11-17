@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { useRouter } from 'next/navigation'
 import type { BeatCatalogue, DecisionLien, GroupeTitre } from '@/lib/import-externe/liens-beats'
 import Pagination from '../../../_pagination/Pagination'

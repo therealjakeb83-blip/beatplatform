@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { formatDateTz, formatDateTimeTz } from '@/lib/fuseau-horaire'
 import { libelleMotifLitige } from '@/lib/litiges-libelles'
 import type { PartLitige } from '@/lib/litiges'

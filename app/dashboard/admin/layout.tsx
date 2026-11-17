@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { estAdmin } from '@/lib/admin'
 import { tailleTableaux } from '@/lib/pagination-serveur'
 import { TaillePageProvider } from '../_pagination/TaillePage'

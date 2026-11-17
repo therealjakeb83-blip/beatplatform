@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { RECETTES, categorieDepuisSlug } from '../../_lib/recettes'
 import type { AutomatisationRow } from '../../_lib/types'
 import { sauvegarderAutomatisation } from '../../_lib/actions'

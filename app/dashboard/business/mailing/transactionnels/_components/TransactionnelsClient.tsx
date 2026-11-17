@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import type { TypeTemplateTransactionnel } from '@/lib/emails'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 

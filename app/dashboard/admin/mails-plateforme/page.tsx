@@ -3,7 +3,7 @@ import { sauvegarderTemplatePlateforme, genererApercuPlateforme } from './_lib/a
 import MailsPlateformeClient from './_components/MailsPlateformeClient'
 import LogsPlateformeClient, { type LogPlateformeRow } from './_components/LogsPlateformeClient'
 import type { TypeTemplatePlateforme } from '@/lib/emails'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { tailleTableaux } from '@/lib/pagination-serveur'
 import { bornerPage, lirePageAdresse } from '@/lib/pagination'
 

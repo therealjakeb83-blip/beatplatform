@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import DeconnexionButton from './DeconnexionButton'
 import { estAdmin } from '@/lib/admin'
 import { NOM_PLATEFORME } from '@/lib/constantes'

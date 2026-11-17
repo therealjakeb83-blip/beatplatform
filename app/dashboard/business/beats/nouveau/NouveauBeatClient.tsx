@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import Link from '@/app/dashboard/_navigation/LienSurvol'
 import BeatForm, { BeatFormValues, LicenceInfo, CategoriesOptions } from '../_components/BeatForm'
 
 export default function NouveauBeatClient({ beatId, licences, categories }: { beatId: string; licences: LicenceInfo[]; categories: CategoriesOptions }) {
