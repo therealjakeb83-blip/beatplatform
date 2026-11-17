@@ -1,0 +1,6 @@
+import { SqueletteFiche } from '@/app/dashboard/_navigation/Squelettes'
+
+// Rang 9e : squelette affiché dès le clic, en attendant la page.
+export default function Chargement() {
+  return <SqueletteFiche />
+}

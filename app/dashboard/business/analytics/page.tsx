@@ -2,13 +2,14 @@ import { utilisateurConnecte } from '@/lib/session-serveur'
 import { redirect }     from 'next/navigation'
 import { Suspense }     from 'react'
 import AnalyticsClient  from './_components/AnalyticsClient'
+import { SqueletteAnalytics } from '@/app/dashboard/_navigation/Squelettes'
 
 export default async function AnalyticsPage() {
   const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   return (
-    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<SqueletteAnalytics />}>
       <AnalyticsClient />
     </Suspense>
   )
