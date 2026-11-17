@@ -79,7 +79,7 @@ export async function memoriserInfosCompte(admin: SupabaseClient, clientId: stri
     prenom = propre(s.prenom, 100)
     nom = propre(s.nom, 100)
   }
-  const pays = propre(d.pays, 2)?.toUpperCase() ?? null
+  const pays = (d.pays ?? '').trim().toUpperCase() || null
 
   const { data: existant } = await admin.from('infos_paiement_compte').select('consenti_le').eq('client_id', clientId).maybeSingle()
   const maintenant = new Date().toISOString()
