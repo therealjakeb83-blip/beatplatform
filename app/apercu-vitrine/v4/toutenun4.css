@@ -98,6 +98,9 @@
   opacity: 0.88;
 }
 .y-f-ecran {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   aspect-ratio: 16 / 10;
   overflow: hidden;
   padding: 1.6em;
@@ -115,16 +118,16 @@
 }
 
 /* ——————————— Pièces communes des écrans ——————————— */
-.y-f-ecran p {
+:where(.y-f-ecran) p {
   margin: 0;
 }
-.y-f-ecran em {
+:where(.y-f-ecran) em {
   font-style: normal;
 }
-.y-f-ecran strong {
+:where(.y-f-ecran) strong {
   font-weight: 600;
 }
-.y-f-ecran small {
+:where(.y-f-ecran) small {
   font-size: inherit;
 }
 .y-f-ecran svg[viewBox='0 0 24 24'] {
@@ -1039,4 +1042,12 @@
   margin: 18px 0 0;
   font-size: 13px;
   color: #7d7b75;
+}
+
+/* Contenu des fenêtres centré en hauteur ; le chat garde sa barre en bas */
+.y-f-ecran > * {
+  width: 100%;
+}
+.y-f-ecran > .y-f-chat {
+  justify-content: flex-start;
 }
