@@ -61,10 +61,11 @@ export default async function CommandesPage({
   // Admin client pour bypasser la RLS de la table clients (join)
   const admin = createAdminClient()
 
+  // Rang 9e : commandes, tentatives et ventes collab partent en même temps,
+  // puis fiches clients et TVA des ventes collab en même temps.
   // Toutes les commandes, sans plafond (ancien .limit(500) : les plus anciennes
   // n'apparaissaient jamais) — la liste est paginée à l'affichage.
-  // Identité du client = fiche de CETTE boutique (9d lot 2), jamais la fiche commune
-  const data = await remplacerClientsParFiches(admin, user.id, await toutesLesLignes<{ client_id: string | null }>((debut, fin) => admin
+  const [commandesBrutes, tentativesBrutes, mesTranches] = await Promise.all([toutesLesLignes<{ client_id: string | null; id: string; paiement_multi_vendeurs: boolean | null }>((debut, fin) => admin
     .from('commandes')
     .select(
       `id, created_at, prix_paye, statut,
@@ -76,11 +77,11 @@ export default async function CommandesPage({
     .eq('beatmaker_id', user.id)
     .order('created_at', { ascending: false })
     .order('id')
-    .range(debut, fin)))
+    .range(debut, fin)),
 
   // Tentatives non abouties (une tentative réussie devient une vraie commande
   // ci-dessus — inutile de l'afficher deux fois)
-  const tentatives = await remplacerClientsParFiches(admin, user.id, await toutesLesLignes<{ client_id: string | null }>((debut, fin) => admin
+  toutesLesLignes<{ client_id: string | null }>((debut, fin) => admin
     .from('tentatives_paiement')
     .select(
       `id, created_at, prix, code_promo, source_marketing, email, statut, type, client_id,
@@ -90,7 +91,32 @@ export default async function CommandesPage({
     .neq('statut', 'complete')
     .order('created_at', { ascending: false })
     .order('id')
-    .range(debut, fin)))
+    .range(debut, fin)),
+
+  // Ventes où je suis vendeur sur la boutique d'un autre (Phase 12 Q19 /
+  // Phase 13 lot 3) : ma part seulement, jamais l'email du client ni la
+  // source marketing ; le code promo reste visible (il explique une part à 0 €).
+  toutesLesLignes((debut, fin) => admin
+    .from('commande_tranches')
+    .select(`montant_ttc_cents, montant_tva_cents, tva_taux, facture_numero,
+      commandes!inner (id, created_at, statut, code_promo, beatmaker_id, type_commande, acheteur_nom,
+        beatmakers (nom_artiste),
+        commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele)))`)
+    .eq('vendeur_id', user.id)
+    .neq('commandes.beatmaker_id', user.id)
+    .order('id')
+    .range(debut, fin)),
+  ])
+
+  // Identité du client = fiche de CETTE boutique (9d lot 2), jamais la fiche commune.
+  // TVA d'une vente collab = somme des TVA de chaque part (taux de chaque vendeur).
+  const idsMulti = commandesBrutes.filter(c => c.paiement_multi_vendeurs).map(c => c.id)
+  const [data, tentatives, tvaParts] = await Promise.all([
+    remplacerClientsParFiches(admin, user.id, commandesBrutes),
+    remplacerClientsParFiches(admin, user.id, tentativesBrutes),
+    parLots(idsMulti, lot =>
+      admin.from('commande_tranches').select('commande_id, montant_ttc_cents, montant_tva_cents, tva_taux').in('commande_id', lot)),
+  ])
 
   type LigneJointe = {
     beat_id: string
@@ -144,10 +170,6 @@ export default async function CommandesPage({
     }
   }
 
-  // TVA d'une vente collab = somme des TVA de chaque part (taux de chaque vendeur).
-  const idsMulti = ((data ?? []) as unknown as CommandeRawRow[]).filter(c => c.paiement_multi_vendeurs).map(c => c.id)
-  const tvaParts = await parLots(idsMulti, lot =>
-    admin.from('commande_tranches').select('commande_id, montant_ttc_cents, montant_tva_cents, tva_taux').in('commande_id', lot))
   const tvaMulti = new Map<string, { cents: number; taux: Set<number> }>()
   for (const t of tvaParts ?? []) {
     const e = tvaMulti.get(t.commande_id) ?? { cents: 0, taux: new Set<number>() }
@@ -183,20 +205,6 @@ export default async function CommandesPage({
     ...resumeLignes(t.tentatives_paiement_lignes ?? []),
     _type: 'tentative' as const,
   }))
-
-  // Ventes où je suis vendeur sur la boutique d'un autre (Phase 12 Q19 /
-  // Phase 13 lot 3) : ma part seulement, jamais l'email du client ni la
-  // source marketing ; le code promo reste visible (il explique une part à 0 €).
-  const mesTranches = await toutesLesLignes((debut, fin) => admin
-    .from('commande_tranches')
-    .select(`montant_ttc_cents, montant_tva_cents, tva_taux, facture_numero,
-      commandes!inner (id, created_at, statut, code_promo, beatmaker_id, type_commande, acheteur_nom,
-        beatmakers (nom_artiste),
-        commande_lignes (beat_id, licence_id, type_transaction, beats (titre, image_url), licences (nom, modele)))`)
-    .eq('vendeur_id', user.id)
-    .neq('commandes.beatmaker_id', user.id)
-    .order('id')
-    .range(debut, fin))
 
 
   type TrancheJointe = {
