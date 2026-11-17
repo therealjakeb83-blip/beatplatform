@@ -135,10 +135,17 @@
   color: var(--y-texte-doux);
 }
 .y-f-ecran {
-  aspect-ratio: 16 / 9.4;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   padding: 2em;
-  font-size: clamp(7.5px, calc(100cqw / 62), 15px);
+  font-size: clamp(7.5px, calc(100cqw / 50), 19px);
+}
+.y-f-mode-onglets .y-f-scene {
+  max-width: 1000px;
+  margin-inline: auto;
+}
+.y-f-pile {
+  max-width: 920px !important;
 }
 @media (max-width: 767px) {
   .y-f-fenetre {

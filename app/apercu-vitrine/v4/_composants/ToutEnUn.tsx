@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type ComponentType, type CSSProperties, type ReactNode, type TouchEvent } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode, type TouchEvent } from 'react'
 import * as I from './Icones'
 import * as M from './IconesMarque'
 import { MaquetteTableau } from './Maquettes'
@@ -307,6 +307,17 @@ export function ToutEnUn() {
   const [actif, setActif] = useState(0)
   const depart = useRef<number | null>(null)
   const n = OUTILS.length
+
+  // Aperçu : ?vue=onglets|pile|carrousel&outil=1..6 dans l'adresse ouvre directement un mode et un outil.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const vue = p.get('vue')
+    const num = Number(p.get('outil'))
+    /* eslint-disable react-hooks/set-state-in-effect -- lecture unique de l'adresse au chargement */
+    if (vue === 'onglets' || vue === 'pile' || vue === 'carrousel') setMode(vue)
+    if (num >= 1 && num <= OUTILS.length) setActif(num - 1)
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [])
 
   const aller = (i: number) => setActif(((i % n) + n) % n)
   const surDebut = (e: TouchEvent) => {
