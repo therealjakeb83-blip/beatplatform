@@ -23,7 +23,7 @@ import * as I from './_composants/Icones'
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à ses beats' },
   { valeur: '50 k', texte: 'abonnés YouTube' },
-  { valeur: '250 M+', texte: 'streams sur sa musique' },
+  { valeur: '300 M+', texte: 'streams sur sa musique' },
 ]
 
 const CLIENTS_COUCHE = [
@@ -195,7 +195,7 @@ export default function ApercuVitrineV4Page() {
             </div>
             <div>
               <h2 className="y-titre-2">{sa('Créé par un beatmaker, pour les beatmakers.')}</h2>
-              <p className="y-phrase4">Jake B compose sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats.</p>
+              <p className="y-phrase4">Compositeur certifié multi-platine, Jake B publie sa musique sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats.</p>
               <dl className="y-chiffres4">
                 {CHIFFRES_JAKE.map(c => (
                   <div key={c.valeur}>

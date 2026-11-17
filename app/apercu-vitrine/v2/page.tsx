@@ -83,7 +83,7 @@ const LIGNES_CONTRAT = [
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à ses beats' },
   { valeur: '50 k', texte: 'abonnés YouTube' },
-  { valeur: '250 M+', texte: 'streams sur sa musique' },
+  { valeur: '300 M+', texte: 'streams sur sa musique' },
 ]
 
 const OFFRE_GRATUITE = ['Réception automatique de ta part sur les ventes en collab', 'Accès au compte Sonoo', '[Autres fonctionnalités à confirmer]']
@@ -347,7 +347,7 @@ export default function ApercuVitrineV2Page() {
               <Etiquette>05 — L’histoire</Etiquette>
               <h2 className="w-titre-2">{sa('Créé par un beatmaker, pour les beatmakers.')}</h2>
               <p className="w-histoire-intro">
-                Jake B compose sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats,
+                Compositeur certifié multi-platine, Jake B publie sa musique sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats,
                 ouvert à tous les beatmakers.
               </p>
               <dl className="w-chiffres">

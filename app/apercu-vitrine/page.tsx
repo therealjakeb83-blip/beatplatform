@@ -88,7 +88,7 @@ const LIGNES_CONTRAT = [
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à mes beats' },
   { valeur: '50 k', texte: 'abonnés sur YouTube' },
-  { valeur: '250 M+', texte: 'streams sur ma musique' },
+  { valeur: '300 M+', texte: 'streams sur ma musique' },
 ]
 
 const OFFRE_GRATUITE = ['Réception automatique de ta part sur les ventes en collab', 'Accès au compte Sonoo', '[Autres fonctionnalités à confirmer]']
@@ -579,7 +579,7 @@ export default function ApercuVitrinePage() {
                 <span className="v-avatar v-avatar-noir">JB</span>
                 <span className="v-client-nom">
                   <span>Jake B</span>
-                  <small>Compositeur, fondateur de Sonoo</small>
+                  <small>Compositeur certifié multi-platine, fondateur de Sonoo</small>
                 </span>
               </div>
               <p className="v-mini-label">Le parcours de Jake B</p>
