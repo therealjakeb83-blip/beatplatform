@@ -104,13 +104,18 @@ export async function memoriserInfosCompte(admin: SupabaseClient, clientId: stri
 // Au moment de préparer un paiement : case décochée par un client connecté =
 // retrait immédiat (décision de Jake). Case cochée = identifiant à porter dans
 // la metadata pour l'enregistrement après paiement. Aucun effet sans compte
-// connecté, ni quand le navigateur n'envoie pas la case (panier express).
+// connecté. Case absente (paiement express du panier, sans formulaire) : la
+// case reste dans son état — mise à jour seulement si elle est déjà cochée.
 export async function choixMemoriser(
   admin: SupabaseClient,
   clientIdConnecte: string | null,
   memoriser: boolean | undefined,
 ): Promise<Record<string, string>> {
-  if (!clientIdConnecte || memoriser === undefined) return {}
+  if (!clientIdConnecte) return {}
+  if (memoriser === undefined) {
+    const { data } = await admin.from('infos_paiement_compte').select('client_id').eq('client_id', clientIdConnecte).maybeSingle()
+    return data ? { [CLE_MEMORISER]: clientIdConnecte } : {}
+  }
   if (memoriser === true) return { [CLE_MEMORISER]: clientIdConnecte }
   await oublierInfosCompte(admin, clientIdConnecte)
   return {}
