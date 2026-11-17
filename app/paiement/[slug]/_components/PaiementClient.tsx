@@ -986,10 +986,6 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
             <span className="pmt-newsletter-label">Je veux recevoir les nouveaux beats et les offres par e-mail</span>
           </label>
 
-              </span>
-            </label>
-          )}
-
           {/* Moyens de paiement — aussi pour un panier avec un beat collab
               (Phase 13, lot 2 : enregistrés puis débités chez chaque vendeur) */}
           {!gratuit && !premierMoisOffert && (<>
@@ -1150,6 +1146,9 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                           {memoriser ? 'Tes infos seront mises à jour avec celles de ce paiement.' : 'Tes infos gardées seront effacées.'}
                         </span>
                       )}
+                    </span>
+                  </label>
+                )}
 
                 {(erreurGlobale || erreurPrix) && <p className="pmt-error-global">{erreurGlobale ?? erreurPrix}</p>}
                 {messageValidation && <p className="pmt-remise-limitee" role="status">{messageValidation}</p>}
