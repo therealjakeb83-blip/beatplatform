@@ -4110,3 +4110,9 @@ html:has(.vitrine5) {
 .z-panneau-bleu .z-zero4-chiffre {
   color: var(--z-blanc);
 }
+
+/* Le haut de page n'a plus la classe z-grain (qui le mettait en position: relative) :
+   sans ça, le logo décoratif en fond déborde à droite et la page défile sur le côté. */
+.z-hero4 {
+  position: relative;
+}
