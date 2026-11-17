@@ -49,8 +49,12 @@ export default function ConfidentialitePlateformePage() {
         <Section titre="Ce que contient ton compte">
           <p>
             Ton adresse email, ton mot de passe (jamais stocké en clair) ou ta connexion Google, le prénom et le nom saisis à
-            l&apos;inscription et tes favoris. Les coordonnées que tu donnes en payant ne sont pas gardées sur ton compte : elles
-            restent sur ta commande et chez la boutique où tu as acheté.
+            l&apos;inscription et tes favoris. Les coordonnées que tu donnes en payant restent sur ta commande et chez la boutique
+            où tu as acheté. Elles ne sont gardées sur ton compte que si tu coches « Se souvenir de mes infos pour mes achats dans
+            les autres boutiques {NOM_PLATEFORME} » : {NOM_PLATEFORME} garde alors uniquement celles de ton dernier achat (nom,
+            téléphone, adresse, pays, et pour un professionnel la raison sociale et le numéro de TVA) pour préremplir tes paiements
+            dans les autres boutiques. Une boutique ne les reçoit que si tu paies chez elle. Tu peux voir ces infos et les retirer à
+            tout moment dans « Mon compte » ; elles sont aussi effacées si tu supprimes ton compte.
           </p>
           <p>Ces données servent uniquement à te connecter, à retrouver tes achats et tes favoris, et à t&apos;envoyer les emails liés à ton compte.</p>
         </Section>

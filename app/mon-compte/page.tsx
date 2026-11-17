@@ -4,6 +4,11 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LienVersBoutique from './_components/LienVersBoutique'
 import SupprimerCompte from './_components/SupprimerCompte'
+import InfosPaiementCompte, { type InfosAffichees } from './_components/InfosPaiementCompte'
+import { lireInfosCompte } from '@/lib/infos-paiement-compte'
+import { listePays } from '@/lib/pays-iso'
+
+const nomPays = (code: string) => listePays().find(p => p.code === code)?.label ?? code
 import { NOM_PLATEFORME } from '@/lib/constantes'
 
 type AboRow = {
@@ -82,6 +87,22 @@ export default async function MonComptePage() {
   const nomBoutique = (b: unknown) => ((Array.isArray(b) ? b[0] : b) as { nom_artiste?: string } | null)?.nom_artiste ?? 'une boutique'
   const newslettersCompte = (inscriptions ?? []).map(l => ({ id: l.beatmaker_id as string, nom: nomBoutique(l.beatmakers) }))
   const abonnementsBloquants = [...new Set((abosEnCours ?? []).map(a => nomBoutique(a.beatmakers)))]
+
+  // Infos gardées par la case « se souvenir » (Sonoo responsable) : en clair
+  const infosCompte = await lireInfosCompte(admin, user.id)
+  const infosAffichees: InfosAffichees | null = infosCompte
+    ? {
+        lignes: [
+          { libelle: 'Nom', valeur: [infosCompte.prenom, infosCompte.nom].filter(Boolean).join(' ') },
+          { libelle: 'Téléphone', valeur: infosCompte.telephone ?? '' },
+          { libelle: 'Adresse', valeur: [infosCompte.adresse, [infosCompte.code_postal, infosCompte.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') },
+          { libelle: 'Pays', valeur: infosCompte.pays ? nomPays(infosCompte.pays) : '' },
+          { libelle: 'Société', valeur: infosCompte.raison_sociale ?? '' },
+          { libelle: 'N° de TVA', valeur: infosCompte.numero_tva ?? '' },
+        ].filter(l => l.valeur),
+        majLe: new Date(infosCompte.maj_le).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }),
+      }
+    : null
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-16">
@@ -212,6 +233,13 @@ export default async function MonComptePage() {
               })}
             </div>
           )}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-base font-bold text-white mb-4 uppercase tracking-wider text-xs text-gray-400">
+            Mes infos de paiement
+          </h2>
+          <InfosPaiementCompte nomPlateforme={NOM_PLATEFORME} infos={infosAffichees} />
         </section>
 
         <div className="mt-12">
