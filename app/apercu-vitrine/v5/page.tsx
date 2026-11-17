@@ -12,7 +12,7 @@ import { sansAccents as sa } from './_composants/sansAccents'
 import * as I from './_composants/Icones'
 
 // Page test « v5 » : la v4 à l’identique, couleurs des sections INVERSÉES (demande de Jake, 2026-11-17).
-// Haut de page CRÈME, puis noir, crème, noir… dans le même ordre que la v4. En-tête inchangé.
+// Haut de page CRÈME, noir, crème, puis 0 % en BLEU plein (comme la v3), puis noir, crème, noir, crème. En-tête inchangé.
 // Les retouches de couleur propres à la v5 sont regroupées à la fin de vitrine5.css (bloc v5).
 
 const CHIFFRES_JAKE = [
@@ -154,7 +154,7 @@ export default function ApercuVitrineV5Page() {
           </div>
         </section>
 
-        {/* ——— 0 % — ligne géante sur crème ——— */}
+        {/* ——— 0 % — ligne géante sur fond bleu (comme la v3) ——— */}
         <section className="z-panneau z-panneau-bleu z-zero4-panneau">
           <div className="z-conteneur">
             <p className="z-zero4">
@@ -166,8 +166,8 @@ export default function ApercuVitrineV5Page() {
           </div>
         </section>
 
-        {/* ——— 03 Tout-en-un — panneau crème, une fenêtre par outil (3 présentations à comparer) ——— */}
-        <section className="z-panneau z-panneau-creme z-tout4">
+        {/* ——— 03 Tout-en-un — panneau noir, une fenêtre par outil (3 présentations à comparer) ——— */}
+        <section className="z-panneau z-panneau-noir z-grain z-tout4">
           <div className="z-conteneur">
             <div className="z-tete4">
               <h2 className="z-titre-2 z-centre">Un seul abonnement. Au lieu de cinq outils.</h2>
@@ -176,8 +176,8 @@ export default function ApercuVitrineV5Page() {
           </div>
         </section>
 
-        {/* ——— L’histoire — panneau noir, logo Jake B ——— */}
-        <section className="z-panneau z-panneau-noir z-grain z-histoire4-panneau">
+        {/* ——— L’histoire — panneau crème, logo Jake B ——— */}
+        <section className="z-panneau z-panneau-creme z-histoire4-panneau">
           <div className="z-conteneur z-histoire4">
             <div className="z-histoire4-logo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -198,8 +198,8 @@ export default function ApercuVitrineV5Page() {
           </div>
         </section>
 
-        {/* ——— Tarifs + affiliation — panneau crème ——— */}
-        <section id="tarifs" className="z-panneau z-panneau-creme z-tarifs4 z-ancre">
+        {/* ——— Tarifs + affiliation — panneau noir ——— */}
+        <section id="tarifs" className="z-panneau z-panneau-noir z-grain z-tarifs4 z-ancre">
           <div className="z-conteneur">
             <h2 className="z-titre-2 z-centre">{sa('Un prix simple. Zéro commission.')}</h2>
             <div className="z-offres4">
@@ -256,8 +256,8 @@ export default function ApercuVitrineV5Page() {
           </div>
         </section>
 
-        {/* ——— FAQ + appel final — panneau noir ——— */}
-        <section className="z-panneau z-panneau-noir z-grain z-fin4">
+        {/* ——— FAQ + appel final — panneau crème ——— */}
+        <section className="z-panneau z-panneau-creme z-fin4">
           <div id="faq" className="z-conteneur z-ancre z-faq">
             <div className="z-faq-intro">
               <h2 className="z-titre-2">{sa('Questions fréquentes')}</h2>
@@ -272,7 +272,7 @@ export default function ApercuVitrineV5Page() {
 
           <div className="z-conteneur z-cta-section">
             <div className="z-cta z-grain">
-              <Symbole hauteur={620} couleur="#e6e2db" className="z-cta-deco" />
+              <Symbole hauteur={620} couleur="#141312" className="z-cta-deco" />
               <div className="z-cta-contenu">
                 <h2 className="z-titre-cta">{sa('Arrête de louer ton audience. Construis ta marque.')}</h2>
                 <p>Lance ta boutique Sonoo et garde la relation avec tes clients.</p>
