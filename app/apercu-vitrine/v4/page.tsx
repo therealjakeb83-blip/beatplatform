@@ -167,11 +167,6 @@ export default function ApercuVitrineV4Page() {
             </p>
             <div className="y-zero4-bas">
               <p className="y-phrase4">L’argent va directement de l’acheteur à toi. Sonoo n’y touche jamais.</p>
-              <span className="y-flux4" role="img" aria-label="49 € vont directement de l’acheteur à toi, Sonoo prélève 0 €">
-                <span>Acheteur</span>
-                <span className="y-flux4-trait">49 €</span>
-                <span className="y-flux4-toi">Toi</span>
-              </span>
             </div>
           </div>
         </section>
