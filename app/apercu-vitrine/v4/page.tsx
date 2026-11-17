@@ -4,12 +4,12 @@ import { adresseBoutique } from '@/lib/adresse-boutique'
 import { EMAIL_CONTACT } from '@/lib/constantes'
 import { EnTete } from './_composants/EnTete'
 import { Faq } from './_composants/Faq'
-import { MaquetteMarque, MaquetteRelance, MaquetteTableau } from './_composants/Maquettes'
+import { MaquetteMarque, MaquetteRelance } from './_composants/Maquettes'
+import { ToutEnUn } from './_composants/ToutEnUn'
 import { Logo, Symbole } from './_composants/Logo'
 import { CHEMIN_INSCRIPTION, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
 import { sansAccents as sa } from './_composants/sansAccents'
 import * as I from './_composants/Icones'
-import * as M from './_composants/IconesMarque'
 
 // Page test « v4 » : une AUTRE interprétation du retour envoyé au designer le 2026-11-16
 // (design/charte-v2/retour-jake/NOTES.md), à comparer avec la v3. Priorité ordinateur.
@@ -19,15 +19,6 @@ import * as M from './_composants/IconesMarque'
 // - section bleue = « L'histoire » (logo Jake B) ; le 0 % devient une ligne géante sur crème ;
 // - tous les titres en Surgena (version d'essai, sans accents) ; chiffres des maquettes en Space Grotesk ;
 // - visuels = maquettes codées (_composants/Maquettes.tsx), sans fond plaqué ni photo.
-
-const OUTILS = [
-  { icone: M.MarqueBoutique, nom: 'Boutique' },
-  { icone: M.MarqueLicence, nom: 'Licences' },
-  { icone: I.Document, nom: 'Contrats & factures' },
-  { icone: M.MarqueMembres, nom: 'Clients & e-mails' },
-  { icone: M.MarqueStatistiques, nom: 'Statistiques' },
-  { icone: M.MarquePaiementSecurise, nom: 'Paiements' },
-]
 
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à ses beats' },
@@ -185,23 +176,13 @@ export default function ApercuVitrineV4Page() {
           </div>
         </section>
 
-        {/* ——— 03 Tout-en-un — panneau noir, écran incliné ——— */}
+        {/* ——— 03 Tout-en-un — panneau noir, une fenêtre par outil (3 présentations à comparer) ——— */}
         <section className="y-panneau y-panneau-noir y-grain y-tout4">
           <div className="y-conteneur">
             <div className="y-tete4">
               <h2 className="y-titre-2 y-centre">Un seul abonnement. Au lieu de cinq outils.</h2>
             </div>
-            <ul className="y-outils4">
-              {OUTILS.map(o => (
-                <li key={o.nom}>
-                  <o.icone taille={20} />
-                  {o.nom}
-                </li>
-              ))}
-            </ul>
-            <div className="y-ecran4 y-deborde">
-              <MaquetteTableau />
-            </div>
+            <ToutEnUn />
           </div>
         </section>
 

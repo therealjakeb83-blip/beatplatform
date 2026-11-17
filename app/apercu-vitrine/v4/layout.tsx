@@ -4,6 +4,7 @@ import localFont from 'next/font/local'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import './vitrine4.css'
 import './maquettes4.css'
+import './toutenun4.css'
 
 // Page test du site vitrine « v4 » : une AUTRE projection du retour envoyé au
 // designer le 2026-11-16 (design/charte-v2/retour-jake/). Ce n'est PAS une maquette

@@ -3650,9 +3650,7 @@ html:has(.vitrine4) {
   }
 
   /* L'histoire (bleu) */
-  .y-histoire4-panneau {
-    padding-top: calc(var(--y-recouvre) + 290px);
-  }
+
   .y-histoire4 {
     grid-template-columns: 440px 1fr;
     gap: 96px;
