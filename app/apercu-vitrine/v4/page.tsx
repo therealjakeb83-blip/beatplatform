@@ -200,11 +200,10 @@ export default function ApercuVitrineV4Page() {
                 {CHIFFRES_JAKE.map(c => (
                   <div key={c.valeur}>
                     <dt>{c.valeur}</dt>
-                    <dd>{c.texte}{c.source && <span style={{ display: 'block', marginTop: '0.3em', fontSize: '0.8em', opacity: 0.6 }}>{c.source}</span>}</dd>
+                    <dd>{c.texte}{c.source && <span style={{ display: 'flex', alignItems: 'center', gap: '0.4em', marginTop: '0.3em', fontSize: '0.8em' }}><span style={{ opacity: 0.6 }}>{c.source}</span><img src="/apercu-vitrine/muso-ai.png" alt="Logo muso.ai" width={64} height={48} style={{ height: '1.3em', width: 'auto' }} /></span>}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="y-chiffres4-note">Le parcours de Jake B, fondateur — pas des résultats clients Sonoo.</p>
             </div>
           </div>
         </section>
