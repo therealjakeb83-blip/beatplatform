@@ -12,6 +12,7 @@ import { siteDeLaPage } from '@/lib/boutique-du-domaine'
 import { normaliserEmail } from '@/lib/email'
 import { cookieAccesTelechargement } from '@/lib/telechargement-acces'
 import { urlPdfAvoir } from '@/lib/avoirs'
+import { lienBoutique } from '@/lib/domaine-boutique'
 
 export const runtime = 'nodejs'
 
@@ -97,7 +98,7 @@ export default async function TelechargerPage({
   const [{ data: beatsData }, { data: licencesData }, { data: beatmaker }] = await Promise.all([
     supabase.from('beats').select('id, titre, bpm, cle, mp3_propre_url, wav_url, stems_url').in('id', beatIds),
     supabase.from('licences').select('id, nom, modele').in('id', licenceIds),
-    supabase.from('beatmakers').select('nom_artiste').eq('id', commande.beatmaker_id).single(),
+    supabase.from('beatmakers').select('nom_artiste, slug').eq('id', commande.beatmaker_id).single(),
   ])
 
   const beatMap = new Map((beatsData ?? []).map(b => [b.id, b]))
@@ -319,6 +320,17 @@ export default async function TelechargerPage({
               ))}
             </div>
           </div>
+        )}
+
+        {/* Retour à la boutique où la commande a été passée (sur le domaine
+            d'une boutique : sa page d'accueil). */}
+        {(site.surDomaine || beatmaker?.slug) && (
+          <a
+            href={lienBoutique(beatmaker?.slug ?? '', '', site.surDomaine)}
+            className="block w-full text-center mt-6 py-3 rounded-xl bg-white text-gray-950 font-semibold text-sm hover:bg-gray-200 transition-colors"
+          >
+            Retour à la boutique
+          </a>
         )}
 
         <p className="text-center text-gray-700 text-xs mt-6">
