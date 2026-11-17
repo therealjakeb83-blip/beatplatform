@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerCompteSupprime } from '@/lib/emails'
+import { oublierInfosCompte } from '@/lib/infos-paiement-compte'
 import { NOM_PLATEFORME, EMAIL_CONTACT } from '@/lib/constantes'
 
 // Suppression d'un compte Sonoo (9d lot 4), par la personne (« Mon compte »)
@@ -43,6 +44,9 @@ export async function supprimerCompteClient(params: {
     // compte_introuvable = déjà anonymisé ou connexion sans fiche : on ferme quand même la connexion
     if (!auth?.user) return { ok: false, statut: 404, erreur: 'Ce compte est déjà supprimé.' }
   }
+
+  // Infos gardées par la case « se souvenir » : effacées avec le compte.
+  await oublierInfosCompte(admin, clientId)
 
   if (auth?.user) {
     const { error: eAuth } = await admin.auth.admin.deleteUser(clientId)

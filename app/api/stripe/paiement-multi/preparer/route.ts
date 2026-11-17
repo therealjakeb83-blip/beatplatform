@@ -10,6 +10,7 @@ import { panierEstMultiVendeurs, repartirPanier } from '@/lib/paiement-multi-rep
 import { NextResponse } from 'next/server'
 import { siteDeLaRequete } from '@/lib/boutique-du-domaine'
 import { lienPaiement } from '@/lib/domaine-boutique'
+import { choixMemoriser } from '@/lib/infos-paiement-compte'
 
 export const runtime = 'nodejs'
 
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     raison_sociale?: string
     numero_tva?: string
     newsletter_opt_in?: boolean
+    memoriser_infos?: boolean
     // Apple Pay / Google Pay (lot 2) : moyen de paiement déjà créé par
     // le navigateur sur la plateforme — enregistré ici, jamais débité.
     payment_method_id?: string
@@ -131,7 +133,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Ton moyen de paiement a été refusé. Aucun montant n’a été débité.' }, { status: 402 })
   }
 
+  const clientIdConnecte = await resoudreClientId(admin, user)
   const metadonnees: Record<string, string> = {
+    ...(await choixMemoriser(admin, clientIdConnecte, body.memoriser_infos)),
     type: 'achat_multi',
     beatmaker_id: String(beatmaker.id),
     slug,
@@ -145,7 +149,7 @@ export async function POST(request: Request) {
   const { data: tentative, error: tentativeError } = await admin.from('tentatives_paiement').insert({
     type: 'achat_multi',
     beatmaker_id: beatmaker.id,
-    client_id: await resoudreClientId(admin, user),
+    client_id: clientIdConnecte,
     email: emailAcheteur,
     prix: totalCents / 100,
     code_promo: codePromoValide,

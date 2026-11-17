@@ -7,6 +7,7 @@ import { calculerPretAVendre } from '@/lib/pret-a-vendre'
 import { estRoleAdmin } from '@/lib/admin'
 import { panierEstMultiVendeurs } from '@/lib/paiement-multi-repartition'
 import { NextResponse } from 'next/server'
+import { choixMemoriser } from '@/lib/infos-paiement-compte'
 
 // Paiement express (Apple Pay/Google Pay/PayPal) — soit un achat unitaire
 // depuis la popup licence (beat_id/licence_id), soit tout le panier depuis
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
     raison_sociale?: string
     numero_tva?: string
     newsletter_opt_in?: boolean
+    memoriser_infos?: boolean
   }
   const {
     slug, code_promo, email_acheteur, source_marketing,
@@ -129,6 +131,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ erreur: 'Montant trop faible pour un paiement express' }, { status: 400 })
   }
 
+  const clientId = await resoudreClientId(admin, user)
+  const memoriser = await choixMemoriser(admin, clientId, body.memoriser_infos)
+
   const paymentIntentParams: import('stripe').default.PaymentIntentCreateParams = {
     amount: totalCents,
     currency: 'eur',
@@ -147,6 +152,7 @@ export async function POST(request: Request) {
         ? { acheteur_numero_tva: numero_tva.trim().toUpperCase().slice(0, 32) }
         : {}),
       ...(codePromoValide ? { code_promo: codePromoValide } : {}),
+      ...memoriser,
     },
   }
 
@@ -161,7 +167,6 @@ export async function POST(request: Request) {
   const paymentIntent = directChargeActif
     ? await stripe.paymentIntents.create(paymentIntentParams, { stripeAccount: beatmaker.stripe_account_id! })
     : await stripe.paymentIntents.create(paymentIntentParams)
-  const clientId = await resoudreClientId(admin, user)
 
   const { data: tentative, error: tentativeError } = await admin.from('tentatives_paiement').insert({
     type: 'achat_express',

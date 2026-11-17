@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { resoudreClientId } from '@/lib/pricing'
 import { normaliserEmail } from '@/lib/email'
+import { choixMemoriser } from '@/lib/infos-paiement-compte'
 import {
   assurerCouponAbonnement, assurerProduitAbonnement, creerAbonnementAPayer, preparerAbonnement, type MetadataAbonnement,
 } from '@/lib/abonnement-boutique'
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
     numero_tva?: string
     newsletter_opt_in?: boolean
     source_marketing?: string
+    memoriser_infos?: boolean
   }
   if (!body.slug) return NextResponse.json({ erreur: 'Requête invalide' }, { status: 400 })
 
@@ -68,7 +70,9 @@ export async function POST(request: Request) {
     }, options)
 
     const clientId = await resoudreClientId(admin, user)
+    const memoriser = await choixMemoriser(admin, clientId, body.memoriser_infos)
     const metadata: MetadataAbonnement = {
+      ...memoriser,
       type: 'abonnement_boutique',
       beatmaker_id: beatmaker.id,
       slug: beatmaker.slug,

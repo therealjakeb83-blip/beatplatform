@@ -15,6 +15,7 @@ import { completerCommande, remplirFraisTranches } from '@/lib/completion-comman
 import { fuseauSur } from '@/lib/fuseau-horaire'
 import { inscrireParClient } from '@/lib/newsletter'
 import { ecrireFicheBoutique, separerNomComplet } from '@/lib/fiche-boutique-ecriture'
+import { CLE_MEMORISER, memoriserInfosCompte } from '@/lib/infos-paiement-compte'
 import type Stripe from 'stripe'
 
 // Traitement des paiements de vente (panier classique + achat express) —
@@ -437,6 +438,24 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
   }
 
   console.log('[webhook-paiement] Commande créée:', commande.id, '—', tentativeLignes.length, 'article(s)')
+
+  // Case « se souvenir de mes infos » cochée par le compte connecté (posée
+  // par le serveur dans la metadata) : infos du compte = celles de ce paiement.
+  const memoriserPour = meta[CLE_MEMORISER]
+  if (memoriserPour) {
+    await memoriserInfosCompte(supabase, memoriserPour, {
+      prenom: tentative.prenom,
+      nom: tentative.nom,
+      nomComplet: acheteurNom,
+      telephone: acheteurTelephone,
+      adresse: acheteurAdresseRaw ? [acheteurAdresseRaw.line1, acheteurAdresseRaw.line2].filter(Boolean).join(' ') : null,
+      codePostal: acheteurAdresseRaw?.postal_code,
+      ville: acheteurAdresseRaw?.city,
+      pays: acheteurAdresseRaw?.country,
+      raisonSociale: acheteurRaisonSociale,
+      numeroTva: acheteurNumeroTva,
+    })
+  }
 
   // Facturation (Phase 8, chantier 9 bis) — numéro attribué une seule fois
   // ici, jamais recalculé ensuite (voir lib/facturation.ts pour l'atomicité

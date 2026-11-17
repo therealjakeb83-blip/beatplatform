@@ -11,6 +11,7 @@ import { calculerStatutLivraison } from '@/lib/livraison-statut'
 import { completerCommande } from '@/lib/completion-commande'
 import { inscrireParClient } from '@/lib/newsletter'
 import { ecrireFicheBoutique } from '@/lib/fiche-boutique-ecriture'
+import { CLE_MEMORISER, memoriserInfosCompte } from '@/lib/infos-paiement-compte'
 
 // Abonnements boutique (artiste → beatmaker) : traitement des événements
 // Stripe reçus par le webhook des comptes vendeurs (paiement direct, lot 1 du
@@ -479,6 +480,20 @@ async function enregistrerAbonnementDirect(
       pays: acheteur.adresseRaw?.country ?? null,
     },
   })
+
+  if (meta[CLE_MEMORISER]) {
+    await memoriserInfosCompte(supabase, meta[CLE_MEMORISER], {
+      prenom: meta.prenom,
+      nom: meta.nom,
+      telephone: acheteur.telephone,
+      adresse: acheteur.adresseRaw?.line1,
+      codePostal: acheteur.adresseRaw?.postal_code,
+      ville: acheteur.adresseRaw?.city,
+      pays: acheteur.adresseRaw?.country,
+      raisonSociale: acheteur.raisonSociale,
+      numeroTva: acheteur.numeroTva,
+    })
+  }
 
   await envoyerNouvelAbonnement({ beatmakerId: meta.beatmaker_id, periode: 'mensuel', prixCents })
     .catch(err => console.error('[abonnement] Erreur envoi email nouvel abonnement:', err))

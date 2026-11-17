@@ -29,6 +29,8 @@ import { messageErreurInattendue, payerMultiAvecMoyen, payerMultiParCarte, type 
 import { lireCodePromoPanier, oublierCodePromoPanier } from '@/app/[slug]/_lib/code-promo-panier'
 import { useLienBoutique, useSurDomaineBoutique } from '@/app/[slug]/_components/DomaineBoutique'
 import { lienPaiement } from '@/lib/domaine-boutique'
+import type { Preremplissage } from '@/lib/preremplissage-paiement'
+import { NOM_PLATEFORME } from '@/lib/constantes'
 
 const MONTANT_DETECTION_CENTS = 1000
 
@@ -46,6 +48,12 @@ type Props = {
   // à préremplir la facturation et à sauter la demande d'email pour un code
   // promo restreint, sans redemander à quelqu'un déjà identifié.
   clientEmail: string | null
+  // Compte client connecté (ligne clients) : seul cas où la case « se
+  // souvenir de mes infos » est proposée.
+  compteClient: boolean
+  // Infos lues par le serveur pour le client connecté (fiche de cette
+  // boutique et/ou infos gardées sur son compte), voir lib/preremplissage-paiement.ts.
+  preremplissage: Preremplissage | null
   // Abonnement boutique (2026-10-01) : même page, l'abonnement est le seul
   // article (jamais le panier). Paiement direct sur le compte du beatmaker.
   abonnement: AbonnementPaiement | null
@@ -216,7 +224,8 @@ async function abandonnerAbonnementRefuse(slug: string, id: string) {
   }).catch(() => null)
 }
 
-function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaActive, tvaTaux, clientEmail }: Props) {
+function PanierInner(props: Props) {
+  const { slug } = props
   const lien = useLienBoutique(slug)
   const { items, paiementEnCours } = useCart()
   const beatIdsKey = [...new Set(items.map(i => i.beatId))].sort().join(',')
@@ -293,7 +302,7 @@ function PanierInner({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, tvaAc
       // dans le navigateur (vu en T10, Apple Pay sur iPhone).
       options={{ mode: 'payment', amount: MONTANT_DETECTION_CENTS, currency: 'eur', ...(contexte?.mode === 'multi' ? { setupFutureUsage: 'off_session' as const, paymentMethodCreation: 'manual' as const } : {}) }}
     >
-      <PaiementForm slug={slug} logoUrl={logoUrl} logoInverser={logoInverser} nomArtiste={nomArtiste} reglesLot={reglesLot} tvaActive={tvaActive} tvaTaux={tvaTaux} clientEmail={clientEmail} abonnement={null} multiVendeurs={contexte?.mode === 'multi'} />
+      <PaiementForm {...props} abonnement={null} multiVendeurs={contexte?.mode === 'multi'} />
     </Elements>
   )
 }
@@ -326,7 +335,7 @@ const cardElementStyle = {
   invalid: { color: '#D92D20' },
 }
 
-function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, multiVendeurs, abonnement }: PropsForm) {
+function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clientEmail, compteClient, preremplissage, multiVendeurs, abonnement }: PropsForm) {
   const lien = useLienBoutique(slug)
   const surDomaine = useSurDomaineBoutique()
   const stripe = useStripe()
@@ -336,15 +345,31 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
   const pays = useMemo(() => listePays(), [])
 
   const [recapOpen, setRecapOpen] = useState(false)
-  const [pro, setPro] = useState(false)
+  const [pro, setPro] = useState(Boolean(preremplissage?.pro))
   // Préremplit avec l'email du compte connecté (même principe que le panier,
   // voir CartDrawer.tsx) — reste éditable, au cas où la facturation diffère.
   // Abonnement : l'email du compte connecté (artiste ou beatmaker) est imposé.
   const emailImpose = abonnement?.compteEmail ?? null
   const [champs, setChamps] = useState<Champs>(() => {
     const email = emailImpose ?? clientEmail
-    return email ? { ...CHAMPS_VIDES, email } : CHAMPS_VIDES
+    const base = email ? { ...CHAMPS_VIDES, email } : CHAMPS_VIDES
+    return preremplissage ? { ...base, ...champsPreremplis(preremplissage) } : base
   })
+  const adressesEnregistrees = preremplissage?.adresses ?? []
+  const [adresseChoisie, setAdresseChoisie] = useState('0')
+  // Case « se souvenir » : déjà cochée si le compte garde des infos.
+  const [memoriser, setMemoriser] = useState(Boolean(preremplissage?.memoriserActif))
+  const memoriserEnvoye = compteClient ? memoriser : undefined
+  function choisirAdresse(valeur: string) {
+    setAdresseChoisie(valeur)
+    const a = adressesEnregistrees[Number(valeur)]
+    if (!a) {
+      setChamps(c => ({ ...c, adresse: '', codePostal: '', ville: '' }))
+      return
+    }
+    setChamps(c => ({ ...c, adresse: a.adresse, codePostal: a.codePostal, ville: a.ville, pays: a.pays ?? c.pays }))
+    setErreursChamps(e => ({ ...e, adresse: undefined, codePostal: undefined, ville: undefined }))
+  }
   const [erreursChamps, setErreursChamps] = useState<Partial<Record<keyof Champs, string>>>({})
 
   const [codePromoOpen, setCodePromoOpen] = useState(false)
@@ -552,6 +577,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
         raison_sociale: pro ? champs.raisonSociale : undefined,
         numero_tva: pro ? champs.numeroTva : undefined,
         newsletter_opt_in: newsletterOptIn,
+        memoriser_infos: memoriserEnvoye,
         source_marketing: typeof window !== 'undefined' ? (sessionStorage.getItem('source_marketing') ?? 'direct') : 'direct',
       })
   }
@@ -958,6 +984,30 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
             <span className="pmt-newsletter-label">Je veux recevoir les nouveaux beats et les offres par e-mail</span>
           </label>
 
+          {/* Consentement explicite (modèle Shop Pay) : décochée par défaut,
+              clients connectés seulement ; décocher = infos effacées du compte. */}
+          {compteClient && (
+            <label className="pmt-newsletter">
+              <input
+                type="checkbox"
+                checked={memoriser}
+                onChange={e => setMemoriser(e.target.checked)}
+                className="pmt-newsletter-input"
+              />
+              <span className={`pmt-newsletter-box${memoriser ? ' is-checked' : ''}`}>
+                {memoriser && CHECK_ICON}
+              </span>
+              <span className="pmt-newsletter-label">
+                Se souvenir de mes infos pour mes achats dans les autres boutiques {NOM_PLATEFORME}
+                {preremplissage?.memoriserActif && (
+                  <span style={{ display: 'block', opacity: 0.7, fontSize: 12 }}>
+                    {memoriser ? 'Tes infos seront mises à jour avec celles de ce paiement.' : 'Tes infos gardées seront effacées.'}
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
+
           {/* Moyens de paiement — aussi pour un panier avec un beat collab
               (Phase 13, lot 2 : enregistrés puis débités chez chaque vendeur) */}
           {!gratuit && !premierMoisOffert && (<>
@@ -968,6 +1018,7 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
               items={items.map(i => ({ beatId: i.beatId, licenceId: i.licenceId }))}
               codePromo={codeApplique?.code}
               newsletterOptIn={newsletterOptIn}
+              memoriserInfos={memoriserEnvoye}
               professionnel={pro}
               raisonSociale={champs.raisonSociale}
               numeroTva={champs.numeroTva}
@@ -1017,6 +1068,15 @@ function PaiementForm({ slug, logoUrl, logoInverser, nomArtiste, reglesLot, clie
                     ? (emailImpose ? 'Adresse de ton compte : ta confirmation et tes factures y seront envoyées.' : 'Ta confirmation et tes factures y seront envoyées.')
                     : 'Les licences PDF et les fichiers y seront envoyés.'}</p>
                 </div>
+
+                {adressesEnregistrees.length >= 2 && (
+                  <select className="pmt-select" aria-label="Mes adresses" value={adresseChoisie} onChange={e => choisirAdresse(e.target.value)}>
+                    {adressesEnregistrees.map((a, i) => (
+                      <option key={i} value={String(i)}>{`${a.adresse}, ${a.codePostal} ${a.ville}`}</option>
+                    ))}
+                    <option value="nouvelle">Nouvelle adresse</option>
+                  </select>
+                )}
 
                 <div className="pmt-grid-2">
                   <input className={`pmt-field${erreursChamps.prenom ? ' has-error' : ''}`} placeholder="Prénom" value={champs.prenom} onChange={e => majChamp('prenom', e.target.value)} />
@@ -1144,12 +1204,13 @@ const navigateurHydrate = () => true
 const renduServeur = () => false
 
 function ExpressButtons({
-  slug, items, codePromo, newsletterOptIn, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise, multiVendeurs, onResultatMulti, abonnement,
+  slug, items, codePromo, newsletterOptIn, memoriserInfos, professionnel, raisonSociale, numeroTva, onSucces, montantSynchronise, multiVendeurs, onResultatMulti, abonnement,
 }: {
   slug: string
   items: { beatId: string; licenceId: string }[]
   codePromo: string | undefined
   newsletterOptIn: boolean
+  memoriserInfos: boolean | undefined
   professionnel: boolean
   raisonSociale: string
   numeroTva: string
@@ -1240,6 +1301,7 @@ function ExpressButtons({
                   ville: adresse?.city,
                   pays: adresse?.country,
                   newsletter_opt_in: newsletterOptIn,
+                memoriser_infos: memoriserInfos,
                   type_client: professionnel ? 'professionnel' : 'particulier',
                   raison_sociale: professionnel ? raisonSociale : undefined,
                   numero_tva: professionnel ? numeroTva : undefined,
@@ -1292,6 +1354,7 @@ function ExpressButtons({
                 ville: adresse?.city,
                 pays: adresse?.country,
                 newsletter_opt_in: newsletterOptIn,
+                memoriser_infos: memoriserInfos,
                 type_client: professionnel ? 'professionnel' : 'particulier',
                 raison_sociale: professionnel ? raisonSociale : undefined,
                 numero_tva: professionnel ? numeroTva : undefined,
@@ -1314,6 +1377,7 @@ function ExpressButtons({
                 slug,
                 code_promo: codePromo,
                 newsletter_opt_in: newsletterOptIn,
+                memoriser_infos: memoriserInfos,
                 type_client: professionnel ? 'professionnel' : 'particulier',
                 raison_sociale: professionnel ? raisonSociale : undefined,
                 numero_tva: professionnel ? numeroTva : undefined,
@@ -1350,4 +1414,16 @@ function ExpressButtons({
       {enAttente && <PaiementEnAttente message={messageValidation} />}
     </div>
   )
+}
+
+function champsPreremplis(p: Preremplissage): Partial<Champs> {
+  const a = p.adresses[0]
+  return {
+    prenom: p.prenom,
+    nom: p.nom,
+    telephone: p.telephone,
+    ...(a ? { adresse: a.adresse, codePostal: a.codePostal, ville: a.ville } : {}),
+    ...(p.pays ? { pays: p.pays } : {}),
+    ...(p.pro ? { raisonSociale: p.pro.raisonSociale, numeroTva: p.pro.numeroTva } : {}),
+  }
 }

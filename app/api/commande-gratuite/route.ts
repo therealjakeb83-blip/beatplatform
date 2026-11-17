@@ -9,6 +9,7 @@ import { estRoleAdmin } from '@/lib/admin'
 import { normaliserEmail } from '@/lib/email'
 import { panierEstMultiVendeurs, repartirPanier } from '@/lib/paiement-multi-repartition'
 import { finaliserCommandePayee } from '@/lib/webhook-paiement'
+import { choixMemoriser } from '@/lib/infos-paiement-compte'
 import { cookieAccesTelechargement, DUREE_COOKIE_ACCES } from '@/lib/telechargement-acces'
 
 export const runtime = 'nodejs'
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     raison_sociale?: string
     numero_tva?: string
     newsletter_opt_in?: boolean
+    memoriser_infos?: boolean
   }
   const { slug, code_promo, source_marketing, prenom, nom, telephone, adresse, code_postal, ville, pays, type_client, raison_sociale, numero_tva, newsletter_opt_in } = body
   const items = body.items ?? []
@@ -112,10 +114,13 @@ export async function POST(request: Request) {
     if (error) console.error('[commande-gratuite] Erreur restitution place code promo:', JSON.stringify(error))
   }
 
+  const clientIdConnecte = await resoudreClientId(admin, user)
+  const memoriser = await choixMemoriser(admin, clientIdConnecte, body.memoriser_infos)
+
   const { data: tentative, error: tentativeError } = await admin.from('tentatives_paiement').insert({
     type: 'commande_gratuite',
     beatmaker_id: beatmaker.id,
-    client_id: await resoudreClientId(admin, user),
+    client_id: clientIdConnecte,
     email: emailAcheteur,
     prix: 0,
     code_promo: codePromoValide,
@@ -160,6 +165,7 @@ export async function POST(request: Request) {
       code_promo: codePromoValide,
       ...(type_client === 'professionnel' && raison_sociale?.trim() ? { acheteur_raison_sociale: raison_sociale.trim().slice(0, 200) } : {}),
       ...(type_client === 'professionnel' && numero_tva?.trim() ? { acheteur_numero_tva: numero_tva.trim().toUpperCase().slice(0, 32) } : {}),
+      ...memoriser,
     },
     tentativeColonne: 'id',
     tentativeValeur: tentative.id,

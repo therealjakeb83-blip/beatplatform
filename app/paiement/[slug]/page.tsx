@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { estRoleAdmin } from '@/lib/admin'
 import PaiementClient from './_components/PaiementClient'
+import { chargerPreremplissage } from '@/lib/preremplissage-paiement'
 import { DomaineBoutiqueProvider } from '@/app/[slug]/_components/DomaineBoutique'
 import { surDomaineBoutique } from '@/app/[slug]/_lib/lien-boutique-serveur'
 import './paiement.css'
@@ -37,9 +38,11 @@ export default async function PaiementPage({
   // — évite de redemander l'email pour la restriction d'un code promo.
   const { data: { user } } = await supabase.auth.getUser()
   let clientEmail: string | null = null
+  let clientId: string | null = null
   if (user) {
-    const { data: client } = await admin.from('clients').select('email').eq('id', user.id).single()
+    const { data: client } = await admin.from('clients').select('id, email').eq('id', user.id).maybeSingle()
     clientEmail = client?.email ?? null
+    clientId = (client?.id as string | undefined) ?? null
   }
 
   const { data: beatmaker } = await admin
@@ -77,6 +80,10 @@ export default async function PaiementPage({
       }
     : null
 
+  // Préremplissage : compte client connecté seulement (un beatmaker connecté
+  // n'a pas de ligne clients → rien), lu ici au rendu, jamais par une route.
+  const preremplissage = await chargerPreremplissage(admin, clientId, beatmaker.id)
+
   const { data: reglesLotData } = await admin
     .from('reductions_lot')
     .select('id, licence_id, nb_a_acheter, nb_offerts')
@@ -99,6 +106,8 @@ export default async function PaiementPage({
         tvaActive={beatmaker.tva_active}
         tvaTaux={beatmaker.tva_taux}
         clientEmail={clientEmail}
+        compteClient={clientId !== null}
+        preremplissage={preremplissage}
         abonnement={abonnement}
       />
     </div>
