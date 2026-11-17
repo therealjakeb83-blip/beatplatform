@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import DecisionsClient from './_components/DecisionsClient'
@@ -26,7 +27,7 @@ export default async function LogsDecisionsPage({
   const taille = await tailleTableaux()
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   let requeteCount = supabase

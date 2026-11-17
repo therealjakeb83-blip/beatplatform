@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
@@ -7,7 +8,7 @@ import PanneauPretAVendre from './_components/PanneauPretAVendre'
 
 export default async function BusinessPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: beatmaker } = await supabase

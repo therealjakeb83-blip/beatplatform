@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { redirect } from 'next/navigation'
 import { estRoleAdmin } from '@/lib/admin'
 import { aUnAbonnementPlateformeActif } from '@/lib/acces-plan'
@@ -12,15 +13,23 @@ export default async function BusinessLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
-  const { data: beatmaker } = await supabase
-    .from('beatmakers')
-    .select('nom_artiste, role, abonnement_exempte')
-    .eq('id', user.id)
-    .single()
+  // Rang 9e : les quatre lectures du cadre partent en même temps (avant : l'une
+  // après l'autre). L'abonnement est lu même pour un compte exempté : il est
+  // alors simplement ignoré, comme avant.
+  const supabase = await createClient()
+  const [{ data: beatmaker }, abonnementLu, demandesCollab, taille] = await Promise.all([
+    supabase
+      .from('beatmakers')
+      .select('nom_artiste, role, abonnement_exempte')
+      .eq('id', user.id)
+      .single(),
+    aUnAbonnementPlateformeActif(supabase, user.id),
+    compterDemandesCollabEnAttente(user.id, user.email ?? null),
+    tailleTableaux(),
+  ])
 
   if (!beatmaker) redirect('/')
 
@@ -31,10 +40,8 @@ export default async function BusinessLayout({
   // navigation (l'accès réel reste tranché par proxy.ts, jamais par ce seul
   // affichage).
   const gateExempte = estRoleAdmin(beatmaker.role) || beatmaker.abonnement_exempte
-  const abonnementActif = gateExempte || await aUnAbonnementPlateformeActif(supabase, user.id)
+  const abonnementActif = gateExempte || abonnementLu
   const planFree = !abonnementActif
-  const demandesCollab = await compterDemandesCollabEnAttente(user.id, user.email ?? null)
-  const taille = await tailleTableaux()
 
   return (
     <div className="flex h-screen bg-gray-950 text-white overflow-hidden">

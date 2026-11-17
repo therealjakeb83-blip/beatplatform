@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
@@ -50,8 +50,7 @@ export default async function LogsEmailsPage({
   const taille = await tailleTableaux()
   const scope: Scope = SCOPES.includes(scopeParam as Scope) ? (scopeParam as Scope) : 'destinataire'
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

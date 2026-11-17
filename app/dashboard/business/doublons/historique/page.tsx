@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { chargerFichesBoutique, emailPrincipal } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { createAdminClient } from '@/utils/supabase/admin'
@@ -18,7 +19,7 @@ export default async function HistoriquePage() {
   const supabase = await createClient()
   const admin    = createAdminClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: beatmakerRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()

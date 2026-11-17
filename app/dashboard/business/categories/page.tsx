@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import type { CategorieRow } from '@/lib/categories'
@@ -8,7 +9,7 @@ import CategoriesClient from './_components/CategoriesClient'
 
 export default async function CategoriesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const [

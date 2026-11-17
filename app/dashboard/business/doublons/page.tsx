@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
@@ -97,7 +98,7 @@ export default async function DoublonsPage() {
   const supabase = await createClient()
   const admin    = createAdminClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: beatmaker } = await supabase

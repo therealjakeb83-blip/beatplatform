@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { sauvegarderCouleurMarque, sauvegarderSignatureTransactionnels, sauvegarderFooterReseaux, sauvegarderTemplate, genererApercu } from './_lib/actions'
@@ -6,7 +7,7 @@ import type { TypeTemplateTransactionnel } from '@/lib/emails'
 
 export default async function TransactionnelsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const [{ data: beatmaker }, { data: templatesRaw }] = await Promise.all([

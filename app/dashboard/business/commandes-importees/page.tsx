@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { chargerGroupesTitres } from '@/lib/import-externe/liens-beats'
@@ -17,7 +18,7 @@ export default async function CommandesImporteesPage({
 }) {
   const { importer } = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
   const beatmakerId = user.id
 

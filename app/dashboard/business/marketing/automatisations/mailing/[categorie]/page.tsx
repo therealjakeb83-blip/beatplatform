@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from '@/app/dashboard/_navigation/LienSurvol'
@@ -19,7 +20,7 @@ export default async function CategorieAutomatisationsPage({
   if (recettesCategorie.length === 0) notFound()
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data } = await supabase

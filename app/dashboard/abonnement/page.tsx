@@ -1,10 +1,11 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import AbonnementPlateformeClient from './_components/AbonnementPlateformeClient'
 
 export default async function AbonnementPlateformePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: abo } = await supabase

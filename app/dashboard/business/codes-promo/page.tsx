@@ -1,5 +1,5 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import CodesPromoClient from './_components/CodesPromoClient'
 import { toutesLesLignes } from '../_lib/requetes'
@@ -39,8 +39,7 @@ export type LicenceOption = { id: string; nom: string; modele: string }
 export type BeatOption    = { id: string; titre: string; couleur: string | null; statut: string }
 
 export default async function CodesPromoPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -42,7 +43,7 @@ export type TemplateOption = {
 async function creerCampagne(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
 
   const cibleMode = formData.get('cible_mode') as 'segment' | 'liste' | 'manuel'
@@ -75,7 +76,7 @@ async function creerCampagne(formData: FormData) {
 async function dupliquerCampagne(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
 
@@ -104,7 +105,7 @@ async function dupliquerCampagne(formData: FormData) {
 async function supprimerCampagne(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
   await supabase.from('campagnes').delete().eq('id', id).eq('beatmaker_id', user.id).neq('statut', 'envoyee')
@@ -114,7 +115,7 @@ async function supprimerCampagne(formData: FormData) {
 async function planifierCampagne(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id          = formData.get('id') as string
   const scheduledAt = formData.get('scheduled_at') as string
@@ -130,7 +131,7 @@ async function planifierCampagne(formData: FormData) {
 async function envoyerMaintenant(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
 
@@ -177,7 +178,7 @@ export default async function CampagnesPage({
 }) {
   const { segment: segmentPreselectionne, erreur } = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: bm } = await supabase.from('beatmakers').select('id').eq('id', user.id).single()

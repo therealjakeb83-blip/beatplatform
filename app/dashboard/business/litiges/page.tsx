@@ -1,5 +1,5 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import LitigesClient from './_components/LitigesClient'
 
@@ -17,8 +17,7 @@ export type LitigeRow = {
 }
 
 export default async function LitigesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

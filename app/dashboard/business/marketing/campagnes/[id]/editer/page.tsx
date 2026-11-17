@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import type { BlocEmail } from '@/lib/email-blocs'
@@ -10,7 +11,7 @@ const URL_CAMPAGNES = '/dashboard/business/marketing/campagnes'
 export default async function EditerCampagnePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: bm } = await supabase.from('beatmakers').select('id').eq('id', user.id).single()
@@ -40,7 +41,7 @@ export default async function EditerCampagnePage({ params }: { params: Promise<{
   async function enregistrerContenuCampagne(contenu: BlocEmail[]) {
     'use server'
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await utilisateurConnecte()
     if (!user) return
     await supabase
       .from('campagnes')
@@ -53,8 +54,7 @@ export default async function EditerCampagnePage({ params }: { params: Promise<{
 
   async function genererApercu(blocs: BlocEmail[], clientId?: string) {
     'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await utilisateurConnecte()
     if (!user) return ''
     return construireApercu(user.id, blocs, clientId, id)
   }

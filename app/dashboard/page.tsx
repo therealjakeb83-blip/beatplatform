@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from '@/app/dashboard/_navigation/LienSurvol'
@@ -10,7 +11,7 @@ import { avertissementDomaineIndisponible, chargerEtatBoutique } from '@/lib/bou
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
 
   if (!user) redirect('/connexion')
 

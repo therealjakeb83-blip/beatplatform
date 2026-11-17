@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import { aAccesPlanPayant } from '@/lib/acces-plan'
@@ -9,7 +10,7 @@ import DomaineClient from './DomaineClient'
 
 export default async function DomainePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const [{ data: beatmaker }, { data: domaine }, planPayant, etat] = await Promise.all([

@@ -1,6 +1,6 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
-import { createClient } from '@/utils/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import type { CodePromoRow, LicenceOption, BeatOption } from '../page'
 import CodePromoDetailClient from './_components/CodePromoDetailClient'
@@ -30,8 +30,7 @@ export default async function CodePromoDetailPage({
 }) {
   const { id } = await params
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

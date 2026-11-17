@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
@@ -7,7 +8,7 @@ import ModifierBeatClient from './ModifierBeatClient'
 export default async function ModifierBeatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   // Comme la liste des beats, cette page utilise le client serveur pour ses

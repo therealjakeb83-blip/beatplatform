@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/utils/supabase/admin'
@@ -17,7 +18,7 @@ export default async function StripeEventsPage({ searchParams }: { searchParams:
   const { filtre, page: pageParam } = await searchParams
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
   const { data: adminRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
   const tz = fuseauSur(adminRow?.fuseau_horaire)

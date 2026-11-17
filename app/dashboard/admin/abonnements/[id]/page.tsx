@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { notFound, redirect } from 'next/navigation'
 import Link from '@/app/dashboard/_navigation/LienSurvol'
 import { createAdminClient } from '@/utils/supabase/admin'
@@ -14,7 +15,7 @@ const STATUT_STYLES: Record<string, string> = {
 export default async function AbonnementAdminDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
   const { data: adminRow } = await supabase.from('beatmakers').select('fuseau_horaire').eq('id', user.id).single()
   const tz = fuseauSur(adminRow?.fuseau_horaire)

@@ -1,5 +1,5 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import ReductionsLotClient from './_components/ReductionsLotClient'
 
@@ -16,8 +16,7 @@ export type ReductionLotRow = {
 export type LicenceOption = { id: string; nom: string; modele: string }
 
 export default async function ReductionsLotPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

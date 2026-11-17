@@ -1,6 +1,6 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { remplacerClientsParFiches } from '@/app/dashboard/business/_lib/fiche-boutique'
-import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import AbonnementsClient from './_components/AbonnementsClient'
 import { toutesLesLignes } from '../_lib/requetes'
@@ -36,8 +36,7 @@ export type AboRow = {
 }
 
 export default async function AbonnementsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

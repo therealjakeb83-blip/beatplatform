@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -19,7 +20,7 @@ export type TemplateRow = {
 async function dupliquerTemplate(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
 
@@ -45,7 +46,7 @@ async function dupliquerTemplate(formData: FormData) {
 async function supprimerTemplate(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
   await supabase.from('templates_email').delete().eq('id', id).eq('beatmaker_id', user.id)
@@ -56,7 +57,7 @@ async function supprimerTemplate(formData: FormData) {
 
 export default async function TemplatesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: bm } = await supabase.from('beatmakers').select('id').eq('id', user.id).single()

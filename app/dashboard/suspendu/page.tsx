@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import { NOM_PLATEFORME, EMAIL_CONTACT } from '@/lib/constantes'
@@ -6,8 +6,7 @@ import { libelleMotifSuspension } from '@/lib/suspension'
 import DeconnexionButton from '../DeconnexionButton'
 
 export default async function DashboardSuspenduPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

@@ -1,5 +1,5 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import BeatsClient from './_components/BeatsClient'
 import { parLots, toutesLesLignes } from '../_lib/requetes'
@@ -29,8 +29,7 @@ export type BeatRow = {
 }
 
 export default async function BeatsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const admin = createAdminClient()

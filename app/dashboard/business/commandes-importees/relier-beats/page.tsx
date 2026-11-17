@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
@@ -9,7 +10,7 @@ import RelierBeatsClient from '../_components/RelierBeatsClient'
 // Plan Free : page visible, actions verrouillées (décision 21).
 export default async function RelierBeatsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   // Client admin : les beats supprimés doivent rester lisibles (choisissables

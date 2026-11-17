@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -10,7 +11,7 @@ import SegmentsClient from './_components/SegmentsClient'
 async function creerSegment(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   await supabase.from('segments_crm').insert({
     beatmaker_id: user.id,
@@ -25,7 +26,7 @@ async function creerSegment(formData: FormData) {
 async function modifierSegment(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
   await supabase.from('segments_crm').update({
@@ -40,7 +41,7 @@ async function modifierSegment(formData: FormData) {
 async function supprimerSegment(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
   await supabase.from('segments_crm').delete().eq('id', id).eq('beatmaker_id', user.id)
@@ -51,7 +52,7 @@ async function supprimerSegment(formData: FormData) {
 
 export default async function SegmentsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: bm } = await supabase.from('beatmakers').select('id').eq('id', user.id).single()

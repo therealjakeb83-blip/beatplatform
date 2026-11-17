@@ -1,3 +1,4 @@
+import { utilisateurConnecte } from '@/lib/session-serveur'
 import { createClient } from '@/utils/supabase/server'
 import { chargerFusionsBoutique } from '@/app/dashboard/business/_lib/fiche-boutique'
 import { redirect } from 'next/navigation'
@@ -12,7 +13,7 @@ function formatDate(iso: string, tz: string): string {
 async function creerListe(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   await supabase.from('listes_crm').insert({
     beatmaker_id: user.id,
@@ -25,7 +26,7 @@ async function creerListe(formData: FormData) {
 async function modifierListe(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
   await supabase.from('listes_crm').update({
@@ -38,7 +39,7 @@ async function modifierListe(formData: FormData) {
 async function supprimerListe(formData: FormData) {
   'use server'
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) return
   const id = formData.get('id') as string
   await supabase.from('listes_crm').delete().eq('id', id).eq('beatmaker_id', user.id)
@@ -47,7 +48,7 @@ async function supprimerListe(formData: FormData) {
 
 export default async function ListesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await utilisateurConnecte()
   if (!user) redirect('/connexion')
 
   const { data: bm } = await supabase.from('beatmakers').select('id, fuseau_horaire').eq('id', user.id).single()
