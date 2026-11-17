@@ -7,6 +7,7 @@ import { DOMAINE_PLATEFORME, SOUS_DOMAINES_OUVERTS, URL_APP } from '@/lib/consta
 import { CHEMIN_SONDE, SIGNATURE_SONDE, estHotePlateforme, estHoteSonoo, etiquetteSousDomaine, hoteSansPort, hoteSousDomaine, routeSurDomaine, slugDuChemin } from '@/lib/domaine-boutique'
 import { estSlugReserve, sousDomainePossible } from '@/lib/slug-regles'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { avecTimeout } from '@/lib/avec-timeout'
 import { etatBoutique, MESSAGE_BOUTIQUE_INDISPONIBLE, type AbonnementPlateformeResume, type BeatmakerVisibilite } from '@/lib/boutique-visible'
 
 // Délai maximum accordé à Supabase pour répondre à CHAQUE requête faite par
@@ -23,15 +24,6 @@ import { etatBoutique, MESSAGE_BOUTIQUE_INDISPONIBLE, type AbonnementPlateformeR
 // données plus que l'auth), le site restait bloqué sans jamais passer par
 // /verification-en-cours. Chaque appel Supabase de ce fichier doit désormais
 // passer par `avecTimeout()`.
-const TIMEOUT_VERIFICATION_MS = 5000
-
-function avecTimeout<T>(promise: PromiseLike<T>): Promise<T> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout vérification session')), TIMEOUT_VERIFICATION_MS)
-  )
-  return Promise.race([Promise.resolve(promise), timeout])
-}
-
 type BeatmakerGate = { id: string; statut: string; role: string; abonnement_exempte: boolean }
 
 // Quelques secondes de mémoire : chaque page d'une boutique déclenche plusieurs
@@ -69,7 +61,7 @@ async function renvoiAncienNom(ancien: string): Promise<RenvoiAncienNom | null> 
   const memorise = memoireAnciensNoms.get(ancien)
   if (memorise && memorise.expire > Date.now()) return memorise.renvoi
 
-  const { data, error } = await avecTimeout(
+  const { data, error } = await avecTimeout('ancien-slug',
     createAdminClient()
       .from('anciens_slugs')
       .select('beatmakers(slug, domaines_boutique(domaine, statut))')
@@ -92,7 +84,7 @@ async function destinationDuSlug(slug: string): Promise<string | null> {
   const memorise = memoireRedirections.get(slug)
   if (memorise && memorise.expire > Date.now()) return memorise.domaine
 
-  const { data, error } = await avecTimeout(
+  const { data, error } = await avecTimeout('slug',
     createAdminClient()
       .from('beatmakers')
       .select('slug, domaines_boutique(domaine, statut)')
@@ -147,7 +139,7 @@ async function redirectionVersDomaine(request: NextRequest): Promise<NextRespons
 
 // Ancien nom seulement si aucune boutique ne porte ce slug aujourd'hui.
 async function renvoiSiAncienNom(slug: string): Promise<RenvoiAncienNom | null> {
-  const { data, error } = await avecTimeout(createAdminClient().from('beatmakers').select('id').eq('slug', slug).maybeSingle())
+  const { data, error } = await avecTimeout('slug-existe', createAdminClient().from('beatmakers').select('id').eq('slug', slug).maybeSingle())
   if (error) throw error
   return data ? null : renvoiAncienNom(slug)
 }
@@ -156,7 +148,7 @@ async function boutiqueDuDomaine(hote: string): Promise<BoutiqueDuDomaine> {
   const memorise = memoireDomaines.get(hote)
   if (memorise && memorise.expire > Date.now()) return memorise
 
-  const { data, error } = await avecTimeout(
+  const { data, error } = await avecTimeout('domaine',
     createAdminClient()
       .from('domaines_boutique')
       .select('beatmakers(slug, role, abonnement_exempte, statut, abonnements_plateforme(statut, date_annulation, date_fin))')
@@ -193,7 +185,7 @@ async function boutiqueDuSousDomaine(etiquette: string): Promise<BoutiqueDuDomai
   const memorise = memoireDomaines.get(cle)
   if (memorise && memorise.expire > Date.now()) return memorise
 
-  const { data, error } = await avecTimeout(
+  const { data, error } = await avecTimeout('sous-domaine',
     createAdminClient()
       .from('beatmakers')
       .select('slug, role, abonnement_exempte, statut, abonnements_plateforme(statut, date_annulation, date_fin), domaines_boutique(domaine, statut)')
@@ -323,7 +315,7 @@ async function avecSessionRafraichie(request: NextRequest, fabriquer: () => Next
     }
   )
   try {
-    await avecTimeout(supabase.auth.getUser())
+    await avecTimeout('session-boutique', supabase.auth.getUser())
   } catch {
     // Supabase lent : la page s'affiche quand même, la session sera
     // rafraîchie à la prochaine.
@@ -378,7 +370,10 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  function versVerificationEnCours() {
+  // Trace (rang 9e) : chemin + étape + cause. Le chemin d'une page du
+  // dashboard ne contient aucune donnée personnelle.
+  function versVerificationEnCours(etape: string, erreur: unknown) {
+    console.warn(`[proxy] page de secours : chemin=${pathname} étape=${etape} cause=${erreur instanceof Error ? erreur.message : String(erreur)}`)
     const url = request.nextUrl.clone()
     url.pathname = '/verification-en-cours'
     url.searchParams.set('next', pathname)
@@ -393,10 +388,10 @@ export async function proxy(request: NextRequest) {
   // une déconnexion ou un mot de passe refusé).
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null
   try {
-    const { data } = await avecTimeout(supabase.auth.getUser())
+    const { data } = await avecTimeout('session', supabase.auth.getUser())
     user = data.user
-  } catch {
-    if (pathname.startsWith('/dashboard')) return versVerificationEnCours()
+  } catch (erreur) {
+    if (pathname.startsWith('/dashboard')) return versVerificationEnCours('session', erreur)
   }
 
   // Routes dashboard — réservées aux beatmakers uniquement
@@ -412,7 +407,7 @@ export async function proxy(request: NextRequest) {
     // Vérifier que l'utilisateur est bien un beatmaker
     let beatmaker: BeatmakerGate | null = null
     try {
-      const { data } = await avecTimeout(
+      const { data } = await avecTimeout('beatmaker',
         supabase
           .from('beatmakers')
           .select('id, statut, role, abonnement_exempte')
@@ -420,8 +415,8 @@ export async function proxy(request: NextRequest) {
           .single()
       )
       beatmaker = data
-    } catch {
-      return versVerificationEnCours()
+    } catch (erreur) {
+      return versVerificationEnCours('beatmaker', erreur)
     }
 
     if (!beatmaker) {
@@ -450,9 +445,9 @@ export async function proxy(request: NextRequest) {
     if (!gateExempte && pathname !== '/dashboard/abonnement' && pathname !== '/dashboard/suspendu') {
       let abonnementActif = false
       try {
-        abonnementActif = await avecTimeout(aUnAbonnementPlateformeActif(supabase, beatmaker.id))
-      } catch {
-        return versVerificationEnCours()
+        abonnementActif = await avecTimeout('abonnement', aUnAbonnementPlateformeActif(supabase, beatmaker.id))
+      } catch (erreur) {
+        return versVerificationEnCours('abonnement', erreur)
       }
 
       if (!abonnementActif && !pageAccessibleEnPlanFree(pathname)) {
