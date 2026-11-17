@@ -1051,3 +1051,9 @@
 .y-f-ecran > .y-f-chat {
   justify-content: flex-start;
 }
+.y-f-legende .y-f-badge-bientot {
+  max-width: none;
+  color: var(--y-blanc);
+  font-size: 12px;
+  line-height: 1.4;
+}

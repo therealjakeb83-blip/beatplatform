@@ -859,11 +859,11 @@ function EcranSacem() {
       <div className="y-f-carte">
         <p className="y-f-h">Contrat SACEM · « Minuit »</p>
         {[
-          { n: 'Luka M.', r: 'Auteur', p: '50 %' },
-          { n: 'Jake B', r: 'Compositeur', p: '50 %' },
+          { n: 'Luka M.', i: 'LM', r: 'Auteur', p: '50 %' },
+          { n: 'Jake B', i: 'JB', r: 'Compositeur', p: '50 %' },
         ].map(a => (
           <span key={a.n} className="y-f-rang">
-            <span className="y-f-avatar">{a.n.slice(0, 2).toUpperCase()}</span>
+            <span className="y-f-avatar">{a.i}</span>
             <span className="y-f-pile-texte">
               <strong>{a.n}</strong>
               <small>{a.r}</small>
