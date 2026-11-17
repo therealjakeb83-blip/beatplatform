@@ -248,7 +248,7 @@
 > | Préparations cachées par page | 15-56 | 15-56 | 0 (1 au survol) |
 >
 > Commits : `5b2fe98` (checklist + Dublin), `ee9ce58`, `1a4f323`, `5d7e8c5`, `c9955a0`, `9bba1e6`, `3cd6345`. Aucun SQL. Donnée de test laissée : achat visiteur `1a24fe08` (nicojacob83+9e-visiteur@, « Test Dublin ») chez jakeb-test.
-> - [ ] T13 — Ressenti de Jake sur PC et iPhone
+> - [ ] T13 — Ressenti de Jake sur PC (iPhone reporté à la refonte UX/UI : aucune interface du dashboard n’a encore été travaillée pour le téléphone, décision de Jake du 2026-11-17)
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
