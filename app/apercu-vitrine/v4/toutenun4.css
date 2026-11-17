@@ -157,7 +157,7 @@
   .y-f-ecran {
     aspect-ratio: 4 / 5;
     padding: 1.6em;
-    font-size: clamp(8px, calc(100cqw / 40), 15px);
+    font-size: clamp(9px, calc(100cqw / 31), 15px);
   }
 }
 
