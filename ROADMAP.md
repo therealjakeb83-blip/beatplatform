@@ -277,6 +277,35 @@
 > - **Lot 7 — Barrières du navigateur et anti-abus** : en-têtes (`X-Frame-Options`, CSP en Report-Only d'abord, nosniff, Referrer-Policy, Permissions-Policy) ; limiteur par IP/email (Upstash ou Vercel Firewall), Turnstile, Stripe Radar en mode réel ; messages neutres des codes promo. **Décision à revoir avec Jake** : newsletter publique en un clic (choix actuel) → double confirmation ? (F15, F11)
 > - Restes faibles (F17, F19 A/B/D) : à placer dans le lot le plus proche.
 > **À confirmer avec une action de Jake** (non faisable seul) : ce que voit un client CONNECTÉ en base (F3) ; type de Dashboard Stripe des vendeurs (Express ou complet) pour F7-1 ; index unique `commandes.stripe_payment_id` en base (F7-2) ; réglages Supabase Auth (confirmation email, minimum de mot de passe, limites) ; `CRON_SECRET` bien rempli sur Vercel.
+>
+> **Lot 1 — Fichiers et données publiques (F1, F9, F2a, F19C) : décisions prises avec Jake le 2026-11-18 (à ne pas rouvrir), rien codé, attente du `/gocode`**
+> Règle générale posée par Jake : **toute donnée non affichée explicitement sur la page est cachée ; un MP3 ne s'obtient QUE par achat ou par le free download si le beatmaker l'a activé.**
+> 1. **Base = A** : `beats` et `beatmakers` fermées aux visiteurs ET aux comptes artistes (comme les 61 autres tables) ; la boutique lit sur le serveur (clé de service, colonnes affichées seulement) ; le beatmaker garde SA ligne et SES beats dans le dashboard.
+> 2. **MP3 tagué = A** : lui aussi dans l'espace privé ; le lecteur reçoit un lien temporaire préparé avec la page et **renouvelé tout seul** à l'expiration (jamais de rechargement) ; beats privés = abonnés seulement. Condition de Jake : aucune gêne à l'écoute (mesure avant/après). Preuve faite le 2026-11-18 : le MP3 tagué d'une page BeatStars (flux HLS non chiffré, adresse permanente) se récupère en 2 min.
+> 3. **Documents = A** : une adresse Sonoo permanente par facture / contrat / avoir, qui vérifie l'accès avant d'ouvrir le PDF (acheteur connecté, cookie `dl_` signé, email de la commande tapé, vendeur, admin) ; emails, Mon compte et dashboard y renvoient ; couvre les factures d'abonnement (aujourd'hui sans page). **3 bis** : 5 essais d'email ratés par commande → bloqué 1 h (« Trop d'essais, réessaie dans une heure »).
+> 4. **Journal de téléchargement = A** : acheteur seulement ; session vendeur (collab compris) ou admin = jamais enregistré, prioritaire sur tout ; le cookie `dl_` signé dit qui a confirmé (email acheteur ou vendeur). **4 bis = A** : lien signé dans l'email de confirmation (acheteur seulement) ; **preuves envoyables à Stripe** = appareil qui a payé, compte acheteur connecté, lien signé de l'email ; email tapé = accès ouvert, noté « accès par email tapé », jamais envoyé comme preuve.
+> 5. **`myproducer-beats` = A** : adresse publique coupée maintenant (réversible), fichiers gardés, espace supprimé à l'étape 17.
+> Trouvé en préparant : le « renvoyer l'email » du dashboard (`api/business/commandes/[id]/renvoyer`) peut viser l'email de la FICHE boutique (modifiable par le vendeur) quand `acheteur_email` est vide → le lien signé n'y sera mis que si le destinataire est l'email de la commande ou du compte de l'acheteur ; la ligne `email_renvoi` du journal ne compte jamais comme preuve.
+>
+> **Checklist du Lot 1 (proposée le 2026-11-18)**
+> - [ ] T0 — Relevé en lecture seule des règles d'accès RÉELLES de `beats` / `beatmakers` en ligne (policies + droits `anon` / `authenticated`) et des lignes de base qui pointent encore vers `myproducer-beats` (Jake SQL, Claude lit)
+> - [ ] T1 — Cloudflare : espace privé `sonoo-prive` créé SANS adresse publique, CORS (envoi depuis sonoo.app), clé R2 autorisée sur les deux espaces ; Vercel : nom de l'espace privé ajouté + redéploiement (Jake guidé, Claude vérifie)
+> - [ ] T2 — Nouveau beat envoyé depuis le dashboard : MP3 tagué, MP3 propre, WAV, stems arrivent dans l'espace privé ; l'ancienne adresse publique de ces fichiers = 404 ; aperçu de ses fichiers dans « Modifier le beat » OK (Claude, profil `domaine`)
+> - [ ] T3 — Déménagement des fichiers existants par script (Jake lance, d'abord à blanc avec le décompte, puis pour de vrai) : copie, base réécrite, vérification fichier par fichier (Claude lit le rapport)
+> - [ ] T4 — Originaux effacés de l'espace public APRÈS T3 vérifié ; adresses publiques WAV / stems / MP3 propre / MP3 tagué / PDF = 404, couvertures et logos toujours affichés (Claude, appels directs)
+> - [ ] T5 — Lecteur : écoute, déplacement dans la piste, piste suivante, page laissée ouverte au-delà de la durée du lien = relance toute seule ; temps de démarrage mesuré avant / après (Claude PC, Jake iPhone)
+> - [ ] T6 — Beats privés : visiteur et non-abonné ne reçoivent aucun lien audio ; abonné écoute (Claude, cookie d'abonné de test)
+> - [ ] T7 — Free download (connecté et lien par email) donne toujours le MP3 tagué (Claude)
+> - [ ] T8 — Achat visiteur sur `jakeb-test.sonoo.app` : page de téléchargement ouverte directement après paiement, fichiers + contrat + facture téléchargeables, ligne du journal « appareil qui a payé » (Claude, dev-browser)
+> - [ ] T9 — Email de confirmation : lien signé ouvre la page sans rien taper sur un autre navigateur ; lien de facture = adresse Sonoo ; email « nouvelle vente » du vendeur sans lien signé (Claude, adresse de la liste blanche)
+> - [ ] T10 — Adresses des documents : inconnu = formulaire email ; bon email = PDF ; autre beatmaker connecté = refus ; 6e essai raté = « Trop d'essais » ; factures d'abonnement ouvertes depuis Mon compte (Claude)
+> - [ ] T11 — Cookie `dl_` : ancien cookie « 1 » refusé, cookie modifié refusé, cookie « vendeur » ne compte pas au journal (Claude, appels directs)
+> - [ ] T12 — Journal : appel direct sans accès refusé, nom de fichier hors commande refusé, vendeur et admin connectés jamais enregistrés, email tapé noté « accès par email tapé » ; réponse de litige n'envoie que les preuves (Claude, code + appels directs)
+> - [ ] T13 — Remboursement / licence tombée : plus aucun lien de fichier ni contrat, factures et avoirs toujours ouverts (Claude, commande de test existante)
+> - [ ] T14 — SQL de fermeture des deux tables (Jake, après essai PGlite), puis avec la clé publique : `beats` et `beatmakers` refusés ; boutique, fiche produit, catalogue, sélection, membres, favoris, paiement carte + express, dashboard (beats, profil, commandes) toujours OK (Claude + Jake)
+> - [ ] T15 — `myproducer-beats` : adresse publique coupée (Jake dans Cloudflare), ancien WAV = refus (Claude)
+> - [ ] T16 — Journaux Vercel : plus aucune adresse de fichier dans les traces ; aucune erreur nouvelle sur 24 h (Claude)
+> Comment défaire : code = `git revert` du commit ; espace privé = les fichiers restent copiés tant que T4 n'est pas fait ; SQL de fermeture = SQL inverse fourni avec ; `myproducer-beats` = réactiver l'adresse publique dans Cloudflare.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
