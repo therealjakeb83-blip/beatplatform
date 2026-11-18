@@ -4116,3 +4116,62 @@ html:has(.vitrine5) {
 .z-hero4 {
   position: relative;
 }
+
+/* ═════════════ Test des polices de titres du designer (Brand Style Guide_TH, 2026-11-18) ═════════════
+   ?police=poppins|ubuntu|calsans remplace Surgena sur TOUS les titres de la page
+   (pas l'en-tête). Les titres gardent leurs tailles ; seul l'espacement est ajusté. */
+.z-police-poppins {
+  --z-police-titres: var(--z-police-poppins), system-ui, sans-serif;
+}
+.z-police-ubuntu {
+  --z-police-titres: var(--z-police-ubuntu), system-ui, sans-serif;
+}
+.z-police-calsans {
+  --z-police-titres: var(--z-police-calsans), system-ui, sans-serif;
+}
+/* Poppins et Ubuntu sont plus larges que Surgena : on resserre un peu les lettres */
+.z-police-poppins :is(.z-titre-1, .z-titre-2, .z-titre-cta, .z-zero4, .z-affil4-titre),
+.z-police-ubuntu :is(.z-titre-1, .z-titre-2, .z-titre-cta, .z-zero4, .z-affil4-titre) {
+  letter-spacing: -0.035em;
+}
+/* Cal Sans n'existe qu'en un seul poids (Regular) : pas de faux gras */
+.z-police-calsans :is(.z-titre-1, .z-titre-2, .z-titre-cta, .z-zero4, .z-affil4-titre, .z-offre4-prix, .z-offre4-pastille) {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Sélecteur flottant (outil de test, à retirer une fois la police choisie) */
+.z-test-polices {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  overflow-x: auto;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgb(5 5 5 / 0.88);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12), 0 12px 30px rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(8px);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.z-test-polices span {
+  padding: 0 8px 0 10px;
+  color: #a9a7a1;
+}
+.z-test-polices a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: var(--z-blanc) !important;
+}
+.z-test-polices a:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+.z-test-polices a.z-test-polices-actif {
+  background: var(--z-bleu);
+}

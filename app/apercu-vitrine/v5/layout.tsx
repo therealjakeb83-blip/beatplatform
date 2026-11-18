@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { Jost, Space_Grotesk } from 'next/font/google'
+import { Cal_Sans, Jost, Poppins, Space_Grotesk, Ubuntu } from 'next/font/google'
 import localFont from 'next/font/local'
 import { NOM_PLATEFORME } from '@/lib/constantes'
 import './vitrine5.css'
 import './maquettes5.css'
 import './toutenun5.css'
 
-// Page test du site vitrine « v4 » : une AUTRE projection du retour envoyé au
+// Page test du site vitrine « v5 » (= v4 aux couleurs inversées) : une AUTRE projection du retour envoyé au
 // designer le 2026-11-16 (design/charte-v2/retour-jake/). Ce n'est PAS une maquette
 // du designer. v1, v2 et v3 restent intactes pour comparer. Jamais indexée.
 
@@ -17,6 +17,12 @@ const titres = Jost({ subsets: ['latin'], weight: ['600', '700'], variable: '--z
 // Titres de section : police libre proche de Surgena mais plus lisible (option 2 du retour).
 const sections = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--z-police-sections' })
 
+// Test des 3 polices de titres proposées par le designer (Brand Style Guide_TH, 2026-11-18).
+// Choix via ?police=poppins|ubuntu|calsans (sélecteur flottant en bas de page).
+const poppins = Poppins({ subsets: ['latin'], weight: ['600', '700'], variable: '--z-police-poppins' })
+const ubuntu = Ubuntu({ subsets: ['latin'], weight: ['500', '700'], variable: '--z-police-ubuntu' })
+const calSans = Cal_Sans({ subsets: ['latin'], weight: '400', variable: '--z-police-calsans' })
+
 export const metadata: Metadata = {
   title: `${NOM_PLATEFORME} — Aperçu du site vitrine (v5)`,
   robots: { index: false, follow: false, nocache: true },
@@ -24,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function LayoutApercuVitrineV5({ children }: { children: React.ReactNode }) {
   return (
-    <div lang="fr" className={`vitrine5 ${surgena.variable} ${titres.variable} ${sections.variable}`}>
+    <div lang="fr" className={`vitrine5 ${surgena.variable} ${titres.variable} ${sections.variable} ${poppins.variable} ${ubuntu.variable} ${calSans.variable}`}>
       {children}
     </div>
   )
