@@ -312,6 +312,7 @@
 > **Tri critique de la liste, décisions de Jake point par point (2026-11-18)**
 > - P1 Interface avant le serveur : gestes sans conséquence seulement (favori, préférence, panneau), jamais argent / factures / codes promo / emails / suppressions → **pendant la refonte (rang 10)**, noté dans sa ligne du tableau.
 > - P2 Redis : **non** ; réexaminé seulement si les tests de vitesse de l'étape 17 ou le vrai trafic montrent une page lente que le page par page et les index n'ont pas réglée.
+> - P3 File de jobs : **non** (tâches longues déjà découpées : envois par lots dans les tâches de nuit, réparation automatique des PDF + « Réessayer ») ; réexaminé seulement si les tests de l'étape 17 montrent une tâche qui dépasse le temps permis par Vercel, et alors pour cette tâche seule.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
