@@ -319,6 +319,7 @@
 > - P7 Validation côté serveur : **balayage ciblé au Lot 3** (routes publiques d'abord, puis celles qui écrivent des données reprises dans emails / factures) : longueurs maximales, formats (email, identifiant, `https://`, couleur), refus avec message clair, petite aide commune ; pas de zod sur les 132 routes.
 > - P8 Échappement : **à l'affichage** (Lot 3) : chaque valeur échappée dans les emails et aperçus construits à la main (`remplacerTokens`, blocs d'email, renvoi de commande) + aperçus en cadre isolé (`sandbox`) ; texte enregistré intact (pas de « O&#39;Brien »).
 > - P9 Conseils de vitesse (N+1, index, lazy load, re-rendus, virtualisation, cache, polices, scripts tiers, appareils lents) : **à la mesure** aux tests de l'étape 17 (téléphone lent + 4G faible simulés), technique appliquée seulement sur une page lente et gain vérifié ; vitesse réelle des visiteurs = même système maison que P4 (temps de chargement), pas de service de plus ; rang 12 (page par page) inchangé.
+> - P10 Double authentification : **maintenant, Lot 0, avant le code du Lot 1** — GitHub, Vercel, Supabase, Stripe, GoDaddy, Cloudflare, Google Workspace (Resend couvert par GitHub) ; application d'authentification ou passkey, **codes de secours notés hors de l'ordinateur** (sinon risque de se bloquer soi-même), Jake guidé compte par compte.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
