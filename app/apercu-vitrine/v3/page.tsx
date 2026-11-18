@@ -155,16 +155,16 @@ export default function ApercuVitrineV3Page() {
           </div>
         </section>
 
-        {/* ——— 02 Croissance — fond crème, maquette à gauche ——— */}
+        {/* ——— 02 Croissance — fond crème : texte puis parcours de relance sur toute la largeur ——— */}
         <section className="x-bande x-bande-creme">
-          <div className="x-conteneur x-duo x-duo-inverse">
-            <div className="x-duo-visuel x-maquette3">
-              <MaquetteRelance />
-              <Annotation texte="envoyé tout seul, au bon moment" className="x-annot-relance" sens="bas-droite" />
-            </div>
-            <div className="x-duo-texte">
+          <div className="x-conteneur">
+            <div className="x-duo-texte x-relance3-texte">
               <h2 className="x-titre-2">Vends plus. Fidélise mieux.</h2>
               <p className="x-duo-phrase">Sonoo relance tes clients au bon moment, tout seul.</p>
+            </div>
+            <div className="x-maquette3 x-relance3">
+              <MaquetteRelance />
+              <Annotation texte="envoyé tout seul, au bon moment" className="x-annot-relance" sens="bas-droite" />
             </div>
           </div>
         </section>

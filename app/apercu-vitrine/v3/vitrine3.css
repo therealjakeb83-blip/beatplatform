@@ -3604,3 +3604,21 @@ html:has(.vitrine3) {
   box-shadow: inset 0 0 0 1px #c9c6bf;
   color: #9a9892;
 }
+/* 02 : le parcours de relance (3 éléments) prend toute la largeur sous le texte */
+.x-relance3 {
+  margin-top: 40px;
+}
+@media (min-width: 1200px) {
+  .x-relance3 {
+    margin-top: 96px;
+  }
+  .x-relance3 .x-annot-relance {
+    top: -92px;
+    right: 120px;
+  }
+}
+/* Offre Pro sans contour bleu lumineux (comme la v4) */
+.x-tarifs3 .x-offre-pro {
+  border-color: #2a2926;
+  box-shadow: none;
+}
