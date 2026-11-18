@@ -7,8 +7,8 @@ import { Faq } from './_composants/Faq'
 import { MaquetteMarque, MaquetteRelance } from './_composants/Maquettes'
 import { ToutEnUn } from './_composants/ToutEnUn'
 import { Logo, Symbole } from './_composants/Logo'
-import { CHEMIN_INSCRIPTION, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
-import { sansAccents as sa } from './_composants/sansAccents'
+import { CHEMIN_INSCRIPTION, CHEMIN_VITRINE, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
+import { sansAccents } from './_composants/sansAccents'
 import * as I from './_composants/Icones'
 
 // Page test « v4 » : une AUTRE interprétation du retour envoyé au designer le 2026-11-16
@@ -33,6 +33,14 @@ const CLIENTS_COUCHE = [
 ]
 
 // Tarifs façon Deezer : même liste sur les deux cartes, cochée ou barrée.
+// Test des polices de titres du designer (Brand Style Guide_TH, 2026-11-18) : ?police=…
+const POLICES = [
+  { cle: 'surgena', nom: 'Surgena' },
+  { cle: 'poppins', nom: 'Poppins' },
+  { cle: 'ubuntu', nom: 'Ubuntu' },
+  { cle: 'calsans', nom: 'Cal Sans' },
+] as const
+
 const FONCTIONS = [
   { texte: 'Ta part des ventes en collab', gratuit: true },
   { texte: 'Accès au compte Sonoo', gratuit: true },
@@ -44,7 +52,11 @@ const FONCTIONS = [
 ]
 
 
-export default function ApercuVitrineV4Page() {
+export default async function ApercuVitrineV4Page({ searchParams }: { searchParams: Promise<{ police?: string }> }) {
+  const { police: demandee } = await searchParams
+  const police = POLICES.find(p => p.cle === demandee)?.cle ?? 'surgena'
+  // Seule la version d'essai de Surgena n'a pas d'accents : les autres polices les gardent.
+  const sa = police === 'surgena' ? sansAccents : (t: string) => t
   const lienBoutique = adresseBoutique(SLUG_BOUTIQUE_EXEMPLE, null).accueil
   const contact = `mailto:${EMAIL_CONTACT}`
 
@@ -55,6 +67,8 @@ export default function ApercuVitrineV4Page() {
         Aller au contenu
       </a>
       <EnTete lienBoutique={lienBoutique} />
+
+      <div className={`y-police-${police}`}>
 
       <main id="y-contenu">
         {/* ——— Accueil : fond noir, couches Sonoo empilées ——— */}
@@ -350,6 +364,16 @@ export default function ApercuVitrineV4Page() {
           </div>
         </div>
       </footer>
+
+      <nav className="y-test-polices" aria-label="Test des polices de titres">
+        <span>Police des titres</span>
+        {POLICES.map(p => (
+          <Link key={p.cle} href={p.cle === 'surgena' ? CHEMIN_VITRINE : `${CHEMIN_VITRINE}?police=${p.cle}`} scroll={false} className={p.cle === police ? 'y-test-polices-actif' : undefined} aria-current={p.cle === police ? 'true' : undefined}>
+            {p.nom}
+          </Link>
+        ))}
+      </nav>
+      </div>
     </>
   )
 }
