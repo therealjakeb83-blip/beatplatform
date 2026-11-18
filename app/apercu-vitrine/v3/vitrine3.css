@@ -3622,3 +3622,79 @@ html:has(.vitrine3) {
   border-color: #2a2926;
   box-shadow: none;
 }
+
+/* ——— Haut de page sans cartes flottantes (demande de Jake, 2026-11-18) ——— */
+@media (min-width: 1200px) {
+  .x-hero3 {
+    padding-top: 120px;
+    padding-bottom: calc(var(--x-courbe) + 120px);
+  }
+}
+
+/* ——— Tous les titres en Surgena, comme la v4/v5 (demande de Jake, 2026-11-18) ——— */
+.x-titre-2,
+.x-titre-3,
+.x-titre-cta,
+.x-zero3-chiffre {
+  font-family: var(--x-police-titres);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ═════════════ Test des polices de titres du designer (Brand Style Guide_TH, 2026-11-18) ═════════════
+   ?police=poppins|ubuntu|calsans remplace Surgena sur TOUS les titres de la page
+   (pas l'en-tête). Les titres gardent leurs tailles ; seul l'espacement est ajusté. */
+.x-police-poppins {
+  --x-police-titres: var(--x-police-poppins), system-ui, sans-serif;
+}
+.x-police-ubuntu {
+  --x-police-titres: var(--x-police-ubuntu), system-ui, sans-serif;
+}
+.x-police-calsans {
+  --x-police-titres: var(--x-police-calsans), system-ui, sans-serif;
+}
+.x-police-poppins :is(.x-titre-1, .x-titre-2, .x-titre-3, .x-titre-cta, .x-zero3-chiffre),
+.x-police-ubuntu :is(.x-titre-1, .x-titre-2, .x-titre-3, .x-titre-cta, .x-zero3-chiffre) {
+  letter-spacing: -0.035em;
+}
+/* Cal Sans n'existe qu'en un seul poids (Regular) : pas de faux gras */
+.x-police-calsans :is(.x-titre-1, .x-titre-2, .x-titre-3, .x-titre-cta, .x-zero3-chiffre) {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Sélecteur flottant (outil de test, à retirer une fois la police choisie) */
+.x-test-polices {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  overflow-x: auto;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgb(5 5 5 / 0.88);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12), 0 12px 30px rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(8px);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.x-test-polices span {
+  padding: 0 8px 0 10px;
+  color: #a9a7a1;
+}
+.x-test-polices a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: var(--x-blanc) !important;
+}
+.x-test-polices a:hover {
+  background: rgb(255 255 255 / 0.1);
+}
+.x-test-polices a.x-test-polices-actif {
+  background: var(--x-bleu);
+}

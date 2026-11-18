@@ -6,8 +6,8 @@ import { Faq } from './_composants/Faq'
 import { MaquetteMarque, MaquetteRelance } from './_composants/Maquettes'
 import { ToutEnUn } from './_composants/ToutEnUn'
 import { Logo, Symbole } from './_composants/Logo'
-import { CHEMIN_INSCRIPTION, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
-import { sansAccents as sa } from './_composants/sansAccents'
+import { CHEMIN_INSCRIPTION, CHEMIN_VITRINE, SLUG_BOUTIQUE_EXEMPLE } from './_composants/liens'
+import { sansAccents } from './_composants/sansAccents'
 import * as I from './_composants/Icones'
 
 // Page test « v3 » : la v2 retravaillée selon le retour envoyé au designer le 2026-11-16
@@ -18,7 +18,7 @@ import * as I from './_composants/Icones'
 // - texte et image qui changent de côté, annotations « à la main » (inspirations Pro Finance, HackerRank) ;
 // - section 04 supprimée (contrats/factures cités dans « Tout-en-un », 0 % dans la section bleue) ;
 // - « L'histoire » : logo Jake B au lieu de la photo ; aucune photo sur la page ;
-// - Surgena seulement pour le grand titre du haut ; titres de section en Geist.
+// - 2026-11-18 : TOUS les titres en Surgena (comme la v4/v5) + test des polices du designer (?police=).
 // 2026-11-18 (demande de Jake) : même quantité d'information que la v4/v5 (textes allégés, étiquettes
 // au-dessus des titres retirées, schéma Acheteur → Toi retiré, tarifs façon v4) et mêmes maquettes
 // codées (_composants/Maquettes.tsx, ToutEnUn.tsx) ; la présentation v3 et les annotations à la main restent.
@@ -35,6 +35,14 @@ function Annotation({ texte, className, sens = 'bas-gauche' }: { texte: string; 
     </span>
   )
 }
+
+// Test des polices de titres du designer (Brand Style Guide_TH, 2026-11-18) : ?police=…
+const POLICES = [
+  { cle: 'surgena', nom: 'Surgena' },
+  { cle: 'poppins', nom: 'Poppins' },
+  { cle: 'ubuntu', nom: 'Ubuntu' },
+  { cle: 'calsans', nom: 'Cal Sans' },
+] as const
 
 const CHIFFRES_JAKE = [
   { valeur: '220 k€+', texte: 'générés grâce à ses beats' },
@@ -53,9 +61,11 @@ const FONCTIONS = [
   { texte: 'Statistiques complètes', gratuit: false },
 ]
 
-const BARRES_REVENUS = [38, 52, 44, 60, 56, 72, 66, 84, 78, 100]
-
-export default function ApercuVitrineV3Page() {
+export default async function ApercuVitrineV3Page({ searchParams }: { searchParams: Promise<{ police?: string }> }) {
+  const { police: demandee } = await searchParams
+  const police = POLICES.find(p => p.cle === demandee)?.cle ?? 'surgena'
+  // Seule la version d'essai de Surgena n'a pas d'accents : les autres polices les gardent.
+  const sa = police === 'surgena' ? sansAccents : (t: string) => t
   const lienBoutique = adresseBoutique(SLUG_BOUTIQUE_EXEMPLE, null).accueil
   const contact = `mailto:${EMAIL_CONTACT}`
 
@@ -66,58 +76,11 @@ export default function ApercuVitrineV3Page() {
       </a>
       <EnTete lienBoutique={lienBoutique} />
 
+      <div className={`x-police-${police}`}>
       <main id="x-contenu">
         {/* ——— Accueil : titre centré, cartes Sonoo inclinées autour ——— */}
         <section className="x-hero3">
           <div className="x-conteneur x-hero3-scene">
-            <div className="x-flottant x-flottant-vente" aria-hidden="true">
-              <span className="x-flottant-tete">
-                <span className="x-point-vert" />
-                Nouvelle vente
-              </span>
-              <span className="x-flottant-ligne">
-                <span className="x-pochette" />
-                <span>
-                  <strong>Ambitieux</strong>
-                  <small>Licence WAV · Luka M.</small>
-                </span>
-                <strong className="x-flottant-montant">+49 €</strong>
-              </span>
-            </div>
-
-            <div className="x-flottant x-flottant-revenus" aria-hidden="true">
-              <span className="x-flottant-tete">Revenus · 30 jours</span>
-              <strong className="x-flottant-gros">4 280 €</strong>
-              <span className="x-flottant-hausse">+12,4 %</span>
-              <span className="x-mini-barres">
-                {BARRES_REVENUS.map((h, i) => (
-                  <span key={i} style={{ height: `${h}%` }} />
-                ))}
-              </span>
-            </div>
-
-            <div className="x-flottant x-flottant-relance" aria-hidden="true">
-              <span className="x-avatar">LM</span>
-              <span>
-                <strong>Luka M. est revenu</strong>
-                <small>grâce à la relance automatique</small>
-              </span>
-            </div>
-
-            <div className="x-flottant x-flottant-membre" aria-hidden="true">
-              <span className="x-flottant-icone">
-                <I.Couronne taille={18} />
-              </span>
-              <span>
-                <strong>Nouveau membre Gold</strong>
-                <small>Naya K. · 9,99 € / mois</small>
-              </span>
-            </div>
-
-            <div className="x-flottant x-flottant-symbole" aria-hidden="true">
-              <Symbole hauteur={30} couleur="#2477fb" />
-            </div>
-
             <div className="x-hero3-centre">
               <h1 className="x-titre-1">
                 {sa('Tes beats méritent mieux')} <span className="x-titre-bleu">{sa('qu’une marketplace.')}</span>
@@ -141,7 +104,7 @@ export default function ApercuVitrineV3Page() {
         <section id="fonctionnalites" className="x-bande x-bande-noir x-ancre">
           <div className="x-conteneur x-duo">
             <div className="x-duo-texte">
-              <h2 className="x-titre-2">Ta marque au premier plan.</h2>
+              <h2 className="x-titre-2">{sa('Ta marque au premier plan.')}</h2>
               <p className="x-duo-phrase">Tes couleurs, ton logo, ton nom de domaine. Sonoo reste en coulisses.</p>
               <a href={lienBoutique} target="_blank" rel="noopener noreferrer" className="x-lien-fleche x-lien-clair">
                 Voir une boutique
@@ -159,7 +122,7 @@ export default function ApercuVitrineV3Page() {
         <section className="x-bande x-bande-creme">
           <div className="x-conteneur">
             <div className="x-duo-texte x-relance3-texte">
-              <h2 className="x-titre-2">Vends plus. Fidélise mieux.</h2>
+              <h2 className="x-titre-2">{sa('Vends plus. Fidélise mieux.')}</h2>
               <p className="x-duo-phrase">Sonoo relance tes clients au bon moment, tout seul.</p>
             </div>
             <div className="x-maquette3 x-relance3">
@@ -176,7 +139,7 @@ export default function ApercuVitrineV3Page() {
               0<span>%</span>
             </p>
             <div className="x-zero3-texte">
-              <h2 className="x-titre-2">de commission.</h2>
+              <h2 className="x-titre-2">{sa('de commission.')}</h2>
               <p className="x-duo-phrase">L’argent va directement de l’acheteur à toi. Sonoo n’y touche jamais.</p>
             </div>
           </div>
@@ -186,7 +149,7 @@ export default function ApercuVitrineV3Page() {
         <section className="x-bande x-bande-noir">
           <div className="x-conteneur">
             <div className="x-tete x-tete3">
-              <h2 className="x-titre-2">Un seul abonnement. Au lieu de cinq outils.</h2>
+              <h2 className="x-titre-2">{sa('Un seul abonnement. Au lieu de cinq outils.')}</h2>
             </div>
             <div className="x-tout3">
               <ToutEnUn />
@@ -203,7 +166,7 @@ export default function ApercuVitrineV3Page() {
               <img src="/apercu-vitrine/v3/logo-jake-b-blanc.png" alt="Logo de Jake B" width={1200} height={1200} />
             </div>
             <div className="x-histoire-texte">
-              <h2 className="x-titre-2">Créé par un beatmaker, pour les beatmakers.</h2>
+              <h2 className="x-titre-2">{sa('Créé par un beatmaker, pour les beatmakers.')}</h2>
               <p className="x-histoire-intro">
                 Compositeur certifié multi-platine, Jake B publie sa musique sur YouTube depuis 2019. Sonoo, c’est le système qu’il a construit pour vivre de ses beats.
               </p>
@@ -226,7 +189,7 @@ export default function ApercuVitrineV3Page() {
                   <span className="x-point x-point-blanc" />
                   Bientôt
                 </span>
-                <h2 className="x-titre-3">Recommande Sonoo. Touche une commission sur chaque abonnement.</h2>
+                <h2 className="x-titre-3">{sa('Recommande Sonoo. Touche une commission sur chaque abonnement.')}</h2>
               </div>
               <a href={`${contact}?subject=${encodeURIComponent('Programme d’affiliation Sonoo')}`} className="x-bouton x-bouton-blanc x-bouton-grand">
                 Être prévenu du lancement
@@ -239,7 +202,7 @@ export default function ApercuVitrineV3Page() {
         {/* ——— Tarifs — fond noir (contenu de la v4 : Pro 49 €, même liste cochée / barrée) ——— */}
         <section id="tarifs" className="x-bande x-bande-noir x-tarifs3 x-ancre">
           <div className="x-conteneur">
-            <h2 className="x-titre-2 x-centre">Un prix simple. Zéro commission.</h2>
+            <h2 className="x-titre-2 x-centre">{sa('Un prix simple. Zéro commission.')}</h2>
             <div className="x-offres">
               <article className="x-offre x-offre-pro">
                 <div className="x-offre-tete">
@@ -291,7 +254,7 @@ export default function ApercuVitrineV3Page() {
         <section className="x-bande x-bande-creme x-bande-fin">
           <div id="faq" className="x-conteneur x-ancre x-faq">
             <div className="x-faq-intro">
-              <h2 className="x-titre-2">Questions fréquentes</h2>
+              <h2 className="x-titre-2">{sa('Questions fréquentes')}</h2>
               <p className="x-faq-sous">Une autre question ? Notre équipe te répond.</p>
               <a href={contact} className="x-bouton x-bouton-contour x-bouton-petit">
                 <I.Enveloppe taille={18} />
@@ -305,7 +268,7 @@ export default function ApercuVitrineV3Page() {
             <div className="x-cta">
               <Symbole hauteur={620} couleur="#141312" className="x-cta-deco" />
               <div className="x-cta-contenu">
-                <h2 className="x-titre-cta">Arrête de louer ton audience. Construis ta marque.</h2>
+                <h2 className="x-titre-cta">{sa('Arrête de louer ton audience. Construis ta marque.')}</h2>
                 <p>Lance ta boutique Sonoo et garde la relation avec tes clients.</p>
                 <div className="x-cta-boutons">
                   <Link href={CHEMIN_INSCRIPTION} className="x-bouton x-bouton-bleu x-bouton-grand">
@@ -376,6 +339,16 @@ export default function ApercuVitrineV3Page() {
           </div>
         </div>
       </footer>
+
+      <nav className="x-test-polices" aria-label="Test des polices de titres">
+        <span>Police des titres</span>
+        {POLICES.map(p => (
+          <Link key={p.cle} href={p.cle === 'surgena' ? CHEMIN_VITRINE : `${CHEMIN_VITRINE}?police=${p.cle}`} scroll={false} className={p.cle === police ? 'x-test-polices-actif' : undefined} aria-current={p.cle === police ? 'true' : undefined}>
+            {p.nom}
+          </Link>
+        ))}
+      </nav>
+      </div>
     </>
   )
 }
