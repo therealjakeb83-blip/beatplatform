@@ -313,6 +313,7 @@
 > - P1 Interface avant le serveur : gestes sans conséquence seulement (favori, préférence, panneau), jamais argent / factures / codes promo / emails / suppressions → **pendant la refonte (rang 10)**, noté dans sa ligne du tableau.
 > - P2 Redis : **non** ; réexaminé seulement si les tests de vitesse de l'étape 17 ou le vrai trafic montrent une page lente que le page par page et les index n'ont pas réglée.
 > - P3 File de jobs : **non** (tâches longues déjà découpées : envois par lots dans les tâches de nuit, réparation automatique des PDF + « Réessayer ») ; réexaminé seulement si les tests de l'étape 17 montrent une tâche qui dépasse le temps permis par Vercel, et alors pour cette tâche seule.
+> - P4 Suivi des plantages : erreurs serveur = journaux Vercel (déjà) ; erreurs du NAVIGATEUR = **petit système maison** (page, message, navigateur, modèle d'appareil, sans email ni nom, limite d'envois, trace `[erreur-navigateur]` dans Vercel), ≈ 1-2 h, **avant le lancement (étape 17)** ; pas de Sentry (service tiers, RGPD, enregistrement d'écran) sauf si un jour trop d'erreurs à lire.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
