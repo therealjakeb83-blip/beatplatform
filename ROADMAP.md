@@ -288,7 +288,7 @@
 > Trouvé en préparant : le « renvoyer l'email » du dashboard (`api/business/commandes/[id]/renvoyer`) peut viser l'email de la FICHE boutique (modifiable par le vendeur) quand `acheteur_email` est vide → le lien signé n'y sera mis que si le destinataire est l'email de la commande ou du compte de l'acheteur ; la ligne `email_renvoi` du journal ne compte jamais comme preuve.
 >
 > **Checklist du Lot 1 (proposée le 2026-11-18)**
-> - [ ] T0 — Relevé en lecture seule des règles d'accès RÉELLES de `beats` / `beatmakers` en ligne (policies + droits `anon` / `authenticated`) et des lignes de base qui pointent encore vers `myproducer-beats` (Jake SQL, Claude lit)
+> - [ ] T0 — Relevé en lecture seule des règles d'accès RÉELLES de `beats` / `beatmakers` en ligne (policies + droits `anon` / `authenticated`) + liste des tables SANS RLS activé (liste de Jake du 2026-11-18) et des lignes de base qui pointent encore vers `myproducer-beats` (Jake SQL, Claude lit)
 > - [ ] T1 — Cloudflare : espace privé `sonoo-prive` créé SANS adresse publique, CORS (envoi depuis sonoo.app), clé R2 autorisée sur les deux espaces ; Vercel : nom de l'espace privé ajouté + redéploiement (Jake guidé, Claude vérifie)
 > - [ ] T2 — Nouveau beat envoyé depuis le dashboard : MP3 tagué, MP3 propre, WAV, stems arrivent dans l'espace privé ; l'ancienne adresse publique de ces fichiers = 404 ; aperçu de ses fichiers dans « Modifier le beat » OK (Claude, profil `domaine`)
 > - [ ] T3 — Déménagement des fichiers existants par script (Jake lance, d'abord à blanc avec le décompte, puis pour de vrai) : copie, base réécrite, vérification fichier par fichier (Claude lit le rapport)
@@ -306,6 +306,8 @@
 > - [ ] T15 — `myproducer-beats` : adresse publique coupée (Jake dans Cloudflare), ancien WAV = refus (Claude)
 > - [ ] T16 — Journaux Vercel : plus aucune adresse de fichier dans les traces ; aucune erreur nouvelle sur 24 h (Claude)
 > Comment défaire : code = `git revert` du commit ; espace privé = les fichiers restent copiés tant que T4 n'est pas fait ; SQL de fermeture = SQL inverse fourni avec ; `myproducer-beats` = réactiver l'adresse publique dans Cloudflare.
+>
+> **Liste de Jake du 2026-11-18 (Instagram) triée** — détail dans `docs/securite/inventaire-9f-2026-11-17.md` : la plupart déjà OK ou déjà dans un lot ; nouveaux : **Lot 0** (actions de Jake : double authentification sur tous les comptes, Skew Protection Vercel), validation serveur de tous les formulaires (Lot 3), appels en double (Lot 5), délais des API externes (Lot 6), tables sans RLS (Lot 1 T0), `fichiers.sonoo.app` au lieu de r2.dev (étape 17), observabilité Sentry + Speed Insights (avant lancement), **Lot 8 — attaque de l'extérieur** (Strix) + 2e passage avec la skill officielle Cloudflare `security-audit` après les lots.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
