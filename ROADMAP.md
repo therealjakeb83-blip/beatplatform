@@ -314,6 +314,7 @@
 > - P2 Redis : **non** ; réexaminé seulement si les tests de vitesse de l'étape 17 ou le vrai trafic montrent une page lente que le page par page et les index n'ont pas réglée.
 > - P3 File de jobs : **non** (tâches longues déjà découpées : envois par lots dans les tâches de nuit, réparation automatique des PDF + « Réessayer ») ; réexaminé seulement si les tests de l'étape 17 montrent une tâche qui dépasse le temps permis par Vercel, et alors pour cette tâche seule.
 > - P4 Suivi des plantages : erreurs serveur = journaux Vercel (déjà) ; erreurs du NAVIGATEUR = **petit système maison** (page, message, navigateur, modèle d'appareil, sans email ni nom, limite d'envois, trace `[erreur-navigateur]` dans Vercel), ≈ 1-2 h, **avant le lancement (étape 17)** ; pas de Sentry (service tiers, RGPD, enregistrement d'écran) sauf si un jour trop d'erreurs à lire.
+> - P5 Limite de requêtes (Lot 7) : **sans nouveau service** = règles du pare-feu Vercel (seuils larges, routes publiques à risque) + compteur Supabase par email / commande + Stripe Radar ; prix et limites du pare-feu sur le plan Pro à vérifier au Lot 7 (sinon tout en compteur Supabase) ; pas d'Upstash. Écoutes : **pas prioritaire** (Jake : le nombre d'écoutes n'est pas affiché en public, personne n'a intérêt à le gonfler) → seulement une limite très large contre l'inondation de la base ; **à revoir si un jour le compteur d'écoutes devient public**.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
