@@ -318,6 +318,7 @@
 > - P6 En-têtes : les simples tout de suite au Lot 7 (anti-cadre / clickjacking, nosniff, Referrer-Policy, Permissions-Policy) ; **CSP en mode « rapport seulement »** quelques semaines (paiements Stripe / Apple Pay / Google Pay compris), décision d'après les rapports avant le lancement ; pas de CSP bloquante d'emblée (risque de casser le paiement en silence, perte de vitesse avec une CSP stricte).
 > - P7 Validation côté serveur : **balayage ciblé au Lot 3** (routes publiques d'abord, puis celles qui écrivent des données reprises dans emails / factures) : longueurs maximales, formats (email, identifiant, `https://`, couleur), refus avec message clair, petite aide commune ; pas de zod sur les 132 routes.
 > - P8 Échappement : **à l'affichage** (Lot 3) : chaque valeur échappée dans les emails et aperçus construits à la main (`remplacerTokens`, blocs d'email, renvoi de commande) + aperçus en cadre isolé (`sandbox`) ; texte enregistré intact (pas de « O&#39;Brien »).
+> - P9 Conseils de vitesse (N+1, index, lazy load, re-rendus, virtualisation, cache, polices, scripts tiers, appareils lents) : **à la mesure** aux tests de l'étape 17 (téléphone lent + 4G faible simulés), technique appliquée seulement sur une page lente et gain vérifié ; vitesse réelle des visiteurs = même système maison que P4 (temps de chargement), pas de service de plus ; rang 12 (page par page) inchangé.
 
 
 ## Détail — Boutiques en sous-domaine `slug.sonoo.app` (rang 9c bis, étude le 2026-11-12)
