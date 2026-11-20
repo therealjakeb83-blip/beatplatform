@@ -1,8 +1,16 @@
 # Passation — Sonoo, rang 9f : fin du Lot 1 et préparation du Lot 1 bis
 
-## Suite prioritaire — réalisation du Lot 1 bis, 20 novembre
+## Reprise prioritaire — Lot 1 bis, SQL vérifiés et essais en cours (20 novembre)
 
-Depuis cette passation, Jake a donné `/gocode`. Code `502d75e` poussé sur main, nouveau code public constaté sur sonoo.app ; SQL 5 appliqué par Jake (succès annoncé), vérification séparée attendue ; SQL 1/2/3/4 non appliqués. Détail, checklist T0–T16 et procédure de retour : `docs/securite/lot1bis-9f-2026-11-20.md`. Q1 réel reçu ; complément T0 reçu : 62 tables RLS, zéro incohérence texte/archive ; cinq inverses réels sauvegardés et testés. SQL 5 appliqué par Jake (succès annoncé), vérification séparée attendue avant SQL 1/2/3/4 un à un. Les droits TRUNCATE d'anon sont réels dans Q1, signalés sans essai destructif ; MAINTAIN pris en compte. PGlite : 34 contrôles PG18 et cinq inverses réels OK, neuf scénarios routes/contrats ; TypeScript OK, erreur lint React préexistante ; compilation locale OK, prérendu exige la base. Code servi en ligne observé, Analytics 200 et totaux inchangés, trois routes sans session 401. Validation réelle du lot non terminée. T5/T16 Lot 1, compartiment 8 et page humaine restent inchangés. Le reste de cette passation décrit le point de départ historique.
+Jake a donné `/gocode`. Code `502d75e` poussé sur main et observé sur sonoo.app. Les cinq SQL sont appliqués par Jake et vérifiés séparément, ordre 5 → 1 → 2 → 3 → 4. T0 : 62 tables RLS, zéro incohérence texte/archive, cinq inverses réels dans `supabase/retour_9f_lot1bis/`. Droits techniques restants = 0. PGlite : 34 contrôles avec ACL réelles, serveur préservé et inverses exacts ; neuf scénarios routes/contrats ; TypeScript OK. Erreur lint React préexistante. Détail et checklist : `docs/securite/lot1bis-9f-2026-11-20.md`.
+
+Essais autonomes réels : liste créée, contact whitelist ajouté/relu/retiré, liste supprimée ; catégorie test créée/renommée/demandée/certifiée par Admin, beat masqué ensuite retiré ; texte MP3 réenregistré à contenu identique (5 → 6), archive et texte relus identiques, modèle par défaut essayé sans sauvegarde ; import synthétique puis annulation, réponse B6 limitée aux quatre compteurs ; invitation whitelisted créée/retirée, état et emails relus, beat ensuite retiré. Analytics 200, 395 commandes et CA 19 254,55 € inchangés. Aucun email hors liste blanche ni lecture `.env.local`.
+
+Restes : contrat neuf sur beat achetable (Anarchy refuse normalement car licences désactivées ; code de test désactivé, aucune commande créée), essais côté second compte (question envoyée à Jake), acceptation/refus/départ/éviction et source marketing étrangère, fusion de liste non rejouée. Traces conservées : catégorie certifiée `TEST9FBIS2011REN`, historiques, deux beats supprimés logiquement, import annulé, version 6 identique. Ne pas annoncer leur effacement ni clore le lot.
+
+Lot 1 : T5 PC Edge, rechargement automatique après une heure puis écoute OK = T5 toujours ouvert (pas de preuve sans rechargement), cause non établie ; T16 journaux 24 h au 21/11. Compartiment 8 non commencé. Page humaine et compteur inchangés. Cet état remplace les mentions historiques ci-dessous disant encore « Lot 1 bis sans /gocode ».
+
+La suite de cette passation décrit le point de départ historique.
 
 Date : 2026-11-20, clôture Codex. Projet : `C:\Users\nicoj\beatplatform`, branche `main`.
 **Remplace `HANDOFF_CLAUDE_SECURITE_9F_LOT1_CODE_2026-11-19.md`**, supprimée à cette clôture : elle décrivait un Lot 1 encore à coder.
