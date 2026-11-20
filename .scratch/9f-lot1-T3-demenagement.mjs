@@ -23,9 +23,13 @@ if (!['compter', 'deplacer', 'verifier', 'effacer'].includes(mode)) {
 
 const PUBLIC = process.env.R2_BUCKET_NAME
 const PRIVE = process.env.R2_BUCKET_PRIVE_NAME
-const PREFIXE_PUBLIC = `${process.env.R2_PUBLIC_URL}/`
-if (!PUBLIC || !PRIVE || PUBLIC === PRIVE || !process.env.R2_PUBLIC_URL) {
-  console.log('Il manque R2_BUCKET_NAME, R2_BUCKET_PRIVE_NAME ou R2_PUBLIC_URL dans .env.local (ou ils sont identiques).')
+// Adresse publique de l'espace « sonoo » (CLAUDE.md, 2026-10-17) : c'est elle
+// qui est enregistrée en base, quelle que soit la valeur de R2_PUBLIC_URL du PC.
+const ADRESSE_SONOO = 'https://pub-6a8b0d1a9a3a485ca052eb2596cbf6a4.r2.dev'
+const PREFIXES_PUBLICS = [...new Set([`${ADRESSE_SONOO}/`, `${process.env.R2_PUBLIC_URL}/`])]
+if (PUBLIC !== 'sonoo' || PRIVE !== 'sonoo-prive') {
+  console.log(`Espaces lus dans .env.local : R2_BUCKET_NAME=« ${PUBLIC} », R2_BUCKET_PRIVE_NAME=« ${PRIVE} ».`)
+  console.log('Attendu : « sonoo » et « sonoo-prive ». Rien n’a été fait.')
   process.exit(1)
 }
 if (mode === 'effacer' && !confirme) {
@@ -69,7 +73,8 @@ async function lister(bucket) {
 function classer(valeur) {
   if (!valeur) return { etat: 'vide' }
   if (valeur.startsWith('prive:')) return { etat: 'prive', cle: valeur.slice(6) }
-  if (valeur.startsWith(PREFIXE_PUBLIC)) return { etat: 'public', cle: valeur.slice(PREFIXE_PUBLIC.length) }
+  const prefixe = PREFIXES_PUBLICS.find(p => valeur.startsWith(p))
+  if (prefixe) return { etat: 'public', cle: valeur.slice(prefixe.length) }
   return { etat: 'inconnu' }
 }
 
@@ -117,6 +122,7 @@ const copiesUniques = [...new Map(aCopier.map(c => [`${c.source}→${c.cible}`, 
 
 const rapport = {
   mode,
+  espaces: { public: PUBLIC, prive: PRIVE, adresse_publique_en_base: ADRESSE_SONOO, r2_public_url_du_pc: process.env.R2_PUBLIC_URL ?? null },
   date: new Date().toISOString(),
   base: { a_deplacer: plan.length, deja_prives: dejaPrives.length, adresse_inconnue: inconnus.length, fichier_absent: absents.length },
   par_colonne: Object.fromEntries([...new Set(plan.map(p => `${p.table}.${p.colonne}`))].map(k => [k, plan.filter(p => `${p.table}.${p.colonne}` === k).length])),
@@ -125,7 +131,7 @@ const rapport = {
   volume: taille(copiesUniques.reduce((a, c) => a + c.octets, 0)),
   cle_renommee: plan.filter(p => p.source !== p.cible).length,
   exemples_absents: absents.slice(0, 10).map(p => `${p.table}.${p.colonne} ${p.id}`),
-  exemples_inconnus: inconnus.slice(0, 10),
+  adresses_inconnues_par_debut: Object.fromEntries([...new Set(inconnus.map(i => i.debut.slice(0, 30)))].map(d => [d, inconnus.filter(i => i.debut.startsWith(d)).length])),
 }
 
 async function copierUn({ source, cible, octets }) {
