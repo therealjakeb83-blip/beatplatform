@@ -42,5 +42,7 @@ export async function POST(request: Request) {
     { expiresIn: 3600 }
   )
 
-  return Response.json({ uploadUrl: url, fileUrl: valeurEnBase })
+  // Le navigateur doit renvoyer EXACTEMENT ce type (signé) : Windows annonce
+  // parfois un .zip ou un .wav autrement, ce qui faisait échouer l'envoi.
+  return Response.json({ uploadUrl: url, fileUrl: valeurEnBase, contentType: TYPES_FICHIER_BEAT[type].contentType })
 }
