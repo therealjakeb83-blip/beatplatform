@@ -119,3 +119,15 @@ export async function accesCommande(commande: {
   origines.sort((a, b) => RANG[b] - RANG[a])
   return { autorise: true, qui: 'acheteur', origine: origines[0] }
 }
+
+// « Appareil qui a payé » (preuve) : seulement dans l'heure qui suit la
+// commande. L'identifiant Stripe qui ouvre ce chemin est visible du vendeur
+// dans son espace Stripe : passé ce délai, l'acheteur passe par le lien signé
+// de son email, et un vendeur ne peut plus se fabriquer un accès « preuve ».
+const DELAI_APPAREIL_PAIEMENT_MS = 60 * 60 * 1000
+
+export async function poserCookieAppareilPaiement(cookieStore: EcrivainCookies, commandeId: string): Promise<void> {
+  const { data } = await createAdminClient().from('commandes').select('created_at').eq('id', commandeId).maybeSingle()
+  if (!data?.created_at || Date.now() - new Date(data.created_at).getTime() > DELAI_APPAREIL_PAIEMENT_MS) return
+  poserCookieAcces(cookieStore, commandeId, 'acheteur', 'appareil_paiement')
+}

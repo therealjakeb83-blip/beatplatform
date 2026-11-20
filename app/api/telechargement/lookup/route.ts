@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { poserCookieAcces } from '@/lib/telechargement-acces'
+import { poserCookieAppareilPaiement } from '@/lib/telechargement-acces'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   // n'est atteignable qu'avec un session_id/payment_intent Stripe légitime,
   // qui prouve déjà le paiement : pas besoin de reconfirmer l'email.
   const cookieStore = await cookies()
-  poserCookieAcces(cookieStore, data.id, 'acheteur', 'appareil_paiement')
+  await poserCookieAppareilPaiement(cookieStore, data.id)
 
   return NextResponse.json({ commande_id: data.id })
 }

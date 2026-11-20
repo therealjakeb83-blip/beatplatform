@@ -10,7 +10,7 @@ import { normaliserEmail } from '@/lib/email'
 import { panierEstMultiVendeurs, repartirPanier } from '@/lib/paiement-multi-repartition'
 import { finaliserCommandePayee } from '@/lib/webhook-paiement'
 import { choixMemoriser } from '@/lib/infos-paiement-compte'
-import { poserCookieAcces } from '@/lib/telechargement-acces'
+import { poserCookieAppareilPaiement } from '@/lib/telechargement-acces'
 
 export const runtime = 'nodejs'
 // Contrats PDF + emails, comme après un paiement.
@@ -198,6 +198,6 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies()
-  poserCookieAcces(cookieStore, commandeId, 'acheteur', 'appareil_paiement')
+  await poserCookieAppareilPaiement(cookieStore, commandeId)
   return NextResponse.json({ commande_id: commandeId })
 }

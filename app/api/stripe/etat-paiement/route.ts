@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { etatTentativeMulti, type EtatPaiement } from '@/lib/paiement-multi'
-import { poserCookieAcces } from '@/lib/telechargement-acces'
+import { poserCookieAppareilPaiement } from '@/lib/telechargement-acces'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   if (etat.etat === 'termine') {
     const cookieStore = await cookies()
-    poserCookieAcces(cookieStore, etat.commandeId, 'acheteur', 'appareil_paiement')
+    await poserCookieAppareilPaiement(cookieStore, etat.commandeId)
     return NextResponse.json({ etat: 'termine', commande_id: etat.commandeId })
   }
   return NextResponse.json(etat)
