@@ -3,7 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { utilisateurConnecte } from '@/lib/session-serveur'
 import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
 import { normaliserEmail } from '@/lib/email'
-import { lienSigneR2, fichierAppartientAuBeat } from '@/lib/r2'
+import { lienSigneR2, fichierAppartientAuBeat, estPrive } from '@/lib/r2'
 
 // Rang 9f, Lot 1 (décision 2) : le MP3 tagué est dans l'espace privé. Le
 // lecteur de la boutique reçoit un lien temporaire préparé avec la page et
@@ -35,6 +35,9 @@ export function beatVisible(beat: Omit<BeatEcoute, 'mp3_tague_url' | 'id' | 'bea
 
 export async function lienEcoute(beat: Pick<BeatEcoute, 'id' | 'beatmaker_id' | 'mp3_tague_url'>): Promise<string | null> {
   if (!beat.mp3_tague_url || !fichierAppartientAuBeat(beat.mp3_tague_url, beat)) return null
+  // Seulement nos fichiers (espace privé, ou ancienne adresse r2.dev) : jamais
+  // une adresse quelconque saisie en base (ex. faux beats de démonstration).
+  if (!estPrive(beat.mp3_tague_url) && !/^https:\/\/[^/]+\.r2\.dev\//.test(beat.mp3_tague_url)) return null
   try {
     return await lienSigneR2(beat.mp3_tague_url, { secondes: DUREE_LIEN_ECOUTE, contentType: 'audio/mpeg' })
   } catch (err) {
