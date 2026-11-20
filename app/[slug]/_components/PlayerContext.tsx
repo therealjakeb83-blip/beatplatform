@@ -126,6 +126,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const finalizeRef     = useRef<(beacon: boolean) => void>(() => {})
   const liensRef        = useRef<Map<string, string>>(new Map())
   const reprisesRef     = useRef<Map<string, number>>(new Map())
+  const positionRef     = useRef<{ beatId: string | null; t: number }>({ beatId: null, t: 0 })
 
   // Lien utilisable tout de suite (encore valide), sinon null.
   function lienImmediat(beat: BeatMin): string | null {
@@ -274,13 +275,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     })
     // Lien expiré pendant l'écoute (ou au déplacement dans la piste) : nouveau
     // lien, reprise à la même position. Une seule tentative toutes les 10 s.
+    // Dernière position atteinte (un lien qui échoue peut remettre le temps à 0).
+    audio.addEventListener('timeupdate', () => {
+      const id = currentBeatRef.current?.id ?? null
+      if (audio.currentTime > 0 && id) positionRef.current = { beatId: id, t: audio.currentTime }
+    })
+
     audio.addEventListener('error', async () => {
       const beat = currentBeatRef.current
       if (!beat?.mp3_tague_url) return
       const derniere = reprisesRef.current.get(beat.id) ?? 0
       if (Date.now() - derniere < 10_000) return
       reprisesRef.current.set(beat.id, Date.now())
-      const position = audio.currentTime
+      const position = audio.currentTime || (positionRef.current.beatId === beat.id ? positionRef.current.t : 0)
       const lien = await lienRenouvele(beat.id)
       if (!lien || currentBeatRef.current?.id !== beat.id) return
       audio.addEventListener('loadedmetadata', () => {
@@ -325,6 +332,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current
     if (!audio || !currentBeat?.mp3_tague_url) return
     setProgress(0)
+    positionRef.current = { beatId: currentBeat.id, t: 0 }
     const immediat = lienImmediat(currentBeat)
     if (immediat) {
       audio.src = immediat
