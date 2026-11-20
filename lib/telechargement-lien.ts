@@ -36,3 +36,10 @@ export function cheminLienEmail(commandeId: string): string {
 export function cheminFichierCommande(commandeId: string, ref: string): string {
   return `/telechargement/${commandeId}/fichier/${ref}`
 }
+
+// Journal des emails : le lien signé devient un lien simple vers la page de
+// téléchargement (qui demandera l'email). Un « Renvoyer » depuis le journal
+// garde donc un lien utilisable, sans jamais exposer le jeton au vendeur.
+export function masquerJetonsAcces(contenu: string): string {
+  return contenu.replace(/\/telechargement\/([0-9a-f-]{36})\/acces\?t=[A-Za-z0-9_-]+(?:&(?:amp;)?suite=[A-Za-z0-9-]+)?/g, '/telechargement/$1')
+}

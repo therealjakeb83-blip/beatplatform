@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { getResend } from './resend'
 import { NOM_PLATEFORME, EMAIL_EXPEDITEUR_PLATEFORME } from './constantes'
 import { envoiAutorise, MOTIF_BLOCAGE_LISTE_BLANCHE } from './email-liste-blanche'
+import { masquerJetonsAcces } from './telechargement-lien'
 import { normaliserEmail } from './email'
 
 // Les campagnes (envoi de masse) ne passent volontairement pas par ce
@@ -42,8 +43,10 @@ async function enregistrer(
     client_id: ctx.clientId ?? null,
     commande_id: ctx.commandeId ?? null,
     automatisation_id: ctx.automatisationId ?? null,
-    corps_html: corps.html ?? null,
-    corps_texte: corps.texte ?? null,
+    // Rang 9f, Lot 1 : le lien signé d'accès aux fichiers de l'acheteur n'est
+    // JAMAIS gardé dans le journal (lisible et cherchable par le vendeur).
+    corps_html: corps.html ? masquerJetonsAcces(corps.html) : null,
+    corps_texte: corps.texte ? masquerJetonsAcces(corps.texte) : null,
   }
   let { error } = await admin.from('email_logs').insert(ligne)
 
