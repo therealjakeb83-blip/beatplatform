@@ -1,7 +1,5 @@
 import crypto from 'crypto'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { r2, R2_BUCKET, cleR2 } from '@/lib/r2'
+import { lienSigneR2, fichierAppartientAuBeat } from '@/lib/r2'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { automatisationActive } from '@/lib/automatisations'
 import { inscrireParClient } from '@/lib/newsletter'
@@ -56,17 +54,11 @@ export function lireJetonFreeDownload(jeton: string): { ok: true; demande: Deman
   }
 }
 
-export async function urlFichierFreeDownload(beat: { titre: string; mp3_tague_url: string }): Promise<string> {
-  const key = cleR2(beat.mp3_tague_url)
-  return getSignedUrl(
-    r2,
-    new GetObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      ResponseContentDisposition: `attachment; filename="${beat.titre}.mp3"`,
-    }),
-    { expiresIn: 3600 },
-  )
+// Rang 9f, Lot 1 : lien court vers le MP3 tagué (espace privé), seulement
+// pour un fichier rangé sous ce beat.
+export async function urlFichierFreeDownload(beat: { id: string; beatmaker_id: string; titre: string; mp3_tague_url: string }): Promise<string | null> {
+  if (!fichierAppartientAuBeat(beat.mp3_tague_url, beat)) return null
+  return lienSigneR2(beat.mp3_tague_url, { secondes: 3600, nomFichier: `${beat.titre}.mp3` })
 }
 
 // Identifiant du visiteur, retrouvé ou créé par son email. La fiche commune

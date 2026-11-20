@@ -6,6 +6,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { telechargementGratuit } from '@/lib/emails'
 import { lireStatutNewsletter } from '@/lib/newsletter'
 import { normaliserEmail } from '@/lib/email'
+import { beatVisible, estAbonneBoutique } from '@/lib/ecoute'
 import {
   genererJetonFreeDownload, urlFichierFreeDownload, resoudreClientFreeDownload, enregistrerFreeDownload,
 } from '@/lib/free-download'
@@ -39,12 +40,13 @@ export async function POST(req: Request) {
 
   const { data: beat } = await admin
     .from('beats')
-    .select('id, titre, mp3_tague_url, free_download_actif, beatmaker_id')
+    .select('id, titre, mp3_tague_url, free_download_actif, beatmaker_id, statut, supprime_le, date_sortie, hors_vente_collab')
     .eq('id', beatId)
     .eq('beatmaker_id', beatmaker.id)
     .single()
 
-  if (!beat?.free_download_actif) {
+  // Rang 9f, Lot 1 : seulement un beat que ce visiteur voit à l'écran.
+  if (!beat?.free_download_actif || !beatVisible(beat, beat.statut === 'prive' && await estAbonneBoutique(beatmaker.id, slug))) {
     return NextResponse.json({ error: 'Téléchargement gratuit non disponible.' }, { status: 403 })
   }
   if (!beat.mp3_tague_url) {
@@ -107,7 +109,8 @@ export async function POST(req: Request) {
     formulaire: { email: normaliserEmail(clientEmail), prenom: null, nom: null, nomArtiste: null, pays: null },
   })
 
-  const downloadUrl = await urlFichierFreeDownload({ titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })
+  const downloadUrl = await urlFichierFreeDownload({ id: beat.id, beatmaker_id: beat.beatmaker_id, titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })
+  if (!downloadUrl) return NextResponse.json({ error: 'Fichier non disponible.' }, { status: 404 })
 
   // Email avec le lien (branding boutique, personnalisable — Phase 6.9)
   await telechargementGratuit({ to: clientEmail, beatmakerId, clientId, titreBeat: beat.titre, downloadUrl })

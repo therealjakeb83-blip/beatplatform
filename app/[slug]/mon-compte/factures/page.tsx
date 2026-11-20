@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { cheminFichierCommande } from '@/lib/telechargement-lien'
 import Link from 'next/link'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
@@ -115,7 +116,7 @@ export default async function FacturesBoutiquePage({
       numero: cmd.numero_facture,
       montant: Number(cmd.prix_paye),
       date: cmd.created_at,
-      url: cmd.facture_pdf_url,
+      url: cheminFichierCommande(cmd.id, 'facture'),
     }] : []),
     ...(tranches ?? []).filter(t => t.commande_id === cmd.id).map(t => ({
       cle: t.id as string,
@@ -123,7 +124,7 @@ export default async function FacturesBoutiquePage({
       numero: t.facture_numero as string | null,
       montant: (t.montant_ttc_cents as number) / 100,
       date: cmd.created_at,
-      url: t.facture_pdf_url as string,
+      url: cheminFichierCommande(cmd.id, `facture-${t.id}`),
     })),
     ...(avoirs ?? []).filter(a => a.commande_id === cmd.id).map(a => ({
       cle: a.id as string,
@@ -131,7 +132,7 @@ export default async function FacturesBoutiquePage({
       numero: a.numero as string,
       montant: -(a.montant_cents as number) / 100,
       date: a.created_at as string,
-      url: a.pdf_url as string,
+      url: cheminFichierCommande(cmd.id, `avoir-${a.id}`),
     })),
   ])
 

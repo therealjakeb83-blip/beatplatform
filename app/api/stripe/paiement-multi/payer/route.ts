@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { payerTentativeMulti } from '@/lib/paiement-multi'
-import { cookieAccesTelechargement, DUREE_COOKIE_ACCES } from '@/lib/telechargement-acces'
+import { poserCookieAcces } from '@/lib/telechargement-acces'
 
 export const runtime = 'nodejs'
 // Réservation + encaissement de chaque part, puis création de la commande
@@ -20,12 +20,6 @@ export async function POST(request: Request) {
   if (!resultat.ok) return NextResponse.json({ erreur: resultat.erreur }, { status: resultat.status })
 
   const cookieStore = await cookies()
-  cookieStore.set(cookieAccesTelechargement(resultat.commandeId), '1', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: DUREE_COOKIE_ACCES,
-    path: `/telechargement/${resultat.commandeId}`,
-    sameSite: 'lax',
-  })
+  poserCookieAcces(cookieStore, resultat.commandeId, 'acheteur', 'appareil_paiement')
   return NextResponse.json({ commande_id: resultat.commandeId })
 }

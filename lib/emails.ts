@@ -4,6 +4,7 @@ import { envoyerEmailUnique } from './email-logger'
 import { NOM_PLATEFORME, URL_APP, EMAIL_CONTACT, expediteurBoutique } from './constantes'
 import { libelleMotifLitige } from './litiges-libelles'
 import { adresseDeLaBoutique } from './adresse-boutique'
+import { cheminLienEmail } from './telechargement-lien'
 
 const APP_URL = URL_APP
 const COULEUR_DEFAUT = '#4f46e5'
@@ -1070,11 +1071,17 @@ export async function confirmationCommande({
     // de chacun — l'email le dit explicitement.
     createAdminClient()
       .from('commande_tranches')
-      .select('vendeur_nom, montant_ttc_cents, facture_numero, facture_pdf_url, est_proprietaire')
+      .select('id, vendeur_nom, montant_ttc_cents, facture_numero, facture_pdf_url, est_proprietaire')
       .eq('commande_id', commandeId)
       .order('est_proprietaire', { ascending: false }),
   ])
   if (!branding) return
+
+  // Rang 9f, Lot 1 (décision 4 bis) : cet email part à l'ACHETEUR → liens
+  // signés (accès sans rien taper, noté « lien de l'email ») ; jamais de
+  // fichier en direct, toujours l'adresse Sonoo qui vérifie l'accès.
+  const site = (await adresseDeLaBoutique(beatmakerId, branding.slug)).site
+  const lienSigne = (suite?: string) => `${site}${cheminLienEmail(commandeId)}${suite ? `&suite=${suite}` : ''}`
 
   const tranchesPayees = (tranches ?? []).filter(t => t.montant_ttc_cents > 0)
   const blocVendeurs = tranchesPayees.length > 1
@@ -1089,7 +1096,7 @@ export async function confirmationCommande({
     : ''
   const liensFacturesTranches = (tranches ?? []).filter(t => t.facture_pdf_url).map(t => `
         <p style="margin:8px 0 0;font-size:13px;">
-          <a href="${t.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
+          <a href="${lienSigne(`facture-${t.id}`)}" style="color:#4f46e5;text-decoration:underline;">
             Télécharger la facture de ${echapper(t.vendeur_nom)}${t.facture_numero ? ` (n° ${echapper(t.facture_numero)})` : ''}
           </a>
         </p>`).join('')
@@ -1112,7 +1119,7 @@ export async function confirmationCommande({
       ${blocVendeurs}
       ${commande?.facture_pdf_url ? `
         <p style="margin:12px 0 0;font-size:13px;">
-          <a href="${commande.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
+          <a href="${lienSigne('facture')}" style="color:#4f46e5;text-decoration:underline;">
             Télécharger ta facture${commande.numero_facture ? ` (n° ${echapper(commande.numero_facture)})` : ''}
           </a>
         </p>` : ''}${liensFacturesTranches}`
@@ -1132,7 +1139,7 @@ export async function confirmationCommande({
       titre: titre || TITRE_DEFAUT.confirmation_commande,
       intro: intro || introDefaut('confirmation_commande', branding.nom_artiste),
       corpsHtml,
-      cta: { texte: 'Télécharger mes fichiers', lien: `${(await adresseDeLaBoutique(beatmakerId, branding.slug)).site}/telechargement/${commandeId}` },
+      cta: { texte: 'Télécharger mes fichiers', lien: lienSigne() },
     }),
   })
 }
@@ -1162,7 +1169,7 @@ export async function confirmationAbonnement({
   const { data: commandeAbo } = abo?.client_id
     ? await createAdminClient()
         .from('commandes')
-        .select('facture_pdf_url, numero_facture')
+        .select('id, facture_pdf_url, numero_facture')
         .eq('beatmaker_id', beatmakerId)
         .eq('client_id', abo.client_id)
         .eq('type_commande', 'CREATION_ABONNEMENT')
@@ -1180,7 +1187,7 @@ export async function confirmationAbonnement({
       </table>
       ${commandeAbo?.facture_pdf_url ? `
         <p style="margin:12px 0 0;font-size:13px;">
-          <a href="${commandeAbo.facture_pdf_url}" style="color:#4f46e5;text-decoration:underline;">
+          <a href="${(await adresseDeLaBoutique(beatmakerId, branding.slug)).site}${cheminLienEmail(commandeAbo.id)}&suite=facture" style="color:#4f46e5;text-decoration:underline;">
             Télécharger ta facture${commandeAbo.numero_facture ? ` (n° ${echapper(commandeAbo.numero_facture)})` : ''}
           </a>
         </p>` : ''}`

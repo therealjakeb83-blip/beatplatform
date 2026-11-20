@@ -1,36 +1,19 @@
 'use client'
 
+// Rang 9f, Lot 1 : `url` = adresse Sonoo du fichier ; le journal est tenu
+// côté serveur au clic (plus aucun appel depuis le navigateur).
 export default function TelechargerBouton({
   label,
   url,
   icon = 'file',
-  commandeId,
-  ligneId,
 }: {
   label: string
   url: string
   icon?: 'file' | 'pdf'
-  commandeId?: string
-  ligneId?: string
 }) {
-  function handleClick() {
-    if (commandeId) {
-      // keepalive garantit que la requête survit même si le navigateur
-      // déclenche un téléchargement cross-origin juste après le clic
-      fetch(`/api/telechargement/${commandeId}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fichier: label, ligne_id: ligneId }),
-        keepalive: true,
-      }).catch(() => {})
-    }
-  }
-
   return (
     <a
       href={url}
-      download
-      onClick={handleClick}
       className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors group"
     >
       <div className="flex items-center gap-3">

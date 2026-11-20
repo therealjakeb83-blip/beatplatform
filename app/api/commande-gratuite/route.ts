@@ -10,7 +10,7 @@ import { normaliserEmail } from '@/lib/email'
 import { panierEstMultiVendeurs, repartirPanier } from '@/lib/paiement-multi-repartition'
 import { finaliserCommandePayee } from '@/lib/webhook-paiement'
 import { choixMemoriser } from '@/lib/infos-paiement-compte'
-import { cookieAccesTelechargement, DUREE_COOKIE_ACCES } from '@/lib/telechargement-acces'
+import { poserCookieAcces } from '@/lib/telechargement-acces'
 
 export const runtime = 'nodejs'
 // Contrats PDF + emails, comme après un paiement.
@@ -198,12 +198,6 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(cookieAccesTelechargement(commandeId), '1', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: DUREE_COOKIE_ACCES,
-    path: `/telechargement/${commandeId}`,
-    sameSite: 'lax',
-  })
+  poserCookieAcces(cookieStore, commandeId, 'acheteur', 'appareil_paiement')
   return NextResponse.json({ commande_id: commandeId })
 }

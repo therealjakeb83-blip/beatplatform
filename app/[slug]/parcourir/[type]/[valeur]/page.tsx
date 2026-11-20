@@ -1,5 +1,5 @@
-import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerParLiensEcoute } from '@/lib/ecoute'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import BeatCard from '../../../_components/BeatCard'
@@ -26,7 +26,6 @@ export default async function ParcourirCategoriePage({
   const typeDb = TYPE_URL_VERS_DB[type]
   const valeur = decodeURIComponent(valeurEncodee)
 
-  const supabase = await createClient()
   const admin = createAdminClient()
 
   const { data: beatmaker } = await admin
@@ -39,7 +38,8 @@ export default async function ParcourirCategoriePage({
 
   const now = new Date().toISOString()
 
-  const { data: rawBeats } = await supabase
+  // Rang 9f, Lot 1 : lecture serveur, liens d'écoute temporaires.
+  const { data: rawBeats } = await admin
     .from('beats')
     .select(`
       id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif,
@@ -63,6 +63,7 @@ export default async function ParcourirCategoriePage({
 
   type RawBeat = { id: string; titre: string; bpm: number | null; cle: string | null; image_url: string | null; mp3_tague_url: string | null; free_download_actif: boolean; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null; beat_licences: { actif: boolean; prix_override: number | null; sur_demande: boolean; licences: { id: string; nom: string; modele: string; prix: number; actif: boolean; inclut_mp3: boolean; inclut_wav: boolean; inclut_stems: boolean; streams_limite: number | null; vues_video_limite: number | null; clips_video_limite: number | null; est_exclusive: boolean } | null }[] | null }
 
+  await remplacerParLiensEcoute(rawBeats as unknown as RawBeat[], beatmaker.id)
   const beats: BeatPublic[] = (rawBeats as unknown as RawBeat[] ?? []).map(beat => ({
     id: beat.id,
     titre: beat.titre,

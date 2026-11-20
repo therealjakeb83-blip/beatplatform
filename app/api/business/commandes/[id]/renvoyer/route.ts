@@ -5,6 +5,8 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { envoyerEmailUnique } from '@/lib/email-logger'
 import { NOM_PLATEFORME, URL_APP } from '@/lib/constantes'
 import { adresseDeLaBoutique } from '@/lib/adresse-boutique'
+import { normaliserEmail } from '@/lib/email'
+import { cheminLienEmail } from '@/lib/telechargement-lien'
 
 export const runtime = 'nodejs'
 
@@ -76,7 +78,16 @@ export async function POST(
     .single()
 
   const site = beatmaker?.slug ? (await adresseDeLaBoutique(user.id, beatmaker.slug)).site : URL_APP
-  const downloadUrl = `${site}/telechargement/${commandeId}`
+  // Rang 9f, Lot 1 : lien signé (accès sans rien taper) SEULEMENT si le
+  // destinataire est l'email de la commande ou celui du compte de l'acheteur
+  // — jamais l'email de la fiche boutique, modifiable par le vendeur.
+  const { data: compteAcheteur } = c.client_id
+    ? await admin.from('clients').select('email').eq('id', c.client_id).maybeSingle()
+    : { data: null }
+  const emailsAcheteur = [c.acheteur_email, compteAcheteur?.email].map(normaliserEmail).filter(Boolean)
+  const downloadUrl = emailsAcheteur.includes(normaliserEmail(destinataire))
+    ? `${site}${cheminLienEmail(commandeId)}`
+    : `${site}/telechargement/${commandeId}`
   const nomArtiste = beatmaker?.nom_artiste ?? 'votre beatmaker'
 
   const sujetArticles = items.length === 1

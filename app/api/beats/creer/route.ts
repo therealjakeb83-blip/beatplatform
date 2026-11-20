@@ -1,3 +1,4 @@
+import { valeurFichierBeatValide, UUID_BEAT } from '@/lib/fichiers-beat'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { traiterCollaborateursBeat, notifierNouvellesInvitations, type CollaborateurEntrant } from '@/lib/collaboration-beat'
@@ -16,6 +17,12 @@ export async function POST(request: Request) {
     mp3_propre_url, wav_url, stems_url, collaborateurs, licences_actives,
     exclusif_sur_demande, licence_overrides,
   } = body
+
+  // Rang 9f, Lot 1 : seules les adresses de fichiers de CE beat sont acceptées.
+  if (typeof beatId !== 'string' || !UUID_BEAT.test(beatId)) return Response.json({ error: 'Beat invalide.' }, { status: 400 })
+  for (const [type, valeur] of [['mp3_tague', mp3_tague_url], ['mp3_propre', mp3_propre_url], ['wav', wav_url], ['stems', stems_url]] as const) {
+    if (valeur && !valeurFichierBeatValide(valeur, user.id, beatId, type)) return Response.json({ error: 'Fichier invalide.' }, { status: 400 })
+  }
 
   const { error: beatError } = await supabase.from('beats').insert({
     id: beatId,

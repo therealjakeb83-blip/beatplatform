@@ -1,3 +1,4 @@
+import { valeurFichierBeatValide } from '@/lib/fichiers-beat'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
@@ -51,6 +52,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   if (image_url) update.image_url = image_url
+  // Rang 9f, Lot 1 : seules les adresses de fichiers de CE beat sont acceptées.
+  for (const [type, valeur] of [['mp3_tague', mp3_tague_url], ['mp3_propre', mp3_propre_url], ['wav', wav_url], ['stems', stems_url]] as const) {
+    if (valeur && !valeurFichierBeatValide(valeur, user.id, id, type)) return Response.json({ error: 'Fichier invalide.' }, { status: 400 })
+  }
   if (mp3_tague_url) update.mp3_tague_url = mp3_tague_url
   if (mp3_propre_url) update.mp3_propre_url = mp3_propre_url
   if (wav_url) update.wav_url = wav_url

@@ -62,6 +62,38 @@ const PlayerContext = createContext<PlayerContextType | null>(null)
 
 // Mélange persistant (Fisher-Yates) : figé jusqu'à désactivation du shuffle,
 // pas un tirage aléatoire à chaque ⏭ — décision Jake du 2026-07-22.
+// Rang 9f, Lot 1 (décision 2) : `mp3_tague_url` est un lien TEMPORAIRE vers
+// l'espace privé, préparé avec la page. Proche de l'expiration (page laissée
+// ouverte) ou refusé en cours de lecture : on en redemande un et la lecture
+// reprend au même endroit, sans recharger la page.
+function lienExpireBientot(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const d = u.searchParams.get('X-Amz-Date')
+    const duree = Number(u.searchParams.get('X-Amz-Expires'))
+    if (!d || !duree) return false
+    const emis = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8), +d.slice(9, 11), +d.slice(11, 13), +d.slice(13, 15))
+    return Date.now() > emis + duree * 1000 - 60_000
+  } catch {
+    return false
+  }
+}
+
+async function demanderLienEcoute(beatId: string): Promise<string | null> {
+  try {
+    const res = await fetch('/api/boutique/ecoute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beatId }),
+    })
+    if (!res.ok) return null
+    const data = await res.json() as { url?: string }
+    return data.url ?? null
+  } catch {
+    return null
+  }
+}
+
 function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -92,6 +124,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const playedBeatsRef  = useRef<Set<string>>(new Set())
   const trackingRef     = useRef<{ beatId: string; accumulated: number; playedAt: number | null; play_id: string | null } | null>(null)
   const finalizeRef     = useRef<(beacon: boolean) => void>(() => {})
+  const liensRef        = useRef<Map<string, string>>(new Map())
+  const reprisesRef     = useRef<Map<string, number>>(new Map())
+
+  // Lien utilisable tout de suite (encore valide), sinon null.
+  function lienImmediat(beat: BeatMin): string | null {
+    const lien = liensRef.current.get(beat.id) ?? beat.mp3_tague_url
+    return lien && !lienExpireBientot(lien) ? lien : null
+  }
+  async function lienRenouvele(beatId: string): Promise<string | null> {
+    const lien = await demanderLienEcoute(beatId)
+    if (lien) liensRef.current.set(beatId, lien)
+    return lien
+  }
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { shuffleOrderRef.current = shuffleOrder }, [shuffleOrder])
@@ -227,6 +272,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         trackingRef.current.playedAt = null
       }
     })
+    // Lien expiré pendant l'écoute (ou au déplacement dans la piste) : nouveau
+    // lien, reprise à la même position. Une seule tentative toutes les 10 s.
+    audio.addEventListener('error', async () => {
+      const beat = currentBeatRef.current
+      if (!beat?.mp3_tague_url) return
+      const derniere = reprisesRef.current.get(beat.id) ?? 0
+      if (Date.now() - derniere < 10_000) return
+      reprisesRef.current.set(beat.id, Date.now())
+      const position = audio.currentTime
+      const lien = await lienRenouvele(beat.id)
+      if (!lien || currentBeatRef.current?.id !== beat.id) return
+      audio.addEventListener('loadedmetadata', () => {
+        if (position > 0) audio.currentTime = position
+        audio.play().catch(() => {})
+      }, { once: true })
+      audio.src = lien
+      audio.load()
+    })
+
     audio.addEventListener('ended', () => {
       const cur = currentBeatRef.current
       if (!cur) return
@@ -261,9 +325,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current
     if (!audio || !currentBeat?.mp3_tague_url) return
     setProgress(0)
-    audio.src = currentBeat.mp3_tague_url
-    audio.load()
-    audio.play().catch(() => {})
+    const immediat = lienImmediat(currentBeat)
+    if (immediat) {
+      audio.src = immediat
+      audio.load()
+      audio.play().catch(() => {})
+      return
+    }
+    let annule = false
+    lienRenouvele(currentBeat.id).then(lien => {
+      if (annule || !lien) return
+      audio.src = lien
+      audio.load()
+      audio.play().catch(() => {})
+    })
+    return () => { annule = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBeat?.id])
 

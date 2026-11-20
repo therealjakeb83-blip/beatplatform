@@ -1,23 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { r2, R2_BUCKET } from '@/lib/r2'
+import { r2, destinationPrivee } from '@/lib/r2'
+import { TYPES_FICHIER_BEAT, UUID_BEAT, cleFichierBeat, type TypeFichierBeat } from '@/lib/fichiers-beat'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-const ALLOWED_TYPES: Record<string, string> = {
-  mp3_tague: 'audio/mpeg',
-  mp3_propre: 'audio/mpeg',
-  wav: 'audio/wav',
-  stems: 'application/zip',
-}
-
-const EXTENSIONS: Record<string, string> = {
-  mp3_tague: 'mp3',
-  mp3_propre: 'mp3',
-  wav: 'wav',
-  stems: 'zip',
-}
-
+// Rang 9f, Lot 1 : les fichiers audio partent dans l'espace PRIVÉ (aucune
+// adresse publique) ; la valeur renvoyée (« prive:… ») est revérifiée par
+// les routes de création / modification du beat.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -25,27 +15,32 @@ export async function POST(request: Request) {
 
   // Un compte artiste (créé librement depuis une boutique) ne doit jamais
   // pouvoir déposer de fichiers sur le stockage.
-  const { data: beatmaker } = await createAdminClient().from('beatmakers').select('id').eq('id', user.id).maybeSingle()
+  const admin = createAdminClient()
+  const { data: beatmaker } = await admin.from('beatmakers').select('id').eq('id', user.id).maybeSingle()
   if (!beatmaker) return Response.json({ error: 'Non autorisé' }, { status: 403 })
 
-  const { beatId, fileType } = await request.json()
+  const { beatId, fileType } = await request.json() as { beatId?: string; fileType?: string }
 
-  if (!beatId || !fileType || !ALLOWED_TYPES[fileType]) {
+  if (!beatId || !UUID_BEAT.test(beatId) || !fileType || !(fileType in TYPES_FICHIER_BEAT)) {
     return Response.json({ error: 'Paramètres invalides' }, { status: 400 })
   }
+  // Beat déjà créé : il doit être à ce vendeur (un nouveau beat n'existe pas encore).
+  const { data: existant } = await admin.from('beats').select('beatmaker_id').eq('id', beatId).maybeSingle()
+  if (existant && existant.beatmaker_id !== user.id) return Response.json({ error: 'Non autorisé' }, { status: 403 })
 
-  const key = `beats/${user.id}/${beatId}/${fileType}.${EXTENSIONS[fileType]}`
+  const type = fileType as TypeFichierBeat
+  const key = cleFichierBeat(user.id, beatId, type)
+  const { bucket, valeurEnBase } = destinationPrivee(key)
 
   const url = await getSignedUrl(
     r2,
     new PutObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Key: key,
-      ContentType: ALLOWED_TYPES[fileType],
+      ContentType: TYPES_FICHIER_BEAT[type].contentType,
     }),
     { expiresIn: 3600 }
   )
 
-  const fileUrl = `${process.env.R2_PUBLIC_URL}/${key}`
-  return Response.json({ uploadUrl: url, fileUrl })
+  return Response.json({ uploadUrl: url, fileUrl: valeurEnBase })
 }

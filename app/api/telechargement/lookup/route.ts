@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { cookieAccesTelechargement, DUREE_COOKIE_ACCES } from '@/lib/telechargement-acces'
+import { poserCookieAcces } from '@/lib/telechargement-acces'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -45,13 +45,7 @@ export async function GET(request: Request) {
   // n'est atteignable qu'avec un session_id/payment_intent Stripe légitime,
   // qui prouve déjà le paiement : pas besoin de reconfirmer l'email.
   const cookieStore = await cookies()
-  cookieStore.set(cookieAccesTelechargement(data.id), '1', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: DUREE_COOKIE_ACCES,
-    path: `/telechargement/${data.id}`,
-    sameSite: 'lax',
-  })
+  poserCookieAcces(cookieStore, data.id, 'acheteur', 'appareil_paiement')
 
   return NextResponse.json({ commande_id: data.id })
 }

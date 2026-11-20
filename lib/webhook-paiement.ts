@@ -592,7 +592,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
         const pdfUrl = await uploadPdfContrat(ligne.id, pdfBytes)
         await supabase.from('commande_lignes').update({ contrat_pdf_url: pdfUrl }).eq('id', ligne.id)
         contratsOk++
-        console.log('[webhook-paiement] Contrat PDF généré pour la ligne', ligne.id, ':', pdfUrl)
+        console.log('[webhook-paiement] Contrat PDF généré pour la ligne', ligne.id)
       }
     } catch (err) {
       console.error('[webhook-paiement] Erreur génération PDF pour la ligne', ligne.id, ':', err)
@@ -607,7 +607,7 @@ export async function finaliserCommandePayee(ctx: ContextePaiement): Promise<str
       const pdfBytes = await genererFacturePdfPourCommande(supabase, commande.id)
       const pdfUrl = await uploadPdfFacture(commande.id, pdfBytes)
       await supabase.from('commandes').update({ facture_pdf_url: pdfUrl }).eq('id', commande.id)
-      console.log('[webhook-paiement] Facture PDF générée pour la commande', commande.id, ':', pdfUrl)
+      console.log('[webhook-paiement] Facture PDF générée pour la commande', commande.id)
     } catch (err) {
       console.error('[webhook-paiement] Erreur génération facture PDF:', err)
     }

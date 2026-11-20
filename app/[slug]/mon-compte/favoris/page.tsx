@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { estAbonneBoutique, lienEcouteSiVisible, type BeatEcoute } from '@/lib/ecoute'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import FavorisPlaylist from './FavorisPlaylist'
@@ -12,11 +13,6 @@ type FavorisBeat = {
   mp3_tague_url: string | null
   bpm: number | null
   cle: string | null
-}
-
-type FavoriRow = {
-  beat_id: string
-  beats: FavorisBeat | null
 }
 
 export default async function FavorisBoutiquePage({
@@ -42,12 +38,24 @@ export default async function FavorisBoutiquePage({
 
   const { data } = await admin
     .from('favoris')
-    .select('beat_id, beats!inner(id, titre, image_url, mp3_tague_url, bpm, cle, beatmaker_id)')
+    .select('beat_id, beats!inner(id, titre, image_url, mp3_tague_url, bpm, cle, beatmaker_id, statut, supprime_le, date_sortie, hors_vente_collab)')
     .eq('client_id', user.id)
     .eq('beats.beatmaker_id', beatmaker.id)
 
-  const favoris = (data as unknown as FavoriRow[]) ?? []
-  const beats = favoris.map(f => f.beats).filter((b): b is FavorisBeat => b !== null)
+  // Rang 9f, Lot 1 (P2) : un favori reste affiché, mais n'a d'audio que si
+  // le beat est toujours visible pour ce client (ni privé sans abonnement,
+  // ni retiré, ni vendu, ni programmé pour plus tard).
+  type LigneFavori = FavorisBeat & BeatEcoute
+  const lignes = ((data as unknown as { beats: LigneFavori | null }[]) ?? []).map(f => f.beats).filter((b): b is LigneFavori => b !== null)
+  const estAbonne = lignes.some(b => b.statut === 'prive') && await estAbonneBoutique(beatmaker.id, slug)
+  const beats: FavorisBeat[] = await Promise.all(lignes.map(async b => ({
+    id: b.id,
+    titre: b.titre,
+    image_url: b.image_url,
+    bpm: b.bpm,
+    cle: b.cle,
+    mp3_tague_url: await lienEcouteSiVisible(b, estAbonne),
+  })))
 
   return (
     <div className="min-h-screen bg-black px-6 py-16">

@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerParLiensEcoute } from '@/lib/ecoute'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -63,7 +64,8 @@ export default async function SelectionPage({
   const licenceCols = 'licences(id, nom, modele, prix, actif, inclut_mp3, inclut_wav, inclut_stems, streams_limite, vues_video_limite, clips_video_limite, est_exclusive)'
   const selectCommun = `id, titre, bpm, cle, image_url, free_download_actif, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, ${licenceCols})`
 
-  const { data: rawPublics } = await supabase
+  // Rang 9f, Lot 1 : lecture serveur, liens d'écoute temporaires.
+  const { data: rawPublics } = await admin
     .from('beats')
     .select(`${selectCommun}, mp3_tague_url`)
     .eq('beatmaker_id', beatmaker.id)
@@ -76,7 +78,7 @@ export default async function SelectionPage({
 
   const selectPrives = estAbonne ? `${selectCommun}, mp3_tague_url` : selectCommun
 
-  const { data: rawPrives } = await supabase
+  const { data: rawPrives } = await admin
     .from('beats')
     .select(selectPrives)
     .eq('beatmaker_id', beatmaker.id)
@@ -84,9 +86,16 @@ export default async function SelectionPage({
     .eq('mis_en_avant', true)
     .is('supprime_le', null)
     .eq('hors_vente_collab', false)
+    .or(`date_sortie.is.null,date_sortie.lte.${now}`)
     .order('created_at', { ascending: false })
 
   type RawBeat = { id: string; titre: string; bpm: number | null; cle: string | null; image_url: string | null; mp3_tague_url: string | null; free_download_actif: boolean; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null; beat_licences: { actif: boolean; prix_override: number | null; sur_demande: boolean; licences: { id: string; nom: string; modele: string; prix: number; actif: boolean; inclut_mp3: boolean; inclut_wav: boolean; inclut_stems: boolean; streams_limite: number | null; vues_video_limite: number | null; clips_video_limite: number | null; est_exclusive: boolean } | null }[] | null }
+
+  async function avecEcoute(lignes: RawBeat[] | null): Promise<RawBeat[]> {
+    const l = lignes ?? []
+    await remplacerParLiensEcoute(l, beatmaker!.id)
+    return l
+  }
 
   function mapBeat(beat: RawBeat, prive: boolean): BeatPublic {
     return {
@@ -123,8 +132,8 @@ export default async function SelectionPage({
   }
 
   const beats: BeatPublic[] = [
-    ...(rawPublics as unknown as RawBeat[] ?? []).map(b => mapBeat(b, false)),
-    ...(rawPrives as unknown as RawBeat[] ?? []).map(b => mapBeat(b, true)),
+    ...(await avecEcoute(rawPublics as unknown as RawBeat[])).map(b => mapBeat(b, false)),
+    ...(await avecEcoute(rawPrives as unknown as RawBeat[])).map(b => mapBeat(b, true)),
   ]
 
   const aDesBeatsVerrouilles = beats.some(b => b.prive) && !estAbonne

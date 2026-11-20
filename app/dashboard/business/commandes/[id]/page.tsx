@@ -19,6 +19,7 @@ import { decomposerTva } from '@/lib/collaboration-parts'
 import { totalDepense } from '@/app/dashboard/business/_lib/ltv'
 import { chargerCommandesExternesCrm } from '@/app/dashboard/business/_lib/commandes-externes'
 import { URL_APP } from '@/lib/constantes'
+import { cheminFichierCommande } from '@/lib/telechargement-lien'
 
 /* ─── types ──────────────────────────────────────────────────────── */
 
@@ -260,6 +261,22 @@ export default async function CommandeDetailPage({
     .not('numero', 'like', 'reserve-%')
     .order('created_at', { ascending: true })
   const avoirs = (avoirsRaw ?? []) as AvoirDetail[]
+
+  // Rang 9f, Lot 1 : jamais l'adresse brute d'un fichier à l'écran — chaque
+  // fichier s'ouvre par son adresse Sonoo, qui revérifie l'accès (le vendeur
+  // connecté n'est jamais enregistré au journal).
+  const adresseFichier = (ref: string) => `${URL_APP}${cheminFichierCommande(id, ref)}`
+  if (c.facture_pdf_url) c.facture_pdf_url = adresseFichier('facture')
+  for (const t of tranches) if (t.facture_pdf_url) t.facture_pdf_url = adresseFichier(`facture-${t.id}`)
+  for (const a of avoirs) if (a.pdf_url) a.pdf_url = adresseFichier(`avoir-${a.id}`)
+  for (const l of c.commande_lignes ?? []) {
+    if (l.contrat_pdf_url) l.contrat_pdf_url = adresseFichier(`contrat-${l.id}`)
+    if (l.beats) {
+      if (l.beats.mp3_propre_url) l.beats.mp3_propre_url = adresseFichier(`mp3-${l.id}`)
+      if (l.beats.wav_url) l.beats.wav_url = adresseFichier(`wav-${l.id}`)
+      if (l.beats.stems_url) l.beats.stems_url = adresseFichier(`stems-${l.id}`)
+    }
+  }
 
   /* Litiges (Phase 13, lot 4b) : un par part contestée. */
   const partsLitige = await litigesDeLaCommande(admin, id, c.beatmaker_id)

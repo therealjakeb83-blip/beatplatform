@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerParLiensEcoute } from '@/lib/ecoute'
 import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import SuccessBanner from '../_components/SuccessBanner'
@@ -35,7 +36,10 @@ export default async function BeatDetailPage({
 
   if (!beatmaker) notFound()
 
-  const { data: beat } = await supabase
+  // Rang 9f, Lot 1 : lecture serveur ; un beat programmé pour plus tard
+  // reste introuvable avant sa date (P3).
+  const maintenant = new Date().toISOString()
+  const { data: beat } = await admin
     .from('beats')
     .select(`
       id, titre, bpm, cle, date_sortie, created_at, image_url, mp3_tague_url, statut, free_download_actif,
@@ -54,6 +58,7 @@ export default async function BeatDetailPage({
     .in('statut', ['public', 'prive'])
     .is('supprime_le', null)
     .eq('hors_vente_collab', false)
+    .or(`date_sortie.is.null,date_sortie.lte.${maintenant}`)
     .single()
 
   if (!beat) notFound()
@@ -128,7 +133,7 @@ export default async function BeatDetailPage({
 
   // Beats similaires — même style/type beat principal, même boutique,
   // complété par les plus récents si pas assez de correspondances.
-  const { data: candidatsRaw } = await supabase
+  const { data: candidatsRaw } = await admin
     .from('beats')
     .select(`
       id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif,
@@ -147,6 +152,7 @@ export default async function BeatDetailPage({
     .neq('id', beatId)
     .is('supprime_le', null)
     .eq('hors_vente_collab', false)
+    .or(`date_sortie.is.null,date_sortie.lte.${maintenant}`)
     .order('created_at', { ascending: false })
     .limit(40)
 
@@ -198,7 +204,12 @@ export default async function BeatDetailPage({
     }
   }
 
-  const candidats = ((candidatsRaw ?? []) as unknown as RawCandidat[]).map(mapCandidat)
+  const lignesCandidats = (candidatsRaw ?? []) as unknown as RawCandidat[]
+  await Promise.all([
+    remplacerParLiensEcoute(lignesCandidats, beatmaker.id),
+    remplacerParLiensEcoute([beat], beatmaker.id),
+  ])
+  const candidats = lignesCandidats.map(mapCandidat)
   const memeStyle = tagPrincipal
     ? candidats.filter(b => b.styles?.includes(tagPrincipal) || b.type_beat?.includes(tagPrincipal))
     : []

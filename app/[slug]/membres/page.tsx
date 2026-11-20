@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerParLiensEcoute } from '@/lib/ecoute'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -61,7 +62,8 @@ export default async function MembresPage({
     }
   }
 
-  const { data: rawBeats } = await supabase
+  // Rang 9f, Lot 1 : lecture serveur ; audio des beats privés pour les abonnés seulement.
+  const { data: rawBeats } = await admin
     .from('beats')
     .select(`
       id, titre, bpm, cle, image_url, mp3_tague_url,
@@ -79,11 +81,15 @@ export default async function MembresPage({
     .eq('statut', 'prive')
     .is('supprime_le', null)
     .eq('hors_vente_collab', false)
+    .or(`date_sortie.is.null,date_sortie.lte.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
 
   type RawBeat = { id: string; titre: string; bpm: number | null; cle: string | null; image_url: string | null; mp3_tague_url: string | null; styles: string[] | null; ambiances: string[] | null; instruments: string[] | null; type_beat: string[] | null; beat_licences: { actif: boolean; prix_override: number | null; sur_demande: boolean; licences: { id: string; nom: string; modele: string; prix: number; actif: boolean; inclut_mp3: boolean; inclut_wav: boolean; inclut_stems: boolean; streams_limite: number | null; vues_video_limite: number | null; clips_video_limite: number | null; est_exclusive: boolean } | null }[] | null }
 
-  const beats: BeatPublic[] = (rawBeats as unknown as RawBeat[] ?? []).map(beat => ({
+  const lignesMembres = (rawBeats as unknown as RawBeat[] ?? [])
+  if (estAbonne) await remplacerParLiensEcoute(lignesMembres, beatmaker.id)
+  else for (const l of lignesMembres) l.mp3_tague_url = null
+  const beats: BeatPublic[] = lignesMembres.map(beat => ({
     id: beat.id,
     titre: beat.titre,
     bpm: beat.bpm,

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import {
   lireJetonFreeDownload, urlFichierFreeDownload, resoudreClientFreeDownload, enregistrerFreeDownload,
 } from '@/lib/free-download'
+import { beatVisible, estAbonneBoutique } from '@/lib/ecoute'
 
 export const runtime = 'nodejs'
 
@@ -25,11 +26,15 @@ export async function POST(req: Request) {
   const admin = createAdminClient()
   const { data: beat } = await admin
     .from('beats')
-    .select('id, titre, mp3_tague_url, free_download_actif')
+    .select('id, beatmaker_id, titre, mp3_tague_url, free_download_actif, statut, supprime_le, date_sortie, hors_vente_collab, beatmakers(slug)')
     .eq('id', d.beatId)
     .eq('beatmaker_id', d.beatmakerId)
     .maybeSingle()
-  if (!beat?.free_download_actif || !beat.mp3_tague_url) {
+  // Rang 9f, Lot 1 : le beat doit toujours être visible pour ce visiteur
+  // (ni retiré, ni vendu, ni passé en privé pour un non-abonné).
+  const slugBoutique = (beat?.beatmakers as unknown as { slug: string } | null)?.slug ?? ''
+  const visible = !!beat && beatVisible(beat, beat.statut === 'prive' && !!slugBoutique && await estAbonneBoutique(beat.beatmaker_id, slugBoutique))
+  if (!beat?.free_download_actif || !beat.mp3_tague_url || !visible) {
     return NextResponse.json({ error: "Ce beat n'est plus disponible en téléchargement gratuit." }, { status: 403 })
   }
 
@@ -38,6 +43,7 @@ export async function POST(req: Request) {
     clientId, beatmakerId: d.beatmakerId, beatId: d.beatId, newsletterConsent: true, depuis: d.emisLe, formulaire: d,
   })
 
-  const downloadUrl = await urlFichierFreeDownload({ titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })
+  const downloadUrl = await urlFichierFreeDownload({ id: beat.id, beatmaker_id: beat.beatmaker_id, titre: beat.titre, mp3_tague_url: beat.mp3_tague_url })
+  if (!downloadUrl) return NextResponse.json({ error: "Ce beat n'est plus disponible en téléchargement gratuit." }, { status: 403 })
   return NextResponse.json({ downloadUrl, beatTitre: beat.titre })
 }

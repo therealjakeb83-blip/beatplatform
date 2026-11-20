@@ -7,6 +7,7 @@ import { emettreAvoir } from './avoirs'
 import { annulerLicence, recalculerStatut, prendreVerrou, rendreVerrou, STATUTS_REMBOURSABLES, ORIGINE_REMBOURSEMENT } from './remboursement'
 import { envoyerLitigeOuvert, envoyerLitigeCollaborateur, envoyerLitigeRappel, type PartLitigeEmail } from './emails'
 import { lirePdfR2 } from './livraison'
+import { ORIGINES_PREUVE } from './telechargement-lien'
 import { fuseauSur, formatDateTz, formatDateTimeTz } from './fuseau-horaire'
 import { NOM_PLATEFORME, estEtiquettePlateforme } from './constantes'
 
@@ -389,7 +390,10 @@ async function preparerPreuvesCommande(admin: Admin, commandeId: string) {
   const [{ data: boutique }, { data: lignes }, { data: telechargements }] = await Promise.all([
     admin.from('beatmakers').select('nom_artiste, slug, fuseau_horaire').eq('id', commande.beatmaker_id).single(),
     admin.from('commande_lignes').select('licence_nom, contrat_pdf_url, beats(titre)').eq('commande_id', commandeId),
-    admin.from('licence_downloads').select('fichier, downloaded_at, ip_address').eq('commande_id', commandeId).order('downloaded_at', { ascending: true }),
+    // Rang 9f, Lot 1 (décision 4 bis) : seules les vraies preuves partent chez
+    // Stripe — appareil qui a payé, compte de l'acheteur, lien de son email.
+    // Jamais un accès par email tapé, ni le renvoi d'email par le vendeur.
+    admin.from('licence_downloads').select('fichier, downloaded_at, ip_address').eq('commande_id', commandeId).in('origine', ORIGINES_PREUVE).order('downloaded_at', { ascending: true }),
   ])
   const tz = fuseauSur(boutique?.fuseau_horaire)
   type Ligne = { licence_nom: string | null; contrat_pdf_url: string | null; beats: { titre: string } | null }
@@ -416,7 +420,7 @@ async function preparerPreuvesCommande(admin: Admin, commandeId: string) {
   for (const a of articles) {
     if (!a.contrat_pdf_url) continue
     try { contrats.push(await lirePdfR2(a.contrat_pdf_url)) } catch (err) {
-      console.error('[litiges] Contrat illisible', a.contrat_pdf_url, err instanceof Error ? err.message : err)
+      console.error('[litiges] Contrat illisible pour la commande', commandeId, err instanceof Error ? err.message : err)
     }
   }
 

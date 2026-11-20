@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { cheminFichierCommande } from '@/lib/telechargement-lien'
 import Link from 'next/link'
 import { lienBoutiqueServeur } from '@/app/[slug]/_lib/lien-boutique-serveur'
 import { lireEmailCookieAbonne } from '@/lib/cookie-abonne'
@@ -126,7 +127,7 @@ export default async function AchatsBoutiquePage({
                     </Link>
                     {cmd.facture_pdf_url && (
                       <a
-                        href={cmd.facture_pdf_url}
+                        href={cheminFichierCommande(cmd.id, 'facture')}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"

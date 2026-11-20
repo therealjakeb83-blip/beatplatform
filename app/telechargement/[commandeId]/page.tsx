@@ -1,16 +1,13 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
-import { genererUrlsSignees, genererUrlSigneePdf, uploadPdfContrat, uploadPdfFacture, uploadPdfFactureTranche } from '@/lib/livraison'
+import { uploadPdfContrat, uploadPdfFacture, uploadPdfFactureTranche, audioInclus, CHAMP_AUDIO, LABEL, type TypeAudio } from '@/lib/livraison'
 import { genererContratPdfPourVente } from '@/lib/contrat'
 import { genererFacturePdfPourCommande, genererFacturePdfPourTranche } from '@/lib/facture'
 import { notFound, redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import TelechargerBouton from './_components/TelechargerBouton'
 import VerificationGate from './_components/VerificationGate'
 import { NOM_PLATEFORME, URL_APP } from '@/lib/constantes'
 import { siteDeLaPage } from '@/lib/boutique-du-domaine'
-import { normaliserEmail } from '@/lib/email'
-import { cookieAccesTelechargement } from '@/lib/telechargement-acces'
+import { accesCommande, cheminFichierCommande } from '@/lib/telechargement-acces'
 import { urlPdfAvoir } from '@/lib/avoirs'
 import { lienBoutique } from '@/lib/domaine-boutique'
 
@@ -20,16 +17,22 @@ type LigneDispo = {
   ligneId: string
   titre: string
   licenceNom: string
-  fichiersSignes: { label: string; url: string }[]
-  pdfSigneUrl: string | null
+  fichiers: { label: string; url: string }[]
+  contratUrl: string | null
 }
 
+// Rang 9f, Lot 1 : la page ne contient plus aucune adresse de fichier ; chaque
+// bouton pointe vers l'adresse Sonoo permanente du fichier, qui revérifie
+// l'accès et tient le journal au clic (voir ./fichier/[ref]/route.ts).
 export default async function TelechargerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ commandeId: string }>
+  searchParams: Promise<{ suite?: string }>
 }) {
   const { commandeId } = await params
+  const { suite } = await searchParams
   const supabase = createAdminClient()
 
   const { data: commande, error: commandeError } = await supabase
@@ -59,29 +62,12 @@ export default async function TelechargerPage({
     if (!boutique || !vendeurs.has(boutique.id)) redirect(`${URL_APP}/telechargement/${commandeId}`)
   }
 
-  // Accès (Phase 11, 9 bis) — l'UUID de commande reste la vraie protection ;
-  // ceci n'est qu'une confirmation légère, pas un vrai système d'auth (voir
-  // lib/telechargement-acces.ts). 3 accès directs sans rien taper : cookie
-  // déjà posé (email confirmé une fois, ou juste après paiement — voir
-  // /api/telechargement/lookup), client connecté correspondant à cette
-  // commande, ou beatmaker vendeur connecté à son dashboard.
-  const cookieStore = await cookies()
-  let accesAutorise = cookieStore.get(cookieAccesTelechargement(commandeId))?.value === '1'
-
-  if (!accesAutorise) {
-    const supabaseAuth = await createClient()
-    const { data: { user } } = await supabaseAuth.auth.getUser()
-    if (user) {
-      accesAutorise =
-        user.id === commande.beatmaker_id ||
-        (tranches ?? []).some(t => t.vendeur_id === user.id) ||
-        user.id === commande.client_id ||
-        normaliserEmail(user.email) === normaliserEmail(commande.acheteur_email)
-    }
-  }
-
-  if (!accesAutorise) {
-    return <VerificationGate commandeId={commandeId} />
+  // Accès (Phase 11 ; rang 9f, Lot 1) : vendeur ou admin connecté, acheteur
+  // connecté, ou cookie signé (appareil qui a payé, lien de l'email, email tapé).
+  const acces = await accesCommande(commande)
+  if (!acces.autorise) {
+    const suiteValide = suite && /^(facture|avoir|contrat|mp3|wav|stems)(-[0-9a-f-]{36})?$/i.test(suite) ? suite : null
+    return <VerificationGate commandeId={commandeId} suite={suiteValide} />
   }
 
   const { data: lignes, error: lignesError } = await supabase
@@ -96,7 +82,7 @@ export default async function TelechargerPage({
   const licenceIds = [...new Set(lignes.map(l => l.licence_id))]
 
   const [{ data: beatsData }, { data: licencesData }, { data: beatmaker }] = await Promise.all([
-    supabase.from('beats').select('id, titre, bpm, cle, mp3_propre_url, wav_url, stems_url').in('id', beatIds),
+    supabase.from('beats').select('id, titre, mp3_propre_url, wav_url, stems_url').in('id', beatIds),
     supabase.from('licences').select('id, nom, modele').in('id', licenceIds),
     supabase.from('beatmakers').select('nom_artiste, slug').eq('id', commande.beatmaker_id).single(),
   ])
@@ -155,16 +141,16 @@ export default async function TelechargerPage({
     // l'achat, jamais celui *actuel* de la licence (qui pourra être modifié
     // par le beatmaker à partir de la Phase 6, licences éditables).
     const modeleAuMomentDeLAchat = ligne.licence_modele ?? licence.modele ?? 'mp3'
-    const fichiersSignes = await genererUrlsSignees(beat, modeleAuMomentDeLAchat)
-    const pdfFilename = `Contrat - ${beat.titre} (${licence.nom}).pdf`
-    const pdfSigneUrl = contratUrl ? await genererUrlSigneePdf(contratUrl, pdfFilename).catch(() => null) : null
+    const fichiers = (['mp3', 'wav', 'stems'] as TypeAudio[])
+      .filter(t => audioInclus(modeleAuMomentDeLAchat, t) && !!beat[CHAMP_AUDIO[t]])
+      .map(t => ({ label: LABEL[CHAMP_AUDIO[t]], url: cheminFichierCommande(commandeId, `${t}-${ligne.id}`) }))
 
     lignesDispo.push({
       ligneId: ligne.id,
       titre: beat.titre,
       licenceNom: licence.nom,
-      fichiersSignes,
-      pdfSigneUrl,
+      fichiers,
+      contratUrl: contratUrl ? cheminFichierCommande(commandeId, `contrat-${ligne.id}`) : null,
     })
   }
 
@@ -183,7 +169,7 @@ export default async function TelechargerPage({
       console.error('[telechargement] Erreur régénération facture PDF:', err)
     }
   }
-  const factureSigneeUrl = factureUrl ? await genererUrlSigneePdf(factureUrl, `Facture ${commande.numero_facture}.pdf`).catch(() => null) : null
+  const factureSigneeUrl = factureUrl ? cheminFichierCommande(commandeId, 'facture') : null
 
   const facturesTranches: { id: string; numero: string; vendeur: string; url: string }[] = []
   for (const t of tranches ?? []) {
@@ -198,7 +184,7 @@ export default async function TelechargerPage({
         console.error('[telechargement] Erreur régénération facture PDF de la tranche', t.id, ':', err)
       }
     }
-    const signee = url ? await genererUrlSigneePdf(url, `Facture ${t.facture_numero}.pdf`).catch(() => null) : null
+    const signee = url ? cheminFichierCommande(commandeId, `facture-${t.id}`) : null
     if (signee) facturesTranches.push({ id: t.id, numero: t.facture_numero, vendeur: t.vendeur_nom, url: signee })
   }
 
@@ -212,7 +198,7 @@ export default async function TelechargerPage({
   const avoirs: { id: string; numero: string; vendeur: string | null; url: string }[] = []
   for (const a of avoirsRows ?? []) {
     const url = await urlPdfAvoir(supabase, a)
-    const signee = url ? await genererUrlSigneePdf(url, `Avoir ${a.numero}.pdf`).catch(() => null) : null
+    const signee = url ? cheminFichierCommande(commandeId, `avoir-${a.id}`) : null
     if (signee) avoirs.push({ id: a.id, numero: a.numero, vendeur: (tranches ?? []).length > 1 ? nomVendeur.get(a.vendeur_id) ?? null : null, url: signee })
   }
 
@@ -275,16 +261,16 @@ export default async function TelechargerPage({
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
               <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Fichiers inclus</h2>
               <div className="flex flex-col gap-3">
-                {ligne.fichiersSignes.map(f => (
-                  <TelechargerBouton key={f.label} label={f.label} url={f.url} commandeId={commandeId} ligneId={ligne.ligneId} />
+                {ligne.fichiers.map(f => (
+                  <TelechargerBouton key={f.label} label={f.label} url={f.url} />
                 ))}
               </div>
             </div>
 
-            {ligne.pdfSigneUrl && (
+            {ligne.contratUrl && (
               <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
                 <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Contrat de licence</h2>
-                <TelechargerBouton label="Contrat PDF" url={ligne.pdfSigneUrl} icon="pdf" commandeId={commandeId} ligneId={ligne.ligneId} />
+                <TelechargerBouton label="Contrat PDF" url={ligne.contratUrl} icon="pdf" />
               </div>
             )}
           </div>
@@ -293,7 +279,7 @@ export default async function TelechargerPage({
         {factureSigneeUrl && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-2">
             <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">Facture</h2>
-            <TelechargerBouton label={`Facture ${commande.numero_facture}`} url={factureSigneeUrl} icon="pdf" commandeId={commandeId} ligneId="facture" />
+            <TelechargerBouton label={`Facture ${commande.numero_facture}`} url={factureSigneeUrl} icon="pdf" />
           </div>
         )}
 
@@ -305,7 +291,7 @@ export default async function TelechargerPage({
             )}
             <div className="flex flex-col gap-3">
               {facturesTranches.map(f => (
-                <TelechargerBouton key={f.id} label={`Facture ${f.numero} — ${f.vendeur}`} url={f.url} icon="pdf" commandeId={commandeId} ligneId="facture" />
+                <TelechargerBouton key={f.id} label={`Facture ${f.numero} — ${f.vendeur}`} url={f.url} icon="pdf" />
               ))}
             </div>
           </div>
@@ -316,7 +302,7 @@ export default async function TelechargerPage({
             <h2 className="font-bold text-sm text-gray-400 uppercase tracking-wider mb-4">{avoirs.length > 1 ? "Factures d'avoir" : "Facture d'avoir"}</h2>
             <div className="flex flex-col gap-3">
               {avoirs.map(a => (
-                <TelechargerBouton key={a.id} label={`Avoir ${a.numero}${a.vendeur ? ` — ${a.vendeur}` : ''}`} url={a.url} icon="pdf" commandeId={commandeId} ligneId="facture" />
+                <TelechargerBouton key={a.id} label={`Avoir ${a.numero}${a.vendeur ? ` — ${a.vendeur}` : ''}`} url={a.url} icon="pdf" />
               ))}
             </div>
           </div>

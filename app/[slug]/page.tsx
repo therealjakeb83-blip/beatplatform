@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { remplacerParLiensEcoute } from '@/lib/ecoute'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -72,7 +73,8 @@ export default async function BoutiquePage({
 
   const now = new Date().toISOString()
 
-  const { data: rawBeats } = await supabase
+  // Rang 9f, Lot 1 : lecture serveur (clé de service), colonnes affichées seulement.
+  const { data: rawBeats } = await admin
     .from('beats')
     .select(`
       id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, mis_en_avant,
@@ -99,13 +101,14 @@ export default async function BoutiquePage({
     ? `id, titre, bpm, cle, image_url, mp3_tague_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, ${licenceCols})`
     : `id, titre, bpm, cle, image_url, free_download_actif, mis_en_avant, styles, ambiances, instruments, type_beat, beat_licences(actif, prix_override, sur_demande, ${licenceCols})`
 
-  const { data: rawBeatsPrives } = await supabase
+  const { data: rawBeatsPrives } = await admin
     .from('beats')
     .select(selectPrives)
     .eq('beatmaker_id', beatmaker.id)
     .eq('statut', 'prive')
     .is('supprime_le', null)
     .eq('hors_vente_collab', false)
+    .or(`date_sortie.is.null,date_sortie.lte.${now}`)
     .order('created_at', { ascending: false })
 
   type RawBeat = {
@@ -178,6 +181,7 @@ export default async function BoutiquePage({
 
   const rawBeatsArr = rawBeats as unknown as RawBeat[] ?? []
   const rawBeatsPrivesArr = rawBeatsPrives as unknown as RawBeat[] ?? []
+  await Promise.all([remplacerParLiensEcoute(rawBeatsArr, beatmaker.id), remplacerParLiensEcoute(rawBeatsPrivesArr, beatmaker.id)])
 
   const beats: BeatPublic[] = rawBeatsArr.map(b => mapBeat(b, false))
   const beatsPrives: BeatPublic[] = rawBeatsPrivesArr.map(b => mapBeat(b, true))

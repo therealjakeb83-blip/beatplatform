@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function VerificationGate({ commandeId }: { commandeId: string }) {
+export default function VerificationGate({ commandeId, suite = null }: { commandeId: string; suite?: string | null }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
@@ -21,7 +21,9 @@ export default function VerificationGate({ commandeId }: { commandeId: string })
       })
       const data = await res.json() as { ok: boolean; erreur?: string }
       if (data.ok) {
-        router.refresh()
+        // Arrivé par l'adresse d'un document (facture, contrat…) : on l'ouvre.
+        if (suite) window.location.href = `/telechargement/${commandeId}/fichier/${suite}`
+        else router.refresh()
       } else {
         setErreur(data.erreur ?? 'Cet email ne correspond pas à cette commande.')
       }

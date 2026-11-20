@@ -539,8 +539,10 @@ export async function uploadAudio(file: File, beatId: string, fileType: string):
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ beatId, fileType }),
   })
+  if (!res.ok) throw new Error("Envoi du fichier refusé, réessaie.")
   const { uploadUrl, fileUrl } = await res.json()
-  await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
+  const envoi = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
+  if (!envoi.ok) throw new Error("L'envoi du fichier a échoué, réessaie.")
   return fileUrl
 }
 
