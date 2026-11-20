@@ -82,6 +82,8 @@ function classer(valeur) {
   return { etat: 'inconnu' }
 }
 
+console.log(`Démarrage « ${mode} » : lecture de la base et des espaces…`)
+
 // 1. Ce que la base référence
 const plan = []       // { table, id, colonne, ancienne, source, cible }
 const dejaPrives = [] // { table, id, colonne, cle }
@@ -160,13 +162,14 @@ async function enParallele(elements, travail, n = 8) {
 }
 
 if (mode === 'deplacer') {
+  console.log(`${copiesUniques.length} fichiers à copier (${rapport.volume}), puis ${plan.length} lignes de base à réécrire.`)
   let copies = 0, deja = 0
   const erreurs = []
   const reussies = new Set()
   await enParallele(copiesUniques, async c => {
     try { (await copierUn(c)) === 'copie' ? copies++ : deja++; reussies.add(`${c.source}→${c.cible}`) }
     catch (e) { erreurs.push(`${c.source} : ${e.message}`) }
-    if ((copies + deja + erreurs.length) % 50 === 0) console.log(`… ${copies + deja + erreurs.length}/${copiesUniques.length}`)
+    if ((copies + deja + erreurs.length) % 10 === 0) console.log(`… ${copies + deja + erreurs.length}/${copiesUniques.length} fichiers copiés`)
   })
   // Base réécrite UNIQUEMENT pour les fichiers copiés et vérifiés, filtre exact
   // sur l'ancienne valeur (une ligne changée entre-temps n'est pas touchée).
