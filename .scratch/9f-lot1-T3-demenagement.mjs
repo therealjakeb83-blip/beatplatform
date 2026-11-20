@@ -21,15 +21,17 @@ if (!['compter', 'deplacer', 'verifier', 'effacer'].includes(mode)) {
   process.exit(1)
 }
 
-const PUBLIC = process.env.R2_BUCKET_NAME
+// Espace public actuel de Sonoo, fixé ici : le R2_BUCKET_NAME du PC de Jake vaut
+// encore l'ancien espace (myproducer-beats) — vu le 2026-11-20.
+const PUBLIC = 'sonoo'
 const PRIVE = process.env.R2_BUCKET_PRIVE_NAME
 // Adresse publique de l'espace « sonoo » (CLAUDE.md, 2026-10-17) : c'est elle
 // qui est enregistrée en base, quelle que soit la valeur de R2_PUBLIC_URL du PC.
 const ADRESSE_SONOO = 'https://pub-6a8b0d1a9a3a485ca052eb2596cbf6a4.r2.dev'
-const PREFIXES_PUBLICS = [...new Set([`${ADRESSE_SONOO}/`, `${process.env.R2_PUBLIC_URL}/`])]
+const PREFIXES_PUBLICS = [`${ADRESSE_SONOO}/`]
 if (PUBLIC !== 'sonoo' || PRIVE !== 'sonoo-prive') {
-  console.log(`Espaces lus dans .env.local : R2_BUCKET_NAME=« ${PUBLIC} », R2_BUCKET_PRIVE_NAME=« ${PRIVE} ».`)
-  console.log('Attendu : « sonoo » et « sonoo-prive ». Rien n’a été fait.')
+  console.log(`R2_BUCKET_PRIVE_NAME lu dans .env.local : « ${PRIVE} ».`)
+  console.log('Attendu : « sonoo-prive ». Rien n’a été fait.')
   process.exit(1)
 }
 if (mode === 'effacer' && !confirme) {
@@ -122,7 +124,7 @@ const copiesUniques = [...new Map(aCopier.map(c => [`${c.source}→${c.cible}`, 
 
 const rapport = {
   mode,
-  espaces: { public: PUBLIC, prive: PRIVE, adresse_publique_en_base: ADRESSE_SONOO, r2_public_url_du_pc: process.env.R2_PUBLIC_URL ?? null },
+  espaces: { public: PUBLIC, prive: PRIVE, adresse_publique_en_base: ADRESSE_SONOO },
   date: new Date().toISOString(),
   base: { a_deplacer: plan.length, deja_prives: dejaPrives.length, adresse_inconnue: inconnus.length, fichier_absent: absents.length },
   par_colonne: Object.fromEntries([...new Set(plan.map(p => `${p.table}.${p.colonne}`))].map(k => [k, plan.filter(p => `${p.table}.${p.colonne}` === k).length])),
