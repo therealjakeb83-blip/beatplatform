@@ -56,7 +56,12 @@ export async function POST(req: Request) {
     }
     const { groupes } = await chargerGroupesTitres(admin, acces.beatmakerId)
     const nbTitresNonRelies = groupes.filter(g => g.decision === 'a_traiter').length
-    return reponseJson({ resultat: { ...data, nb_titres_non_relies: nbTitresNonRelies } })
+    return reponseJson({ resultat: {
+      nb_commandes: data.nb_commandes,
+      nb_lignes: data.nb_lignes,
+      nb_contacts_crees: data.nb_contacts_crees,
+      nb_titres_non_relies: nbTitresNonRelies,
+    } })
   } catch (e) {
     if (e instanceof ErreurImport || e instanceof ErreurTauxBce || e instanceof ErreurTableau || e instanceof ErreurAssociation) {
       return reponseJson({ error: e.message }, 422)

@@ -145,7 +145,7 @@ export default function TabVentes({ periode, debut, fin }: Props) {
                   <td className="px-4 py-2.5">
                     <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">{c.licence_nom}</span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-400">{SOURCE_LABELS[c.source_marketing ?? 'direct'] ?? 'Direct'}</td>
+                  <td className="px-4 py-2.5 text-gray-400">{c.source_marketing === null ? '—' : (SOURCE_LABELS[c.source_marketing] ?? '—')}</td>
                   <td className="px-4 py-2.5 text-gray-400">{fmtDate(c.created_at)}</td>
                   <td className="px-4 py-2.5 text-right">
                     <span className="text-green-400 font-medium">{fmtEuroDisplay(c.prix_paye)}</span>

@@ -302,7 +302,7 @@ export async function genererContratPdfPourVente(
 ): Promise<Uint8Array> {
   const [{ data: beat }, { data: licence }, { data: beatmaker }] = await Promise.all([
     admin.from('beats').select('titre, bpm, cle').eq('id', params.beatId).single(),
-    admin.from('licences').select('nom, modele, inclut_mp3, inclut_wav, inclut_stems, streams_limite, ventes_physiques_limite, vues_video_limite, clips_video_limite, radio_tv_limite, lives_performances_autorise').eq('id', params.licenceId).single(),
+    admin.from('licences').select('nom, modele, inclut_mp3, inclut_wav, inclut_stems, streams_limite, ventes_physiques_limite, vues_video_limite, clips_video_limite, radio_tv_limite, lives_performances_autorise').eq('id', params.licenceId).eq('beatmaker_id', params.beatmakerId).single(),
     admin.from('beatmakers').select('nom_artiste, slug, raison_sociale, forme_juridique, numero_entreprise, siege_social_adresse, adresse, ville, code_postal, email_contact_public').eq('id', params.beatmakerId).single(),
   ])
 
@@ -310,11 +310,16 @@ export async function genererContratPdfPourVente(
     throw new Error(`Données manquantes pour générer le contrat (beat=${!!beat}, licence=${!!licence}, beatmaker=${!!beatmaker})`)
   }
 
-  const { data: texteSauvegarde } = await admin
+  const { data: texteSauvegarde, error: erreurTexte } = await admin
     .from('licences_textes')
     .select('contenu')
     .eq('licence_id', params.licenceId)
+    .eq('beatmaker_id', params.beatmakerId)
     .maybeSingle()
+
+  if (erreurTexte) {
+    throw new Error('Lecture du texte de licence impossible')
+  }
 
   const licenceAvecSnapshot = params.limitesSnapshot ? { ...licence, ...params.limitesSnapshot } : licence
 

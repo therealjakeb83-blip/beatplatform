@@ -57,13 +57,13 @@ export async function GET(request: Request) {
   // collaborateur ne voit jamais l'email du client ni sa fiche CRM.
   const [parts, flux] = await Promise.all([chargerPartsVendeur(admin, user.id), chargerFluxCollab(admin, user.id)])
   const [commandesAutres, lignesAutres] = await Promise.all([
-    parLots(parts.autresCommandes, lot => admin.from('commandes').select(SELECT_COMMANDES).in('id', lot).in('statut', STATUTS_ANALYTICS).or('type_commande.eq.LICENCE,type_commande.is.null')),
+    parLots(parts.autresCommandes, lot => admin.from('commandes').select('id, created_at, prix_paye, reduction_montant, type_commande').in('id', lot).in('statut', STATUTS_ANALYTICS).or('type_commande.eq.LICENCE,type_commande.is.null')),
     parLots(parts.autresCommandes, lot => admin.from('commande_lignes').select(SELECT_LIGNES).in('commande_id', lot).in('commandes.statut', STATUTS_ANALYTICS)),
   ])
   const parDateDesc = (a: { created_at: string }, b: { created_at: string }) => b.created_at.localeCompare(a.created_at)
   const allCommandes = partsDeCommandes([
-    ...commandesBoutique,
-    ...commandesAutres.map(c => ({ ...c, acheteur_email: null, clients: null })),
+    ...commandesBoutique.map(c => ({ ...c, source_visible: true })),
+    ...commandesAutres.map(c => ({ ...c, source_marketing: null, source_visible: false, acheteur_nom: null, acheteur_email: null, clients: null })),
   ], parts).sort(parDateDesc)
   const allLignes = partsDeLignes([...lignesBoutique, ...lignesAutres], parts).sort(parDateDesc)
 
@@ -88,6 +88,7 @@ export async function GET(request: Request) {
   // Source top
   const srcMap: Record<string, number> = {}
   for (const c of cmds) {
+    if (!c.source_visible) continue
     const src = c.source_marketing ?? 'direct'
     srcMap[src] = (srcMap[src] ?? 0) + c.prix_paye + (c.reduction_montant ?? 0)
   }
@@ -119,7 +120,7 @@ export async function GET(request: Request) {
       recu_collab: sommeFlux(flux.recus, slot.from, slot.to), part_collaborateurs: sommeFlux(flux.collaborateurs, slot.from, slot.to),
     }
     for (const src of SOURCES) {
-      row[src] = mCmds.filter(c => (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
+      row[src] = mCmds.filter(c => c.source_visible && (c.source_marketing ?? 'direct') === src).reduce((s, c) => s + c.prix_paye + (c.reduction_montant ?? 0), 0)
     }
     return row
   })
@@ -140,7 +141,7 @@ export async function GET(request: Request) {
   type CmdRaw = {
     id: string; created_at: string; prix_paye: number; reduction_montant: number | null
     source_marketing: string | null; acheteur_nom: string | null; acheteur_email: string | null
-    clients: unknown
+    clients: unknown; source_visible: boolean
   }
   const commandes = (cmds as unknown as CmdRaw[]).map(c => {
     const lignesCmd = lignesParCommande.get(c.id) ?? []
@@ -158,7 +159,7 @@ export async function GET(request: Request) {
       beat_titre:       (b as { titre: string } | null)?.titre ?? '—',
       nb_articles:      lignesCmd.length,
       licence_nom:      (l as { nom: string } | null)?.nom ?? '—',
-      source_marketing: c.source_marketing ?? 'direct',
+      source_marketing: c.source_visible ? (c.source_marketing ?? 'direct') : null,
       prix_paye:        c.prix_paye,
       reduction_montant: c.reduction_montant,
     }
