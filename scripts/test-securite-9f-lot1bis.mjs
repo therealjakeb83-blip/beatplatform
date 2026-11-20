@@ -80,6 +80,29 @@ INSERT INTO commandes VALUES ('${C}','${A}'),('${D}','${A}');
 `)
 // Politiques relevées par Jake le 20/11 ; aucune donnée de production.
 await db.exec(fs.readFileSync(process.argv[3] ?? 'scripts/fixtures/securite-9f-lot1bis-policies.sql', 'utf8'))
+// Les tables hors lot sont vides : seules leurs ACL sont nécessaires au retrait global.
+const tablesReelles = JSON.parse(fs.readFileSync('scripts/fixtures/securite-9f-lot1bis-acl.json', 'utf8'))
+const ident = s => `"${s.replaceAll('"', '""')}"`
+const privileges = { r:'SELECT', a:'INSERT', w:'UPDATE', d:'DELETE', D:'TRUNCATE', x:'REFERENCES', t:'TRIGGER', m:'MAINTAIN' }
+for (const t of tablesReelles) {
+  await db.exec(`CREATE TABLE IF NOT EXISTS public.${ident(t.table)} (id uuid);
+    REVOKE ALL ON public.${ident(t.table)} FROM anon, authenticated, service_role;`)
+  for (const [, role, droits] of t.acl.matchAll(/(?:\{|,)(anon|authenticated|service_role)=([^/,]*)\//g)) {
+    for (const lettre of droits) {
+      const droit = privileges[lettre]
+      if (droit && (droit !== 'MAINTAIN' || version >= 170000)) await db.exec(`GRANT ${droit} ON public.${ident(t.table)} TO ${role}`)
+    }
+  }
+}
+async function droitsTables() {
+  return (await db.query(`SELECT c.relname, r.rolname, p.droit,
+    has_table_privilege(r.oid,c.oid,p.droit) AS accorde FROM pg_class c
+    JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN pg_roles r
+    CROSS JOIN (VALUES ${Object.values(privileges).filter(p=>p!=='MAINTAIN'||version>=170000).map(p=>`('${p}')`).join(',')}) p(droit)
+    WHERE n.nspname='public' AND c.relkind='r' AND r.rolname IN ('anon','authenticated','service_role')
+    ORDER BY c.relname,r.rolname,p.droit`)).rows
+}
+const droitsInitiaux = await droitsTables()
 try {
   // Prouver les contournements sur le modèle initial, sans réseau ni vraie donnée.
   await comme('authenticated', A, `INSERT INTO licences_textes(licence_id,beatmaker_id,contenu) VALUES ('${B}','${A}','intrus')`)
@@ -92,8 +115,12 @@ try {
 
   // Les inverses sont générés par le vrai relevé, pas recopiés à la main.
   const releve = await db.exec(lire('securite_9f_lot1bis_T0_complement'))
-  const inverses = releve[0].rows[0].releve.inverses
+  const inverses = releve[0].rows[0].releve.inverses.map(r=>({ ...r,
+    sql_inverse_a_conserver: fs.readFileSync(`supabase/retour_9f_lot1bis/sql${r.lot}_inverse.sql`, 'utf8')
+      .split('\n').filter(l=>version>=170000||!l.startsWith('GRANT MAINTAIN ')).join('\n'),
+  }))
   for (let n = 1; n <= 5; n++) { await appliquer(n); await appliquer(n) }
+  assert.deepEqual((await droitsTables()).filter(r=>r.rolname==='service_role'), droitsInitiaux.filter(r=>r.rolname==='service_role')); essais++
   await refuse(A, `INSERT INTO licences_textes(licence_id,beatmaker_id,contenu) VALUES ('${B}','${A}','intrus')`)
   await refuse(A, `INSERT INTO licences_textes_historique VALUES ('${B}','${A}','intrus')`)
   await comme('authenticated', A, `INSERT INTO licences_textes(licence_id,beatmaker_id,contenu) VALUES ('${A}','${A}','v1')`)
@@ -152,5 +179,6 @@ try {
   if (version >= 170000) {
     assert.equal((await db.query("SELECT has_table_privilege('authenticated','licences','MAINTAIN') ok")).rows[0].ok, true); essais++
   }
+  assert.deepEqual(await droitsTables(), droitsInitiaux); essais++
   console.log(`APRES : PostgreSQL ${version}, ${essais} contrôles OK ; migrations répétables ; cinq inverses exécutés et contournements restaurés sur données fictives`)
 } finally { await db.close() }

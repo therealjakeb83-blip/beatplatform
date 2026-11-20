@@ -4,6 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Reprise prioritaire — Lot 1 bis autorisé et code en ligne, 2026-11-20
+
+Jake a donné `/gocode` après présentation du plan T0–T16. Code du Lot 1 bis `502d75e` poussé sur main, nouveau code public observé sur sonoo.app ; SQL 5 appliqué par Jake (succès annoncé), vérification séparée attendue ; SQL 1/2/3/4 non appliqués. Cadrage, checklist, preuves et retour : `docs/securite/lot1bis-9f-2026-11-20.md`. Q1 run-6 fourni par Jake confirme les règles fragiles ; complément T0 reçu : 62 tables RLS, zéro texte/archive incohérent, inverses réels sauvegardés dans `supabase/retour_9f_lot1bis/` et testés. Retirer les droits techniques SQL 5 en premier, puis SQL 1/2/3/4, toujours un par un après examen du relevé et vérification séparée. TRUNCATE réellement accordé à anon sur plusieurs tables, signalé sans essai destructif ; MAINTAIN inclus au retrait. PGlite PostgreSQL 18 : 34 contrôles + cinq inverses réels OK, matrice ACL des 62 tables restaurée exactement ; neuf scénarios routes/contrats OK ; TypeScript OK. Lint : erreur React préexistante dans TabVentes. Compilation locale OK sans .env, prérendu Admin exige la base ; production observée, console Vercel non lue. Analytics authentifié 200, totaux inchangés ; trois routes sans session 401. Tests réels du lot largement en attente, rien à cocher sans preuve.
+
+Cet état remplace uniquement les mentions ci-dessous disant encore « Lot 1 bis sans /gocode, lecture seule ». T5/T16 du Lot 1 toujours ouverts ; compartiment 8 non commencé ; page humaine et compteur inchangés. Ne jamais lire `.env.local`.
+
 ## État de clôture prioritaire — 2026-11-20 (Codex), rang 9f
 
 **Lire en premier `HANDOFF_CLAUDE_SECURITE_9F_LOT1BIS_2026-11-20.md`, en entier. Cet état remplace les indications historiques ci-dessous qui disent encore « rien codé » ou « prochaine étape /gocode du Lot 1 ».**

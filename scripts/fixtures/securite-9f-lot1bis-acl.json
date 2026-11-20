@@ -1,0 +1,312 @@
+[
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "formats_import_externes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,authenticated=rm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "leads"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "abonnements_plateforme"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=ardDxtm/postgres,service_role=Dxtm/postgres}",
+    "rls": true,
+    "table": "doublons_ignores"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "commandes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=rDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=rDxtm/postgres}",
+    "rls": true,
+    "table": "licences"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "clients"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "beats"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "codes_promo"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "abonnements_boutique"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,authenticated=rwDxtm/postgres,service_role=rwDxtm/postgres}",
+    "rls": true,
+    "table": "beatmakers"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=Dxtm/postgres}",
+    "rls": true,
+    "table": "listes_contacts"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=Dxtm/postgres}",
+    "rls": true,
+    "table": "liste_membres"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=ardDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "favoris"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=rwDxtm/postgres}",
+    "rls": true,
+    "table": "campagnes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=Dxtm/postgres}",
+    "rls": true,
+    "table": "morceaux_clients"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "free_downloads"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=ardDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "fusions_crm"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=Dxtm/postgres}",
+    "rls": true,
+    "table": "segments_crm"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=rDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arDxtm/postgres}",
+    "rls": true,
+    "table": "beat_licences"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=aDxtm/postgres,authenticated=arDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "beat_plays"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=rDxtm/postgres}",
+    "rls": true,
+    "table": "listes_crm"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=rDxtm/postgres}",
+    "rls": true,
+    "table": "listes_crm_contacts"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=xtm/postgres,authenticated=rxtm/postgres,service_role=arDxtm/postgres}",
+    "rls": true,
+    "table": "licence_downloads"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "templates_email"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "campagne_envois"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "tentatives_paiement"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "automatisations"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "automatisation_evenements"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "automatisation_envois"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "email_logs"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "templates_transactionnels"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "tentatives_paiement_lignes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "commande_lignes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=ardDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "demandes_certification"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=rDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "categories_images_boutique"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=Dxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "stripe_events"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "categories"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "reductions_lot"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=Dxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "templates_plateforme"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "boutique_pages_legales"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arDxtm/postgres,service_role=arDxtm/postgres}",
+    "rls": true,
+    "table": "boutique_pages_legales_historique"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "domaines_boutique"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "licences_textes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arDxtm/postgres}",
+    "rls": true,
+    "table": "merchant_decisions_log"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arDxtm/postgres,service_role=arDxtm/postgres}",
+    "rls": true,
+    "table": "licences_textes_historique"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "infos_paiement_compte"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=rwDxtm/postgres}",
+    "rls": true,
+    "table": "parametres_plateforme"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "beat_splits"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "essais_acces_commande"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "commande_tranches"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "tentatives_paiement_parts"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "avoirs"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "litiges"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=Dxtm/postgres,service_role=arDxtm/postgres}",
+    "rls": true,
+    "table": "domaines_historique"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "commandes_externes_lignes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "imports_externes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwDxtm/postgres}",
+    "rls": true,
+    "table": "anciens_slugs"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "imports_externes_contacts"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "commandes_externes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "liens_titres_externes"
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "table": "inscriptions_newsletter_groupees"
+  }
+]
