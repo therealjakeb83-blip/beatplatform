@@ -127,17 +127,58 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const liensRef        = useRef<Map<string, string>>(new Map())
   const reprisesRef     = useRef<Map<string, number>>(new Map())
   const positionRef     = useRef<{ beatId: string | null; t: number }>({ beatId: null, t: 0 })
+  const lectureRef      = useRef(0)
+  const repriseEnCoursRef = useRef(false)
+  const attentePositionRef = useRef<(() => void) | null>(null)
 
   // Lien utilisable tout de suite (encore valide), sinon null.
-  function lienImmediat(beat: BeatMin): string | null {
+  const lienImmediat = useCallback((beat: BeatMin): string | null => {
     const lien = liensRef.current.get(beat.id) ?? beat.mp3_tague_url
     return lien && !lienExpireBientot(lien) ? lien : null
-  }
-  async function lienRenouvele(beatId: string): Promise<string | null> {
+  }, [])
+  const lienRenouvele = useCallback(async (beatId: string): Promise<string | null> => {
     const lien = await demanderLienEcoute(beatId)
     if (lien) liensRef.current.set(beatId, lien)
     return lien
-  }
+  }, [])
+
+  const annulerReprise = useCallback(() => {
+    lectureRef.current++
+    repriseEnCoursRef.current = false
+    const audio = audioRef.current
+    if (audio && attentePositionRef.current) audio.removeEventListener('loadedmetadata', attentePositionRef.current)
+    attentePositionRef.current = null
+  }, [])
+
+  const reprendreLecture = useCallback(async (forcer = false) => {
+    const audio = audioRef.current
+    const beat = currentBeatRef.current
+    if (!audio || !beat?.mp3_tague_url) return
+    annulerReprise()
+    const demande = lectureRef.current
+    const position = audio.currentTime || (positionRef.current.beatId === beat.id ? positionRef.current.t : 0)
+    let lien = forcer ? null : lienImmediat(beat)
+    if (!lien) {
+      repriseEnCoursRef.current = true
+      lien = await lienRenouvele(beat.id)
+      if (demande !== lectureRef.current || currentBeatRef.current?.id !== beat.id) return
+      repriseEnCoursRef.current = false
+    }
+    if (!lien) { setIsPlaying(false); return }
+    if (audio.src !== lien || audio.error) {
+      const restaurerPosition = () => {
+        attentePositionRef.current = null
+        if (demande === lectureRef.current && position > 0) audio.currentTime = position
+      }
+      attentePositionRef.current = restaurerPosition
+      audio.addEventListener('loadedmetadata', restaurerPosition, { once: true })
+      audio.src = lien
+      audio.load()
+    }
+    // Ne pas attendre loadedmetadata pour play : garder le geste de lecture
+    // de l'utilisateur lorsque le lien est déjà disponible (Safari compris).
+    audio.play().catch(() => { if (demande === lectureRef.current) setIsPlaying(false) })
+  }, [annulerReprise, lienImmediat, lienRenouvele])
 
   useEffect(() => { queueRef.current = queue }, [queue])
   useEffect(() => { shuffleOrderRef.current = shuffleOrder }, [shuffleOrder])
@@ -238,7 +279,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
 
     const handleBeforeUnload    = () => finalizeDuration(true)
-    const handleVisibilityChange = () => { if (document.visibilityState === 'hidden') finalizeDuration(true) }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') finalizeDuration(true)
+      else {
+        const beat = currentBeatRef.current
+        // Préparer le lien au retour sur une page laissée ouverte, sans
+        // relancer un morceau que l'utilisateur a mis en pause.
+        if (beat?.mp3_tague_url && !lienImmediat(beat)) void lienRenouvele(beat.id)
+      }
+    }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -281,21 +330,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (audio.currentTime > 0 && id) positionRef.current = { beatId: id, t: audio.currentTime }
     })
 
-    audio.addEventListener('error', async () => {
+    audio.addEventListener('error', () => {
       const beat = currentBeatRef.current
-      if (!beat?.mp3_tague_url) return
+      if (!beat?.mp3_tague_url || repriseEnCoursRef.current) return
       const derniere = reprisesRef.current.get(beat.id) ?? 0
       if (Date.now() - derniere < 10_000) return
       reprisesRef.current.set(beat.id, Date.now())
-      const position = audio.currentTime || (positionRef.current.beatId === beat.id ? positionRef.current.t : 0)
-      const lien = await lienRenouvele(beat.id)
-      if (!lien || currentBeatRef.current?.id !== beat.id) return
-      audio.addEventListener('loadedmetadata', () => {
-        if (position > 0) audio.currentTime = position
-        audio.play().catch(() => {})
-      }, { once: true })
-      audio.src = lien
-      audio.load()
+      void reprendreLecture(true)
     })
 
     audio.addEventListener('ended', () => {
@@ -323,31 +364,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       finalizeDuration(false)
+      annulerReprise()
       audio.pause()
       audio.src = ''
     }
-  }, [])
+  }, [annulerReprise, lienImmediat, lienRenouvele, reprendreLecture])
 
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !currentBeat?.mp3_tague_url) return
     setProgress(0)
     positionRef.current = { beatId: currentBeat.id, t: 0 }
-    const immediat = lienImmediat(currentBeat)
-    if (immediat) {
-      audio.src = immediat
-      audio.load()
-      audio.play().catch(() => {})
-      return
-    }
-    let annule = false
-    lienRenouvele(currentBeat.id).then(lien => {
-      if (annule || !lien) return
-      audio.src = lien
-      audio.load()
-      audio.play().catch(() => {})
-    })
-    return () => { annule = true }
+    audio.pause()
+    audio.removeAttribute('src')
+    audio.load()
+    void reprendreLecture()
+    return () => { annulerReprise() }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBeat?.id])
 
@@ -362,20 +394,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (currentBeatRef.current?.id === beat.id) {
       const audio = audioRef.current
       if (!audio) return
-      if (audio.paused) audio.play().catch(() => {})
-      else audio.pause()
+      if (repriseEnCoursRef.current) { annulerReprise(); audio.pause() }
+      else if (audio.paused) void reprendreLecture()
+      else { annulerReprise(); audio.pause() }
     } else {
       setCurrentBeat(beat)
       currentBeatRef.current = beat
     }
-  }, [])
+  }, [annulerReprise, reprendreLecture])
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (!audio || !currentBeatRef.current) return
-    if (audio.paused) audio.play().catch(() => {})
-    else audio.pause()
-  }, [])
+    if (repriseEnCoursRef.current) { annulerReprise(); audio.pause() }
+    else if (audio.paused) void reprendreLecture()
+    else { annulerReprise(); audio.pause() }
+  }, [annulerReprise, reprendreLecture])
 
   // ⏮/⏭ bouclent toujours circulairement (retour au début après le dernier
   // morceau) — décision Jake du 2026-07-22 : "jamais laisser l'utilisateur
