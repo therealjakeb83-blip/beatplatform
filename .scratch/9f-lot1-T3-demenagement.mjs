@@ -5,6 +5,7 @@
 //   node --env-file=.env.local .scratch/9f-lot1-T3-demenagement.mjs deplacer    ← copie + base réécrite (originaux gardés)
 //   node --env-file=.env.local .scratch/9f-lot1-T3-demenagement.mjs verifier    ← contrôle fichier par fichier
 //   node --env-file=.env.local .scratch/9f-lot1-T3-demenagement.mjs effacer --oui  ← T4 : efface les originaux publics
+//   node --env-file=.env.local .scratch/9f-lot1-T3-demenagement.mjs annuler     ← DÉFAIRE « deplacer » (avant « effacer » seulement)
 //
 // Concernés : MP3 tagué, MP3 propre, WAV, stems (beats/…), factures, contrats,
 // avoirs (commandes/…). Couvertures, logos, images : ne bougent pas.
@@ -16,8 +17,8 @@ import { createClient } from '@supabase/supabase-js'
 
 const mode = process.argv[2]
 const confirme = process.argv.includes('--oui')
-if (!['compter', 'deplacer', 'verifier', 'effacer'].includes(mode)) {
-  console.log('Usage : compter | deplacer | verifier | effacer --oui')
+if (!['compter', 'deplacer', 'verifier', 'effacer', 'annuler'].includes(mode)) {
+  console.log('Usage : compter | deplacer | verifier | effacer --oui | annuler')
   process.exit(1)
 }
 
@@ -49,6 +50,7 @@ const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABA
 const SENSIBLE = /^(beats\/[^/]+\/[^/]+\/(mp3_tague|mp3_propre|wav|stems)\.(mp3|wav|zip)|commandes\/.+\.pdf)$/
 const COLONNES_BEAT = { mp3_tague_url: ['mp3_tague', 'mp3'], mp3_propre_url: ['mp3_propre', 'mp3'], wav_url: ['wav', 'wav'], stems_url: ['stems', 'zip'] }
 const FICHIER_CORRESPONDANCES = '.scratch/9f-lot1-T3-correspondances.json'
+const FICHIER_ANCIEN_ETAT = '.scratch/9f-lot1-T3-ancien-etat.json'
 const taille = n => n > 1e9 ? `${(n / 1e9).toFixed(2)} Go` : `${(n / 1e6).toFixed(1)} Mo`
 
 async function toutLire(table, colonnes) {
@@ -170,6 +172,10 @@ if (mode === 'deplacer') {
   // sur l'ancienne valeur (une ligne changée entre-temps n'est pas touchée).
   let reecrites = 0
   const erreursBase = []
+  // Ancien état de chaque ligne réécrite (pour « annuler »), cumulé entre les passages.
+  const ancienEtat = existsSync(FICHIER_ANCIEN_ETAT) ? JSON.parse(readFileSync(FICHIER_ANCIEN_ETAT, 'utf8')) : []
+  for (const p of plan.filter(p => reussies.has(`${p.source}→${p.cible}`))) ancienEtat.push({ table: p.table, id: p.id, colonne: p.colonne, ancienne: p.ancienne, nouvelle: `prive:${p.cible}` })
+  writeFileSync(FICHIER_ANCIEN_ETAT, JSON.stringify(ancienEtat, null, 1))
   await enParallele(plan.filter(p => reussies.has(`${p.source}→${p.cible}`)), async p => {
     const { data, error } = await db.from(p.table).update({ [p.colonne]: `prive:${p.cible}` }).eq('id', p.id).eq(p.colonne, p.ancienne).select('id')
     if (error) erreursBase.push(`${p.table}.${p.colonne} ${p.id} : ${error.message}`)
@@ -215,6 +221,20 @@ if (mode === 'verifier' || mode === 'effacer') {
       Object.assign(rapport, { originaux_effaces: effaces, originaux_gardes_sans_copie_identique: gardes.length, exemples_gardes: gardes.slice(0, 10) })
     }
   }
+}
+
+if (mode === 'annuler') {
+  // Remet l'ancienne adresse publique, seulement là où la ligne vaut encore la
+  // valeur posée par « deplacer ». Les copies privées restent (sans effet).
+  const ancienEtat = existsSync(FICHIER_ANCIEN_ETAT) ? JSON.parse(readFileSync(FICHIER_ANCIEN_ETAT, 'utf8')) : []
+  let remises = 0
+  const erreurs = []
+  await enParallele(ancienEtat, async e => {
+    const { data, error } = await db.from(e.table).update({ [e.colonne]: e.ancienne }).eq('id', e.id).eq(e.colonne, e.nouvelle).select('id')
+    if (error) erreurs.push(`${e.table}.${e.colonne} ${e.id} : ${error.message}`)
+    else remises += data.length
+  }, 4)
+  Object.assign(rapport, { lignes_remises_en_public: remises, erreurs_annulation: erreurs })
 }
 
 const fichier = `.scratch/9f-lot1-T3-rapport-${mode}.json`
