@@ -1,5 +1,7 @@
 # Note de côté — page « Sonoo — Où on en est » non mise à jour
 
+**Complément du 21/11, sans publication :** la page et le compteur restent inchangés. Le Lot 1 bis est maintenant codé, les cinq SQL sont appliqués et vérifiés ; plusieurs essais réels sont faits, mais la validation finale reste ouverte. Refus/acceptation B validés, départ encore non effectué. Rattrapage détaillé : `HANDOFF_CLAUDE_SECURITE_9F_LOT1BIS_BILAN_CODEX_2026-11-21.md`. Les indications « Lot 1 bis non commencé » ci-dessous décrivent uniquement la clôture précédente. Inclure cette session au futur recalcul selon les règles du compteur, sans inventer sa durée.
+
 Clôture du 2026-11-20 par Codex. **Jake a explicitement demandé de laisser cette page de côté et de noter qu'elle n'a pas été mise à jour.**
 
 Page concernée : https://claude.ai/code/artifact/e2029abb-abff-46e6-a1c2-73bd0fece34e

@@ -1,0 +1,20 @@
+Reprends Sonoo, rang 9f, après la session Codex des 20–21 novembre 2026.
+
+Avant de répondre, lis EN ENTIER le rapport prioritaire :
+C:\Users\nicoj\beatplatform\HANDOFF_CLAUDE_SECURITE_9F_LOT1BIS_BILAN_CODEX_2026-11-21.md
+
+Puis lis CLAUDE.md, docs/securite/lot1bis-9f-2026-11-20.md, ROADMAP.md (bloc 9f et checklists), docs/securite/fusion-9f-2026-11-19.md, docs/securite/NOTE_ROADMAP_HUMAINE_2026-11-20.md, la mémoire project_securite_9f_avant_audit_externe.md, git status et git log récents. Les anciens états disant « Lot 1 bis non commencé » sont remplacés par ce rapport.
+
+État : Lot 1 bis autorisé par /gocode, code 502d75e poussé et observé sur sonoo.app. Les cinq SQL ont été appliqués et vérifiés par moi, ordre 5 → 1 → 2 → 3 → 4. Ne les refais pas. Inverses exacts sauvegardés. PGlite 34 contrôles, neuf scénarios routes/contrats ; essais réels détaillés dans le rapport. Lot 1 bis pas encore entièrement validé.
+
+Je fais les clics du compte B nicojacob83+2809a@gmail.com dans mon navigateur. Je ne partage pas le mot de passe de maintenance ; ne contourne pas cet accès ni ne transfère de jeton. Aucun mot de passe à recopier ou enregistrer.
+
+Derniers résultats confirmés : refus persistant de TEST 9f bis croise 20-11 ; acceptation persistante à 50 % de TEST 9f bis acceptation 20-11. Prochaine étape : me guider UNE étape à la fois pour Quitter cette dernière collaboration, confirmer puis recharger. Le départ n'a pas encore été testé. Ensuite éviction, vente/Analytics côté B, contrat neuf sur beat achetable, fusion de liste et dernières preuves listées au rapport. Ne coche rien sans preuve et distingue preuves locales, métadonnées de production et vrais essais.
+
+Lot 1 précédent : T5 toujours ouvert, car sur PC Edge la page s'est rechargée automatiquement après une heure avant que l'écoute fonctionne ; cela ne valide pas la reprise sans rechargement. T16 : journaux 24 h à contrôler le 21/11, pas encore fait. Compartiment 8 seulement après validation du Lot 1.
+
+Méthode : main, contrôles puis commit et push séparés ; tests sonoo.app ; SQL un par un, PGlite d'abord, vérification distincte et inverse fourni ; fonctionnel avant apparence ; faille réelle signalée et bloquée. Ne rouvre ni les décisions du Lot 1 ni la règle Brevo.
+
+Jamais de lecture de .env.local, aucun email hors liste blanche. Ne touche ni WordPress, ni configuration des emails jakebmusic.com, ni mentions Sonoo. DNS uniquement avec accord et relevé avant/après. Les données de test restantes sont précisément listées dans le rapport : ne prétends pas qu'elles ont toutes été supprimées.
+
+Page humaine et compteur NON mis à jour : aucune version publiée ni total recalculé. Commence par un rappel bref de l'état puis le prochain test guidé ; pas de nouvel audit ni de nouveau lot.

@@ -1,5 +1,7 @@
 # Passation — Sonoo, rang 9f : fin du Lot 1 et préparation du Lot 1 bis
 
+**Passation remplacée pour la reprise par `HANDOFF_CLAUDE_SECURITE_9F_LOT1BIS_BILAN_CODEX_2026-11-21.md`, à lire en entier.** Cette ancienne passation reste comme historique. Lot 1 bis désormais codé, cinq SQL appliqués/vérifiés, essais en cours ; refus et acceptation B confirmés, départ non effectué. Jake demande l'arrêt de Codex pour continuer avec Claude.
+
 ## Reprise prioritaire — Lot 1 bis, SQL vérifiés et essais en cours (20 novembre)
 
 **Reprise du 21/11 :** Jake réalise les clics B dans son navigateur, sans partager l’accès maintenance. Refus de TEST 9f bis croise 20-11 puis acceptation à 50 % de TEST 9f bis acceptation 20-11 confirmés par Jake après rechargement avant l’interruption. Prochaine étape : départ volontaire de cette dernière collaboration, puis éviction/Analytics B et contrat neuf. T6 reste partiel. T16 Lot 1 à vérifier aujourd’hui, pas encore effectué ; T5 reste ouvert. Aucun mot de passe conservé.

@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Passation prioritaire à Claude — arrêt demandé le 21 novembre
+
+**Lire en entier `HANDOFF_CLAUDE_SECURITE_9F_LOT1BIS_BILAN_CODEX_2026-11-21.md`.** Rapport final de la session Codex des 20–21/11, demandé par Jake pour continuer avec Claude ; il prime sur les états historiques ci-dessous. Code Lot 1 bis en ligne, cinq SQL appliqués et vérifiés, validation fonctionnelle non terminée. Refus puis acceptation à 50 % confirmés après rechargement sur B ; **départ volontaire non effectué**, prochain test guidé. Jake garde les clics B dans son navigateur et ne partage pas l'accès maintenance. T5/T16 du Lot 1 toujours ouverts, compartiment 8 non commencé, page humaine et compteur inchangés. Prompt prêt : `PROMPT_REPRISE_CLAUDE_SECURITE_9F_2026-11-21.txt`.
+
 ## Reprise prioritaire — Lot 1 bis, SQL vérifiés et essais en cours (20 novembre)
 
 **Reprise du 21/11 :** Jake réalise les clics B dans son navigateur, sans partager l’accès maintenance. Refus de TEST 9f bis croise 20-11 puis acceptation à 50 % de TEST 9f bis acceptation 20-11 confirmés par Jake après rechargement avant l’interruption. Prochaine étape : départ volontaire de cette dernière collaboration, puis éviction/Analytics B et contrat neuf. T6 reste partiel. T16 Lot 1 à vérifier aujourd’hui, pas encore effectué ; T5 reste ouvert. Aucun mot de passe conservé.
