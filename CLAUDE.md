@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Reprise prioritaire — Lot 1 bis, SQL vérifiés et essais en cours (20 novembre)
 
+**Reprise du 21/11 :** Jake réalise les clics B dans son navigateur, sans partager l’accès maintenance. Refus de TEST 9f bis croise 20-11 puis acceptation à 50 % de TEST 9f bis acceptation 20-11 confirmés par Jake après rechargement avant l’interruption. Prochaine étape : départ volontaire de cette dernière collaboration, puis éviction/Analytics B et contrat neuf. T6 reste partiel. T16 Lot 1 à vérifier aujourd’hui, pas encore effectué ; T5 reste ouvert. Aucun mot de passe conservé.
+
 Jake a donné `/gocode`. Code `502d75e` poussé sur main et observé sur sonoo.app. Les cinq SQL sont appliqués par Jake et vérifiés séparément, ordre 5 → 1 → 2 → 3 → 4. T0 : 62 tables RLS, zéro incohérence texte/archive, cinq inverses réels dans `supabase/retour_9f_lot1bis/`. Droits techniques restants = 0. PGlite : 34 contrôles avec ACL réelles, serveur préservé et inverses exacts ; neuf scénarios routes/contrats ; TypeScript OK. Erreur lint React préexistante. Détail et checklist : `docs/securite/lot1bis-9f-2026-11-20.md`.
 
 Essais autonomes réels : liste créée, contact whitelist ajouté/relu/retiré, liste supprimée ; catégorie test créée/renommée/demandée/certifiée par Admin, beat masqué ensuite retiré ; texte MP3 réenregistré à contenu identique (5 → 6), archive et texte relus identiques, modèle par défaut essayé sans sauvegarde ; import synthétique puis annulation, réponse B6 limitée aux quatre compteurs ; invitation whitelisted créée/retirée, état et emails relus, beat ensuite retiré. Analytics 200, 395 commandes et CA 19 254,55 € inchangés. Aucun email hors liste blanche ni lecture `.env.local`.
